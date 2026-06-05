@@ -140,6 +140,10 @@ Rules:
 - Login, registration, OAuth session creation, current-session retrieval/update, refresh, and session restoration `MUST` update the global token manager, centralized session store, and AppContext/context store together before the API call is reported as completed to UI/runtime code.
 - Session side effects `MUST` be ordered: first validate the appbase session payload, then persist normalized tokens in the centralized session store, then write the returned AppContext to the context store or clear stale AppContext when the session has no context, and only then sync the global token manager. A failed token persistence step `MUST NOT` leave a new in-memory token manager state behind. A failed context propagation step after token persistence `MUST` clear the token store, context store, and global token manager before the API call rejects.
 - New session flows such as login, registration, and OAuth session creation `MUST` replace the stored token set and `MUST NOT` inherit an old `refreshToken` when appbase does not return one. Current-session retrieval/update and refresh continuation may preserve the current stored `refreshToken` only when appbase returns rotated `authToken`/`accessToken` without a new `refreshToken`.
+- Reusable auth UI and service packages `MUST` expose a `commitSession(session, options?)` hook, not `persistSession`. The session passed to `commitSession` `MUST` be the normalized committed session after continuation refresh-token rules have been applied.
+- `commitSession(session)` is allowed only for new session flows. `commitSession(session, { preserveRefreshToken: true })` is allowed only for current-session bootstrap, current-session update, refresh continuation, and equivalent session restoration flows.
+- `commitSession` `MUST` be awaited before auth service, runtime, route guard, or UI controller APIs resolve. If a custom committer returns a committed session, the runtime reports that normalized return value. If it returns `void`, the runtime reports the standard committed session it computed before invoking the committer.
+- Logout clearing is a two-level `finally` rule: the service/runtime clears persisted tokens, global token manager, context store, realtime/session bridges, and sensitive caches even when remote session deletion fails; the UI/controller clears in-memory authenticated state even when service logout rejects after local cleanup.
 - The global token manager is the SDK login-retention standard. Product/domain SDKs `MUST NOT` maintain independent token stores or refresh flows.
 - Frontend code outside SDK/bootstrap `MUST NOT` set `Authorization`, `Access-Token`, `X-Sdkwork-*`, or equivalent auth headers manually.
 - `authToken`, `accessToken`, and `refreshToken` `MUST NOT` be logged, copied into URLs, exposed in UI, or saved in product feature state.
@@ -150,6 +154,7 @@ Standard logout effects:
 
 ```text
 appbaseAppClient.auth.sessions.current.delete()
+  -> clear in-memory auth controller/session state in finally
   -> clear persisted session
   -> clear the global token manager
   -> close/reconnect realtime clients as anonymous
@@ -246,7 +251,19 @@ Forbidden for product Rust services:
 - creating a separate user-center login namespace;
 - bypassing generated app SDK/appbase because an auth method is missing.
 
-## 9. Tauri And Desktop Rules
+## 9. Current User Self-Service
+
+Current user profile and self-service operations are appbase app-api resources, not product-local user clients.
+
+Rules:
+
+- Current user reads `MUST` use `@sdkwork/appbase-app-sdk` `appbaseApp.iam.users.current.retrieve()`.
+- Current user updates and password changes `MUST` be defined as semantic appbase app-api current-user resources before use, for example `appbaseApp.iam.users.current.update(...)` and `appbaseApp.iam.users.current.password.update(...)`.
+- Product apps and UI packages `MUST NOT` inject clients exposing legacy `user.getUserProfile`, `user.updateUserProfile`, `user.changePassword`, or equivalent app-local user-center methods.
+- Missing current-user app SDK methods `MUST` be closed by updating `sdkwork-appbase-app-api`, OpenAPI, generator inputs, and all generated language SDKs. They `MUST NOT` be hidden by raw HTTP, fallback DTOs, or product-local SDK forks.
+- User-center UI `MUST` expose edit/password capabilities only when the generated appbase app SDK resource exists. Default current-user profile UI is read-only until `iam.users.current.update` and password update resources are present.
+
+## 10. Tauri And Desktop Rules
 
 Desktop shells host the web app; they do not own business authentication.
 
@@ -258,7 +275,7 @@ Rules:
 - Desktop logout `MUST` clear both renderer session state and native secure storage when native storage is used.
 - Local/private desktop modes `MUST` use runtime config to choose app-api base URLs. Release builds must not hard-code development endpoints.
 
-## 10. Verification
+## 11. Verification
 
 Required checks for IAM login integration:
 
@@ -268,8 +285,9 @@ Required checks for IAM login integration:
 | SDK boundary | Static scan shows no raw HTTP/manual auth headers in UI or feature services. |
 | Route guard | Tests or smoke checks prove protected routes redirect to login and authenticated auth routes redirect home/target. |
 | Logout | Tests or smoke checks prove persisted session, global token manager, AppContext, realtime clients, caches, and native storage are cleared even when remote logout fails. |
-| Session persistence | Tests prove login/refresh/current-session calls do not resolve before session persistence and context propagation finish, token persistence failure does not update the global token manager, new sessions do not inherit old refresh tokens, refresh/current-session continuation may preserve the current refresh token, context propagation failure rolls back token/context stores, and sessions without AppContext clear stale AppContext. |
+| Session persistence | Tests prove login/refresh/current-session calls do not resolve before `commitSession` finishes, token persistence failure does not update the global token manager, new sessions do not inherit old refresh tokens, refresh/current-session continuation passes the already-merged committed session to `commitSession`, context propagation failure rolls back token/context stores, and sessions without AppContext clear stale AppContext. |
 | API boundary | Contract scan proves product IM/backend/Rust services do not expose appbase-owned `/app/v3/api/auth/*` routes. |
+| Current user boundary | Static scan shows current-user profile/self-service calls use `appbaseApp.iam.users.current.*` and do not inject legacy `user.*` clients. |
 | Rust guard | Tests prove protected Rust routes require dual tokens plus valid AppContext or signed context projection. |
 | Context safety | Tests prove body/query/path tenant or user fields cannot override AppContext. |
 | Error shape | Unauthorized/context failures return problem-detail errors with stable codes. |
@@ -284,7 +302,7 @@ rg -n "fetch\\(|axios\\.|Authorization|Access-Token" apps/<product>-pc/packages
 rg -n "/app/v3/api/auth|/api/.*/auth|user-center/session" services crates
 ```
 
-## 11. Acceptance Checklist
+## 12. Acceptance Checklist
 
 - [ ] App login/register/session UI is provided by `sdkwork-appbase` or approved wrappers.
 - [ ] Product app does not reimplement appbase-owned auth endpoints.
@@ -293,6 +311,8 @@ rg -n "/app/v3/api/auth|/api/.*/auth|user-center/session" services crates
 - [ ] Generated appbase app SDK or strict IAM adapter over the standard appbase SDK resource surface owns all auth/session transport.
 - [ ] Logout clears local session, global token manager, AppContext, realtime connections, sensitive cache, and native storage when present, including remote logout failure cases.
 - [ ] Login/refresh/current-session restoration waits for session persistence and context propagation before returning to UI/runtime code, replaces refresh tokens for new sessions, preserves current refresh tokens only for continuation flows, rolls back on context propagation failure, and clears stale AppContext when the committed session has no context.
+- [ ] Reusable auth packages use `commitSession(session, options?)`, never `persistSession`, and controller logout clears local authenticated state in a `finally` path.
+- [ ] Current user profile reads use `appbaseApp.iam.users.current.retrieve()` and missing self-service methods are fixed in appbase app-api/OpenAPI/generator inputs instead of product-local fallbacks.
 - [ ] Rust protected APIs require dual tokens and typed AppContext or a signed trusted projection.
 - [ ] Rust product services do not expose login/session creation routes unless they are the IAM authority implementation.
 - [ ] Permission and tenant decisions come from verified AppContext, not request body/query/path hints.
