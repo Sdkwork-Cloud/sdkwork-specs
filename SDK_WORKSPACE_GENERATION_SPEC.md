@@ -181,22 +181,26 @@ Rules:
 The standard OpenAPI HTTP SDK language set is:
 
 - TypeScript
+- Dart
+- Python
+- Go
+- Java
+- Kotlin
+- Swift
+- C#
 - Flutter
 - Rust
-- Java
-- C#
-- Swift
-- Kotlin
-- Go
-- Python
+- PHP
+- Ruby
 
 Rules:
 
 - A product may generate fewer languages only when its README declares the supported subset and no consumer expects the missing package.
 - TypeScript and Flutter may use layered generated-plus-composed workspaces.
-- Rust, Java, C#, Swift, Kotlin, Go, Python, and similar targets should keep handwritten helpers thin and outside generated output.
+- Dart, Python, Go, Java, Kotlin, Swift, C#, Rust, PHP, Ruby, and similar targets should keep handwritten helpers thin and outside generated output.
 - Android requests route to Kotlin as the generator target unless a separate Android wrapper is explicitly approved.
 - iOS requests route to Swift as the generator target unless a separate iOS wrapper is explicitly approved.
+- Appbase-owned reusable SDK families `sdkwork-appbase-app-sdk` and `sdkwork-appbase-backend-sdk` `MUST` generate the full language baseline unless a governance exception explicitly narrows the supported consumer set.
 
 ## 8. Application Integration Rules
 
@@ -207,6 +211,7 @@ Rules:
 - Backend/admin UI uses backend SDKs for operator capability and follows `BACKEND_UI_SPEC.md`.
 - IAM login/session integration follows `IAM_LOGIN_INTEGRATION_SPEC.md`; do not regenerate product-local login SDKs for appbase-owned auth flows.
 - Rust local/private implementations must expose the same OpenAPI paths, operationIds, schemas, errors, and security semantics as the Java SaaS contract for shared APIs.
+- Rust local/private appbase implementations must wrap protected routers with the standard appbase request context framework so generated app/backend SDK consumers observe the same auth, tenant, organization, user, request id, and problem-detail behavior.
 - Tauri commands should validate local/native capability and then call Rust services or injected SDK clients through approved boundaries. They must not become a hidden raw HTTP SDK replacement.
 
 ## 9. Verification

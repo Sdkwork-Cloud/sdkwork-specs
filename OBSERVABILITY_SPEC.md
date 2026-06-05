@@ -11,7 +11,9 @@ Production behavior must be observable without leaking sensitive data.
 Rules:
 
 - Every API request `SHOULD` have a `traceId` or correlation ID.
+- Every appbase HTTP request `MUST` have a server-owned request id generated at the request framework boundary.
 - Error responses `SHOULD` include `traceId`.
+- Appbase problem responses `MUST` include the server-owned request id when available.
 - Logs, metrics, traces, audit events, and security events `SHOULD` be correlated.
 - Tenant and organization context may be logged only when allowed by security and privacy rules.
 
@@ -20,9 +22,10 @@ Rules:
 Rules:
 
 - Logs `MUST` be structured in production services.
-- Log fields `SHOULD` include timestamp, level, service, environment, traceId, operationId, route, status, duration, and safe tenant context.
+- Log fields `SHOULD` include timestamp, level, service, environment, traceId, requestId, operationId, route, API surface, interceptor stage, auth mode, status, duration, and safe tenant context.
 - RPC logs `SHOULD` include proto package, service, method, operationId, gRPC status code, deadline, duration, and safe tenant context.
-- Logs `MUST NOT` include raw tokens, passwords, verification codes, secrets, private keys, or full sensitive payloads.
+- Logs `MUST NOT` include raw tokens, API keys, access tokens, passwords, verification codes, secrets, private keys, or full sensitive payloads.
+- API key logs may include key id, safe key prefix, source, and status only after server-side validation.
 
 ## 3. Metrics
 
@@ -100,6 +103,8 @@ Core API metrics:
 - Error count by code and status.
 - Auth failure count.
 - Rate limit count.
+- API call-chain rejection count by interceptor stage and normalized error kind.
+- Request context resolution count by API surface and auth mode.
 - SDK generation/contract validation failures in CI.
 
 Core RPC metrics:
@@ -159,6 +164,7 @@ Rules:
 
 - IAM, billing, permission, key, tenant, and security operations `MUST` emit audit/security events.
 - Audit entries `MUST` capture actor, action, resource, tenant, result, time, and traceId.
+- Appbase audit entries `SHOULD` include server request id, API surface, auth mode, key id when API key mode is used, and safe tenant/organization/user context.
 - Audit logs must not depend only on application console logs.
 
 ## 6. Acceptance Checklist

@@ -75,6 +75,8 @@ These names have different meanings:
 | Shared composed facade | `@sdkwork/<capability>-service` or appbase package |
 | Drive App SDK | `@sdkwork/drive-app-sdk` |
 | Drive Backend SDK | `@sdkwork/drive-backend-sdk` |
+| Appbase App SDK | `@sdkwork/appbase-app-sdk` from `sdkwork-appbase/sdks/sdkwork-appbase-app-sdk` |
+| Appbase Backend SDK | `@sdkwork/appbase-backend-sdk` from `sdkwork-appbase/sdks/sdkwork-appbase-backend-sdk` |
 | Craw Chat App API | `@sdkwork/app-sdk` from `spring-ai-plus-app-api/sdkwork-sdk-app` |
 | IM SDK | `@sdkwork/im-sdk` from Craw Chat application root `sdks/sdkwork-im-sdk` |
 | RTC SDK | `@sdkwork/rtc-sdk` from Craw Chat application root `sdks/sdkwork-rtc-sdk` |
@@ -92,6 +94,8 @@ Rules:
 - Craw Chat appbase-owned `/app/v3/api` consumers `MUST` use the existing `spring-ai-plus-app-api/sdkwork-sdk-app` generated SDK or an approved wrapper on top of it. Craw Chat `MUST NOT` create a local app SDK fork for appbase-owned IAM, workspace, login, registration, bootstrap, or session capabilities.
 - Craw Chat domain-owned `/app/v3/api` extensions may be generated through its application-root `sdks/sdkwork-im-app-sdk` only when the authority is declared as `sdkwork-im-app-api` and the routes are not appbase-owned capabilities.
 - Craw Chat `/im/v3/api` consumers `MUST` use its application-root `sdks/sdkwork-im-sdk`. Appbase IAM, workspace, and app/client bootstrap capabilities remain outside the IM SDK.
+- `sdkwork-appbase` owns the standard reusable appbase app/backend SDK families: `sdkwork-appbase-app-sdk` generated from `sdkwork-appbase-app-api` and `sdkwork-appbase-backend-sdk` generated from `sdkwork-appbase-backend-api`.
+- Applications that consume appbase API capabilities `MUST` integrate those generated SDKs or approved composed wrappers. They `MUST NOT` create app-local raw HTTP clients, local SDK forks, or duplicate appbase OpenAPI authority files for the same capabilities.
 
 ## 3. Client Surface
 
@@ -131,10 +135,12 @@ Rules:
 
 - SDKs `MUST` support `Authorization: Bearer <auth_token>`.
 - SDKs `MUST` support `Access-Token: <access_token>`.
+- SDKs that consume protected open-api operations `MUST` support `X-API-Key` or the declared API key security scheme.
 - New v3 SDKs `MUST` use `Access-Token` as the canonical access token header.
 - Frontend service modules `MUST` set tokens through SDK auth APIs, not manual headers.
 - IAM login/session token wiring `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`: appbase auth runtime and generated app SDK/bootstrap own token injection, route guards, refresh, logout, and session clearing.
 - API key mode, if supported, must be mutually exclusive with dual-token mode.
+- SDKs `MUST NOT` parse tokens to derive tenant, organization, or user context. Context parsing is a server framework responsibility.
 
 ## 4.1 Request Identity And Idempotency
 

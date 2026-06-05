@@ -61,6 +61,8 @@ SDKWork uses three canonical API surfaces.
 | App API | `/app/v3/api` | Instant messaging application app/client integration capabilities for mobile App, H5, PC applications, and other clients | Allowed and canonical |
 | Backend API | `/backend/v3/api` | Admin consoles, internal operators, backend SDKs, control plane | Forbidden |
 
+The runtime request framework classifies open-style public/domain surfaces such as `/open/v3/api` and `/im/v3/api` as `open-api` for context resolution. This runtime classification does not rename the IM SDK family or IM API authority; it defines that protected IM/open operations use API key style context resolution unless a specific app/backend contract says otherwise.
+
 Rules:
 
 - IM API, App API, and Backend API versions `MUST` stay aligned at `/im/v3/api`, `/app/v3/api`, and `/backend/v3/api`.
@@ -394,7 +396,7 @@ Rules:
 
 ### 9.2 Security Schemes
 
-App and backend protected operations use dual-token security.
+App and backend protected operations use dual-token security. Open API operations use API key security when they are not explicitly public.
 
 ```yaml
 components:
@@ -407,23 +409,37 @@ components:
       type: apiKey
       in: header
       name: Access-Token
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
 ```
 
 Rules:
 
-- Protected operations `MUST` require both `AuthToken` and `AccessToken`.
+- Protected app-api and backend-api operations `MUST` require both `AuthToken` and `AccessToken`.
+- Protected open-api operations `MUST` require `ApiKey`.
 - Public operations `MUST` explicitly set `security: []`.
 - `Authorization: Bearer <auth_token>` authenticates the principal/session.
 - `Access-Token: <access_token>` carries access context such as tenant, organization, app, environment, and scope claims.
+- `X-API-Key` carries an API key credential only. The server resolves tenant, organization, user, app, scope, and key identity from the validated API key object.
 - `Access-Token` is the canonical SDKWork access isolation header for v3 contracts.
 - Do not define duplicate security scheme names for the same token.
+- API key mode and dual-token mode `MUST` be mutually exclusive for one request.
 
-Protected operation example:
+Protected app/backend operation example:
 
 ```yaml
 security:
   - AuthToken: []
     AccessToken: []
+```
+
+Protected open-api operation example:
+
+```yaml
+security:
+  - ApiKey: []
 ```
 
 Public operation example:
@@ -466,6 +482,91 @@ Recommended token claims:
   "exp": 1760003600
 }
 ```
+
+### 10.1 Appbase Request Context Framework
+
+All SDKWork appbase HTTP implementations `MUST` expose a unified request context before protected business handlers run. The standard Rust implementation is `sdkwork_http_context` in `sdkwork-appbase`; Java and other runtimes must preserve the same behavior and vocabulary.
+
+Required context object:
+
+```text
+AppRequestContext =
+  request_id
+  api_surface
+  auth_mode
+  principal
+  path
+  method
+  credential_presence
+
+AppRequestPrincipal =
+  tenant_id
+  organization_id
+  user_id
+  session_id
+  app_id
+  environment
+  deployment_mode
+  auth_level
+  data_scope
+  permission_scope
+  api_key_id
+  subject_type
+```
+
+API surface and resolver standard:
+
+| Surface | Prefixes | Auth mode | Resolver standard |
+| --- | --- | --- | --- |
+| `open-api` | `/open/v3/api`, `/im/v3/api` | API key | `ApiKeyParser` normalizes the credential, then `ApiKeyLookupService` resolves the API key record and produces `AppRequestPrincipal`. |
+| `app-api` | `/app/v3/api` | Dual token | `AuthTokenParser` plus `AccessTokenParser` resolve and validate one principal context. |
+| `backend-api` | `/backend/v3/api` | Dual token | `AuthTokenParser` plus `AccessTokenParser` resolve and validate one principal context. |
+
+Rules:
+
+- `AppRequestContext` `MUST` be resolved once at the framework boundary and injected as a typed request extension or equivalent runtime context.
+- Business handlers `MUST` consume the typed context. They `MUST NOT` reparse auth tokens, access tokens, API keys, or tenant/user fields from raw headers.
+- `AuthTokenParser`, `AccessTokenParser`, `ApiKeyParser`, `ApiKeyLookupService`, and `AppRequestContextResolver` are standard extension points.
+- The default parser may support local/private development claim formats, but production parsers `MUST` validate signature, expiry, issuer, audience, revocation, tenant binding, organization binding, app binding, and permission scope.
+- API key lookup `MUST` be abstracted behind a service/interface. Implementations may use `iam_api_key`, tenant-local API key tables, encrypted secret stores, caches, or remote IAM services.
+- API key records `MUST` provide the principal user id, tenant id, organization id when applicable, app id, data scope, permission scope, key id, and revocation/expiry state.
+- Dual-token resolution `MUST` reject conflicting tenant, organization, user, session, or app claims when both tokens carry the same field.
+- Context values from request body, query, path, or frontend state `MUST NOT` override the resolved context.
+
+### 10.2 API Call Chain And Interceptor Standard
+
+All SDKWork appbase HTTP routers `MUST` run protected requests through an ordered API call chain. The chain is the standard place for cross-cutting policy, security, observability, and context injection.
+
+Standard order:
+
+1. Request identity
+2. Surface classification
+3. CORS
+4. Method guard
+5. Cross-site request guard
+6. SQL injection request guard
+7. Request size limit
+8. Rate limit
+9. Idempotency
+10. Request context resolution
+11. Authentication
+12. Authorization
+13. Tenant isolation
+14. Context injection
+15. Logging
+16. Audit
+17. Header security
+18. Response identity
+
+Rules:
+
+- Frameworks `MUST` expose an interceptor interface equivalent to `ApiCallInterceptor` with `before` and `after` phases.
+- The standard chain `MUST` be extensible without bypassing context resolution or security guards.
+- Request identity, surface classification, request context resolution, authentication, context injection, response identity, and secure response headers are mandatory for protected appbase routers.
+- Authorization, tenant isolation, rate limit, idempotency, logging, and audit may be implemented by product-specific interceptors, but their hook positions and semantics `MUST` remain standard.
+- CORS, method guard, cross-site request protection, request size limits, and SQL injection request guards `SHOULD` run before credential parsing to reduce attack surface.
+- The SQL injection guard is a request-layer heuristic only. All database access `MUST` still use bind parameters, typed repositories, input validation, and server-side authorization.
+- Error responses produced by the chain `MUST` use `application/problem+json` and include the server-owned request id when available.
 
 ## 11. Standard IAM API
 
@@ -905,7 +1006,7 @@ An API is standard only when this checklist passes:
 
 - [ ] OpenAPI version is `3.1.2` or a documented `3.1.x` toolchain fallback.
 - [ ] Domain name follows `DOMAIN_SPEC.md`.
-- [ ] Paths start with `/app/v3/api` or `/backend/v3/api`.
+- [ ] SDK API paths start with `/open/v3/api`, `/im/v3/api`, `/app/v3/api`, or `/backend/v3/api` according to their API surface.
 - [ ] Runtime source, OpenAPI snapshots, generated SDK inputs, route tables, frontend SDK bootstrap code, and environment examples contain no forbidden legacy API prefix.
 - [ ] Java app-api class-level mappings start with `/app/v3/api`, and Java backend-api class-level mappings start with `/backend/v3/api`.
 - [ ] Backend-api publishes no bare `/v3/api/*` resource path.
@@ -916,7 +1017,10 @@ An API is standard only when this checklist passes:
 - [ ] Each operationId uses lowerCamelCase dotted resource style.
 - [ ] No operationId contains `__`.
 - [ ] Public operations explicitly set `security: []`.
-- [ ] Protected operations require both `AuthToken` and `AccessToken`.
+- [ ] Protected app-api and backend-api operations require both `AuthToken` and `AccessToken`.
+- [ ] Protected open-api operations require `ApiKey`.
+- [ ] Runtime routers resolve `AppRequestContext` through the standard parser/resolver framework before protected handlers run.
+- [ ] Runtime routers run the standard API call chain or a stricter documented superset.
 - [ ] Backend API has no login/session creation/refresh/logout endpoint.
 - [ ] Error responses include `application/problem+json`.
 - [ ] `int64` and `decimal` API fields are strings.

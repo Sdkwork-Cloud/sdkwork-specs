@@ -118,6 +118,8 @@ Rules:
 
 - Java SaaS `MUST` populate `AppContext` and `ShardingContext` from verified token claims or server-side token/session lookup before business logic runs.
 - Rust local/private deployment `MUST` expose the same logical contexts and enforce the same tenant/user/permission checks.
+- Appbase HTTP routers `MUST` resolve `AppRequestContext` at the framework boundary and project it to IAM `AppContext` for business handlers.
+- `AppRequestPrincipal` is the standard HTTP projection of IAM identity and must carry tenant, organization, user, session, app, environment, deployment mode, auth level, data scope, permission scope, optional API key id, and subject type.
 - Context values from request body, query, or mutable frontend state are hints only and `MUST NOT` override verified token context.
 - If path/body/query tenant or organization values conflict with token context, the server `MUST` reject the request unless an explicit platform permission authorizes cross-tenant action.
 - `ShardingContext` default selection order is tenant, organization, user, then single/app scope.
@@ -136,10 +138,26 @@ Rules:
 
 - Protected APIs `MUST` require both tokens unless a documented machine/API-key mode is explicitly selected.
 - `Access-Token` is the canonical SDKWork access isolation header for v3 contracts.
+- `auth_token` parsers `MUST` validate principal identity, session identity, auth strength, expiry, issuer, and revocation.
+- `access_token` parsers `MUST` validate tenant, organization, app, environment, deployment mode, data scope, permission scope, expiry, issuer, audience, and revocation.
+- If both tokens include the same tenant, organization, user, session, or app claim, the values `MUST` match.
 - App API session creation returns `authToken`, `accessToken`, optional `refreshToken`, session metadata, user summary, and AppContext.
 - Refresh token handling `MUST` be server-controlled, revocable, rotated where possible, and unavailable to normal business operation handlers.
 - Passwords, verification codes, recovery secrets, private tokens, API key raw values, and MFA secrets `MUST` be write-only and never appear in response schemas.
 - MFA, OAuth, SSO, passkeys, and device authorization extend sessions; they are not separate unrelated domains.
+
+## 5.1 API Key Context Resolution
+
+Open API and machine-to-machine flows use API keys only when the API contract declares API key mode. API key mode is a context-resolution mode, not a bypass around IAM.
+
+Rules:
+
+- API key mode `MUST` resolve an API key record before protected business logic runs.
+- The API key record `MUST` supply `api_key_id`, `tenant_id`, `organization_id` when applicable, `user_id` or service-account subject, `app_id`, environment/deployment constraints, data scope, permission scope, status, expiry, and revocation state.
+- Raw API key values `MUST` be stored hashed or encrypted according to the deployment security profile. Logs and audit records must use key id and safe key prefix only.
+- `ApiKeyParser` and `ApiKeyLookupService` or equivalent interfaces are required extension points. They allow different products to keep API keys in different IAM tables, tenant-local tables, encrypted secret stores, caches, or remote IAM services.
+- API key lookup `MUST` validate tenant binding, organization binding, app audience, permission scope, expiry, revocation, and allowed source before returning `AppRequestPrincipal`.
+- API key mode and dual-token mode `MUST` be mutually exclusive for a single request.
 
 ## 6. API Surface
 
@@ -224,7 +242,9 @@ Rules:
 - [ ] Backend SDK clients expose `iam.*` resources and no `auth.*` namespace.
 - [ ] OperationIds are resource-style and SDK-friendly.
 - [ ] Protected operations use `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>`.
+- [ ] API key operations resolve a server-side API key record and never trust raw key claims alone in production.
 - [ ] AppContext and ShardingContext are derived from verified token context.
+- [ ] Appbase HTTP handlers consume typed `AppRequestContext`/`AppContext` and do not reparse credentials.
 - [ ] Tenant and organization isolation is enforced in Java and Rust.
 - [ ] Permissions use stable dotted codes.
 - [ ] Audit/security events are emitted for sensitive actions.
