@@ -1,0 +1,419 @@
+# SDKWork App Manifest Standard v3
+
+- Version: 1.0
+- Scope: app registration, app manifest, release metadata, install packages, media assets, PlusApp projection
+- Related: `APPLICATION_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`
+
+SDKWork App Manifest Standard v3 defines the canonical app configuration used by new applications under `apps/`. The standard is intentionally strict: new apps do not carry legacy compatibility branches, and every field is designed to map cleanly into `PlusApp` while retaining enough metadata for professional multi-platform release operations.
+
+## 1. Source Of Truth
+
+Every registered application owns one manifest:
+
+```text
+<app-root>/sdkwork.app.config.json
+```
+
+The manifest must use:
+
+```json
+{
+  "schemaVersion": 3,
+  "kind": "sdkwork.app"
+}
+```
+
+The schema lives at `apps/schemas/sdkwork.app.schema.v3.json`. The full example lives at `apps/examples/sdkwork.app.config.v3.full.example.json`. The examples file carries the version suffix only because it is a reusable reference; each real app directory must use the unsuffixed canonical filename above.
+
+## 2. Design Principles
+
+- `sdkwork.app.config.json` is the source of truth for registration, package distribution, update checks, and release governance.
+- `PlusApp` is the database projection, not a second independent source.
+- App icons, screenshots, and preview assets are governed data, not loose files. SDKWork-owned media bytes must be stored through Drive, represented as `MediaResource` where app APIs expose them, and projected into `PlusApp.config.media`.
+- Backend enum names are used verbatim. Do not invent aliases such as `DESKTOP_UBUNTU`; use `DESKTOP_LINUX` plus package metadata for the Linux distribution.
+- Latest download resolution is a matrix query across version, channel, platform, architecture, and optional Linux distribution.
+- Production release artifacts require immutable URLs or digests, checksums, signing metadata, and SBOM/provenance references.
+- The manifest must never contain passwords, access tokens, API keys, private keys, or credentials.
+
+## 3. Top-Level Contract
+
+```json
+{
+  "schemaVersion": 3,
+  "kind": "sdkwork.app",
+  "app": {},
+  "backend": {},
+  "runtime": {},
+  "media": {},
+  "publish": {},
+  "environments": {},
+  "artifacts": {},
+  "release": {},
+  "security": {},
+  "devApp": {},
+  "metadata": {}
+}
+```
+
+Required sections are `app`, `backend`, `runtime`, `media`, `publish`, `environments`, `artifacts`, `release`, and `security`.
+
+## 4. Identity
+
+`app.key` is the immutable application key. It must be lower kebab-case and unique under `apps/`.
+
+`app.name` maps to `PlusApp.name`. Current backend upsert flows resolve apps by name, so it must be stable and must not be used as a marketing-only label.
+
+`app.displayName` is the UI label. It can change without changing identity.
+
+`app.officialWebsiteUrl` is the canonical public website for the application. It is required for every app, must be an HTTP/HTTPS URL, and is the default landing page used by SDKWork catalog surfaces, store marketing fallback fields, and `PlusApp.config.standard.officialWebsiteUrl`. Do not use environment runtime URLs, CDN download URLs, or app-store listing URLs here. Those belong in `environments`, `artifacts.installConfig.packages[]`, and `publish.stores[]`.
+
+`app.appType` must be one of the backend `PlusProjectType` values:
+
+```text
+NONE, SDK, PPT, APP_HTML, APP_VUE, APP_FLUTTER, APP_UNIAPP,
+APP_REACT, APP_UNITY, VIDEO, POSTER
+```
+
+Identifiers:
+
+| Field | Purpose |
+| --- | --- |
+| `packageName` | Android application id, for example `com.sdkwork.drive` |
+| `bundleId` | iOS/macOS bundle identifier |
+| `desktopAppId` | Desktop runtime identifier |
+| `containerImage` | Server image repository name without mutable secret data |
+
+## 5. Platform Taxonomy
+
+The standard uses backend `PlusPlatform` values exactly:
+
+| Family | Values |
+| --- | --- |
+| Web | `WEB`, `H5`, `H5_WEIXIN` |
+| Mobile | `APP`, `APP_PLUS`, `APP_ANDROID`, `APP_IOS`, `APP_HARMONY` |
+| Desktop | `DESKTOP`, `DESKTOP_WINDOWS`, `DESKTOP_MACOS`, `DESKTOP_LINUX` |
+| Mini Program | `MP`, `MP_WEIXIN`, `MP_ALIPAY`, `MP_BAIDU`, `MP_TOUTIAO`, `MP_LARK`, `MP_QQ`, `MP_KUAISHOU`, `MP_JD`, `MP_360`, `MP_DINGTALK`, `MP_ALI` |
+| Mini Game | `MP_WEIXIN_GAME`, `MP_QQ_GAME`, `MP_BAIDU_GAME`, `MP_TOUTIAO_GAME` |
+| Quick App | `QUICKAPP`, `QUICKAPP_WEBVIEW`, `QUICKAPP_WEBVIEW_UNION`, `QUICKAPP_WEBVIEW_HUAWEI` |
+| Operations | `ADMIN`, `CLI`, `API`, `OTHER` |
+
+Ubuntu is represented as:
+
+```json
+{
+  "platform": "DESKTOP_LINUX",
+  "packageFormat": "DEB",
+  "metadata": {
+    "linux": {
+      "distro": "ubuntu",
+      "minVersion": "22.04"
+    }
+  }
+}
+```
+
+## 6. Runtime
+
+`runtime.family` classifies the app:
+
+```text
+web, mobile, desktop, server, cli, mini-program, library, plugin
+```
+
+`runtime.framework` is descriptive and should be specific, for example `react-tauri`, `electron`, `flutter`, `react-capacitor`, `spring-boot`, `node-service`, `go-service`, or `rust-service`.
+
+`runtime.defaultPlatform` and `runtime.defaultArchitecture` drive default latest download resolution and `PlusApp.downloadUrl` projection.
+
+## 7. Media Assets
+
+Every app must define governed product media. These assets support the SDKWork app catalog, registration UI, App Store Connect, Google Play Console, desktop download pages, and future app-preview surfaces.
+
+```json
+{
+  "media": {
+    "icons": {
+      "primary": {},
+      "platform": []
+    },
+    "screenshots": [],
+    "previews": []
+  }
+}
+```
+
+`media.icons.primary` is the canonical SDKWork app icon. It should be a 1024 x 1024 PNG with no embedded secrets or environment-specific URLs. It projects to `PlusApp.iconUrl`.
+
+`media.icons.platform[]` stores platform-specific icon variants. Use it for Google Play 512 x 512 icons, Apple App Store 1024 x 1024 icons, desktop taskbar or dock variants, and other catalog-specific variants. It may be empty for desktop-only, server-only, and web-only apps that do not need store-specific icon variants.
+
+`media.screenshots[]` stores actual product screenshots. A screenshot must show the app itself, not a marketing-only banner. Each screenshot records platform, locale, device class, display type, dimensions, format, caption, sort order, and optional accessibility text in metadata.
+
+`media.previews[]` stores feature graphics, preview images, and preview videos. This is where Google Play feature graphics and Apple app preview videos live.
+
+Common media asset fields:
+
+| Field | Purpose |
+| --- | --- |
+| `id` | Immutable unique asset id within the manifest |
+| `type` | `ICON`, `SCREENSHOT`, `PREVIEW_IMAGE`, `PREVIEW_VIDEO`, `FEATURE_GRAPHIC` |
+| `purpose` | Product purpose such as `PRIMARY`, `STORE_LISTING`, `CATALOG_SCREENSHOT`, `STORE_APP_PREVIEW` |
+| `url` | HTTP/HTTPS delivery URL for published/store-facing projection; SDKWork-owned source files remain Drive-backed |
+| `driveUri` | Stable Drive reference for SDKWork-owned media source when the asset is uploaded or managed by SDKWork |
+| `resource` | Optional `MediaResource` snapshot for SDKWork-owned media source |
+| `platform` | Backend `PlusPlatform` value |
+| `storePlatform` | Optional store value, currently `GOOGLE_PLAY` or `APPLE_APP_STORE` |
+| `locale` | BCP 47 locale such as `en-US` or `zh-CN` |
+| `deviceClass` | Device class such as `ANDROID_PHONE`, `IPHONE`, `IPAD`, `DESKTOP`, `BROWSER` |
+| `displayType` | Store or catalog display profile, such as `IPHONE_6_9` or `DESKTOP_16_10` |
+| `width`, `height` | Pixel dimensions |
+| `format` | `PNG`, `JPG`, `JPEG`, `WEBP`, `MP4`, or `MOV` |
+| `fileSizeBytes` | File size for governance and upload limits |
+| `durationSeconds` | Preview video duration |
+| `alphaChannel` | Whether the image/video contains transparency |
+| `caption` | Short human-readable caption |
+| `sortOrder` | Display order inside the same platform/locale group |
+| `enabled` | Whether the asset participates in projection |
+| `metadata` | Non-secret extra data such as `altText`, `orientation`, codec, safe area |
+
+Rules:
+
+- New SDKWork-owned app media assets should carry `driveUri` or `resource` as the stable source identity.
+- `url` is allowed for public store-facing projection and external marketplace URLs, but it must not replace Drive identity for SDKWork-owned uploaded assets.
+- Manifest tooling that uploads or imports media must use Drive APIs/SDKs from `DRIVE_SPEC.md`.
+
+## 8. Store Media Rules
+
+The validator encodes the practical parts of current store submission rules:
+
+| Store | Asset | Rule |
+| --- | --- | --- |
+| Google Play | icon | 512 x 512, 32-bit PNG with alpha channel, 1 MB or smaller |
+| Google Play | feature graphic | 1024 x 500 |
+| Google Play | screenshots | At least 2 screenshots; PNG/JPEG/WebP, no alpha channel, 320-3840 px per side, max aspect ratio 2:1 |
+| Apple App Store | icon | 1024 x 1024, no alpha channel |
+| Apple App Store | screenshots | At least 1 screenshot; must match accepted display profiles such as `IPHONE_6_9`, `IPHONE_6_7`, `IPHONE_6_5`, `IPAD_13`, `IPAD_12_9`; `IPHONE_6_9` accepts current 6.9-inch sizes such as 1260 x 2736, 1290 x 2796, and 1320 x 2868 plus landscape variants |
+| Apple App Store | preview video | At most 3 videos per platform/displayType/locale; must match accepted preview dimensions for the same display profile; duration is validated when provided |
+
+For Apple screenshots, keep the platform enum as `APP_IOS` and put the device screen class in `displayType`. Do not create platform aliases such as `APP_IOS_IPHONE_6_9`.
+
+## 9. Publish And PlusApp Projection
+
+The standard projects to `PlusApp` as follows:
+
+| Manifest | PlusApp |
+| --- | --- |
+| `app.name` | `name` |
+| `app.description` | `description` |
+| `release.currentVersion` or channel latest | `version` |
+| `environments[env].accessUrl` | `accessUrl` |
+| `publish.status` | `status` |
+| `app.appType` | `appType` |
+| `media.icons.primary.url` | `iconUrl` |
+| `media` | `config.media` |
+| `app.officialWebsiteUrl` | `config.standard.officialWebsiteUrl`, `config.publish.officialWebsiteUrl` |
+| `publish.platforms` | `platforms.platforms` |
+| `publish.installPlatforms` | `installPlatforms.platforms` |
+| `publish.installSkill` | `installSkill` |
+| `artifacts.installConfig` | `installConfig` |
+| `release.notes` | `releaseNotes` |
+| `app.identifiers.packageName` | `packageName` |
+| `app.identifiers.bundleId` | `bundleId` |
+| default market or download landing URL | `storeUrl` |
+| latest default direct package URL | `downloadUrl` |
+| `publish.stores` | `config.publish.stores` |
+
+Package-level metadata is projected into `installConfig.metadata.packageMetadataById` so `PlusApp.installConfig.packages` stays aligned with the backend `AppInstallPackage` object.
+
+## 10. Package Matrix
+
+`artifacts.installConfig.packages[]` is the core distribution matrix.
+
+Required fields:
+
+```json
+{
+  "id": "windows-x64-msi",
+  "name": "SDKWork Drive Windows x64 MSI",
+  "sourceType": "BINARY_URL",
+  "packageFormat": "MSI",
+  "platform": "DESKTOP_WINDOWS",
+  "architecture": "x64",
+  "url": "https://cdn.sdkwork.com/...",
+  "checksumAlgorithm": "SHA-256",
+  "checksum": "...",
+  "sizeBytes": 104857600,
+  "enabled": true
+}
+```
+
+Allowed source types:
+
+```text
+GIT_REPOSITORY, BINARY_URL, APP_STORE, CONTAINER_IMAGE, MINI_PROGRAM,
+WEB_URL, SCRIPT
+```
+
+Allowed package formats:
+
+```text
+SOURCE_CODE, JAR, WAR, ZIP, TAR_GZ, APK, IPA, EXE, MSI, DMG,
+APPIMAGE, DEB, RPM, DOCKER_IMAGE, MINI_PROGRAM_PACKAGE, OTHER
+```
+
+Desktop packages must declare `architecture`. Recommended values are `x64`, `arm64`, `universal`, `all`, or `any`.
+
+Container packages must use an immutable OCI reference or digest-bearing URL.
+
+## 11. Latest Download Resolution
+
+Latest download is not a single field. It is resolved from:
+
+```text
+release.latest[channel]
+release.notes[].packageIds
+artifacts.installConfig.packages[]
+requested platform
+requested architecture
+requested Linux distribution
+```
+
+Resolution order:
+
+1. Select version from `release.latest[channel]`.
+2. Select the matching release note.
+3. Restrict packages by `release.notes[].packageIds`.
+4. Score exact platform above family platform.
+5. Score exact architecture above `universal`, `all`, or `any`.
+6. For `DESKTOP_LINUX`, prefer matching `metadata.linux.distro`.
+7. Prefer the manifest `defaultPackageId` only when platform and architecture scores do not distinguish candidates.
+
+`PlusApp.downloadUrl` is only the default direct-download fallback. It is not the complete cross-platform download catalog.
+
+## 12. Release
+
+Versions must use SemVer three-part form:
+
+```text
+MAJOR.MINOR.PATCH[-pre][+build]
+```
+
+Release channels:
+
+```text
+DEV, INTERNAL, ALPHA, BETA, RC, STABLE, HOTFIX, LTS
+```
+
+Each manifest must contain exactly one `release.notes[].current=true` entry.
+
+Each release note must list concrete `packageIds`; every package id must exist in `artifacts.installConfig.packages[]`.
+
+`forceUpdate` and `minSupportedVersion` control update behavior. Use `forceUpdate=true` only for security or protocol-breaking releases.
+
+## 13. Market Releases
+
+Store rollout data lives in `release.notes[].metadata.marketReleases[]`.
+
+```json
+{
+  "releaseVersion": "3.2.0",
+  "marketId": "GOOGLE_PLAY",
+  "track": "PRODUCTION",
+  "status": "STAGED_ROLLOUT",
+  "rolloutPercent": 25,
+  "countries": ["US", "CN", "JP"],
+  "storeUrl": "https://play.google.com/store/apps/details?id=com.sdkwork.drive",
+  "minSupportedVersion": "3.0.0",
+  "forceUpdate": false,
+  "effectiveFrom": "2026-05-07T00:00:00Z"
+}
+```
+
+`publish.stores[]` is app-listing readiness metadata. `marketReleases[]` is version-specific rollout metadata.
+
+## 14. Security
+
+Production manifests must set:
+
+```json
+{
+  "checksumRequired": true,
+  "signatureRequired": true,
+  "sbomRequired": true
+}
+```
+
+Direct binary, web package, container, Git, and mini-program packages must carry checksums when `checksumRequired` is true. App Store packages may omit checksum because the store controls the final signed artifact.
+
+Recommended external standards:
+
+| Area | Standard |
+| --- | --- |
+| Versioning | SemVer 2.0.0 |
+| Web app metadata | W3C Web App Manifest |
+| Container image | OCI Image Specification |
+| SBOM | CycloneDX or SPDX |
+| Provenance | SLSA or in-toto |
+| Artifact signing | platform signing, Sigstore, GPG, Authenticode, Apple notarization |
+
+## 15. Validation
+
+Run:
+
+```bash
+node apps/scripts/validate-sdkwork-app-standard-v3.mjs --config apps/examples/sdkwork.app.config.v3.full.example.json
+```
+
+Machine-readable output:
+
+```bash
+node apps/scripts/validate-sdkwork-app-standard-v3.mjs --config apps/examples/sdkwork.app.config.v3.full.example.json --json
+```
+
+Validate every real app manifest discovered under `apps/`:
+
+```bash
+node apps/scripts/initialize-sdkwork-app-standard-v3.mjs --validate-existing
+```
+
+Initialize or migrate every real app manifest to v3:
+
+```bash
+node apps/scripts/initialize-sdkwork-app-standard-v3.mjs --force
+```
+
+Export the registration-ready `PlusApp` projection bundle:
+
+```bash
+node apps/scripts/initialize-sdkwork-app-standard-v3.mjs --export-plusapp
+```
+
+The validator enforces:
+
+- strict standard version and kind
+- backend enum names
+- SemVer versions
+- valid default package id
+- package id uniqueness
+- required media icons, screenshots, and preview assets
+- store-grade icon, screenshot, and preview dimensions
+- desktop architecture
+- mobile identifiers
+- release package references
+- checksum requirements
+- HTTP/HTTPS URLs for binary, store, web, and mini-program delivery
+- OCI digest rules for server images
+- secret-key rejection in metadata and dev sections
+- strict unknown-field rejection to prevent schema drift
+- global `app.key` uniqueness across discovered app configs before batch export
+
+## 16. New App Checklist
+
+- [ ] Create `sdkwork.app.config.json` from the v3 full example.
+- [ ] Choose one immutable `app.key`.
+- [ ] Use backend enum names exactly.
+- [ ] Fill platform and package matrix before registration.
+- [ ] Add primary icon, store icons, screenshots, and preview assets.
+- [ ] Add checksums for every direct package.
+- [ ] Add package metadata for signing, OS requirements, and server health checks.
+- [ ] Add at least one current release note and one default channel.
+- [ ] Run the validator.
+- [ ] Register the generated PlusApp payload only after validation passes.

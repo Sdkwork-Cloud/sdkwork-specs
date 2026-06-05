@@ -1,0 +1,91 @@
+# External Integration Standard
+
+- Version: 1.0
+- Scope: third-party providers, connectors, webhooks, OAuth links, external IDs, retries, integration SDKs
+- Related: `DOMAIN_SPEC.md`, `API_SPEC.md`, `DATABASE_SPEC.md`, `EVENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
+
+This standard defines how SDKWork connects to external systems without leaking provider-specific behavior into shared foundation modules.
+
+## 1. Integration Boundary
+
+Rules:
+
+- External systems `MUST` be represented through provider adapters or connector modules.
+- Provider-specific DTOs `MUST NOT` leak into shared domain APIs unless the API is explicitly provider-facing.
+- External credentials `MUST` be stored and rotated through secure credential storage.
+- External IDs `MUST` be stored with provider boundary, such as `provider` + `external_id`, not as globally meaningful IDs.
+- Integration modules `MUST` document ownership, provider, scopes, callbacks, rate limits, and failure behavior.
+
+## 2. Provider Adapter Shape
+
+```ts
+export interface IntegrationProviderAdapter<TConfig, TCommand, TResult> {
+  provider: string;
+  configure(config: TConfig): void;
+  execute(command: TCommand): Promise<TResult>;
+}
+```
+
+Rules:
+
+- Adapters `SHOULD` expose stable SDKWork commands rather than provider transport details.
+- Provider API versions `MUST` be explicit.
+- Provider capability gaps `MUST` return standard unavailable/unsupported errors, not silently degrade.
+- Provider adapters `SHOULD` be replaceable without changing shared domain contracts.
+
+## 3. External Identity And Linking
+
+Standard fields:
+
+| Field | Meaning |
+| --- | --- |
+| `provider` | Stable provider key, such as `google`, `github`, `stripe` |
+| `provider_account_id` | SDKWork-owned linked account ID |
+| `external_id` | Provider-owned resource ID |
+| `external_tenant_id` | Provider tenant/workspace/customer ID when applicable |
+| `scopes` | Granted scopes or permissions |
+| `status` | Link status |
+| `last_synced_at` | Last successful sync time |
+
+Rules:
+
+- `(provider, external_id)` uniqueness must be scoped to the correct tenant/account boundary.
+- Provider tokens and refresh tokens are secrets.
+- OAuth/SSO links belong to IAM when they authenticate users; provider business integrations belong to `integration`.
+
+## 4. Webhooks And Callbacks
+
+Rules:
+
+- Webhook endpoints `MUST` verify provider signatures when the provider supports signing.
+- Webhook processing `MUST` be idempotent.
+- Webhook events `SHOULD` be persisted before side effects when failure recovery matters.
+- Replay protection `SHOULD` use provider event ID, timestamp tolerance, and signature validation.
+- Webhook error responses must not expose secrets or internal stack traces.
+
+## 5. Retry And Rate Limit
+
+Rules:
+
+- Retries `MUST` be bounded and use backoff for transient failures.
+- Non-idempotent provider calls `MUST` use idempotency keys when supported.
+- Rate limit handling `MUST` be visible through metrics and operational logs.
+- Provider quota exhaustion `SHOULD` map to standard API problem details and domain events.
+
+## 6. Observability
+
+Rules:
+
+- Integration logs `MUST` include provider, operation, status, latency, and traceId.
+- Logs `MUST NOT` include provider secrets, raw tokens, full signed payloads, or sensitive customer content.
+- Metrics `SHOULD` include success/failure count, latency, retry count, rate-limit count, and dead-letter count.
+- Audit events `MUST` be emitted for credential creation, rotation, revocation, and permission scope changes.
+
+## 7. Acceptance Checklist
+
+- [ ] Provider-specific behavior is isolated behind adapter/connector boundary.
+- [ ] External IDs include provider boundary.
+- [ ] Credentials are secret-managed and never logged.
+- [ ] Webhooks verify signatures and process idempotently.
+- [ ] Retry, timeout, and rate-limit behavior is documented.
+- [ ] Contract tests cover provider success, failure, retry, and unsupported capability paths.

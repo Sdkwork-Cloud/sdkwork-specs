@@ -1,0 +1,238 @@
+# Backend UI Package Standard
+
+- Version: 1.0
+- Scope: backend/admin React console, backend UI workspace packages, domain pages, backend SDK integration, menu and route composition
+- Related: `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+
+This standard defines how SDKWork backend/admin UI is packaged and integrated. Backend UI is an operator console surface. It must be independent from app/user-facing UI packages, must use backend API and backend SDK contracts, and must be split by business domain instead of being placed into one large package.
+
+The canonical implementation shape is the backend React workspace:
+
+```text
+apps/sdkwork-backend-react-web/
+  src/                         # backend console host
+  packages/
+    sdkwork-react-backend-core/
+    sdkwork-react-backend-ui/
+    sdkwork-react-backend-auth/
+    sdkwork-react-backend-user/
+    sdkwork-react-backend-tenant/
+    sdkwork-react-backend-org/
+    sdkwork-react-backend-system/
+    sdkwork-react-backend-resource/
+    ...
+```
+
+## 1. Surface Boundary
+
+Backend UI packages are not app UI packages.
+
+| Surface | Package family | API surface | SDK source | Typical users |
+| --- | --- | --- | --- | --- |
+| App UI | `sdkwork-*-pc-react`, `sdkwork-*-mobile-react`, appbase packages | `/app/v3/api` | `spring-ai-plus-app-api` generated SDK | end users, customer apps, desktop/mobile clients |
+| Backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | `spring-ai-plus-backend-api` generated SDK | platform admins, tenant admins, operators |
+
+Rules:
+
+- Backend UI `MUST` live in backend console packages named `@sdkwork/react-backend-<domain>`.
+- Backend UI `MUST NOT` be added to appbase app UI packages, customer app pages, mobile app packages, or app SDK wrappers.
+- App login, registration, session creation, OAuth callback, verification-code login, password reset, and user-facing QR login flows `MUST NOT` be implemented as backend UI capabilities. They belong to app-api and app UI.
+- Backend UI may manage configuration, templates, audit records, provider bindings, feature flags, and operational resources through backend-api only.
+- Backend UI `MUST` use `/backend/v3/api` through the generated backend SDK or approved backend service wrapper. It `MUST NOT` call `/app/v3/api` for operator features.
+
+## 2. Package Split Rule
+
+Backend UI cannot be placed into one universal business package.
+
+| Package type | Naming | Owns | Must not own |
+| --- | --- | --- | --- |
+| Host shell | `apps/sdkwork-backend-react-web/src` | app bootstrap, providers, layout, top-level router, menu assembly, environment selection | domain business pages, domain repositories, SDK resource orchestration |
+| SDK/runtime core | `@sdkwork/react-backend-core` | `BackendSdkProvider`, `useBackendSdkClient()`, SDK bootstrap helpers, shared response normalization | domain pages, domain copy, domain workflow logic |
+| Common UI primitives | `@sdkwork/react-backend-ui` | buttons, tables, forms, drawers, dialogs, layout primitives with no business meaning | user management, tenant management, email code management, OAuth provider management, resource CRUD |
+| Domain package | `@sdkwork/react-backend-<domain>` | domain pages, components, services, repositories, hooks, route/menu metadata, i18n | unrelated domains, concrete SDK construction, raw HTTP |
+| Cross-domain composition package | `@sdkwork/react-backend-<capability>` only when approved | a workflow that intentionally composes multiple published domain services | becoming a dumping ground for unrelated pages |
+
+Rules:
+
+- Every new backend feature `MUST` choose one owning business domain before files are created.
+- A backend domain package `MUST` be named `@sdkwork/react-backend-<domain>` where `<domain>` is canonical kebab-case derived from `DOMAIN_SPEC.md`.
+- Business pages, business components, domain services, repositories, hooks, route records, menu records, permission constants, and domain i18n `MUST` stay in the owning domain package.
+- `@sdkwork/react-backend-ui` `MUST` remain domain-neutral. It may expose visual primitives, not business workflows.
+- `@sdkwork/react-backend-core` `MUST` remain SDK/runtime infrastructure. It may expose backend SDK provider hooks, not business repositories.
+- A file named `common`, `misc`, `manager`, `base`, or `core` cannot own business behavior unless its bounded context is explicitly defined by a spec.
+- If a backend feature touches multiple domains, split the implementation into domain-owned packages and compose them at route/page level through published service contracts.
+
+### 2.1 Catch-All Package Ban
+
+Rules:
+
+- `@sdkwork/react-backend-ui` `MUST NOT` contain business pages, business services, repositories, route records, menu records, permission constants, or domain i18n.
+- `@sdkwork/react-backend-core` `MUST NOT` contain business pages, business services, repositories, route records, menu records, permission constants, or domain i18n.
+- Packages named `@sdkwork/react-backend-admin`, `@sdkwork/react-backend-console`, `@sdkwork/react-backend-manager`, `@sdkwork/react-backend-common`, or `@sdkwork/react-backend-business` are forbidden for new business UI.
+- If an existing backend package has become a catch-all, new work must first choose the owning `@sdkwork/react-backend-<domain>` target and leave a migration note for the old package.
+- A cross-domain backend workflow may have a composition package only when each domain still owns its service and page fragments through public exports.
+
+## 3. Standard Backend Domain Packages
+
+The following backend package names are standard for the current backend console. New packages should align with this catalog or extend it through `DOMAIN_SPEC.md`.
+
+| Package | Domain owner | Examples |
+| --- | --- | --- |
+| `@sdkwork/react-backend-auth` | `iam` operator auth/security administration | admin account security, access tokens, password reset operations, provider bindings |
+| `@sdkwork/react-backend-user` | `iam` user administration | users, profiles, credentials, identity links |
+| `@sdkwork/react-backend-tenant` | `iam` tenant administration | tenants, tenant settings, tenant audit |
+| `@sdkwork/react-backend-org` | `iam` organization administration | departments, staff, roles, permissions |
+| `@sdkwork/react-backend-system` | `system` | system settings, templates, notifications, diagnostics |
+| `@sdkwork/react-backend-resource` | `integration` or resource governance | channel accounts, provider resources, proxy resources |
+| `@sdkwork/react-backend-app` | `platform` | app registry, app instances, app settings, marketplace administration |
+| `@sdkwork/react-backend-drive` | `drive` | storage providers, spaces, nodes, upload sessions, quotas, retention, file diagnostics |
+| `@sdkwork/react-backend-cms` | `content` | articles, pages, assets, media publishing |
+| `@sdkwork/react-backend-content` | `content` | content resources, editors, media publishing workflows that reference Drive files |
+| `@sdkwork/react-backend-im` | `communication` | conversations, groups, contacts, messages |
+| `@sdkwork/react-backend-rtc` | `communication` | calls, rooms, RTC access rules |
+| `@sdkwork/react-backend-message` | `communication` | notices, notification messages, inbox administration |
+| `@sdkwork/react-backend-llm` | `intelligence` | models, prompts, agents, skills, tool configuration |
+| `@sdkwork/react-backend-model` | `intelligence` | AI model catalog and pricing support |
+| `@sdkwork/react-backend-trade` | `commerce` | orders, refunds, settlement |
+| `@sdkwork/react-backend-finance` | `commerce` | finance records, invoices, payouts |
+| `@sdkwork/react-backend-vip` | `commerce` | memberships, benefit packs, recharge packages |
+| `@sdkwork/react-backend-points` | `commerce` | points accounts, points records, rules |
+| `@sdkwork/react-backend-shop` | `commerce` | shop configuration, brands, categories, shop staff |
+| `@sdkwork/react-backend-product` | `commerce` | product catalog, SKU, attributes |
+| `@sdkwork/react-backend-marketing` | `commerce` | campaigns, coupons, distribution |
+| `@sdkwork/react-backend-iot` | `device` | device and IoT administration |
+| `@sdkwork/react-backend-desktop` | `device` | desktop preferences, release/update administration |
+| `@sdkwork/react-backend-notary` | app/domain extension | notary workflows and records |
+| `@sdkwork/react-backend-notes` | content extension | notes administration |
+| `@sdkwork/react-backend-stats` | observability/read model | dashboards and aggregated statistics |
+
+Rules:
+
+- One package can contain multiple closely related capabilities only when they share the same domain owner and permission prefix.
+- One domain can have multiple packages when the capability is large enough to justify independent build, route, or release ownership.
+- New package names `MUST` be added to this table or a local extension catalog before implementation.
+- Backend packages that map to an existing domain `MUST` reuse that domain's API tag, SDK namespace, permission prefix, and i18n namespace.
+
+## 4. Package Internal Shape
+
+Backend domain packages should use this shape:
+
+```text
+packages/sdkwork-react-backend-<domain>/
+  package.json
+  src/
+    index.ts
+    components/
+    pages/
+    services/
+    repository/       # or repositories/, choose one per package
+    hooks/
+    routes/
+    i18n/
+    types/
+    permissions.ts
+  tests/              # optional when tests are not colocated
+```
+
+Rules:
+
+- `src/index.ts` `MUST` be the public export boundary.
+- `pages/` owns route-level composition and can call hooks/services.
+- `components/` owns domain-specific visual pieces and must receive data through props.
+- `services/` owns domain orchestration and error normalization.
+- `repository/` or `repositories/` owns thin SDK resource calls when the package uses repository naming. Do not use both names in new packages.
+- `hooks/` owns React integration around services and state.
+- `routes/` owns exported route records and menu metadata when the host shell composes package routes.
+- `i18n/` owns operator-facing localized copy for the package.
+- `types/` owns view models only. API DTOs come from the generated backend SDK.
+- `permissions.ts` owns permission constants that match backend permission codes such as `iam.users.read`.
+
+## 5. Dependency Direction
+
+Allowed dependency flow:
+
+```text
+host shell -> domain package routes/pages
+domain package pages -> domain hooks
+domain package hooks -> domain services
+domain package services/repositories -> backend SDK client surface
+domain package components -> backend UI primitives
+domain package -> backend core only for provider hooks/types
+```
+
+Rules:
+
+- Domain packages may depend on `@sdkwork/react-backend-core`, `@sdkwork/react-backend-ui`, and stable shared utility packages.
+- Domain packages `MUST NOT` depend on the host shell `src/` internals.
+- Domain packages `MUST NOT` import another domain package's `/src/...` internals.
+- Cross-domain usage `MUST` go through public exports from `src/index.ts`.
+- Cyclic dependencies between backend domain packages are forbidden.
+- The host shell may compose routes and menus, but business logic must remain in domain packages.
+
+## 6. Backend SDK Rule
+
+Backend UI is a generated backend SDK consumer.
+
+Rules:
+
+- React entry points `SHOULD` use `BackendSdkProvider` and `useBackendSdkClient()`.
+- Non-React services and repositories may use an injected backend SDK client or `getBackendSdkClient()` where the package standard already uses that pattern.
+- New services `SHOULD` accept a client dependency so tests can supply a fake generated-SDK-compatible client.
+- Missing backend SDK methods `MUST` be fixed by updating the owning backend API and regenerating the backend SDK through the `SDK_SPEC.md` SDK model and the generator flow defined by `SDK_WORKSPACE_GENERATION_SPEC.md`. Do not add raw HTTP as a workaround.
+- Application-owned backend SDKs `MUST` use the `sdkwork-<domain>-backend-sdk` family and `sdkwork-<domain>-backend-api` authority naming from `SDK_SPEC.md`; their physical `sdks/` workspace, OpenAPI authority location, derived generator inputs, and generated output placement follow `SDK_WORKSPACE_GENERATION_SPEC.md`.
+- Backend UI `MUST NOT` use `fetch`, `axios`, manual `Authorization` headers, string-built backend URLs, or `getBackendSdkClient().http` to bypass missing SDK methods.
+- Backend UI `MUST NOT` hand-edit generated backend SDK output.
+- File upload/download exceptions must use generated Drive backend/app SDK methods or approved backend-core helpers around Drive contracts when the API explicitly returns Drive grants, presigned URLs, or stable file content URLs. Backend UI must not create app-local upload clients around missing SDK methods.
+
+## 7. API And Permission Mapping
+
+Rules:
+
+- Backend UI packages `MUST` call backend-api operations under `/backend/v3/api`.
+- Backend UI packages `MUST NOT` expose or consume backend login/session creation endpoints. Backend login/session creation is forbidden by `API_SPEC.md`.
+- Operator authentication state may be displayed by backend UI, but session creation belongs to app-api or the existing approved backend console bootstrap flow.
+- Every protected page or action `SHOULD` map to a backend permission code.
+- Permission prefixes `MUST` match the owning domain, such as `iam.users.read`, `system.email_templates.update`, or `integration.providers.manage`.
+- Frontend permission checks are navigation and affordance hints only. Backend authorization remains mandatory.
+
+## 8. UI Design Boundary
+
+Rules:
+
+- Backend UI should be dense, flat, operational, and optimized for repeated administrative work.
+- Backend UI `MUST` use shared backend UI primitives or the host design system for tables, forms, drawers, dialogs, filters, tabs, and command buttons.
+- Domain packages `MUST NOT` redefine global theme tokens, global layout, global reset CSS, or application shell navigation styles.
+- `@sdkwork/react-backend-ui` primitives `MUST` be visually neutral and domain-agnostic.
+- Business components may contain domain labels and domain-specific formatting, but must not contain transport or authorization logic.
+
+## 9. Configuration And I18n
+
+Rules:
+
+- Backend domain packages `MUST NOT` read `.env` files, `process.env`, local storage, or global runtime config directly.
+- Runtime config belongs to the host shell and backend core provider.
+- Feature flags that hide or reveal backend pages `MUST` be passed through typed config or route metadata.
+- Operator-facing text `SHOULD` live in the domain package `i18n/` folder.
+- App/user-facing login copy `MUST NOT` be reused as backend operator copy unless the text is truly surface-neutral.
+
+## 10. Testing And Governance
+
+Every backend package change should include focused tests.
+
+Required coverage for new backend UI capabilities:
+
+- service/repository test using a fake backend SDK client;
+- page or hook test for loading, empty, permission-denied, validation-error, and failure states where relevant;
+- route/menu registration test when adding a new package route;
+- SDK compliance scan proving no raw HTTP fallback was introduced;
+- typecheck for the changed package.
+
+Acceptance checklist:
+
+- [ ] Feature is placed in the correct `@sdkwork/react-backend-<domain>` package.
+- [ ] No business behavior was added to `@sdkwork/react-backend-ui` or `@sdkwork/react-backend-core`.
+- [ ] Host shell only composes routes, menus, providers, and layout.
+- [ ] Services call generated backend SDK surfaces or approved backend-core helpers.
+- [ ] No raw HTTP, manual token headers, generated SDK edits, or app-api calls exist in backend UI business code.
+- [ ] Permissions, i18n namespace, API tag, SDK namespace, and domain owner align.
+- [ ] Tests cover SDK orchestration and representative UI behavior.
