@@ -46,6 +46,11 @@ Rules:
 - Generated SDKs `MUST` be reproducible from source OpenAPI, generator version, and generation manifest.
 - Generated or composed SDKs are the only transport boundary for appbase modules. Consumers `MUST NOT` replace missing SDK methods with raw HTTP, manual auth headers, local DTO forks, or app-local generated-output edits.
 - SDKWork-owned file upload, download, object-storage provider, and storage lifecycle operations `MUST` use generated Drive SDKs from contracts governed by `DRIVE_SPEC.md`. Business SDKs consume Drive references and `MediaResource`; they `MUST NOT` grow duplicate upload clients.
+- Every OpenAPI-generated SDK family `MUST` declare `sdkOwner` and `apiAuthority` in its `.sdkwork-assembly.json`.
+- SDK generation is owner-first: the generated input for an SDK family `MUST` include only operations whose `x-sdkwork-owner` equals that family `sdkOwner`.
+- Integrated third-party or reusable-module operations `MUST` be represented as `sdkDependencies` or approved composed-wrapper dependencies. They `MUST NOT` be copied into the consuming SDK family's generated OpenAPI input.
+- SDK generation tooling `MUST` fail before generation when an operation has no owner metadata or when a non-owner operation remains in the generated input.
+- Module scanning, route scanning, or domain catalogs may infer ownership during migration, but the materialized OpenAPI operation must carry explicit `x-sdkwork-owner` before generation.
 
 ## 2. Package Naming
 
@@ -96,6 +101,7 @@ Rules:
 - Craw Chat `/im/v3/api` consumers `MUST` use its application-root `sdks/sdkwork-im-sdk`. Appbase IAM, workspace, and app/client bootstrap capabilities remain outside the IM SDK.
 - `sdkwork-appbase` owns the standard reusable appbase app/backend SDK families: `sdkwork-appbase-app-sdk` generated from `sdkwork-appbase-app-api` and `sdkwork-appbase-backend-sdk` generated from `sdkwork-appbase-backend-api`.
 - Applications that consume appbase API capabilities `MUST` integrate those generated SDKs or approved composed wrappers. They `MUST NOT` create app-local raw HTTP clients, local SDK forks, or duplicate appbase OpenAPI authority files for the same capabilities.
+- For example, if `craw-chat` depends on `sdkwork-appbase`, the `craw-chat` app/backend SDK generation inputs must contain only `craw-chat`-owned app/backend operations. `sdkwork-appbase` IAM app/backend operations remain in appbase SDKs and are declared as dependencies, never regenerated into `craw-chat` SDKs.
 
 ## 3. Client Surface
 
@@ -137,8 +143,15 @@ Rules:
 - SDKs `MUST` support `Access-Token: <access_token>`.
 - SDKs that consume protected open-api operations `MUST` support `X-API-Key` or the declared API key security scheme.
 - New v3 SDKs `MUST` use `Access-Token` as the canonical access token header.
-- Frontend service modules `MUST` set tokens through SDK auth APIs, not manual headers.
-- IAM login/session token wiring `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`: appbase auth runtime and generated app SDK/bootstrap own token injection, route guards, refresh, logout, and session clearing.
+- Generated SDKs `MUST` expose a language-idiomatic global token manager hook, for example `setTokenManager(manager)` or constructor `tokenManager`, that can provide `authToken`, `accessToken`, and `refreshToken` for every request without per-call manual headers.
+- Frontend service modules `MUST` set tokens through SDK token-manager/auth APIs, not manual headers.
+- IAM login/session token wiring `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`: the appbase auth runtime, `@sdkwork/appbase-app-sdk`, and one global token manager own token injection, route guards, refresh, logout, and session clearing.
+- Appbase login, registration, session validation, current-session retrieval/update/delete, refresh, OAuth, QR auth, password reset, verification-code operations, runtime metadata, and current-user self-service `MUST` use `@sdkwork/appbase-app-sdk` generated from `sdkwork-appbase-app-api`.
+- Appbase backend/admin IAM management operations `MUST` use `@sdkwork/appbase-backend-sdk` generated from `sdkwork-appbase-backend-api`; backend SDKs `MUST NOT` expose or own user-facing login/session creation.
+- Every application runtime `MUST` create exactly one global token manager per authenticated session context and pass that same instance to `@sdkwork/appbase-app-sdk`, `@sdkwork/appbase-backend-sdk`, and every other app/backend/domain SDK that participates in authenticated calls.
+- Other app SDKs and backend SDKs `MUST NOT` accept a separate login client, parse auth/access tokens, persist login state, refresh tokens independently, or expose app-local session stores. They only receive the global token manager and use it for request auth headers.
+- Login, registration, OAuth session creation, refresh, current-session retrieval/update, and session restoration `MUST` update the global token manager and the central session store together. Logout and refresh failure `MUST` clear the global token manager, central session store, context store, realtime/session bridges, and sensitive caches.
+- Direct setters such as `setAuthToken` or `setAccessToken`, when generated for low-level SDK bootstrap or tests, `MUST NOT` be used by application login orchestration when a token manager is available.
 - API key mode, if supported, must be mutually exclusive with dual-token mode.
 - SDKs `MUST NOT` parse tokens to derive tenant, organization, or user context. Context parsing is a server framework responsibility.
 
@@ -158,30 +171,37 @@ Rules:
 ## 5. Integration Pattern
 
 ```ts
-export interface IamServiceClients<TAppClient, TBackendClient> {
-  appClient: TAppClient;
-  backendClient?: TBackendClient;
+export interface AppbaseIamRuntimeClients {
+  appbaseApp: AppbaseAppSdkClient;
+  appbaseBackend?: AppbaseBackendSdkClient;
+  sdkClients?: TokenManagerAwareSdkClient[];
 }
 
-export function createIamService(clients: IamServiceClients<AppClient, BackendClient>) {
-  return {
-    auth: {
-      sessions: clients.appClient.auth.sessions,
-    },
-    iam: clients.backendClient?.iam ?? clients.appClient.iam,
-  };
-}
+const tokenManager = createTokenManager();
+
+const runtime = createIamRuntime({
+  clients: {
+    appbaseApp,
+    appbaseBackend,
+    sdkClients: [productAppSdk, productBackendSdk, imSdk, rtcSdk],
+  },
+  config,
+  tokenManager,
+  tokenStore,
+});
 ```
 
 Rules:
 
 - UI packages receive services or service providers.
-- Service packages receive generated SDK clients.
-- Bootstrap code constructs generated clients for development, test, production, SaaS, private, or local mode.
+- Service packages receive generated SDK clients or approved adapters with standard resource-style surfaces.
+- Appbase IAM service/runtime packages name the login authority `appbaseAppClient` or `appbaseApp`, not generic `appClient`, so product SDKs cannot be confused with the login/session authority.
+- Bootstrap code constructs generated clients for development, test, production, SaaS, private, or local mode, then injects one global token manager into every authenticated SDK client.
 - Bootstrap code may vary by application, generated SDK constructor, deployment mode, auth provider, and host runtime. The injected service-facing client surface `MUST NOT` vary.
 - Test code may provide fake SDK clients that implement the same resource surface.
 - Reusable frontend modules follow `FRONTEND_SPEC.md`: UI calls services, services call injected SDK clients.
 - Runtime/bootstrap configuration follows `CONFIG_SPEC.md`.
+- SDK clients must remain stateless with respect to login orchestration except for holding the provided token manager reference.
 
 ## 6. Generated Package Quality
 

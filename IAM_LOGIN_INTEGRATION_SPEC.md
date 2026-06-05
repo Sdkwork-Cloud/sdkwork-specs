@@ -6,7 +6,7 @@
 
 This standard defines how SDKWork applications integrate IAM login and session validation without reimplementing auth flows in product apps.
 
-`sdkwork-appbase` and `spring-ai-plus-app-api` own reusable login, registration, token refresh, current session, logout, OAuth, QR login, verification code, password reset, and IAM runtime bootstrap. Product applications compose these capabilities through appbase UI/runtime packages and generated app SDK clients.
+`sdkwork-appbase` owns reusable login, registration, token refresh, current session, logout, OAuth, QR login, verification code, password reset, IAM runtime metadata, and IAM runtime bootstrap through `@sdkwork/appbase-app-sdk` generated from `sdkwork-appbase-app-api`. Product applications compose these capabilities through appbase UI/runtime packages and the generated appbase app SDK client.
 
 ## 1. Integration Position
 
@@ -17,7 +17,8 @@ app shell
   -> AuthGate / route guard
   -> sdkwork-appbase auth UI/runtime
   -> app auth service facade
-  -> generated app SDK or approved IAM adapter
+  -> @sdkwork/appbase-app-sdk appbaseApp client
+  -> global tokenManager shared by every SDK client
   -> /app/v3/api/auth/* and /app/v3/api/iam/*
   -> protected product SDK clients
   -> Rust/Java business APIs validate dual tokens and AppContext
@@ -26,9 +27,12 @@ app shell
 Rules:
 
 - Product apps `MUST` integrate IAM login through `sdkwork-appbase` packages or approved wrappers.
+- Product apps `MUST` perform login, registration, current-session validation, refresh, logout, OAuth, QR auth, password reset, verification code, runtime metadata, and current-user self-service through `@sdkwork/appbase-app-sdk`; they must not inject product/domain SDK clients as login clients.
+- Product apps `MUST` provide one global token manager per authenticated session context and pass the same instance to `@sdkwork/appbase-app-sdk`, `@sdkwork/appbase-backend-sdk`, and every other authenticated app/backend/domain SDK.
 - Product apps `MUST NOT` create local `/auth/login`, `/auth/refresh`, `/auth/me`, `/app/v3/api/auth/*`, or user-center session endpoints when the capability is already owned by `sdkwork-appbase` or `spring-ai-plus-app-api`.
 - Login/session APIs `MUST` live in app-api only. IM API, backend-api, Tauri commands, and product-local Rust routes may validate sessions, but must not own user-facing login creation.
 - UI components `MUST NOT` call raw HTTP, manually assemble `Authorization` or `Access-Token`, parse JWTs for authorization, or store duplicate token DTOs.
+- Other app SDKs and backend SDKs `MUST NOT` own login, parse tokens, refresh tokens independently, or persist second session state; they only consume the global token manager for request authentication.
 - Protected business services `MUST` consume a verified session projection through typed context, not through body/query tenant or user fields.
 
 ## 2. Standard Packages
@@ -43,27 +47,31 @@ Use the smallest package set needed for the target UI architecture.
 | IAM SDK ports | `@sdkwork/iam-sdk-ports` | generated SDK client shapes without app-specific constructors |
 | IAM SDK adapter | `@sdkwork/iam-sdk-adapter` | adapter over generated app SDK resources |
 | Product core package | `packages/<product>-pc-core` or equivalent | SDK bootstrap, session store, auth service facade, IAM runtime bridge |
-| Generated app SDK | `spring-ai-plus-app-api` generated SDK or approved app SDK | typed `/app/v3/api` transport |
+| Appbase app SDK | `@sdkwork/appbase-app-sdk` | canonical login, session, runtime metadata, OAuth, QR auth, password reset, verification, and current-user transport |
+| Appbase backend SDK | `@sdkwork/appbase-backend-sdk` | canonical backend/admin IAM management transport |
+| Product/domain SDKs | generated app/backend/domain SDKs | protected business operations that receive the global token manager only |
 | Rust AppContext crate | product-independent context helper crate | dual-token and SDKWork AppContext extraction/validation |
 
 Rules:
 
 - Appbase packages own reusable IAM UI and auth flow behavior.
-- Product core packages may adapt generated app SDK constructors and runtime config, but must not fork appbase auth UI or generated SDK output.
+- Product core packages may adapt generated `@sdkwork/appbase-app-sdk` constructors, generated `@sdkwork/appbase-backend-sdk` constructors, token storage, and runtime config, but must not fork appbase auth UI or generated SDK output.
 - Generated SDK output `MUST NOT` be edited by app or desktop packages.
-- If an IAM SDK method is missing, fix `spring-ai-plus-app-api`, OpenAPI, and generator inputs before adding product integration.
+- If an IAM SDK method is missing, fix `sdkwork-appbase-app-api` or `sdkwork-appbase-backend-api`, OpenAPI, and generator inputs before adding product integration.
 
 ## 3. Fast App Integration
 
 Minimum app-side steps:
 
 1. Add appbase and IAM package aliases or workspace dependencies.
-2. Create one session module that reads, writes, normalizes, and clears `authToken`, `accessToken`, `refreshToken`, `sessionId`, `user`, and `context`.
-3. Create generated app SDK clients in bootstrap/core code with a token manager or auth provider.
-4. Create an IAM auth service facade over the generated app SDK or IAM adapter.
-5. Create an IAM runtime bridge consumed by appbase auth UI routes.
-6. Wrap product routes with an `AuthGate`.
-7. Verify logout clears local session state, SDK token managers, realtime clients, sensitive caches, and redirects to login.
+2. Create one global token manager for the authenticated session context.
+3. Create one session module that reads, writes, normalizes, and clears `authToken`, `accessToken`, `refreshToken`, `sessionId`, `user`, and `context`.
+4. Create `@sdkwork/appbase-app-sdk` as `appbaseApp` and `@sdkwork/appbase-backend-sdk` as `appbaseBackend` in bootstrap/core code.
+5. Pass every other generated app SDK and backend SDK through `sdkClients` so the same global token manager is injected.
+6. Create an IAM auth service facade over `appbaseApp` or an approved IAM adapter over `@sdkwork/appbase-app-sdk`.
+7. Create an IAM runtime bridge consumed by appbase auth UI routes.
+8. Wrap product routes with an `AuthGate`.
+9. Verify logout clears local session state, the global token manager, realtime clients, sensitive caches, and redirects to login.
 
 Standard PC React shape:
 
@@ -85,8 +93,8 @@ Rules:
 - `App.tsx` owns router composition only.
 - `AuthGate.tsx` owns route protection and rendering appbase auth routes.
 - `session.ts` owns persisted session normalization and clearing.
-- `appSdkClient.ts` owns generated app SDK construction and token injection.
-- `appAuthService.ts` owns semantic auth operations such as `login`, `register`, `getCurrentSession`, `refreshToken`, `logout`, and QR/OAuth helpers.
+- `appSdkClient.ts` owns `@sdkwork/appbase-app-sdk`, `@sdkwork/appbase-backend-sdk`, product SDK construction, and global token-manager injection.
+- `appAuthService.ts` owns semantic auth operations such as `login`, `register`, `getCurrentSession`, `refreshToken`, `logout`, and QR/OAuth helpers by calling `@sdkwork/appbase-app-sdk`.
 - `appAuthRuntime.ts` adapts product auth service methods to the appbase IAM runtime expected by `@sdkwork/auth-pc-react`.
 
 ## 4. AuthGate Rules
@@ -126,18 +134,21 @@ SDKWork protected APIs use a dual-token model:
 Rules:
 
 - Session storage `MUST` be centralized in a core/session module.
-- SDK clients `MUST` receive tokens through generated SDK config, token manager, credential provider, or approved adapter.
+- Applications `MUST` create exactly one global token manager per authenticated session context.
+- `@sdkwork/appbase-app-sdk`, `@sdkwork/appbase-backend-sdk`, and all other authenticated SDK clients `MUST` receive the same global token manager through generated SDK config, `setTokenManager`, credential provider, or approved adapter.
+- Login, registration, OAuth session creation, current-session retrieval/update, refresh, and session restoration `MUST` update the global token manager and centralized session store together.
+- The global token manager is the SDK login-retention standard. Product/domain SDKs `MUST NOT` maintain independent token stores or refresh flows.
 - Frontend code outside SDK/bootstrap `MUST NOT` set `Authorization`, `Access-Token`, `X-Sdkwork-*`, or equivalent auth headers manually.
 - `authToken`, `accessToken`, and `refreshToken` `MUST NOT` be logged, copied into URLs, exposed in UI, or saved in product feature state.
-- Token refresh failure `MUST` clear session and route to login.
-- Logout `MUST` call the app-api current-session delete operation when possible, then clear local state in a `finally` path.
+- Token refresh failure `MUST` clear the global token manager, session store, context store, realtime/session bridges, sensitive caches, and route to login.
+- Logout `MUST` call `@sdkwork/appbase-app-sdk` `client.auth.sessions.current.delete()` when possible, then clear local state in a `finally` path.
 
 Standard logout effects:
 
 ```text
-client.auth.sessions.current.delete()
+appbaseAppClient.auth.sessions.current.delete()
   -> clear persisted session
-  -> clear SDK token managers
+  -> clear the global token manager
   -> close/reconnect realtime clients as anonymous
   -> clear sensitive query/cache state
   -> clear native secure session state when used
