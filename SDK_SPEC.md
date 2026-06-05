@@ -52,6 +52,55 @@ Rules:
 - SDK generation tooling `MUST` fail before generation when an operation has no owner metadata or when a non-owner operation remains in the generated input.
 - Module scanning, route scanning, or domain catalogs may infer ownership during migration, but the materialized OpenAPI operation must carry explicit `x-sdkwork-owner` before generation.
 
+## 1.1 Owner-Only SDK Generation And Dependency SDK Boundaries
+
+Every independent git repository or application that owns HTTP API contracts owns its local `sdks/`
+workspace. That workspace generates only the API authorities owned by that repository/application.
+Rust crate dependencies, Java modules, Node packages, Flutter packages, provider packages, and other
+third-party or reusable-module dependencies do not transfer API ownership to the consuming
+application.
+
+Rules:
+
+- Each independent repository/application that exposes SDKWork app, backend, open/domain, provider,
+  or runtime API contracts `MUST` keep those generated SDK families under that repository or
+  application's own `sdks/` directory.
+- A consuming application SDK family `MUST` generate only its own API authority. For example,
+  `sdkwork-<app>-app-sdk` generates only `sdkwork-<app>-app-api`, and
+  `sdkwork-<app>-backend-sdk` generates only `sdkwork-<app>-backend-api`.
+- A consuming application `MUST NOT` regenerate APIs owned by Rust crate dependencies, reusable
+  appbase modules, provider repos, or other SDKWork apps into its own app/backend/open SDK family.
+  This applies even when the consuming application links the Rust crate or starts the runtime route
+  as part of a local profile.
+- Dependency capabilities `MUST` be consumed through the dependency's generated SDK package or an
+  approved composed wrapper. The consuming SDK family declares them in `sdkDependencies`; it does not
+  copy their OpenAPI paths, operations, schemas, tags, generated API classes, or transport code.
+- `sdkDependencies` entries `MUST` be machine-readable in both `sdk-family-config` or equivalent
+  generation config and `.sdkwork-assembly.json`, and `specs/component.spec.json` must mirror them
+  under `contracts.sdkDependencies`.
+- Each `sdkDependencies` entry `MUST` include `workspace`, `role`, `required: true`,
+  `dependencyMode: "consumer-sdk"`, `apiPrefix` or `null`,
+  `generatedTransportImportPolicy: "forbidden"`, and package names for every generated/supported
+  language.
+- When two authorities use the same prefix, route ownership still belongs to the authority that
+  declares the route. The consuming SDK's materialized input `MUST` subtract dependency-owned routes
+  by normalized path template, and by method when ownership differs per method.
+- Generated transport for a consuming SDK family `MUST NOT` import, vendor, re-export, or declare
+  dependency SDK packages. Dependency SDK composition belongs in service bootstrap, runtime
+  injection, or approved composed facades outside generated transport ownership.
+- Regeneration `MUST` remove stale files from prior inputs. If a dependency-owned path is removed
+  from the consuming authority, old generated API files, model files, dist bundles, docs, and
+  language manifests for that dependency-owned surface must disappear in the same regeneration.
+- Verification `MUST` fail when a consuming SDK authority, derived input, generated transport,
+  generated documentation, or generated manifest still contains dependency-owned routes, operation
+  names, DTOs, SDK package names, or generated API modules.
+- Adding more third-party or reusable-module dependencies `MUST` extend `sdkDependencies` and the
+  materialization exclusion set. It `MUST NOT` broaden the consuming SDK's OpenAPI input.
+- Appbase examples are normative: appbase identity, session, IAM, verification, QR auth, and
+  appbase backend management capabilities remain in `sdkwork-appbase-app-sdk` and
+  `sdkwork-appbase-backend-sdk`. Applications such as `craw-chat`, `sdkwork-claw-router`, and
+  `sdkwork-birdcoder` consume those SDKs and generate only their application-owned app/backend APIs.
+
 ## 2. Package Naming
 
 The following table is the canonical SDKWork SDK/API naming model. `SDK_WORKSPACE_GENERATION_SPEC.md` owns the physical application-root `sdks/` layout that implements this model.
@@ -150,7 +199,10 @@ Rules:
 - Appbase backend/admin IAM management operations `MUST` use `@sdkwork/appbase-backend-sdk` generated from `sdkwork-appbase-backend-api`; backend SDKs `MUST NOT` expose or own user-facing login/session creation.
 - Every application runtime `MUST` create exactly one global token manager per authenticated session context and pass that same instance to `@sdkwork/appbase-app-sdk`, `@sdkwork/appbase-backend-sdk`, and every other app/backend/domain SDK that participates in authenticated calls.
 - Other app SDKs and backend SDKs `MUST NOT` accept a separate login client, parse auth/access tokens, persist login state, refresh tokens independently, or expose app-local session stores. They only receive the global token manager and use it for request auth headers.
-- Login, registration, OAuth session creation, refresh, current-session retrieval/update, and session restoration `MUST` update the global token manager and the central session store together. Logout and refresh failure `MUST` clear the global token manager, central session store, context store, realtime/session bridges, and sensitive caches.
+- Login, registration, OAuth session creation, refresh, current-session retrieval/update, and session restoration `MUST` update the global token manager, central session store, and context store through the ordered appbase IAM runtime lifecycle. The standard commit order is: validate the appbase session payload, persist normalized tokens in the central session store, write returned AppContext or clear stale AppContext, then sync the global token manager. Token persistence failure `MUST NOT` expose new in-memory tokens; context propagation failure `MUST` roll back token/context stores and clear the global token manager.
+- New appbase session flows such as login, registration, and OAuth session creation `MUST` replace the stored token set and `MUST NOT` inherit an old `refreshToken` when appbase does not return one. Current-session retrieval/update and refresh continuation may preserve the current stored `refreshToken` only when appbase returns rotated `authToken`/`accessToken` without a new `refreshToken`.
+- IAM SDK adapters may unwrap SDK response envelopes and normalize generated path-parameter call shapes, but they `MUST NOT` map legacy aliases such as `auth.login`, `auth.refreshToken`, `auth.register`, `auth.getOauthUrl`, `auth.createSession`, `auth.createSendSmsCode`, top-level `user.*`, or app-local user-center methods into appbase app SDK ports.
+- Logout and refresh failure `MUST` clear the global token manager, central session store, context store, realtime/session bridges, and sensitive caches through one runtime-owned clearing path.
 - Direct setters such as `setAuthToken` or `setAccessToken`, when generated for low-level SDK bootstrap or tests, `MUST NOT` be used by application login orchestration when a token manager is available.
 - API key mode, if supported, must be mutually exclusive with dual-token mode.
 - SDKs `MUST NOT` parse tokens to derive tenant, organization, or user context. Context parsing is a server framework responsibility.

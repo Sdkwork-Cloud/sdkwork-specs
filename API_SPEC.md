@@ -896,11 +896,21 @@ SDKWork governance tools may read these extensions.
 | `x-sdkwork-idempotent` | Whether idempotency is required |
 | `x-sdkwork-sdk-resource` | SDK nested resource override if path inference is insufficient |
 | `x-sdkwork-deployment` | `saas`, `private`, `local`, or `all` |
+| `x-sdkwork-owner` | Owning application, repository, or reusable platform module that publishes this operation in its own SDK family |
+| `x-sdkwork-api-authority` | Logical API authority that owns the operation, for example `sdkwork-appbase.app`, `craw-chat.app`, `sdkwork-drive.backend` |
+| `x-sdkwork-source` | Physical source or scanned module that produced the operation |
+| `x-sdkwork-integration-source` | Integrated dependency source when an operation is present only for runtime composition or compatibility |
 
 Rules:
 
 - Extensions `MUST NOT` contradict security requirements.
 - Extensions are governance metadata; behavior still needs server enforcement.
+- Every operation used as input to HTTP SDK generation `MUST` declare `x-sdkwork-owner` and `x-sdkwork-api-authority`.
+- `x-sdkwork-owner` is the SDK generation ownership key. It identifies the app/repo/module that is allowed to generate the operation into its SDK family.
+- `x-sdkwork-api-authority` identifies the logical API authority and should include both owner and surface, for example `sdkwork-appbase.app`, `sdkwork-appbase.backend`, `craw-chat.im`, or `sdkwork-drive.app`.
+- `x-sdkwork-source` and `x-sdkwork-integration-source` may describe where the operation was scanned from, but they `MUST NOT` replace `x-sdkwork-owner` for generation decisions.
+- OpenAPI documents may temporarily include dependency-owned operations for runtime integration inspection only when those operations are clearly marked with the dependency owner. The generated SDK input for an app/repo `MUST` filter them out unless the current SDK family owner matches the operation owner.
+- Path prefix, tag, Rust crate name, Java controller package, or filesystem location `MUST NOT` be the only authority for SDK ownership. Those signals may help infer metadata during migration, but the materialized OpenAPI operation must carry explicit ownership before generation.
 
 ## 20. SDK Generation Standard
 
@@ -915,6 +925,8 @@ Rules:
 - TypeScript SDKs for new SDKWork v3 app, backend, and IM contracts `MUST` use `--standard-profile sdkwork-v3`.
 - Resource-style operationIds `MUST` produce nested SDK resources.
 - App-specific SDK clients may differ by package and constructor, but method shape `MUST` remain consistent.
+- SDK generation inputs `MUST` contain only operations whose `x-sdkwork-owner` matches the SDK family owner declared in the SDK assembly manifest.
+- Dependency-owned operations such as appbase IAM must be consumed through the dependency SDK or approved composed wrapper, not regenerated into the consuming app SDK.
 
 ### 20.1 SDK Resource Synthesis Rules
 
@@ -1008,6 +1020,9 @@ An API is standard only when this checklist passes:
 - [ ] Domain name follows `DOMAIN_SPEC.md`.
 - [ ] SDK API paths start with `/open/v3/api`, `/im/v3/api`, `/app/v3/api`, or `/backend/v3/api` according to their API surface.
 - [ ] Runtime source, OpenAPI snapshots, generated SDK inputs, route tables, frontend SDK bootstrap code, and environment examples contain no forbidden legacy API prefix.
+- [ ] Every SDK-generated operation declares `x-sdkwork-owner` and `x-sdkwork-api-authority`.
+- [ ] No SDK generation input contains operations owned by another app/repo/module.
+- [ ] Integrated dependency APIs are declared as SDK dependencies or composed wrappers instead of duplicated into the current SDK.
 - [ ] Java app-api class-level mappings start with `/app/v3/api`, and Java backend-api class-level mappings start with `/backend/v3/api`.
 - [ ] Backend-api publishes no bare `/v3/api/*` resource path.
 - [ ] `apps` Java implementations, app/backend Java SDK generation inputs, and generated app/backend Java SDK path helpers pass `cd apps && node scripts/api-spec-java-standard.test.mjs`.

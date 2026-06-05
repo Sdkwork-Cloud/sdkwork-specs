@@ -29,6 +29,10 @@ Rules:
 - Consumer code `MUST` use generated SDK packages or approved composed wrappers. It `MUST NOT` replace missing SDK methods with raw HTTP, manual auth headers, local DTO forks, or package-local OpenAPI forks.
 - Backend API SDKs `MUST` be generated from backend OpenAPI contracts and consumed by backend/admin integrations only.
 - App/user-facing UI `MUST NOT` call backend SDKs or `/backend/v3/api`.
+- SDK generation is local-owner-only. A repository/application `sdks/` workspace generates only the
+  API authorities owned by that repository/application. APIs owned by dependency repos, Rust crate
+  dependencies, reusable appbase modules, provider repos, or other applications are declared as
+  `sdkDependencies` and consumed as dependency SDKs, not copied into the consuming SDK authority.
 
 ## 2. Standard Workspace Shape
 
@@ -134,6 +138,45 @@ Rules:
 - OpenAPI documents for app-api and backend-api `MUST` use dual-token security where required by `API_SPEC.md` and `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - OpenAPI documents `MUST NOT` expose `X-Request-Id` or client-supplied request correlation IDs for app/backend SDKs.
 
+## 4.1 Dependency Authority Exclusion
+
+Materialization is responsible for converting broad runtime route catalogs into owner-only SDK
+authorities. If a repository/application depends on another SDKWork API authority, the consuming
+SDK family must subtract that dependency authority before generation.
+
+Rules:
+
+- Materialization scripts `MUST` load or otherwise know every dependency authority that overlaps
+  the consuming API prefix.
+- Dependency-owned paths `MUST` be removed from the consuming authority and every derived
+  `*.sdkgen.*` input before generation. Normalization must compare path templates with parameter
+  names canonicalized, for example `{userId}` and `{id}` both compare as `{}`. If ownership differs
+  per method, the comparison must include HTTP method.
+- The consuming authority `info.description`, README, `.sdkwork-assembly.json`, and component spec
+  should state that the authority is owner-only and that dependency capabilities are consumed
+  through `sdkDependencies`.
+- Dependency SDKs are declared in the consuming SDK family's generation config, `.sdkwork-assembly.json`,
+  and `specs/component.spec.json` with matching `sdkDependencies` arrays.
+- Each dependency declaration `MUST` include `workspace`, `role`, `required: true`,
+  `dependencyMode: "consumer-sdk"`, `apiPrefix` or `null`,
+  `generatedTransportImportPolicy: "forbidden"`, and supported language package names.
+- Generated transport output `MUST NOT` import dependency SDK packages, vendor their generated
+  transport code, re-export dependency SDK clients, or retain stale API/model/doc files for
+  dependency-owned routes.
+- A generation wrapper `MUST` delete stale generated-owned files that disappeared from the current
+  input. A generator that only overwrites files is not sufficient for owner-only SDKs.
+- Verification `MUST` compare the consuming authority, derived inputs, and generated output against
+  dependency route sets and fail on overlap.
+
+Example:
+
+If `craw-chat` depends on `sdkwork-appbase`, then `craw-chat/sdks/sdkwork-im-app-sdk` and
+`craw-chat/sdks/sdkwork-im-backend-sdk` generate only Craw Chat-owned app/backend APIs.
+`sdkwork-appbase` app/backend auth, IAM, session, QR auth, and backend management APIs remain in
+`sdkwork-appbase/sdks/sdkwork-appbase-app-sdk` and
+`sdkwork-appbase/sdks/sdkwork-appbase-backend-sdk`. Craw Chat records those SDKs as dependencies
+and consumes them at the composition layer.
+
 ## 5. Backend API OpenAPI 3.x Standard
 
 Backend API is the operator/control-plane contract. It must be SDK-generation ready before UI or automation consumers depend on it.
@@ -170,11 +213,17 @@ Rules:
 - Run the family materialization script before SDK generation.
 - Generate language packages from derived `*.sdkgen.yaml` inputs, not from ad hoc Swagger UI output.
 - Generate language packages with the canonical `sdkgen.js` entrypoint from `D:\javasource\spring-ai-plus\sdk\sdkwork-sdk-generator`; do not use PATH-resolved generators unless the wrapper first proves they are the same canonical generator installation.
+- Before calling `sdkgen`, materialize owner-only OpenAPI inputs and subtract dependency-owned
+  authority routes. Do not pass a runtime-wide or dependency-inclusive OpenAPI document directly to
+  `sdkgen`.
 - Put generated transport code under `generated/server-openapi`.
 - Put handwritten semantic facades under `composed` only when the SDK family intentionally owns a composed layer.
 - Composed code must import generated transport through package root entrypoints, not private generated source paths.
 - Generator package, canonical path or resolved package location, generator version or commit, commands, input spec paths, output paths, package names, SDK type, language targets, profile, and wrapper name when present `MUST` be captured in a manifest or README.
 - Re-running materialization and generation without contract changes `SHOULD` be idempotent.
+- Re-running generation after a dependency-owned route is removed from the consuming authority
+  `MUST` remove stale generated-owned files for that route from source, dist, docs, manifests, and
+  language model indexes.
 
 ## 7. Language Baseline
 
@@ -225,6 +274,11 @@ Every SDK family change should verify the relevant subset:
 - Generated language workspace directories, generated package names, `sdkMetadata.name`, `sdk-manifest.json.sdkName`, assembly `workspace`, generator `SDK_NAME`, and generator `--sdk-name` all use the SDK family name, not the API authority name.
 - Generated output retains `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and `custom/`.
 - Materialization script produces deterministic authority-to-derived output.
+- Materialization script excludes dependency-owned authority routes from consuming SDK inputs.
+- `sdkDependencies` in generation config, `.sdkwork-assembly.json`, and
+  `specs/component.spec.json` match exactly.
+- Generated transport contains no dependency-owned routes, operationIds, DTOs, API classes,
+  language package names, stale docs, stale dist bundles, or generated model indexes.
 - Generated TypeScript compiles when TypeScript is supported.
 - Generated SDK exposes nested resource methods from `tag + dotted operationId`.
 - Generated clients handle `Authorization` and `Access-Token` through SDK/bootstrap infrastructure.
@@ -255,6 +309,12 @@ node .\sdks\sdkwork-<domain>-backend-sdk\bin\verify-sdk.mjs
 - [ ] Family README declares SDK family, API authority name, API prefix, audience, generated languages, and verification commands.
 - [ ] `specs/component.spec.json` exists for every authored SDK family.
 - [ ] Authority OpenAPI and derived `sdkgen` inputs are separated.
+- [ ] Authority OpenAPI and derived `sdkgen` inputs contain only owner application/repository API
+  routes; dependency authorities are subtracted before generation.
+- [ ] Dependency SDKs are recorded in matching `sdkDependencies` entries across generation config,
+  `.sdkwork-assembly.json`, and `specs/component.spec.json`.
+- [ ] Generated transport does not copy, import, vendor, or retain stale files for dependency-owned
+  APIs.
 - [ ] Generated output is under `generated/server-openapi`.
 - [ ] Handwritten facades are outside generated output.
 - [ ] Backend API OpenAPI uses `/backend/v3/api` and has no login/session namespace.
