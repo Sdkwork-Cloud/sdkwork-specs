@@ -302,7 +302,7 @@ Frontend upload and media pickers work with `MediaResource` objects from the fir
 Rules:
 
 - Upload widgets may hold local `File`, preview object URLs, progress, and errors as UI-only state. These values must not leak into API DTOs.
-- SDKWork-owned upload reservation, completion, import, and download grants must go through Drive app SDK/API. After Drive completion, the service returns a `MediaResource` or Drive upload result that can be normalized to `MediaResource`.
+- SDKWork-owned upload reservation, completion, import, and download grants must go through Drive app SDK/API. Client uploads must use `sdkwork-drive-app-sdk client.uploader.*`; server-side Rust uploads must use the Drive product uploader component defined by `DRIVE_SPEC.md`. After Drive completion, the service returns a `MediaResource` or Drive upload result that can be normalized to `MediaResource`.
 - Form submit payloads must send stable resource identity and metadata, not browser object URLs or temporary presigned URLs.
 - UI previews may use `resource.url`, `resource.publicUrl`, or a local preview while uploading, but persistence must use `id`, Drive `uri`, `objectBlobId`, or provider `uri`.
 - Services own normalization from generated SDK DTOs to frontend view models. UI components should not patch raw URL strings into business payloads.

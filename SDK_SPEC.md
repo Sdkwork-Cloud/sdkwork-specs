@@ -353,24 +353,28 @@ Rules:
 
 ## 6.1 Drive SDK Integration
 
-File and media upload flows compose Drive SDKs with business SDKs.
+File and media upload flows compose Drive Uploader, Drive SDKs, and business SDKs.
 
 Standard flow:
 
 ```text
-generated Drive app SDK
-  -> create upload session / grant
-  -> complete upload
+sdkwork-drive-app-sdk client.uploader.*
+  -> prepare/resume Drive Uploader task
+  -> presign or stream upload parts
+  -> mark uploaded parts
+  -> complete Drive upload session
   -> return Drive reference and MediaResource
   -> generated business SDK attaches that reference to a business aggregate
 ```
 
 Rules:
 
-- Frontend and app service modules `MUST` use Drive app SDK methods for upload sessions, upload completion, node metadata, and download grants.
+- Frontend and app service modules `MUST` use `sdkwork-drive-app-sdk client.uploader.*` for client uploads, and Drive app SDK methods for node metadata and download grants.
+- Server-side Rust upload modules `MUST` use the Drive product Rust uploader component, such as `DriveUploaderService`, `PrepareUploaderUploadCommand`, or an approved `sdkwork_drive_product::uploader` facade, rather than product-local SDK forks or HTTP calls to Drive App API from the same trusted backend.
 - Backend/admin modules `MUST` use Drive backend SDK methods for storage providers, policies, quota, reconciliation, and diagnostics.
-- Business SDK packages such as IM, commerce, app manifest, user profile, and AI workflow SDKs should expose attachment commands that accept Drive references or `MediaResource`, not raw file upload sessions.
-- Consumers `MUST NOT` use raw `fetch`, `axios`, direct S3/OSS/MinIO SDKs, manual auth headers, or local OpenAPI forks to bypass missing Drive SDK methods.
+- Business SDK packages such as IM, commerce, app manifest, user profile, and AI workflow SDKs should expose attachment commands that accept Drive references or `MediaResource`, not raw files, upload sessions, presign URLs, provider URLs, buckets, object keys, or upload parts.
+- Consumers `MUST NOT` use raw `fetch`, `axios`, direct S3/OSS/MinIO SDKs, manual auth headers, local OpenAPI forks, app-local upload counters, or product-local upload endpoints to bypass missing Drive SDK methods.
+- Upload-capable applications `MUST` declare Drive app SDK as a dependency SDK and keep Drive uploader operations out of product-owned SDK authority generation.
 - Missing Drive capabilities must be fixed in Drive API/RPC contracts and regenerated SDKs before business integration proceeds.
 
 ## 7. Service Facade Rules
