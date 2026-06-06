@@ -200,6 +200,7 @@ Rules:
 - GitHub Release upload steps `MUST` write framework-rendered Release notes through `--notes-file` or an equivalent first-party action input, not hard-coded generic release bodies in each application repository.
 - The framework `MUST` render Release notes before GitHub Release upload when `publish.githubRelease` and the caller release publication input are enabled.
 - Application repositories `MUST NOT` implement copied Release body generation in local workflow YAML. App-specific release note generation belongs in `sdkwork.workflow.json` `release.changelog` or in a local file/manifest consumed by the framework.
+- `release.changelog.source: auto` `MUST NOT` reuse stale `sdkwork.app.config.json` `release.notes[]` entries whose version does not match the requested package version or release tag; it must fall back to `CHANGELOG.md` or git commit subjects instead.
 - Framework logs `MUST` redact secret-like values and must not print raw tokens, API keys, or credentials.
 
 ## 8. Deployment Jobs
