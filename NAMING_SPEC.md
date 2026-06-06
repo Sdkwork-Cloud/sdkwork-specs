@@ -34,7 +34,7 @@ Rules:
 | Backend SDK family | `sdkwork-<domain>-backend-sdk` | `sdkwork-commerce-backend-sdk` |
 | Component spec | `specs/component.spec.json` | `packages/foo/specs/component.spec.json` |
 | App manifest | `sdkwork.app.config.json` | `apps/foo/sdkwork.app.config.json` |
-| GitHub package id | `<platform>-<architecture>-<profile>-<format-token>`; Linux native packages use `linux-<distribution>-<architecture>-<profile>-<format-token>` | `windows-x64-desktop-msi`, `linux-debian-x64-server-deb` |
+| GitHub package id | `<platform>-<architecture>-<profile>-<format-token>`; Linux native packages use `linux-<distribution>-<architecture>-<profile>-<format-token>`; variant packages insert `<variant>` before `<format-token>` | `windows-x64-desktop-msi`, `linux-debian-x64-server-deb`, `container-x64-server-nvidia-cuda-tar-gz` |
 | GitHub artifact name | `<artifact-prefix>-<package-id>` | `sdkwork-drive-android-arm64-mobile-aab` |
 | Agent entrypoint | `AGENTS.md` | `AGENTS.md` |
 | Tool compatibility shim | `<TOOL>.md` | `CLAUDE.md`, `GEMINI.md`, `CODEX.md` |
@@ -64,12 +64,15 @@ Rules:
 
 - GitHub workflow package ids use `<platform>-<architecture>-<profile>-<format-token>`.
 - Linux native `deb` and `rpm` package ids use `linux-<distribution>-<architecture>-<profile>-<format-token>` because distribution families have different package metadata, dependencies, signing, repositories, and install validation.
+- Package ids with a real variant use `<platform>-<architecture>-<profile>-<variant>-<format-token>`. Linux native variant packages use `linux-<distribution>-<architecture>-<profile>-<variant>-<format-token>`.
+- Use the variant segment only when distinct releasable artifacts share the same platform, architecture, profile, and format. Examples include `cpu`, `nvidia-cuda`, and `amd-rocm` deployment bundles.
 - GitHub workflow artifact names use `<artifact-prefix>-<package-id>`.
 - `artifact-prefix` comes from `release.artifactPrefix` and normally matches `app.id` unless an application has a documented release-branding reason.
 - `format-token` is the lowercase kebab token for the package format. Dots and other separators are normalized to hyphens, for example `tar.gz` becomes `tar-gz`.
 - Valid Linux native package distributions are `debian` and `ubuntu` for `deb`, and `rhel`, `centos`, `fedora`, `opensuse`, and `suse` for `rpm`.
 - Generic Linux archive formats such as `tar.gz`, `appimage`, `snap`, and `flatpak` do not include the distribution segment unless a more specific future standard defines one.
 - Package ids and artifact names `MUST` use lowercase kebab tokens only. Do not use `service` as a package profile alias for `server`, and do not omit the format token.
+- Variant values `MUST` use lowercase kebab tokens and must not be encoded into `architecture`, `profile`, or `format`.
 - When an SDKWork application supports more than one surface, the `profile` segment distinguishes server, PC desktop, mobile, tablet, web, worker, and library packages.
 
 Examples:
@@ -82,6 +85,9 @@ Examples:
 | Desktop Fedora `.rpm` | `linux-fedora-x64-desktop-rpm` | `sdkwork-drive-linux-fedora-x64-desktop-rpm` |
 | Server Linux archive | `linux-x64-server-tar-gz` | `sdkwork-drive-linux-x64-server-tar-gz` |
 | Server container image | `container-arm64-server-oci` | `sdkwork-drive-container-arm64-server-oci` |
+| CPU container bundle | `container-x64-server-cpu-tar-gz` | `sdkwork-drive-container-x64-server-cpu-tar-gz` |
+| NVIDIA CUDA container bundle | `container-x64-server-nvidia-cuda-tar-gz` | `sdkwork-drive-container-x64-server-nvidia-cuda-tar-gz` |
+| AMD ROCm container bundle | `container-x64-server-amd-rocm-tar-gz` | `sdkwork-drive-container-x64-server-amd-rocm-tar-gz` |
 | PC desktop Windows installer | `windows-x64-desktop-msi` | `sdkwork-drive-windows-x64-desktop-msi` |
 | PC desktop Windows bootstrapper | `windows-x64-desktop-exe` | `sdkwork-drive-windows-x64-desktop-exe` |
 | PC desktop macOS bundle | `macos-arm64-desktop-dmg` | `sdkwork-drive-macos-arm64-desktop-dmg` |

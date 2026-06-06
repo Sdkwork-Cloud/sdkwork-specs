@@ -122,6 +122,7 @@ Rules:
   - `SDKWORK_PACKAGE_ARCHITECTURE`
   - `SDKWORK_PACKAGE_FORMAT`
 - Linux native `deb` and `rpm` package lifecycle steps `MUST` also receive `SDKWORK_PACKAGE_DISTRIBUTION`.
+- Package targets with `targets[].variant` `MUST` also receive `SDKWORK_PACKAGE_VARIANT`.
 - Deployment lifecycle steps `MUST` also receive:
   - `SDKWORK_DEPLOY_ENVIRONMENT`
   - `SDKWORK_DEPLOY_URL` when configured.
@@ -138,6 +139,8 @@ Rules:
 - Selecting no targets for a requested platform/profile/architecture/format `MUST` fail before package jobs run.
 - Every matrix package item `MUST` have a canonical `packageId` using `<platform>-<architecture>-<profile>-<format-token>`.
 - Linux native `deb` and `rpm` package items `MUST` use `linux-<distribution>-<architecture>-<profile>-<format-token>`.
+- Package targets with a real package variant `MUST` insert the lowercase kebab `variant` segment before the format token: `<platform>-<architecture>-<profile>-<variant>-<format-token>`. Linux native package variants use `linux-<distribution>-<architecture>-<profile>-<variant>-<format-token>`.
+- Use `targets[].variant` only when two or more releasable artifacts would otherwise share the same platform, architecture, profile, and format. Common examples are container or deployment packages split by `cpu`, `nvidia-cuda`, or `amd-rocm`.
 - `format-token` `MUST` be lowercase kebab-case. Format values with separators normalize those separators to hyphens; for example `tar.gz` becomes `tar-gz`.
 - GitHub workflow artifact names `MUST` use `<release.artifactPrefix>-<packageId>`.
 - Multi-format targets `MUST` produce distinct package ids and artifact names for each format.
@@ -145,6 +148,7 @@ Rules:
 - Explicit `targets[].packageId`, when present, `MUST` equal the canonical package id for a single-format target. Multi-format targets `MUST` omit `packageId` so the planner can generate one package id per format.
 - Targets with format-specific output globs `SHOULD` be split into separate single-format targets. Windows desktop packages that produce both `.msi` and `.exe` installers SHOULD use `windows-x64-desktop-msi` and `windows-x64-desktop-exe` as separate targets unless one lifecycle command deliberately emits only the active `SDKWORK_PACKAGE_FORMAT`.
 - `targets[].distribution` is required for `platform: linux` with `formats: ["deb"]` or `formats: ["rpm"]`, and it is invalid for generic Linux archive formats such as `tar.gz`.
+- `targets[].variant`, when present, `MUST` be lowercase kebab-case and `MUST` be part of `targets[].id`, generated `packageId`, artifact names, lifecycle environment, and deployment selection.
 - `deb` targets `MUST` use `distribution: debian` or `distribution: ubuntu`.
 - `rpm` targets `MUST` use `distribution: rhel`, `distribution: centos`, `distribution: fedora`, `distribution: opensuse`, or `distribution: suse`.
 - Linux native `deb` and `rpm` targets `MUST` be single-format targets. Do not mix `deb` or `rpm` with generic formats in one target because native Linux package metadata is distribution-specific while archives are generic.
@@ -161,6 +165,8 @@ Examples:
 | Desktop Fedora package | `linux` | `fedora` | `x64` | `rpm` | `linux-fedora-x64-desktop-rpm` |
 | Server Linux archive | `linux` | omitted | `x64` | `tar.gz` | `linux-x64-server-tar-gz` |
 | Server container | `container` | omitted | `arm64` | `oci` | `container-arm64-server-oci` |
+| CPU container bundle | `container` | omitted | `x64` | `tar.gz` | `container-x64-server-cpu-tar-gz` |
+| NVIDIA CUDA container bundle | `container` | omitted | `x64` | `tar.gz` | `container-x64-server-nvidia-cuda-tar-gz` |
 | PC desktop | `windows` | omitted | `x64` | `msi` | `windows-x64-desktop-msi` |
 | PC desktop | `windows` | omitted | `x64` | `exe` | `windows-x64-desktop-exe` |
 | PC desktop | `macos` | omitted | `arm64` | `dmg` | `macos-arm64-desktop-dmg` |
@@ -210,7 +216,7 @@ Rules:
 Rules:
 
 - Deployment targets are declared under `deployments[]`.
-- Deployment matrix items `MUST` bind to selected package targets through profile, platform, architecture, format, target id, or package id selectors.
+- Deployment matrix items `MUST` bind to selected package targets through profile, platform, architecture, variant, format, target id, or package id selectors.
 - Each configured deployment `MUST` match at least one package target in the full application workflow config. Selector typos must fail validation instead of silently producing no deployment jobs.
 - Deployment jobs `MUST` bind to GitHub Environments using the configured environment name and URL when present.
 - Deployment lifecycle jobs `MUST` explicitly pass deployment environment, URL, and lifecycle values to the lifecycle runner.
@@ -239,9 +245,10 @@ Application integration verification `MUST` check:
 - `sdkwork.workflow.json` validates with the framework planner.
 - `.github/workflows/package.yml` calls the standard reusable workflow.
 - Application workflow inputs use event-safe expressions for manual, tag push, and release events.
-- Matrix selection works for all declared target profiles, platforms, architectures, and formats.
-- Package ids and artifact names follow `<platform>-<architecture>-<profile>-<format-token>` and `<artifactPrefix>-<packageId>` for generic server, PC desktop, mobile, tablet, and multi-format targets, and Linux native `deb`/`rpm` package ids include the `distribution` segment.
+- Matrix selection works for all declared target profiles, platforms, architectures, variants, and formats.
+- Package ids and artifact names follow `<platform>-<architecture>-<profile>-<format-token>` and `<artifactPrefix>-<packageId>` for generic server, PC desktop, mobile, tablet, and multi-format targets, Linux native `deb`/`rpm` package ids include the `distribution` segment, and variant targets insert `<variant>` before `<format-token>`.
 - Linux native package lifecycle and deployment lifecycle receive `SDKWORK_PACKAGE_DISTRIBUTION`.
+- Variant package lifecycle and deployment lifecycle receive `SDKWORK_PACKAGE_VARIANT`.
 - Lifecycle steps receive the standard package and deployment environment variables.
 - Signing, SBOM, attestation, workflow artifact, GitHub Release, dependency checkout, and deployment policies are enforced by executable tests or framework validation.
 - GitHub Release notes are rendered by framework changelog planning from `release.changelog`, manifest `release.notes[]`, a declared changelog file, or git commit subjects.
@@ -250,7 +257,7 @@ Application integration verification `MUST` check:
 Framework verification `MUST` check:
 
 - Planner validation rejects unknown fields, schema-declared type violations, empty target lists, duplicate target formats, unsafe paths, dependency checkout path overlaps, unsafe Git refs, unsupported token secrets, dynamic lifecycle `uses`, invalid lifecycle env values, duplicate target ids, deployment selectors that match no package target, and unsupported enum values.
-- Planner validation rejects non-canonical target ids, non-canonical explicit package ids, multi-format target package ids, missing Linux native package distributions, distribution/format mismatches, and Linux native package targets that mix `deb` or `rpm` with generic formats.
+- Planner validation rejects non-canonical target ids, non-canonical explicit package ids, multi-format target package ids, missing Linux native package distributions, distribution/format mismatches, malformed package variants, and Linux native package targets that mix `deb` or `rpm` with generic formats.
 - JSON Schema stays aligned with planner validation.
 - The generated application workflow matches the checked-in application template.
 - The setup-toolchains action consumes every declared toolchain output from the planner.
