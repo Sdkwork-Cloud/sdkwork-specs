@@ -127,6 +127,16 @@ Rules:
   - `SDKWORK_DEPLOY_ENVIRONMENT`
   - `SDKWORK_DEPLOY_URL` when configured.
   - `SDKWORK_DEPLOY_LIFECYCLE`
+- Aggregate GitHub Release publish lifecycle steps `MUST` run in a framework-defined aggregate context instead of inheriting the first package target context. They receive:
+  - `SDKWORK_RELEASE_AGGREGATE=true`
+  - `SDKWORK_PACKAGE_TARGET_ID=aggregate-release`
+  - `SDKWORK_PACKAGE_ID=aggregate-release`
+  - `SDKWORK_PACKAGE_PROFILE=library`
+  - `SDKWORK_PACKAGE_PLATFORM=web`
+  - `SDKWORK_PACKAGE_ARCHITECTURE=noarch`
+  - `SDKWORK_PACKAGE_FORMAT=zip`
+  - `SDKWORK_AGGREGATE_ARTIFACT_PATH`
+  - `SDKWORK_AGGREGATE_UPLOAD_GLOBS`
 
 ## 5. Targets And Matrix Planning
 
@@ -202,10 +212,15 @@ Rules:
 - `security.artifactAttestations: false` disables framework artifact attestation. When omitted, attestation is enabled by default for package jobs.
 - `publish.workflowArtifact: false` disables workflow artifact upload even when the caller passes `upload_artifact: true`.
 - `publish.githubRelease: false` disables GitHub Release upload even when the caller passes `publish_release: true`.
+- `publish.aggregateRelease: true` defers GitHub Release upload from per-target package jobs to one final framework publish job. Package jobs still upload workflow artifacts when workflow artifact publication is enabled.
+- `publish.aggregateArtifactPath`, when set, `MUST` be a safe relative directory where the aggregate publish job downloads package workflow artifacts. When omitted, the framework default is `release-assets`.
+- `publish.aggregateUploadGlobs`, when set, `MUST` be a non-empty list of globs uploaded by the aggregate publish job after `lifecycle.publish` completes. When omitted, the framework default is `release-assets/**/*`.
 - `publish.retentionDays`, when set, controls workflow artifact retention and must stay within the GitHub-supported retention range.
 - Release upload steps `MUST` fail when selected output globs match no files.
 - GitHub Release upload steps `MUST` write framework-rendered Release notes through `--notes-file` or an equivalent first-party action input, not hard-coded generic release bodies in each application repository.
 - The framework `MUST` render Release notes before GitHub Release upload when `publish.githubRelease` and the caller release publication input are enabled.
+- When `publish.aggregateRelease: true`, the framework `MUST` download package workflow artifacts, run `lifecycle.publish` once in aggregate release context, render Release notes through the standard changelog planner, and upload only the configured aggregate upload globs to GitHub Release.
+- Application repositories `MUST NOT` copy final GitHub Release upload, aggregate artifact download, changelog rendering, release readiness, or manifest finalization logic into local workflow YAML. App-specific finalization commands belong in `sdkwork.workflow.json` `lifecycle.publish`.
 - Application repositories `MUST NOT` implement copied Release body generation in local workflow YAML. App-specific release note generation belongs in `sdkwork.workflow.json` `release.changelog` or in a local file/manifest consumed by the framework.
 - `release.changelog.source: auto` `MUST NOT` reuse stale `sdkwork.app.config.json` `release.notes[]` entries whose version does not match the requested package version or release tag; it must fall back to `CHANGELOG.md` or git commit subjects instead.
 - When a workflow is triggered by a Git tag and no explicit `package_version` input is provided, changelog matching `MUST` use the tag-derived package version before `release.defaultVersion` so an old default manifest note cannot be reused for a newer tag.
@@ -234,6 +249,7 @@ Rules:
 - The framework `MUST` validate examples and generated application bootstrap output.
 - The framework `MUST` keep planner validation, JSON Schema, examples, and reusable workflow consumption in sync.
 - The framework `MUST` keep changelog planner output, JSON Schema, reusable workflow Release upload, and publish-release action `notes-file` handling in sync.
+- The framework `MUST` keep aggregate Release planner fields, JSON Schema, reusable workflow aggregate publish job, lifecycle action inputs, and publish-release upload globs in sync.
 - The framework setup-toolchains action `MUST` consume every supported toolchain output from the planner, including language versions and boolean mobile/native toggles.
 - Repository validation for shell injection rules `MUST` inspect only YAML literal `run` script blocks by YAML block boundaries or a parser, not by greedy text matching that includes later `env:`, `with:`, `if:`, or reusable workflow metadata.
 - The framework `MUST` run `npm test` and `npm run validate` before reporting a framework change complete.
@@ -252,6 +268,7 @@ Application integration verification `MUST` check:
 - Lifecycle steps receive the standard package and deployment environment variables.
 - Signing, SBOM, attestation, workflow artifact, GitHub Release, dependency checkout, and deployment policies are enforced by executable tests or framework validation.
 - GitHub Release notes are rendered by framework changelog planning from `release.changelog`, manifest `release.notes[]`, a declared changelog file, or git commit subjects.
+- Aggregate Release publication, when configured, downloads workflow artifacts, runs final `lifecycle.publish` in aggregate context, renders framework Release notes, and uploads configured aggregate assets only once.
 - Output globs resolve to the expected release artifacts during package validation.
 
 Framework verification `MUST` check:
@@ -267,6 +284,7 @@ Framework verification `MUST` check:
 - The reusable workflow gates upload, Release publishing, and attestation through the resolved config policy.
 - Version resolution tests prove matrix summaries, lifecycle environments, and changelog planning prefer explicit package versions, then normalized release tags, then `release.defaultVersion`.
 - Changelog tests prove `release.changelog` validation, manifest release note rendering, file-based changelog rendering, git fallback behavior, and GitHub Release `notes-file` upload wiring.
+- Aggregate Release tests prove per-target GitHub Release upload is disabled, the aggregate publish job downloads workflow artifacts, `lifecycle.publish` receives aggregate release context, Release notes are rendered by the framework, and upload uses `publish.aggregateUploadGlobs`.
 - Deploy jobs pass deployment context explicitly to lifecycle execution.
 - Repository validation checks `AGENTS.md`, compatibility shims, `.sdkwork/` files, workflow YAML, actions, schema, examples, and generator output.
 
@@ -281,5 +299,6 @@ Framework verification `MUST` check:
 - [ ] Dependency refs and checkout paths are safe.
 - [ ] Signing, SBOM, attestation, artifact upload, Release upload, and deployment policies are declared and enforced.
 - [ ] Release changelog policy is declared or defaults to `release.changelog.source: auto`, and GitHub Release upload receives framework-rendered notes.
+- [ ] Aggregate Release publication is declared when final manifest/readiness/changelog aggregation is required, and finalization logic lives in `lifecycle.publish` instead of copied local workflow YAML.
 - [ ] Deployment jobs use GitHub Environments when deployments are configured.
 - [ ] Framework changes pass `npm test` and `npm run validate`.
