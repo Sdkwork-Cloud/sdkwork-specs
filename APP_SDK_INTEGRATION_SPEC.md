@@ -216,6 +216,7 @@ Required checks for app SDK composition:
 | Session commit order | Tests prove persistence failure does not update token manager, context propagation failure rolls back token/context state, stale context is cleared, and continuation flows preserve refresh token only when allowed. |
 | Logout clearing | Tests prove local token/context state clears even when remote logout fails. |
 | Architecture SDK boundary | Static scans prove PC React/mobile React/Flutter/backend-admin packages use the correct generated SDK language and surface. |
+| Drive Uploader dependency | Tests and static scans prove upload-capable apps use injected `sdkwork-drive-app-sdk client.uploader.*`, Rust server upload paths use `DriveUploaderService` or an approved Drive product facade, and product SDK authorities do not contain Drive uploader operations. |
 | No transport bypass | Static scans prove no raw HTTP, manual auth headers, local DTO forks, generated SDK edits, or product-local appbase auth routes were introduced. |
 | Rust composition | Route manifest tests prove route crate naming, authority aggregation, owner-only SDK generation, and no frontend imports of route crates. |
 | Dependency ownership | SDK ownership checks prove dependency-owned appbase/Drive/provider routes are declared as dependencies and not regenerated into product SDKs. |
@@ -225,6 +226,7 @@ Suggested scan categories:
 
 ```text
 rg -n "fetch\\(|axios\\.|Authorization|Access-Token|X-API-Key" apps/<product>
+rg -n "/drive/uploader|/drive/upload_sessions|client\\.uploader|DriveUploaderService|sdkwork_drive_product::uploader" apps/<product>
 rg -n "auth\\.sessions|auth\\.registrations|iam\\.users\\.current|openPlatform\\.qrAuth" apps/<product>
 rg -n "sdkwork-routes-.*-(app-api|backend-api|open-api)" apps/<product>/packages
 rg -n "setTokenManager|createIamRuntime|createTokenManager|commitSession" apps/<product> apps/sdkwork-appbase
@@ -235,6 +237,7 @@ rg -n "setTokenManager|createIamRuntime|createTokenManager|commitSession" apps/<
 - [ ] Application root composes dependencies instead of copying source, routes, DTOs, or generated SDK output.
 - [ ] Product SDK families generate only product-owned operations.
 - [ ] Dependency SDK families are declared through `sdkDependencies`, component specs, or approved composed wrappers.
+- [ ] Upload-capable apps declare Drive app SDK as a dependency, client upload services call `client.uploader.*`, Rust server upload services call the Drive product uploader component, and product SDKs accept only Drive references or `MediaResource`.
 - [ ] The selected UI architecture uses the matching generated SDK language and surface.
 - [ ] Runtime/bootstrap creates one global token manager per authenticated session context.
 - [ ] Appbase app SDK, optional appbase backend SDK, and every app-api/backend-api SDK client share that same token manager.

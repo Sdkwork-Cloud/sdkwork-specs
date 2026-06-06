@@ -493,7 +493,7 @@ Required mapping for SDKWork-owned object-storage resources:
 | --- | --- |
 | `id` | Stable Drive node id, or a Drive media projection id if Drive exposes one. |
 | `kind` | Derived from Drive content type, domain role, or explicit caller metadata. |
-| `source` | `object_storage`. |
+| `source` | `drive`. |
 | `uri` | `drive://spaces/{spaceId}/nodes/{nodeId}`. |
 | `objectBlobId` | Stable Drive storage object/version id when Drive exposes one; otherwise omit and rely on `uri` plus Drive metadata. |
 | `fileName` | Drive node display name or original filename policy result. |
@@ -510,14 +510,14 @@ Drive-backed example:
 {
   "id": "node_01HR6P7ZJQ4A7M2CKA9F0P6R7S",
   "kind": "image",
-  "source": "object_storage",
+  "source": "drive",
   "uri": "drive://spaces/space_app_upload_01/nodes/node_01HR6P7ZJQ4A7M2CKA9F0P6R7S",
   "fileName": "demo.png",
   "mimeType": "image/png",
   "sizeBytes": "424242",
   "checksum": {
     "algorithm": "sha256",
-    "value": "3f786850e387550fdab836ed7e6dc881de23001b"
+    "value": "3f786850e387550fdab836ed7e6dc881de23001b000000000000000000000000"
   },
   "access": {
     "visibility": "tenant"
