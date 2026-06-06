@@ -154,9 +154,33 @@ Rules:
 - Appbase current-user, login, registration, verification, OAuth, QR auth, password reset, refresh, current session, and logout calls `MUST` use appbase SDK resources or approved appbase wrappers.
 - Services that consume protected open-api SDKs `MUST` receive injected SDK clients and an approved API key credential provider from runtime/bootstrap. They `MUST NOT` receive raw API key strings from UI components or construct `X-API-Key` headers manually.
 - Frontend services MUST NOT generate requestId or xRequestId values, set `X-Request-Id`/`x-request-id`, or pass generated SDK `xRequestId` params. They may generate business `Idempotency-Key` values for retriable commands and must read returned `requestId` values from server responses when correlation is needed.
-- File upload, download, import, and generated-asset storage services `MUST` use generated Drive SDK clients governed by `DRIVE_SPEC.md`. UI-local `File`, object URL previews, upload progress, and presigned URLs must remain transient view state.
+- File upload, download, import, and generated-asset storage services `MUST` use generated Drive SDK clients governed by `DRIVE_SPEC.md`. All client-side uploads must go through `sdkwork-drive-app-sdk client.uploader.*`; UI-local `File`, object URL previews, upload progress, local resumable state, and presigned URLs must remain transient view or service state.
 - Media upload, picker, import, and generated-asset services `MUST` use `MediaResource` contracts from `MEDIA_RESOURCE_SPEC.md` once data crosses the business service boundary.
 - Frontend DTO field names for media should use natural business roles such as `avatar`, `cover`, `thumbnail`, `poster`, `video`, `audio`, `file`, `document`, `asset`, `mainImage`, `galleryImage`, `detailImage`, or `skuImage`. Do not use redundant names such as `coverMedia` when the type is already `MediaResource`.
+
+### 3.1 Drive Uploader Services
+
+Frontend upload services are thin domain facades over Drive Uploader.
+
+Standard service flow:
+
+```text
+UI file picker / platform asset
+  -> feature upload service supplies attribution and profile
+  -> injected Drive app SDK client.uploader.* uploads/resumes/completes
+  -> service normalizes Drive result to Drive reference or MediaResource
+  -> business SDK command stores the business relation
+```
+
+Rules:
+
+- Runtime/bootstrap owns the concrete Drive app SDK client and injects it into upload services with the same global TokenManager used by authenticated app-api SDKs.
+- Upload services `MUST` use high-level methods such as `client.uploader.upload`, `uploadByProfile`, `uploadImage`, `uploadVideo`, `uploadAudio`, `uploadDocument`, `uploadArchive`, `uploadText`, `uploadDataset`, `uploadAttachment`, `uploadAvatar`, or `uploadThumbnail`.
+- Upload services `MUST` supply `tenantId`, optional `organizationId`, current `userId` or allowed `anonymousId`, `appId`, `appResourceType`, `appResourceId`, optional `scene`, optional `source`, `uploadProfileCode`, and retention from application context or feature configuration.
+- UI components `MUST NOT` assemble Drive Uploader request metadata except user-selected file facts and explicit field-level intent such as media role. Components do not own `appId`, `appResourceType`, `appResourceId`, `scene`, `source`, object keys, upload session ids, or retention policy.
+- Feature code `MUST NOT` call raw `fetch`, `axios`, generic request clients, or handwritten SDKs against `/app/v3/api/drive/uploader/*`, `/app/v3/api/drive/upload_sessions/*`, S3, OSS, MinIO, local file-store, or provider presign endpoints. The Drive SDK composed uploader may perform the raw byte upload to the short-lived provider URL returned by Drive.
+- Business form payloads `MUST` contain only Drive references, Drive-backed `MediaResource` values, or business relation ids after upload completion. They must not submit `File`, object URL, presigned URL, provider URL, bucket, object key, upload part list, or local uploader state.
+- Product-specific upload widgets may exist, but they are UI wrappers over an injected upload service. They are not alternate upload engines.
 
 ## 4. State And Cache
 
@@ -219,6 +243,8 @@ Rules:
 - [ ] Appbase IAM runtime and one global token manager are wired in runtime/bootstrap when authenticated app-api/backend-api SDK clients are used.
 - [ ] Architecture-specific SDK language and dependency SDK composition follow `APP_SDK_INTEGRATION_SPEC.md`.
 - [ ] No raw HTTP, manual auth headers, or manual API key headers exist in shared business modules.
+- [ ] Upload services use injected Drive app SDK `client.uploader.*`, supply required attribution/profile/retention metadata, and persist only Drive references or `MediaResource`.
+- [ ] UI upload components keep files, previews, progress, retry state, and presigned URLs transient.
 - [ ] Auth/session/tenant switch clears sensitive state.
 - [ ] Permission-denied and validation-error states are covered.
 - [ ] Keyboard and accessible labels are covered for interactive controls.
