@@ -1,8 +1,8 @@
 # App SDK Integration And Composition Standard
 
 - Version: 1.0
-- Scope: app SDK integration across PC React, mobile React, Flutter, desktop/native, Rust-enabled apps, app dependency composition, appbase IAM runtime, and global token-manager wiring
-- Related: `APPLICATION_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Scope: app SDK integration across PC React, mobile React, Flutter, desktop/native, Rust-enabled apps, Drive Uploader, app dependency composition, appbase IAM runtime, and global token-manager wiring
+- Related: `APPLICATION_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork applications integrate generated SDKs and reusable appbase capabilities without copying APIs, forking clients, or creating local auth behavior. Applications are composition roots. Product apps compose dependency SDKs, shared modules, appbase IAM runtime, Rust route/service crates, and architecture-specific UI packages through explicit boundaries.
 
@@ -50,6 +50,7 @@ Applications depend on each other through stable artifacts.
 | Dependency kind | Consume through | Forbidden |
 | --- | --- | --- |
 | Appbase IAM/session/workspace/bootstrap | `sdkwork-appbase` packages, generated appbase SDKs, appbase Rust crates | product-local login routes, copied auth UI, regenerated appbase APIs |
+| Drive upload/download/storage | Client upload through `sdkwork-drive-app-sdk client.uploader.*`; server-side Rust upload through `DriveUploaderService` or approved `sdkwork_drive_product::uploader`; product SDKs accept Drive references or `MediaResource` | product-local upload endpoints, raw Drive HTTP, provider SDK calls, app-local upload tables/counters, regenerating Drive APIs into product SDKs |
 | Product app API | generated `sdkwork-<domain>-app-sdk` for the target language | raw HTTP, backend SDK, route constants |
 | Product backend API | generated `sdkwork-<domain>-backend-sdk` for admin/operator clients | app SDK for operator resources, raw HTTP |
 | Product open/domain API | generated `sdkwork-<domain>-sdk` with declared open-api credential mode | app login token manager unless explicitly declared by contract |
@@ -61,10 +62,25 @@ Rules:
 
 - Each application or independent git repository that owns APIs owns its local `sdks/` workspace.
 - The product SDK family generates only product-owned operations. Appbase, Drive, provider, and other reusable dependency operations stay in their own SDK families.
+- File upload is a Drive dependency capability. Product app/backend SDKs should accept `driveUri`, `driveSpaceId`, `driveNodeId`, Drive references, or Drive-backed `MediaResource` values after upload; they must not add product-local upload-session, presign, part, or completion methods.
 - `sdkDependencies` `MUST` declare dependency SDK families in SDK assembly metadata and component specs when a product SDK or composed facade depends on them.
 - A consuming application may compose dependency SDKs in runtime/bootstrap, service facades, or approved composed packages outside generated transport ownership.
 - Generated transport output `MUST NOT` import, vendor, re-export, or rewrite dependency SDK packages.
 - Component specs `MUST` expose the dependency contract clearly enough that a consumer can tell whether it depends on a generated SDK, a composed wrapper, a service port, or a host adapter.
+
+### 2.1 Drive Uploader Composition
+
+Applications that upload files must compose Drive Uploader as a dependency, not as product-local infrastructure.
+
+Rules:
+
+- Client upload services `MUST` receive an injected Drive app SDK client or a narrow facade backed by `sdkwork-drive-app-sdk client.uploader.*`.
+- Runtime/bootstrap `MUST` create the Drive app SDK client with its own Drive App API base URL and bind the same global TokenManager when the Drive App API surface is authenticated.
+- Service facades may expose domain names such as `uploadAvatar`, `uploadAttachment`, or `uploadCatalogImage`, but their implementation must delegate to `client.uploader.uploadAvatar`, `client.uploader.uploadAttachment`, `client.uploader.uploadImage`, `client.uploader.uploadByProfile`, or another approved Drive uploader method.
+- Product service facades must supply Drive Uploader attribution from application context: `tenantId`, optional `organizationId`, user or anonymous actor, `appId`, `appResourceType`, `appResourceId`, optional `scene`, optional `source`, `uploadProfileCode`, and retention.
+- UI components may select files, preview files, display progress, retry, and remove local selections. They must not create upload task ids, provider object keys, Drive presign URLs, or statistic dimensions directly.
+- Server-side Rust application services that upload generated/imported bytes `MUST` call `DriveUploaderService`, `PrepareUploaderUploadCommand`, or an approved Drive product uploader facade. They must not call Drive App API over HTTP from the same trusted backend just to reuse client routes.
+- Product SDK generation `MUST NOT` include Drive uploader App API operations in the product authority. Drive uploader operations stay in the Drive SDK family and are declared as dependencies when composed.
 
 ## 3. Architecture-Specific SDK Families
 
