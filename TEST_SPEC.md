@@ -111,6 +111,7 @@ Rules:
 - Generator tests `MUST` prove generated lifecycle placeholder steps are shell-neutral across Linux, Windows, and macOS runners by using an explicit supported shell and reading SDKWork values through a shell-neutral environment API such as `process.env`.
 - Lifecycle tests `MUST` prove package and deployment environment variables are injected into lifecycle steps, Linux native package deployment keeps `SDKWORK_PACKAGE_DISTRIBUTION`, and execution stops on failure.
 - Publication tests `MUST` prove `publish.workflowArtifact`, `publish.githubRelease`, `publish.retentionDays`, and caller inputs are both respected.
+- Changelog tests `MUST` prove `release.changelog` validation, manifest `release.notes[]` rendering, file-based changelog rendering, git fallback rendering, generated `init-app` default changelog config, and GitHub Release `notes-file` upload wiring.
 - Supply-chain tests `MUST` prove `security.signingRequired`, `security.sbomRequired`, `security.artifactAttestations`, target-level signing overrides, and artifact attestation gates are enforced.
 - Dependency checkout tests `MUST` prove refs are safe before `git fetch`, checkout paths are safe, tokens are not embedded in clone URLs, and dependency ref JSON inputs are passed through environment variables or files rather than direct shell expression interpolation.
 - Composite action tests `MUST` prove shell-based actions pass action inputs through environment variables or structured argument arrays instead of embedding `${{ inputs.* }}` directly in shell script bodies.

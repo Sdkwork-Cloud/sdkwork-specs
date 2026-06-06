@@ -71,6 +71,11 @@ Rules:
 - `app.id` `MUST` be a stable lowercase identifier. `release.artifactPrefix` `MUST` be a stable lowercase kebab token suitable for artifact names.
 - `app.name`, when present, `MUST` be a non-empty string.
 - `app.repository` and dependency repositories `MUST` use `owner/repo` form.
+- `release.changelog`, when present, `MUST` declare a framework-supported changelog source: `auto`, `app-manifest`, `file`, `git`, or `none`.
+- `release.changelog.source: auto` `MUST` resolve release notes from `sdkwork.app.config.json` `release.notes[]`, then a repository-root `CHANGELOG.md`, then recent git commit subjects.
+- `release.changelog.source: app-manifest` `MUST` read the application manifest selected by `app.configPath` or `sdkwork.app.config.json` and require a matching release note for the package version, tag, or current manifest note.
+- `release.changelog.source: file` `MUST` require `release.changelog.path`, and that path `MUST` be a safe relative markdown path.
+- `release.changelog.maxCommitSubjects`, when present, `MUST` be an integer from 1 to 200.
 - Toolchain version fields such as `node`, `pnpm`, `python`, `java`, `go`, `rust`, `flutter`, `dotnet`, and `wix` `MUST` be strings. Boolean toolchain toggles such as `android` and `xcode` `MUST` be booleans.
 - Paths such as `app.sourcePath`, `app.configPath`, dependency checkout paths, lifecycle working directories, and output globs `MUST` be safe relative paths. They must not be absolute, escape the repository with `..`, or use platform-specific backslash traversal.
 - Package target identifiers and optional `packageId` values `MUST` be stable because they appear in artifact names, deployment selection, and lifecycle environment variables.
@@ -191,6 +196,9 @@ Rules:
 - `publish.githubRelease: false` disables GitHub Release upload even when the caller passes `publish_release: true`.
 - `publish.retentionDays`, when set, controls workflow artifact retention and must stay within the GitHub-supported retention range.
 - Release upload steps `MUST` fail when selected output globs match no files.
+- GitHub Release upload steps `MUST` write framework-rendered Release notes through `--notes-file` or an equivalent first-party action input, not hard-coded generic release bodies in each application repository.
+- The framework `MUST` render Release notes before GitHub Release upload when `publish.githubRelease` and the caller release publication input are enabled.
+- Application repositories `MUST NOT` implement copied Release body generation in local workflow YAML. App-specific release note generation belongs in `sdkwork.workflow.json` `release.changelog` or in a local file/manifest consumed by the framework.
 - Framework logs `MUST` redact secret-like values and must not print raw tokens, API keys, or credentials.
 
 ## 8. Deployment Jobs
@@ -210,10 +218,12 @@ Rules:
 
 - `sdkwork-github-workflow` `MUST` have `AGENTS.md`, `CLAUDE.md` when compatibility is required, and a source-controlled `.sdkwork/` workspace according to `SDKWORK_WORKSPACE_SPEC.md`.
 - The framework `init-app` generator `MUST` emit canonical package targets for each requested profile. Server starter targets `MUST` include `linux-debian-x64-server-deb`, `linux-rhel-x64-server-rpm`, and `linux-x64-server-tar-gz`. Desktop starter targets `MUST` include `windows-x64-desktop-msi`, `windows-x64-desktop-exe`, and `macos-arm64-desktop-dmg`.
+- The framework `init-app` generator `MUST` emit a default `release.changelog.source: auto` configuration so new applications publish Release notes from the app manifest, `CHANGELOG.md`, or git commit subjects without local workflow YAML.
 - Generated lifecycle placeholder steps `MUST` be shell-neutral across Linux, Windows, and macOS runners. Placeholders SHOULD use the planner-supported `node` shell and read SDKWork values through `process.env` instead of Bash-only `$SDKWORK_*` or PowerShell-only `$env:SDKWORK_*` syntax.
 - The framework `MUST` keep the application workflow template as a single source of truth for generator output.
 - The framework `MUST` validate examples and generated application bootstrap output.
 - The framework `MUST` keep planner validation, JSON Schema, examples, and reusable workflow consumption in sync.
+- The framework `MUST` keep changelog planner output, JSON Schema, reusable workflow Release upload, and publish-release action `notes-file` handling in sync.
 - The framework setup-toolchains action `MUST` consume every supported toolchain output from the planner, including language versions and boolean mobile/native toggles.
 - Repository validation for shell injection rules `MUST` inspect only YAML literal `run` script blocks by YAML block boundaries or a parser, not by greedy text matching that includes later `env:`, `with:`, `if:`, or reusable workflow metadata.
 - The framework `MUST` run `npm test` and `npm run validate` before reporting a framework change complete.
@@ -230,6 +240,7 @@ Application integration verification `MUST` check:
 - Linux native package lifecycle and deployment lifecycle receive `SDKWORK_PACKAGE_DISTRIBUTION`.
 - Lifecycle steps receive the standard package and deployment environment variables.
 - Signing, SBOM, attestation, workflow artifact, GitHub Release, dependency checkout, and deployment policies are enforced by executable tests or framework validation.
+- GitHub Release notes are rendered by framework changelog planning from `release.changelog`, manifest `release.notes[]`, a declared changelog file, or git commit subjects.
 - Output globs resolve to the expected release artifacts during package validation.
 
 Framework verification `MUST` check:
@@ -243,6 +254,7 @@ Framework verification `MUST` check:
 - Shell-based composite actions pass action inputs through environment variables or structured argument arrays before command execution.
 - Repository validation rejects `${{ inputs.* }}` inside literal `run` shell bodies while allowing those expressions in GitHub-evaluated `env:`, `with:`, and workflow metadata contexts.
 - The reusable workflow gates upload, Release publishing, and attestation through the resolved config policy.
+- Changelog tests prove `release.changelog` validation, manifest release note rendering, file-based changelog rendering, git fallback behavior, and GitHub Release `notes-file` upload wiring.
 - Deploy jobs pass deployment context explicitly to lifecycle execution.
 - Repository validation checks `AGENTS.md`, compatibility shims, `.sdkwork/` files, workflow YAML, actions, schema, examples, and generator output.
 
@@ -256,5 +268,6 @@ Framework verification `MUST` check:
 - [ ] Lifecycle steps use safe paths, supported shells, string env values, and `run` commands only.
 - [ ] Dependency refs and checkout paths are safe.
 - [ ] Signing, SBOM, attestation, artifact upload, Release upload, and deployment policies are declared and enforced.
+- [ ] Release changelog policy is declared or defaults to `release.changelog.source: auto`, and GitHub Release upload receives framework-rendered notes.
 - [ ] Deployment jobs use GitHub Environments when deployments are configured.
 - [ ] Framework changes pass `npm test` and `npm run validate`.
