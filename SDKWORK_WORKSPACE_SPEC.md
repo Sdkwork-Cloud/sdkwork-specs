@@ -2,11 +2,11 @@
 
 - Version: 1.0
 - Scope: source-controlled `.sdkwork/` workspace metadata at every git repository root and every SDKWork application root
-- Related: `README.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `README.md`, `SOUL.md`, `AGENTS_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the repository/application `.sdkwork/` directory. It is the local knowledge and extension workspace for SDKWork development. It stores reusable skills, repository-local plugins, and optional machine-readable workspace manifests that help agents, developers, and CI use the same standards.
 
-Every SDKWork git repository root and every SDKWork application root `MUST` contain `.sdkwork/skills/` and `.sdkwork/plugins/`. Empty directories are not enough unless the repository has a tracked placeholder such as `README.md` or `.gitkeep`.
+Every SDKWork git repository root and every SDKWork application root `MUST` contain `AGENTS.md`, `.sdkwork/skills/`, and `.sdkwork/plugins/`. SDKWork-managed roots that support tool-specific compatibility also `MUST` contain shim files such as `CLAUDE.md`, `GEMINI.md`, or `CODEX.md` that point to `AGENTS.md`. Empty directories are not enough unless the repository has a tracked placeholder such as `README.md` or `.gitkeep`.
 
 ## 1. Directory Meanings
 
@@ -31,6 +31,10 @@ Every git repository root and every SDKWork application root `MUST` have:
 
 ```text
 <repo-or-application-root>/
+  AGENTS.md
+  CLAUDE.md                 # compatibility shim to AGENTS.md when Claude Code is supported
+  GEMINI.md                 # compatibility shim to AGENTS.md when Gemini CLI is supported
+  CODEX.md                  # compatibility shim to AGENTS.md when Codex-specific entry is supported
   .sdkwork/
     README.md
     .gitignore
@@ -59,6 +63,8 @@ Every git repository root and every SDKWork application root `MUST` have:
 
 Rules:
 
+- `AGENTS.md` `MUST` follow `AGENTS_SPEC.md`, cite `SOUL.md`, and declare the relative path to root `sdkwork-specs/README.md`.
+- Tool compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md`, when present, `MUST` point to `AGENTS.md`; they must not copy or override root standards.
 - `.sdkwork/README.md` `MUST` explain the workspace purpose, owner, and which directories are authoritative.
 - `.sdkwork/skills/README.md` `MUST` explain how to add repository/application skills.
 - `.sdkwork/plugins/README.md` `MUST` explain how to add repository/application plugins.
@@ -150,8 +156,8 @@ Rules:
 
 - `kind` `MUST` be `sdkwork.workspace`.
 - `rootType` `MUST` be `repository` or `application`.
+- `canonicalSpecs` should include the repository/application relative path to the root standards entrypoint, such as `../sdkwork-specs/README.md`, when the workspace follows central SDKWork standards.
 - `skillsDir` and `pluginsDir` `MUST` point to the required local directories.
-- `canonicalSpecs` should point to the root standards entrypoint used by the repository/application.
 - Optional manifests must not become a second source of truth for API, SDK, database, security, runtime, or component contracts.
 
 ## 6. Source Control And Security
@@ -168,13 +174,17 @@ Rules:
 
 Recommended discovery order:
 
-1. Current application root `.sdkwork/`.
-2. Enclosing git repository root `.sdkwork/`.
-3. Root `specs/` standards referenced by the local workspace.
-4. User-global skills or plugins.
+1. Nearest `AGENTS.md`.
+2. Current application root `sdkwork.app.config.json` when present.
+3. Current component/application local `specs/` when present.
+4. Current application root `.sdkwork/`.
+5. Enclosing git repository root `AGENTS.md` and `.sdkwork/`.
+6. Root `sdkwork-specs/` standards referenced by relative path.
+7. User-global skills or plugins.
 
 Rules:
 
+- `AGENTS.md` provides the first execution index, but it must not duplicate or override root specs.
 - Closer `.sdkwork/` content may add application-specific guidance, but it must not contradict repository-root or root `specs/` standards.
 - If two skills have the same name, the application-local skill may specialize the repository skill only when it explicitly cites the repository skill or canonical specs it extends.
 - User-global skills and plugins are optional conveniences. They cannot replace the checked-in repository/application `.sdkwork/` standard content.
@@ -183,6 +193,10 @@ Rules:
 
 Repository/application workspace verification `MUST` check:
 
+- Every git repository root has `AGENTS.md`.
+- Every SDKWork application root has `AGENTS.md`.
+- `AGENTS.md` resolves the relative path to `sdkwork-specs/README.md`, `SOUL.md`, and `AGENTS_SPEC.md`.
+- Tool compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md`, when present, resolve the same-root `AGENTS.md` and the relative path to `sdkwork-specs/README.md`.
 - Every git repository root has `.sdkwork/`, `.sdkwork/skills/`, and `.sdkwork/plugins/`.
 - Every application root has `.sdkwork/`, `.sdkwork/skills/`, and `.sdkwork/plugins/`.
 - Required directories are represented by tracked files such as `README.md` when they are otherwise empty.
@@ -194,10 +208,14 @@ Repository/application workspace verification `MUST` check:
 
 ## 9. Acceptance Checklist
 
+- [ ] Git repository root has `AGENTS.md` that follows `AGENTS_SPEC.md`.
+- [ ] Git repository root has tool compatibility shims, such as `CLAUDE.md`, `GEMINI.md`, or `CODEX.md`, when those tool entrypoints are required.
 - [ ] Git repository root has `.sdkwork/README.md`.
 - [ ] Git repository root has `.sdkwork/skills/README.md`.
 - [ ] Git repository root has `.sdkwork/plugins/README.md`.
-- [ ] Each application root has its own `.sdkwork/README.md`, `.sdkwork/skills/README.md`, and `.sdkwork/plugins/README.md`.
+- [ ] Each application root has its own `AGENTS.md`, `.sdkwork/README.md`, `.sdkwork/skills/README.md`, and `.sdkwork/plugins/README.md`.
+- [ ] Each tool-compatible application root has shim files such as `CLAUDE.md`, `GEMINI.md`, or `CODEX.md` pointing to its own `AGENTS.md`.
+- [ ] `AGENTS.md` uses valid relative links to root `sdkwork-specs`.
 - [ ] `.sdkwork/.gitignore` ignores local, temp, cache, and secret-bearing state.
 - [ ] Repository/application skills have `SKILL.md` and cite the relevant root specs.
 - [ ] Repository/application plugins have `.codex-plugin/plugin.json` when installable.

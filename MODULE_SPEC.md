@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: reusable frontend/backend modules, appbase packages, service facades, extension points, module composition
-- Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`
+- Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `RUST_CODE_SPEC.md`, `JAVA_CODE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, `FRONTEND_CODE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the building-block model for SDKWork applications. A reusable module must be installable, understandable, replaceable, and testable without copying app-specific code.
 
@@ -30,6 +30,7 @@ Rules:
 - A module `MUST NOT` require app-local globals, hidden singleton SDK clients, hard-coded URLs, hard-coded tenant IDs, or manually assembled auth headers.
 - A module `MUST` be usable with SaaS Java SDK clients and Rust local/private SDK clients when its domain is shared.
 - A module `SHOULD` publish a small public type surface and hide implementation internals.
+- A module implementation `MUST` follow `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, and the language-specific spec only for languages it actually uses.
 
 ## 2. Package Classification
 
@@ -98,6 +99,21 @@ Forbidden dependencies:
 - `service` importing app route files, page components, or native host implementations.
 - shared modules importing another package through `/src/...` internals.
 - foundation modules depending on product-specific feature modules.
+
+## 4.1 Implementation Layout
+
+Rules:
+
+- Module entrypoints expose public contracts and composition helpers only.
+- Business logic belongs in service/use-case modules.
+- Persistence belongs in repository modules.
+- Provider calls and host/runtime integration belong in adapters.
+- Configuration belongs in typed config/bootstrap modules.
+- Tests must target the public contract or focused internal units, not private file paths from other packages.
+- Rust modules must not collect business logic in `src/lib.rs`; `RUST_CODE_SPEC.md` defines the required split.
+- Java modules follow controller/service/repository/package boundaries from `JAVA_CODE_SPEC.md`.
+- TypeScript modules use `src/index.ts` as the export boundary and typed SDK ports from `TYPESCRIPT_CODE_SPEC.md`.
+- Frontend modules keep UI, hooks, services, state, routes, and i18n separated according to `FRONTEND_CODE_SPEC.md`.
 
 ## 5. SDK Client Port Injection
 
@@ -202,6 +218,8 @@ Each reusable module `MUST` include:
 
 - [ ] Module has one domain and one capability.
 - [ ] Public contract is exported from `src/index.ts`.
+- [ ] Implementation follows `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, and only the language specs used by the module.
+- [ ] Entry files do not contain unrelated business logic, persistence, provider adapters, and tests.
 - [ ] Dependencies flow in the allowed direction.
 - [ ] SDK clients are injected and typed.
 - [ ] Concrete SDK constructors stay in runtime/bootstrap or application adapters.

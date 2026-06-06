@@ -10,7 +10,10 @@ No standard is complete until it is executable.
 
 | Area | Required verification |
 | --- | --- |
+| Agent entrypoints | Repository/application `AGENTS.md` presence, tool compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` where required, required sections, relative `sdkwork-specs` path checks, `SOUL.md`/`AGENTS_SPEC.md` references, and no duplicated root spec bodies |
 | Repository workspace | Git repository root and application root `.sdkwork/` presence checks, tracked `skills/` and `plugins/` placeholders, skill/plugin manifest checks, static scans for forbidden secrets/runtime/generated SDK files |
+| Code style and naming | `CODE_STYLE_SPEC.md` and `NAMING_SPEC.md` checks for focused entrypoints, public exports, generated-code boundaries, canonical names, and no catch-all implementation files |
+| Language-specific code | On-demand Rust, Java, TypeScript, and frontend checks only when those languages/frameworks are touched |
 | API | OpenAPI validation, strict profile validation, request/response examples, Rust route crate naming and route-manifest aggregation checks |
 | Web backend | Controller/router path checks, handler/service/repository boundary tests, typed request-context checks, transaction/idempotency tests, static scans for raw credential parsing |
 | RPC | Proto compile, proto lint, breaking-change check, service manifest, unary server/client smoke tests, generated cross-language client checks |
@@ -24,6 +27,7 @@ No standard is complete until it is executable.
 | Frontend | Service tests with injected SDK client, UI integration tests |
 | UI architecture | Static/package scan that the package family matches `UI_ARCHITECTURE_SPEC.md` plus `APP_PC_ARCHITECTURE_SPEC.md` for PC roots and exactly one detailed UI spec such as `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, or `BACKEND_UI_SPEC.md` |
 | Deployment | SaaS/local/private parity tests |
+| GitHub workflow | `GITHUB_WORKFLOW_SPEC.md` checks for `sdkwork.workflow.json`, thin reusable workflow entrypoint, planner/schema alignment, safe refs and paths, lifecycle env, publication policy gates, attestation policy, deployment environment binding, and repository validation |
 | Events | Schema compatibility, idempotent consumer, replay behavior |
 | Performance | Pagination, latency budget, retry, rate-limit behavior |
 | Documentation | README/examples match public contracts |
@@ -51,6 +55,10 @@ Repository workspace tests make `SDKWORK_WORKSPACE_SPEC.md` executable.
 
 Rules:
 
+- Every git repository root and SDKWork application root `MUST` be checked for `AGENTS.md`.
+- `AGENTS.md` tests `MUST` verify required sections from `AGENTS_SPEC.md`, relative links to `sdkwork-specs/README.md`, `SOUL.md`, and `AGENTS_SPEC.md`, and task-to-spec mappings for on-demand language specs.
+- Compatibility files such as `CLAUDE.md`, `GEMINI.md`, `CODEX.md`, `agent.md`, `AGENT.md`, or `agents.md`, when present, `MUST` point to `AGENTS.md` and must not duplicate a divergent rule body.
+- `AGENTS.md` static scans `MUST` fail when the file copies large root spec bodies instead of linking to relative root specs.
 - Every git repository root `MUST` be checked for `.sdkwork/README.md`,
   `.sdkwork/skills/README.md`, and `.sdkwork/plugins/README.md`.
 - Every SDKWork application root `MUST` be checked for `.sdkwork/README.md`,
@@ -69,6 +77,46 @@ Rules:
   `.sdkwork/sdkwork-generator-report.json` as repository/application workspace files. Those files
   are valid only below generated SDK output and are governed by `SDK_SPEC.md` and
   `SDK_WORKSPACE_GENERATION_SPEC.md`.
+
+## 2.0.1 Code Style And Naming Tests
+
+Code style tests make `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, and language specs executable.
+
+Rules:
+
+- Naming tests `MUST` verify package, SDK family, API authority, route crate, component, and database identifiers touched by a change follow `NAMING_SPEC.md`.
+- Component manifest tests `MUST` verify authored components include `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, and only the language-specific specs required by `component.languages`.
+- Rust code scans `MUST` fail when `src/lib.rs` contains handlers, repositories, SQL queries, provider clients, large DTO definitions, long business services, or test fixtures instead of module declarations and re-exports.
+- Rust route crate scans `MUST` verify `paths.rs`, `routes.rs`, `handlers.rs`, and `manifest.rs` exist when a crate owns SDKWork HTTP routes.
+- Java code scans `MUST` verify Spring controllers stay thin and do not own business logic, persistence, or provider calls.
+- TypeScript code scans `MUST` verify `src/index.ts` is a public export boundary and that business modules do not import package internals through `/src/...`.
+- Frontend code scans `MUST` verify UI components do not construct SDK clients or raw HTTP requests.
+- Generated-code scans `MUST` fail when generated SDK transport output is hand-edited outside approved `custom/` roots or composed facades.
+
+## 2.0.2 GitHub Workflow Tests
+
+GitHub workflow tests make `GITHUB_WORKFLOW_SPEC.md` executable.
+
+Rules:
+
+- Application workflow tests `MUST` verify `sdkwork.workflow.json` exists when the application is packaged, released, or deployed through GitHub Actions.
+- Application workflow tests `MUST` verify `.github/workflows/package.yml` is a thin reusable workflow call to `Sdkwork-Cloud/sdkwork-github-workflow/.github/workflows/sdkwork-package.yml@<pinned-ref>`.
+- Application workflow tests `MUST` fail when large framework workflow bodies, dependency checkout scripts, matrix planning, release upload logic, or attestation logic are copied into application repositories.
+- Framework planner tests `MUST` reject unknown config properties, schema-declared type violations, empty target lists, duplicate target ids, non-canonical target ids, duplicate target formats, unsupported enum values, missing or mismatched Linux native package distributions, mixed Linux native/generic formats, dynamic lifecycle `uses`, unsafe relative paths, dependency checkout path overlaps, unsafe dependency refs, unsupported dependency token secret names, deployment selectors that match no package target, and non-string lifecycle `env` values.
+- Framework planner tests `MUST` prove JSON Schema, planner validation, example configs, generated bootstrap output, and reusable workflow policy consumption remain aligned.
+- Package naming tests `MUST` prove package ids use `<platform>-<architecture>-<profile>-<format-token>` for generic packages, Linux native `deb`/`rpm` package ids use `linux-<distribution>-<architecture>-<profile>-<format-token>`, artifact names use `<artifactPrefix>-<packageId>`, `tar.gz` becomes `tar-gz`, server packages do not use `service` aliases, Windows desktop targets cover both `msi` and `exe` when both installers are configured, and server, PC desktop, mobile, tablet, and multi-format targets remain unique.
+- Toolchain tests `MUST` prove `actions/setup-toolchains` consumes every planner output for supported toolchains instead of silently ignoring declared language versions or mobile/native toggles.
+- Matrix tests `MUST` cover platform, architecture, profile, format, multi-format artifact naming, no-target failure behavior, and tablet targets when tablet packaging is supported.
+- Generator tests `MUST` prove `init-app` emits canonical starter targets for requested profiles, including Linux Debian `deb`, Linux RHEL `rpm`, generic Linux `tar.gz`, Windows desktop `msi`, Windows desktop `exe`, and macOS desktop `dmg` when server and desktop profiles are requested.
+- Generator tests `MUST` prove generated lifecycle placeholder steps are shell-neutral across Linux, Windows, and macOS runners by using an explicit supported shell and reading SDKWork values through a shell-neutral environment API such as `process.env`.
+- Lifecycle tests `MUST` prove package and deployment environment variables are injected into lifecycle steps, Linux native package deployment keeps `SDKWORK_PACKAGE_DISTRIBUTION`, and execution stops on failure.
+- Publication tests `MUST` prove `publish.workflowArtifact`, `publish.githubRelease`, `publish.retentionDays`, and caller inputs are both respected.
+- Supply-chain tests `MUST` prove `security.signingRequired`, `security.sbomRequired`, `security.artifactAttestations`, target-level signing overrides, and artifact attestation gates are enforced.
+- Dependency checkout tests `MUST` prove refs are safe before `git fetch`, checkout paths are safe, tokens are not embedded in clone URLs, and dependency ref JSON inputs are passed through environment variables or files rather than direct shell expression interpolation.
+- Composite action tests `MUST` prove shell-based actions pass action inputs through environment variables or structured argument arrays instead of embedding `${{ inputs.* }}` directly in shell script bodies.
+- Repository validation tests `MUST` include both a negative case for `${{ inputs.* }}` inside literal `run` script bodies and a positive case proving later `env:`, `with:`, `if:`, or reusable workflow metadata expressions are not misclassified as shell script content.
+- Deployment tests `MUST` prove configured deployments bind to GitHub Environments and pass deployment environment, URL, and lifecycle values to the lifecycle runner.
+- Repository validation for `sdkwork-github-workflow` `MUST` check `AGENTS.md`, compatibility shims, `.sdkwork/` files, reusable workflow YAML, composite actions, schema, examples, templates, generator output, and repository documentation.
 
 ## 2.1 Rust Route Manifest Contract Tests
 
@@ -242,6 +290,8 @@ Rules:
 ## 6. Completion Checklist
 
 - [ ] Relevant spec checklist is satisfied.
+- [ ] `AGENTS.md` exists and resolves root `sdkwork-specs` by relative path when repository/application entrypoints are touched.
+- [ ] Code style, naming, and only relevant language-specific checks pass when authored code is touched.
 - [ ] Repository/application `.sdkwork/skills/` and `.sdkwork/plugins/` checks pass when a repository root or application root is created or maintained.
 - [ ] OpenAPI/SDK generation verification passes under `SDK_SPEC.md`.
 - [ ] Web backend implementation checks pass under `WEB_BACKEND_SPEC.md` when controllers, route crates, handlers, services, repositories, or runtime composition are touched.
@@ -255,6 +305,7 @@ Rules:
 - [ ] UI architecture package placement and SDK surface checks pass for touched UI packages.
 - [ ] PC application architecture root layout, package naming, app/console/admin separation, desktop/tablet host checks, and iPadOS/Android tablet packaging checks pass when a PC application root is touched.
 - [ ] Environment/config checks pass for lifecycle environment, profile alias, deployment mode, build mode, runtime target, dev/test/staging/prod files, local override ignore rules, desktop/server split, browser public runtime, container config, and Tauri platform config.
+- [ ] GitHub workflow checks pass for thin reusable workflow entrypoints, config validation, matrix planning, dependency checkout safety, lifecycle env injection, publication policy gates, artifact attestation policy, deployment environment binding, and framework repository validation when GitHub packaging/release/deployment workflows are touched.
 - [ ] SDK base URL and Access-Token checks pass for per-surface base URL resolution, dependency SDK base URLs, forbidden token env variables, `Access-Token` header semantics, and global TokenManager injection.
 - [ ] Drive Uploader checks pass for client `client.uploader.*` usage, Rust `DriveUploaderService` usage, attribution/statistics, retention cleanup, and forbidden app-local upload/provider bypasses when upload is touched.
 - [ ] Verification commands and outputs are recorded.

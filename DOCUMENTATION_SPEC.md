@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: module README, API examples, architecture decisions, runbooks, changelogs, spec references
-- Related: all specs, including `SDKWORK_WORKSPACE_SPEC.md`
+- Related: all specs, including `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `CODE_STYLE_SPEC.md`, and `NAMING_SPEC.md`
 
 This standard defines the documentation required for reusable SDKWork capabilities. Documentation must make a module installable and operable by another application without reading its internals.
 
@@ -12,6 +12,9 @@ Rules:
 
 - Root `specs/` is the source of truth for standards.
 - App-local docs may extend root standards, but must link back to the relevant root spec.
+- Repository/application `AGENTS.md` is the agent execution entrypoint. It must link to root specs by relative path and must not duplicate root spec bodies.
+- Tool-specific files such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` are compatibility shims. They must point to `AGENTS.md` and must not become a second copy of repository rules.
+- `SOUL.md` defines shared agent behavior. Local docs may cite it, but must not replace it with a local agent philosophy.
 - Repository/application `.sdkwork/README.md`, `.sdkwork/skills/README.md`, and
   `.sdkwork/plugins/README.md` are local documentation entrypoints governed by
   `SDKWORK_WORKSPACE_SPEC.md`.
@@ -60,6 +63,8 @@ source-controlled `.sdkwork/` workspace.
 
 Rules:
 
+- `AGENTS.md` `MUST` cite `AGENTS_SPEC.md`, `SOUL.md`, and the relative root `sdkwork-specs/README.md` path.
+- Tool compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md`, when present, `MUST` cite the same-root `AGENTS.md` and the relative root `sdkwork-specs/README.md` path.
 - `.sdkwork/README.md` `MUST` explain that the directory stores repository or
   application development metadata, not runtime state.
 - `.sdkwork/skills/README.md` `MUST` explain where common skills live and how
@@ -67,6 +72,7 @@ Rules:
 - `.sdkwork/plugins/README.md` `MUST` explain where repository/application
   plugins live and when `.codex-plugin/plugin.json` is required.
 - Workspace READMEs `MUST` cite `SDKWORK_WORKSPACE_SPEC.md`.
+- Workspace READMEs should point to `AGENTS.md` for execution order and to `SOUL.md` for shared agent behavior.
 - Workspace READMEs `MUST NOT` duplicate root standards, include secrets, or
   document user-private runtime paths as committed source directories.
 
@@ -119,6 +125,8 @@ Rules:
 ## 7. Acceptance Checklist
 
 - [ ] Root specs are linked from local docs.
+- [ ] `AGENTS.md` links to root `sdkwork-specs`, `SOUL.md`, and `AGENTS_SPEC.md` by relative path.
+- [ ] Tool compatibility files such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` point to `AGENTS.md` and do not duplicate divergent rules.
 - [ ] Repository/application `.sdkwork/` README files exist and cite `SDKWORK_WORKSPACE_SPEC.md`.
 - [ ] Module README includes public API, SDK surface, config, security, and verification.
 - [ ] API examples match OpenAPI and generated SDK.

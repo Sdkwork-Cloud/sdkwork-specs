@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: local `specs/` directories for apps, reusable packages, language modules, SDK families, services, host adapters, and componentized integration units under `apps/`
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `MODULE_SPEC.md`, `APPLICATION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `CONFIG_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `AGENTS_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `MODULE_SPEC.md`, `APPLICATION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `CONFIG_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
 This standard defines the local specification boundary for every authored SDKWork component. The root `specs/` directory remains authoritative; a component-local `specs/` directory exists to make the component discoverable, maintainable, and safe to integrate without reading its internals first.
 
@@ -18,6 +18,7 @@ Rules:
 - If a component needs an exception, record it according to `GOVERNANCE_SPEC.md`.
 - Generated language outputs should not each maintain independent standards; the SDK family root owns the component spec unless a generated output becomes a hand-maintained composed package.
 - Component-local specs may reference repository/application `.sdkwork/skills` or `.sdkwork/plugins` for workflows, but they must not redefine those workspace rules.
+- Component-local `AGENTS.md`, when present, must follow `AGENTS_SPEC.md` and use relative paths to root `sdkwork-specs`.
 
 ## 2. Required Local Directory
 
@@ -83,6 +84,8 @@ Rules:
 - `component.name`, `component.type`, `component.root`, `component.domain`, `component.capability`, and `component.languages` are required.
 - `component.domain` uses canonical root domain names such as `iam`, not legacy group aliases such as `identity`.
 - `canonicalSpecs` must link to actual root spec files.
+- `canonicalSpecs` must include `CODE_STYLE_SPEC.md` and `NAMING_SPEC.md` when the component owns authored source code.
+- `canonicalSpecs` must include language-specific specs only for languages declared in `component.languages`.
 - `contracts.publicExports` lists supported integration entrypoints, not internal source paths.
 - `contracts.routeManifest` is used only by Rust HTTP route crate components. It points to the
   route crate manifest entrypoint or normalized `sdks/_route-manifests/<surface>/<packageName>.route-manifest.json`
@@ -101,6 +104,21 @@ Rules:
 | `web-backend-service` | Java/Rust HTTP backend service, controller module, handler/service/repository package, or runtime API composition unit | `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `DOMAIN_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md` when persistent, `SDK_SPEC.md`, `TEST_SPEC.md` |
 | `rust-crate`, `tauri-host`, `go-module`, `java-module`, `python-package`, `csharp-project`, `swift-package` | Language-native runtime, service, SDK, or host unit | `MODULE_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md` |
 | `sdk-family` | Multi-language generated SDK family rooted by an SDK assembly manifest | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md` |
+
+Language-specific root specs are on-demand:
+
+| `component.languages` value | Required language spec when authored source exists |
+| --- | --- |
+| `rust` | `RUST_CODE_SPEC.md` |
+| `java` | `JAVA_CODE_SPEC.md` |
+| `typescript`, `javascript`, `node` | `TYPESCRIPT_CODE_SPEC.md` |
+| `react`, `tsx`, `flutter`, `dart`, `ui` | `FRONTEND_CODE_SPEC.md` plus the matching UI architecture spec |
+
+Rules:
+
+- Components must not list unrelated language specs in `canonicalSpecs` just because the repository is polyglot.
+- Generated language outputs inherit the SDK family root spec unless they contain an authored composed facade.
+- Authored composed facades must declare their language and code style specs in the SDK family or facade component spec.
 
 Architecture UI spec selection:
 
@@ -165,6 +183,9 @@ Repository and application workspace discovery is separate from component discov
 
 Rules:
 
+- Component implementation follows `CODE_STYLE_SPEC.md` and public naming follows `NAMING_SPEC.md`.
+- Component roots should split source by responsibility. A single file containing public exports, business logic, persistence, provider adapters, and tests is not an acceptable component boundary.
+- Rust components must keep `src/lib.rs` as a module assembly and re-export boundary according to `RUST_CODE_SPEC.md`.
 - Consumers integrate through package root exports, generated SDK clients, documented adapters, or runtime entrypoints declared in `component.spec.json`.
 - Reusable UI and service components must not require app-local globals, concrete app names, hard-coded base URLs, hard-coded tenant IDs, or manual token/API key headers.
 - SDK clients must be injected through service/runtime boundaries according to `SDK_SPEC.md` and `FRONTEND_SPEC.md`.
@@ -185,9 +206,11 @@ Rules:
 - [ ] Component has `specs/component.spec.json`.
 - [ ] If the component root is also a git repository root or application root, it has `.sdkwork/skills/` and `.sdkwork/plugins/` according to `SDKWORK_WORKSPACE_SPEC.md`.
 - [ ] Manifest links to root canonical specs.
+- [ ] Manifest includes `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, and only the language-specific specs required by `component.languages`.
 - [ ] UI component manifests link to `UI_ARCHITECTURE_SPEC.md` and exactly one architecture-specific UI spec.
 - [ ] Manifest uses canonical domain names.
 - [ ] Public integration entrypoints are declared.
 - [ ] Generated SDK language outputs are represented at the SDK family root.
 - [ ] Verification commands are present and runnable from the repository root or the component root.
+- [ ] Authored source is split by responsibility and does not hide component behavior in a catch-all entrypoint file.
 - [ ] Local specs do not copy or contradict root specs.
