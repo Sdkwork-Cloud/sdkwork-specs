@@ -76,6 +76,7 @@ Rules:
 - `release.changelog.source: app-manifest` `MUST` read the application manifest selected by `app.configPath` or `sdkwork.app.config.json` and require a matching release note for the package version, tag, or current manifest note.
 - `release.changelog.source: file` `MUST` require `release.changelog.path`, and that path `MUST` be a safe relative markdown path.
 - `release.changelog.maxCommitSubjects`, when present, `MUST` be an integer from 1 to 200.
+- Package version resolution `MUST` be consistent across matrix planning, lifecycle steps, and changelog rendering. Explicit `package_version` input wins; when it is omitted, the framework `MUST` derive the package version from the release tag or tag ref by stripping `refs/tags/` and a leading `v` before falling back to `release.defaultVersion`.
 - Toolchain version fields such as `node`, `pnpm`, `python`, `java`, `go`, `rust`, `flutter`, `dotnet`, and `wix` `MUST` be strings. Boolean toolchain toggles such as `android` and `xcode` `MUST` be booleans.
 - Paths such as `app.sourcePath`, `app.configPath`, dependency checkout paths, lifecycle working directories, and output globs `MUST` be safe relative paths. They must not be absolute, escape the repository with `..`, or use platform-specific backslash traversal.
 - Package target identifiers and optional `packageId` values `MUST` be stable because they appear in artifact names, deployment selection, and lifecycle environment variables.
@@ -201,6 +202,7 @@ Rules:
 - The framework `MUST` render Release notes before GitHub Release upload when `publish.githubRelease` and the caller release publication input are enabled.
 - Application repositories `MUST NOT` implement copied Release body generation in local workflow YAML. App-specific release note generation belongs in `sdkwork.workflow.json` `release.changelog` or in a local file/manifest consumed by the framework.
 - `release.changelog.source: auto` `MUST NOT` reuse stale `sdkwork.app.config.json` `release.notes[]` entries whose version does not match the requested package version or release tag; it must fall back to `CHANGELOG.md` or git commit subjects instead.
+- When a workflow is triggered by a Git tag and no explicit `package_version` input is provided, changelog matching `MUST` use the tag-derived package version before `release.defaultVersion` so an old default manifest note cannot be reused for a newer tag.
 - Framework logs `MUST` redact secret-like values and must not print raw tokens, API keys, or credentials.
 
 ## 8. Deployment Jobs
@@ -256,6 +258,7 @@ Framework verification `MUST` check:
 - Shell-based composite actions pass action inputs through environment variables or structured argument arrays before command execution.
 - Repository validation rejects `${{ inputs.* }}` inside literal `run` shell bodies while allowing those expressions in GitHub-evaluated `env:`, `with:`, and workflow metadata contexts.
 - The reusable workflow gates upload, Release publishing, and attestation through the resolved config policy.
+- Version resolution tests prove matrix summaries, lifecycle environments, and changelog planning prefer explicit package versions, then normalized release tags, then `release.defaultVersion`.
 - Changelog tests prove `release.changelog` validation, manifest release note rendering, file-based changelog rendering, git fallback behavior, and GitHub Release `notes-file` upload wiring.
 - Deploy jobs pass deployment context explicitly to lifecycle execution.
 - Repository validation checks `AGENTS.md`, compatibility shims, `.sdkwork/` files, workflow YAML, actions, schema, examples, and generator output.
