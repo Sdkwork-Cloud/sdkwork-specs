@@ -142,6 +142,8 @@ SDKWORK_CLAW_REDIS_POOL_IDLE_TIMEOUT_SECONDS=60
 Browser-visible portal variables:
 
 ```text
+# /v1 is valid here only for OpenAI-compatible API compatibility.
+# SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
 PORTAL_PUBLIC_OPEN_API_BASE_URL=/v1
 PORTAL_PUBLIC_APP_API_BASE_URL=/app/v3/api
@@ -164,7 +166,7 @@ Rules:
 - `SDKWORK_CLAW_REDIS_HOST`, `SDKWORK_CLAW_REDIS_PORT`, `SDKWORK_CLAW_REDIS_DATABASE`, `SDKWORK_CLAW_REDIS_USERNAME`, `SDKWORK_CLAW_REDIS_URL`, `SDKWORK_CLAW_REDIS_PASSWORD_FILE`, `SDKWORK_CLAW_REDIS_PASSWORD`, `SDKWORK_CLAW_REDIS_KEY_PREFIX`, `SDKWORK_CLAW_REDIS_TLS`, `SDKWORK_CLAW_REDIS_MAX_CONNECTIONS`, `SDKWORK_CLAW_REDIS_CONNECT_TIMEOUT_MILLIS`, `SDKWORK_CLAW_REDIS_COMMAND_TIMEOUT_MILLIS`, and `SDKWORK_CLAW_REDIS_POOL_IDLE_TIMEOUT_SECONDS` are private Redis overrides and must not be exposed through browser runtime script.
 - `[redis].enabled` defaults to `true` for server/container releases and `false` for desktop. Server deployments must configure `[redis].host`, `[redis].port`, `[redis].database`, and protected password handling before first startup. Use `[redis].url` only as an advanced managed-endpoint override; use separate `tls`, pool, timeout, and `key_prefix` fields for standard deployments.
 - `PORTAL_PUBLIC_APP_API_BASE_URL` and `PORTAL_PUBLIC_BACKEND_API_BASE_URL` must remain independently configurable because split deployments may route them to different hosts.
-- Open/generic API configuration should use `PORTAL_PUBLIC_OPEN_API_BASE_URL` or `PORTAL_PUBLIC_API_BASE_URL`, not an ambiguous gateway env name.
+- SDKWork open-api, OpenAI-compatible, or generic API configuration should use `PORTAL_PUBLIC_OPEN_API_BASE_URL` or `PORTAL_PUBLIC_API_BASE_URL`, not an ambiguous gateway env name. A `/v1` value is valid only for an explicitly documented OpenAI-compatible compatibility API; SDKWork-owned business open-api domains must use their approved non-app/non-backend prefix from `API_SPEC.md`, for example `/im/v3/api`.
 
 ### 5.3 Runtime Directory Paths
 

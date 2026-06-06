@@ -1,16 +1,20 @@
 # App PC React UI Standard
 
 - Version: 1.0
-- Scope: app/user-facing PC React packages, desktop/web React apps, appbase PC modules, service-to-app-SDK integration
-- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Scope: app/user-facing PC React packages, PC browser/desktop/tablet renderer UI packages, appbase PC modules, service-to-app-SDK integration
+- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `COMPONENT_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork app-side PC React UI is packaged and integrated. PC React app UI is user-facing product UI. It must be independent from backend/admin UI packages and must consume app API capabilities through the generated app SDK or approved appbase wrappers.
 
-This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing PC React packages.
+For a complete PC browser/desktop/tablet application root, first apply `APP_PC_ARCHITECTURE_SPEC.md`. That standard owns `apps/<product>-pc/`, normalized package names such as `sdkwork-<product>-pc-<capability>`, user-facing console package names such as `sdkwork-<product>-pc-console-<capability>`, company-internal admin package names such as `sdkwork-<product>-pc-admin-<capability>`, and the shared web/desktop/tablet renderer boundary. This file owns the detailed app-side React UI rules inside those packages.
+
+This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing PC React packages. PC user-facing console packages may reuse these React UI layering rules after `APP_PC_ARCHITECTURE_SPEC.md`, but internal admin packages must also follow `BACKEND_UI_SPEC.md`.
 
 Use `DESKTOP_APP_ARCHITECTURE_SPEC.md` for desktop shell, Tauri host, native capability adapter, session/bootstrap, desktop packaging, and release boundaries. This file owns PC React UI packages and app-facing interaction rules.
 
 Use `IAM_LOGIN_INTEGRATION_SPEC.md` for appbase IAM login/session integration, AuthGate behavior, generated app SDK token wiring, logout clearing, and Rust protected API validation. This file owns PC React package placement and user-facing UI rules.
+
+Use `APP_SDK_INTEGRATION_SPEC.md` when PC React apps compose generated TypeScript app SDKs, appbase IAM runtime, dependency SDKs, and product service facades.
 
 Canonical app PC React package shape:
 
@@ -35,16 +39,19 @@ apps/sdkwork-appbase/
 
 | Surface | Package family | API surface | SDK source | Typical users |
 | --- | --- | --- | --- | --- |
-| App PC React UI | `sdkwork-<capability>-pc-react` | `/app/v3/api` | `spring-ai-plus-app-api` generated SDK | end users and app users |
+| App PC React UI | `sdkwork-<capability>-pc-react` or `sdkwork-<product>-pc-<capability>` | `/app/v3/api` | `spring-ai-plus-app-api` generated SDK | end users and app users |
+| PC user console React UI | `sdkwork-<product>-pc-console-<capability>` | `/app/v3/api` or approved console-facing app SDK surface | generated app SDK or approved appbase wrapper | customers, tenants, app owners, business users managing their own resources |
 | Backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | `spring-ai-plus-backend-api` generated SDK | admins and operators |
 
 Rules:
 
-- App PC React UI `MUST` live in app-side packages such as `sdkwork-<capability>-pc-react`.
+- App PC React UI `MUST` live in app-side packages such as `sdkwork-<capability>-pc-react` or normalized PC application packages such as `sdkwork-<product>-pc-<capability>`.
 - App PC React UI `MUST NOT` be placed in `@sdkwork/react-backend-*` packages.
+- PC packages without `pc-console` or `pc-admin` are app/user modules by default.
+- PC user console modules `MUST` be named `sdkwork-<product>-pc-console-<capability>` and must not be treated as company-internal admin modules.
 - App PC React services `MUST` consume `/app/v3/api` through generated app SDK clients or approved appbase service wrappers.
 - App PC React UI `MUST NOT` call backend-api or backend SDK for user-facing workflows.
-- Login, registration, sessions, OAuth, verification codes, password reset, QR login, and current user flows belong to app UI and app-api.
+- Login, registration, sessions, OAuth, password reset, QR login, current user flows, and messaging-owned verification-code delivery belong to app UI and app-api.
 - Operator-only resource management, tenant administration, platform settings, and audit consoles belong to backend UI.
 
 ## 2. Package Split
@@ -55,7 +62,8 @@ App PC React packages are split by user-facing capability and domain.
 | --- | --- | --- | --- |
 | app shell/runtime | app-specific `src/` or runtime package | providers, router, SDK bootstrap, token store, deployment mode, host integration | reusable domain pages and services |
 | appbase foundation | `sdkwork-<foundation>-pc-react` | reusable shell, router, workspace, command, search, appbase utilities | business-domain API shortcuts |
-| domain feature package | `sdkwork-<capability>-pc-react` | user-facing pages, components, services, hooks, i18n, route metadata | concrete SDK construction, backend admin logic |
+| domain feature package | `sdkwork-<capability>-pc-react` or `sdkwork-<product>-pc-<capability>` | user-facing pages, components, services, hooks, i18n, route metadata | concrete SDK construction, backend admin logic |
+| user console package | `sdkwork-<product>-pc-console-<capability>` | user-facing management console pages, components, services, hooks, i18n, route metadata | company-internal admin workflows, backend-only operation center behavior |
 | contracts/service package | common IAM or domain service packages | typed SDK ports, domain orchestration, API DTO adaptation | React rendering and app shell state |
 
 Rules:
@@ -64,6 +72,7 @@ Rules:
 - New IAM/user/auth work `MUST` use `iam` naming, not `identity`.
 - Business UI `MUST` be placed under the closest domain family such as `iam`, `commerce`, `communication`, `content`, `intelligence`, `system`, `device`, or `ecosystem`.
 - App PC React packages `MUST` not become catch-all app modules. Split independent domains into separate packages.
+- PC console packages `MUST` not become catch-all management modules. Split independent customer/tenant/app-owner management capabilities into `sdkwork-<product>-pc-console-<capability>` packages.
 - A shared UI primitive package may exist only for domain-neutral PC React primitives. It must not include business workflows.
 
 ## 3. Internal Shape
@@ -105,7 +114,12 @@ Rules:
 Rules:
 
 - Services `MUST` accept app SDK clients or narrow SDK port interfaces.
-- UI components `MUST NOT` construct SDK clients, call raw HTTP, manually attach tokens, or parse JWTs for authorization.
+- Runtime/bootstrap `MUST` construct generated TypeScript app SDK clients, appbase app/backend SDK clients when used, one global token manager, appbase IAM runtime, and product service providers.
+- The PC React IAM runtime `MUST` use `@sdkwork/iam-runtime` / `@sdkwork/iam-react` or an approved wrapper with the same `createIamRuntime` semantics.
+- `appbaseApp`, optional `appbaseBackend`, and downstream product app-api/backend-api SDK clients `MUST` share the same global token manager through `setTokenManager` or equivalent generated SDK credential APIs.
+- Login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user profile reads `MUST` use `@sdkwork/appbase-app-sdk` resources or appbase PC React auth wrappers built on those resources. Verification-code delivery and verification `MUST` use the generated messaging app SDK surface or an appbase auth wrapper that delegates to an injected messaging client.
+- Product PC React packages `MUST NOT` create local auth SDK ports such as `auth.login`, `auth.refreshToken`, `auth.register`, `user.getUserProfile`, or user-center session clients when the standard appbase resource exists.
+- UI components `MUST NOT` construct SDK clients, call raw HTTP, manually attach auth/API key headers, or parse JWTs for authorization.
 - Missing app SDK methods `MUST` be fixed in `spring-ai-plus-app-api`, OpenAPI, and generator inputs before integration.
 - App PC React packages `MUST NOT` import generated SDK internals just to bypass an appbase wrapper gap.
 - Tests `SHOULD` use fake clients implementing the same generated app SDK resource surface.
@@ -119,6 +133,8 @@ export interface AuthAppClientPort {
       create(body: unknown): Promise<unknown>;
       refresh(body: unknown): Promise<unknown>;
     };
+  };
+  messaging: {
     verificationCodes: {
       create(body: unknown): Promise<unknown>;
       verify(body: unknown): Promise<unknown>;
@@ -132,11 +148,14 @@ export interface AuthAppClientPort {
 Rules:
 
 - PC React UI should prioritize keyboard, pointer, large-screen density, route persistence, and multitasking.
+- PC React UI `MUST` support adaptive large-screen tablet layouts when the PC root enables iPadOS or Android tablet packaging through Tauri.
 - Complex workflows `SHOULD` use tabs, drawers, side panels, step flows, and table/filter patterns that fit desktop use.
 - Feature pages `MUST` provide loading, empty, validation-error, permission-denied, unavailable, and unknown-error states.
 - Text must fit responsive PC and tablet widths without overlap.
 - Icon-only controls `MUST` have accessible names and tooltips when the icon is not universally obvious.
 - App PC UI `MUST` use the app design system and tokens instead of redefining global themes per package.
+- Tablet-enabled PC UI `MUST` handle safe areas, orientation changes, virtual keyboard overlap, touch/stylus input, pointer input, hardware keyboard shortcuts, split view or multi-window where supported, and platform back/close affordances.
+- Tablet-enabled PC UI `MUST NOT` replace the large-screen workflow with phone-first navigation. Phone-first H5 belongs to `APP_MOBILE_REACT_UI_SPEC.md` or the future H5 application architecture standard.
 
 ## 6. Auth And Security
 
@@ -144,6 +163,7 @@ Rules:
 
 - App PC auth state must clear sensitive state on logout, token refresh failure, tenant switch, and account switch.
 - PC React app shells that require login `MUST` provide an AuthGate or equivalent route guard using appbase IAM auth routes and the session rules in `IAM_LOGIN_INTEGRATION_SPEC.md`.
+- Session commit, token persistence, AppContext propagation, refresh-token continuation, stale context clearing, logout clearing, and refresh failure behavior `MUST` follow `APP_SDK_INTEGRATION_SPEC.md` and `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - Frontend permission checks are hints only. App-api authorization remains mandatory.
 - Verification codes, refresh tokens, access tokens, OAuth codes, QR keys, and password reset tokens `MUST NOT` be logged or displayed.
 - OAuth and QR login UI must show only user-safe state and must not expose provider secrets or raw callback payloads.
@@ -162,7 +182,8 @@ Acceptance checklist:
 
 - [ ] Package belongs to the correct app-side domain/capability.
 - [ ] UI calls services, services call injected app SDK clients.
-- [ ] No backend-api, backend SDK, raw HTTP, manual auth headers, or generated SDK edits were introduced.
+- [ ] Runtime/bootstrap wires appbase IAM runtime, appbase SDK clients, product SDK clients, and one global token manager according to `APP_SDK_INTEGRATION_SPEC.md`.
+- [ ] No backend-api, backend SDK, raw HTTP, manual auth/API key headers, or generated SDK edits were introduced.
 - [ ] Auth/session/token-sensitive state is handled safely.
 - [ ] Appbase IAM login/session integration follows `IAM_LOGIN_INTEGRATION_SPEC.md` when protected app routes are present.
 - [ ] Tests cover SDK orchestration and representative UI states.

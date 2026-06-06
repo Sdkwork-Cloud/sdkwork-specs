@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: module README, API examples, architecture decisions, runbooks, changelogs, spec references
-- Related: all specs
+- Related: all specs, including `SDKWORK_WORKSPACE_SPEC.md`
 
 This standard defines the documentation required for reusable SDKWork capabilities. Documentation must make a module installable and operable by another application without reading its internals.
 
@@ -12,6 +12,9 @@ Rules:
 
 - Root `specs/` is the source of truth for standards.
 - App-local docs may extend root standards, but must link back to the relevant root spec.
+- Repository/application `.sdkwork/README.md`, `.sdkwork/skills/README.md`, and
+  `.sdkwork/plugins/README.md` are local documentation entrypoints governed by
+  `SDKWORK_WORKSPACE_SPEC.md`.
 - API examples `MUST` match the OpenAPI contract and generated SDK method shape.
 - Database docs `MUST` match migrations/entities/schema contracts.
 - Generated documentation `MUST` identify the generator and source contract.
@@ -49,6 +52,23 @@ Status: standard
 ## Extension Points
 ## Verification
 ```
+
+## 2.1 Required Workspace README
+
+Every git repository root and SDKWork application root `MUST` document its
+source-controlled `.sdkwork/` workspace.
+
+Rules:
+
+- `.sdkwork/README.md` `MUST` explain that the directory stores repository or
+  application development metadata, not runtime state.
+- `.sdkwork/skills/README.md` `MUST` explain where common skills live and how
+  a new skill declares its `SKILL.md` entrypoint.
+- `.sdkwork/plugins/README.md` `MUST` explain where repository/application
+  plugins live and when `.codex-plugin/plugin.json` is required.
+- Workspace READMEs `MUST` cite `SDKWORK_WORKSPACE_SPEC.md`.
+- Workspace READMEs `MUST NOT` duplicate root standards, include secrets, or
+  document user-private runtime paths as committed source directories.
 
 ## 3. API Documentation
 
@@ -99,6 +119,7 @@ Rules:
 ## 7. Acceptance Checklist
 
 - [ ] Root specs are linked from local docs.
+- [ ] Repository/application `.sdkwork/` README files exist and cite `SDKWORK_WORKSPACE_SPEC.md`.
 - [ ] Module README includes public API, SDK surface, config, security, and verification.
 - [ ] API examples match OpenAPI and generated SDK.
 - [ ] Operationally critical modules include runbooks.

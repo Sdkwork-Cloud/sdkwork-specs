@@ -2,18 +2,20 @@
 
 - Version: 1.0
 - Scope: architecture-neutral UI-service-SDK layering, reusable UI modules, service facades, state, routing, accessibility, frontend tests
-- Related: `APPLICATION_SPEC.md`, `MODULE_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines the shared frontend rules for SDKWork modules. It is architecture-neutral and applies to app PC React, mobile React, Flutter, and backend/admin React packages. Platform-specific package placement, host adapters, and interaction rules live in the architecture-specific UI standards.
+This standard defines the shared frontend rules for SDKWork modules. It is architecture-neutral and applies to app PC React, PC user console React, PC internal admin React, mobile React, Flutter, and standalone backend/admin React packages. Platform-specific package placement, host adapters, tablet/desktop packaging, and interaction rules live in the architecture-specific UI standards. PC application roots follow `APP_PC_ARCHITECTURE_SPEC.md`, including optional iPadOS and Android tablet native targets. Cross-architecture SDK composition, app dependency relationships, appbase IAM runtime, and global TokenManager wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
 
 `UI_ARCHITECTURE_SPEC.md` is the required selection gate. Architecture-specific UI standards extend this common standard:
 
 | UI architecture | Required spec | API surface |
 | --- | --- | --- |
-| App PC React | `APP_PC_REACT_UI_SPEC.md` | `/app/v3/api` through generated app SDK |
+| App PC React | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` | `/app/v3/api` through generated app SDK; supports web, desktop, and large-screen tablet renderer targets |
+| PC user console React | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` | `/app/v3/api` or approved console-facing app SDK surface; supports web, desktop, and large-screen tablet renderer targets |
+| PC internal admin React | `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` | `/backend/v3/api` through generated backend SDK; supports web, desktop, and large-screen tablet renderer targets when enabled |
 | App mobile React | `APP_MOBILE_REACT_UI_SPEC.md` | `/app/v3/api` through generated app SDK and host adapters |
 | App Flutter | `APP_FLUTTER_UI_SPEC.md` | `/app/v3/api` through generated Dart/Flutter app SDK and platform adapters |
-| Backend/admin React | `BACKEND_UI_SPEC.md` | `/backend/v3/api` through generated backend SDK |
+| Standalone backend/admin React | `BACKEND_UI_SPEC.md` | `/backend/v3/api` through generated backend SDK |
 
 ## 1. Layering
 
@@ -22,6 +24,7 @@ Standard frontend flow:
 ```text
 App shell
   -> runtime providers
+  -> appbase IAM runtime and global TokenManager
   -> feature routes/pages
   -> UI components
   -> services
@@ -31,23 +34,29 @@ App shell
 Rules:
 
 - UI components `MUST` receive data, callbacks, and state through props, hooks, or providers.
-- UI components `MUST NOT` call raw HTTP, manually set token headers, parse JWTs for authorization, or choose tenant isolation rules.
+- UI components `MUST NOT` call raw HTTP, manually set token or API key headers, parse JWTs for authorization, or choose tenant isolation rules.
 - Services `MUST` call generated SDK clients or approved service interfaces.
-- Runtime/bootstrap code `MUST` construct SDK clients and provide token storage adapters.
+- Runtime/bootstrap code `MUST` construct SDK clients, create the appbase IAM runtime, provide one global token manager for authenticated app-api/backend-api SDK clients, provide token/context stores, and provide open-api API key credential providers when protected open-api SDKs are consumed.
+- Runtime/bootstrap code `MUST` bind the same global token manager to `appbaseApp`, optional `appbaseBackend`, and every authenticated downstream app-api/backend-api SDK client through generated SDK credential APIs such as `setTokenManager`.
 - IAM login/session bootstrap, AuthGate behavior, token refresh, logout clearing, and appbase auth UI/runtime integration `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`.
+- App SDK and dependency composition `MUST` follow `APP_SDK_INTEGRATION_SPEC.md`; product UI packages consume dependency capabilities through generated SDKs, service ports, or approved composed wrappers.
 - App shell code `MUST` stay thin: router, layout, providers, environment selection, host integration.
 - Frontend work `MUST` select exactly one primary UI architecture through `UI_ARCHITECTURE_SPEC.md` before package placement.
 - App/user-facing UI `MUST NOT` import backend/admin UI packages or call backend-api for user workflows.
-- Backend/admin UI `MUST NOT` be mixed into app UI packages and must follow business-domain backend package split rules from `BACKEND_UI_SPEC.md`.
+- PC user console UI `MUST` stay in `sdkwork-<product>-pc-console-*` packages and must not import PC internal admin business internals.
+- PC internal admin UI `MUST` stay in `sdkwork-<product>-pc-admin-*` packages and must follow backend-domain split rules from `BACKEND_UI_SPEC.md`.
+- Standalone backend/admin UI `MUST NOT` be mixed into app UI packages and must follow business-domain backend package split rules from `BACKEND_UI_SPEC.md`.
 
 ## 1.1 UI Architecture Selection
 
 Rules:
 
-- PC React app UI uses `APP_PC_REACT_UI_SPEC.md`.
+- PC React app UI uses `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md`.
+- PC user console UI uses `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md`.
+- PC internal admin UI uses `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md`.
 - Mobile React app UI uses `APP_MOBILE_REACT_UI_SPEC.md`.
 - Flutter app UI uses `APP_FLUTTER_UI_SPEC.md`.
-- Backend/admin React UI uses `BACKEND_UI_SPEC.md`.
+- Standalone backend/admin React UI uses `BACKEND_UI_SPEC.md`.
 - A package cannot implement more than one of these architecture families. Shared logic belongs in non-UI contracts or services.
 - Shared common rules remain in this file; package naming, route ownership, host/platform adapters, and SDK surface selection come from the architecture-specific spec.
 
@@ -71,7 +80,12 @@ packages/<architecture>/<domain>/<package>/
     types/
   tests/
 
-Backend/admin packages:
+PC application packages:
+apps/<product>-pc/packages/sdkwork-<product>-pc-<capability>/
+apps/<product>-pc/packages/sdkwork-<product>-pc-console-<capability>/
+apps/<product>-pc/packages/sdkwork-<product>-pc-admin-<capability>/
+
+Standalone backend/admin packages:
 apps/sdkwork-backend-react-web/packages/sdkwork-react-backend-<domain>/
   package.json
   README.md
@@ -100,6 +114,8 @@ Rules:
 The selected `architecture` must be one of:
 
 - `pc-react`
+- `pc-console-react`
+- `pc-admin-react`
 - `mobile-react`
 - `mobile-flutter`
 - `backend-admin-react`
@@ -133,6 +149,10 @@ Rules:
 - Tests `SHOULD` provide fake clients implementing the same resource surface.
 - Application-specific generated SDK constructors belong in runtime/bootstrap, not shared modules.
 - A module must not import a generated SDK package only to construct clients internally.
+- Appbase login/session service ports `MUST` name the login authority `appbaseApp` or `appbaseAppClient`, not a generic `appClient`, so product SDK clients cannot be mistaken for the IAM authority.
+- App-api/backend-api service modules `MUST` receive token-manager-aware SDK clients from bootstrap. They must not create independent token stores, refresh flows, or login clients.
+- Appbase current-user, login, registration, verification, OAuth, QR auth, password reset, refresh, current session, and logout calls `MUST` use appbase SDK resources or approved appbase wrappers.
+- Services that consume protected open-api SDKs `MUST` receive injected SDK clients and an approved API key credential provider from runtime/bootstrap. They `MUST NOT` receive raw API key strings from UI components or construct `X-API-Key` headers manually.
 - Frontend services MUST NOT generate requestId or xRequestId values, set `X-Request-Id`/`x-request-id`, or pass generated SDK `xRequestId` params. They may generate business `Idempotency-Key` values for retriable commands and must read returned `requestId` values from server responses when correlation is needed.
 - File upload, download, import, and generated-asset storage services `MUST` use generated Drive SDK clients governed by `DRIVE_SPEC.md`. UI-local `File`, object URL previews, upload progress, and presigned URLs must remain transient view state.
 - Media upload, picker, import, and generated-asset services `MUST` use `MediaResource` contracts from `MEDIA_RESOURCE_SPEC.md` once data crosses the business service boundary.
@@ -145,7 +165,7 @@ Rules:
 - Server state `SHOULD` be fetched through services and cached with a predictable query key strategy.
 - Query keys `SHOULD` include domain, resource, tenant/organization scope when safe, and stable parameters.
 - Auth/session state `MUST` react to token refresh, logout, tenant switch, and permission changes.
-- Auth/session state `MUST` clear according to `IAM_LOGIN_INTEGRATION_SPEC.md`: persisted session, SDK token managers, realtime connections, sensitive caches, and native secure storage when present.
+- Auth/session state `MUST` clear according to `IAM_LOGIN_INTEGRATION_SPEC.md`: persisted session, app-api/backend-api SDK token managers, approved open-api credential provider state when present, realtime connections, sensitive caches, and native secure storage when present.
 - UI-only state may be local component state.
 - Sensitive state `MUST` be cleared on logout and tenant switch.
 - Media preview object URLs, drag/drop files, upload queue progress, retry counters, and presigned upload URLs are UI-only or service-local state. They must not be cached as persisted server state or submitted as business media identity.
@@ -196,7 +216,9 @@ Rules:
 
 - [ ] UI-service-SDK boundaries are respected.
 - [ ] SDK clients are injected.
-- [ ] No raw HTTP or manual auth headers exist in shared business modules.
+- [ ] Appbase IAM runtime and one global token manager are wired in runtime/bootstrap when authenticated app-api/backend-api SDK clients are used.
+- [ ] Architecture-specific SDK language and dependency SDK composition follow `APP_SDK_INTEGRATION_SPEC.md`.
+- [ ] No raw HTTP, manual auth headers, or manual API key headers exist in shared business modules.
 - [ ] Auth/session/tenant switch clears sensitive state.
 - [ ] Permission-denied and validation-error states are covered.
 - [ ] Keyboard and accessible labels are covered for interactive controls.

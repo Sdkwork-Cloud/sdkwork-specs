@@ -2,9 +2,11 @@
 
 - Version: 1.0
 - Scope: backend/admin React console, backend UI workspace packages, domain pages, backend SDK integration, menu and route composition
-- Related: `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork backend/admin UI is packaged and integrated. Backend UI is an operator console surface. It must be independent from app/user-facing UI packages, must use backend API and backend SDK contracts, and must be split by business domain instead of being placed into one large package.
+
+For PC application roots, internal admin modules use the normalized package family defined by `APP_PC_ARCHITECTURE_SPEC.md`: `sdkwork-<product>-pc-admin-<capability>`. This file still defines the backend/admin UI layering, SDK, permission, route, and operational design rules that those PC admin modules must follow. The standalone backend React workspace keeps the `@sdkwork/react-backend-<domain>` package family.
 
 The canonical implementation shape is the backend React workspace:
 
@@ -30,14 +32,18 @@ Backend UI packages are not app UI packages.
 | Surface | Package family | API surface | SDK source | Typical users |
 | --- | --- | --- | --- | --- |
 | App UI | `sdkwork-*-pc-react`, `sdkwork-*-mobile-react`, appbase packages | `/app/v3/api` | `spring-ai-plus-app-api` generated SDK | end users, customer apps, desktop/mobile clients |
-| Backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | `spring-ai-plus-backend-api` generated SDK | platform admins, tenant admins, operators |
+| PC user console UI | `sdkwork-<product>-pc-console-*` | `/app/v3/api` or approved console-facing app SDK surface | generated app SDK or approved appbase wrapper | customers, tenants, app owners, business users managing their own resources |
+| PC internal admin UI | `sdkwork-<product>-pc-admin-*` | `/backend/v3/api` | generated backend SDK or approved backend wrapper | company-internal staff, support, auditors, operators |
+| Standalone backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | `spring-ai-plus-backend-api` generated SDK | company-internal platform admins, support staff, auditors, operators |
 
 Rules:
 
-- Backend UI `MUST` live in backend console packages named `@sdkwork/react-backend-<domain>`.
+- Standalone backend UI `MUST` live in backend console packages named `@sdkwork/react-backend-<domain>`.
+- Internal admin UI inside a PC application root `MUST` live in packages named `sdkwork-<product>-pc-admin-<capability>`.
+- User-facing management console UI inside a PC application root `MUST` live in packages named `sdkwork-<product>-pc-console-<capability>` and is not the same surface as internal admin UI.
 - Backend UI `MUST NOT` be added to appbase app UI packages, customer app pages, mobile app packages, or app SDK wrappers.
 - App login, registration, session creation, OAuth callback, verification-code login, password reset, and user-facing QR login flows `MUST NOT` be implemented as backend UI capabilities. They belong to app-api and app UI.
-- Backend UI may manage configuration, templates, audit records, provider bindings, feature flags, and operational resources through backend-api only.
+- Backend UI may manage internal configuration, templates, audit records, provider bindings, feature flags, moderation, support, and operational resources through backend-api only.
 - Backend UI `MUST` use `/backend/v3/api` through the generated backend SDK or approved backend service wrapper. It `MUST NOT` call `/app/v3/api` for operator features.
 
 ## 2. Package Split Rule
@@ -50,12 +56,14 @@ Backend UI cannot be placed into one universal business package.
 | SDK/runtime core | `@sdkwork/react-backend-core` | `BackendSdkProvider`, `useBackendSdkClient()`, SDK bootstrap helpers, shared response normalization | domain pages, domain copy, domain workflow logic |
 | Common UI primitives | `@sdkwork/react-backend-ui` | buttons, tables, forms, drawers, dialogs, layout primitives with no business meaning | user management, tenant management, email code management, OAuth provider management, resource CRUD |
 | Domain package | `@sdkwork/react-backend-<domain>` | domain pages, components, services, repositories, hooks, route/menu metadata, i18n | unrelated domains, concrete SDK construction, raw HTTP |
+| PC admin domain package | `sdkwork-<product>-pc-admin-<capability>` | internal staff pages, components, services, hooks, route/menu metadata, i18n, permission constants | app/user pages, user console workflows, app SDK login/session creation |
 | Cross-domain composition package | `@sdkwork/react-backend-<capability>` only when approved | a workflow that intentionally composes multiple published domain services | becoming a dumping ground for unrelated pages |
 
 Rules:
 
 - Every new backend feature `MUST` choose one owning business domain before files are created.
 - A backend domain package `MUST` be named `@sdkwork/react-backend-<domain>` where `<domain>` is canonical kebab-case derived from `DOMAIN_SPEC.md`.
+- A PC application internal admin package `MUST` be named `sdkwork-<product>-pc-admin-<capability>` and must follow `APP_PC_ARCHITECTURE_SPEC.md`.
 - Business pages, business components, domain services, repositories, hooks, route records, menu records, permission constants, and domain i18n `MUST` stay in the owning domain package.
 - `@sdkwork/react-backend-ui` `MUST` remain domain-neutral. It may expose visual primitives, not business workflows.
 - `@sdkwork/react-backend-core` `MUST` remain SDK/runtime infrastructure. It may expose backend SDK provider hooks, not business repositories.
@@ -180,7 +188,7 @@ Rules:
 - New services `SHOULD` accept a client dependency so tests can supply a fake generated-SDK-compatible client.
 - Missing backend SDK methods `MUST` be fixed by updating the owning backend API and regenerating the backend SDK through the `SDK_SPEC.md` SDK model and the generator flow defined by `SDK_WORKSPACE_GENERATION_SPEC.md`. Do not add raw HTTP as a workaround.
 - Application-owned backend SDKs `MUST` use the `sdkwork-<domain>-backend-sdk` family and `sdkwork-<domain>-backend-api` authority naming from `SDK_SPEC.md`; their physical `sdks/` workspace, OpenAPI authority location, derived generator inputs, and generated output placement follow `SDK_WORKSPACE_GENERATION_SPEC.md`.
-- Backend UI `MUST NOT` use `fetch`, `axios`, manual `Authorization` headers, string-built backend URLs, or `getBackendSdkClient().http` to bypass missing SDK methods.
+- Backend UI `MUST NOT` use `fetch`, `axios`, manual auth/API key headers, string-built backend URLs, or `getBackendSdkClient().http` to bypass missing SDK methods.
 - Backend UI `MUST NOT` hand-edit generated backend SDK output.
 - File upload/download exceptions must use generated Drive backend/app SDK methods or approved backend-core helpers around Drive contracts when the API explicitly returns Drive grants, presigned URLs, or stable file content URLs. Backend UI must not create app-local upload clients around missing SDK methods.
 
@@ -233,6 +241,6 @@ Acceptance checklist:
 - [ ] No business behavior was added to `@sdkwork/react-backend-ui` or `@sdkwork/react-backend-core`.
 - [ ] Host shell only composes routes, menus, providers, and layout.
 - [ ] Services call generated backend SDK surfaces or approved backend-core helpers.
-- [ ] No raw HTTP, manual token headers, generated SDK edits, or app-api calls exist in backend UI business code.
+- [ ] No raw HTTP, manual auth/API key headers, generated SDK edits, or app-api calls exist in backend UI business code.
 - [ ] Permissions, i18n namespace, API tag, SDK namespace, and domain owner align.
 - [ ] Tests cover SDK orchestration and representative UI behavior.

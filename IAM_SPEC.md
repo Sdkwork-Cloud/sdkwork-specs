@@ -17,7 +17,7 @@ IAM owns:
 - Tenant lifecycle, tenant settings, tenant membership, and tenant-level isolation.
 - Organization tree, organization membership, departments, and organization-scoped role assignment.
 - User accounts, profiles, identities, credentials, preferences, status, and lifecycle.
-- Auth sessions, refresh/logout, current session, device sessions, OAuth sessions, verification codes, password reset, MFA, passkeys, and device authorization.
+- Auth sessions, refresh/logout, current session, device sessions, OAuth sessions, password reset, MFA, passkeys, and device authorization. Verification-code delivery and verification are consumed by IAM flows but owned by messaging.
 - Roles, permissions, policies, assignments, data scopes, permission scopes, and authorization hints.
 - API keys, service accounts, devices, security events, audit events, and sensitive IAM operational logs.
 - AppContext and ShardingContext derivation from verified `auth_token` and `access_token`.
@@ -148,7 +148,7 @@ Rules:
 
 ## 5.1 API Key Context Resolution
 
-Open API and machine-to-machine flows use API keys only when the API contract declares API key mode. API key mode is a context-resolution mode, not a bypass around IAM.
+Open-api and machine-to-machine flows use API keys only when the API contract declares API key mode. API key mode is a context-resolution mode, not a bypass around IAM.
 
 Rules:
 
@@ -168,7 +168,7 @@ IAM uses the standard API prefixes:
 
 Rules:
 
-- Login, register, refresh, logout, current session, OAuth callback, verification code, password reset, MFA challenge, and device authorization flows `MUST` live in app-api only.
+- Login, register, refresh, logout, current session, OAuth callback, password reset, MFA challenge, device authorization, and verification-code delivery flows `MUST` live in app-api only.
 - Backend-api `MUST NOT` expose an `auth` namespace or login/session creation APIs. It manages IAM resources after token validation.
 - App and backend API versions `MUST` stay aligned.
 - Java SaaS and Rust local/private implementations `MUST` expose identical paths, methods, operationIds, schemas, response envelopes, error semantics, and security declarations for shared IAM modules.
@@ -180,7 +180,7 @@ Minimum app-api resources:
 | Resource | Operation examples |
 | --- | --- |
 | `auth.sessions` | `sessions.create`, `sessions.current.retrieve`, `sessions.current.update`, `sessions.current.delete`, `sessions.refresh` |
-| `auth.verificationCodes` | `verificationCodes.create`, `verificationCodes.verify` |
+| `messaging.verificationCodes` | `messaging.verificationCodes.create`, `messaging.verificationCodes.verify` |
 | `auth.passwordResetRequests` | `passwordResetRequests.create` |
 | `auth.passwordResets` | `passwordResets.create` |
 | `auth.oauthAuthorizationUrls` | `oauthAuthorizationUrls.retrieve` |

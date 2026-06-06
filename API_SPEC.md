@@ -3,12 +3,12 @@
 - Version: 1.0
 - Baseline: OpenAPI 3.1.2 stable contract profile, JSON Schema 2020-12, RFC 9457 Problem Details
 - Forward-looking baseline: Track OpenAPI 3.2.0, but do not use 3.2-only features until the SDK generator, validators, Java tooling, Rust tooling, and generated TypeScript clients prove parity.
-- Scope: Java Spring app-api, Java Spring backend-api, Rust local/private HTTP APIs, generated HTTP SDKs, frontend services, API tests, and contract governance
+- Scope: Java Spring app-api, Java Spring backend-api, Rust local/private HTTP APIs, generated HTTP SDKs, frontend services, API tests, web backend implementation alignment, and contract governance
 - Canonical location: `specs/API_SPEC.md`
 
 This document defines the API contract standard for SDKWork applications. It is intentionally independent of Java, Rust, TypeScript, Tauri, React, mobile, cloud, or private deployment choices. API contracts must be stable enough to generate SDKs, switch between SaaS and local deployments, and compose shared application modules without duplicating business logic.
 
-For data persistence and database naming rules, use `specs/DATABASE_SPEC.md`. For canonical domain names, use `specs/DOMAIN_SPEC.md`. For file storage, upload sessions, download grants, object-storage providers, Drive spaces/nodes, and SDKWork-owned file lifecycle, use `specs/DRIVE_SPEC.md`. For media representation, generated asset DTOs, and bare URL cleanup, use `specs/MEDIA_RESOURCE_SPEC.md`. For SDK naming semantics, generated client behavior, auth integration, and frontend service boundaries, use `specs/SDK_SPEC.md`, `specs/MODULE_SPEC.md`, and `specs/FRONTEND_SPEC.md`; for application-root `sdks/` workspace generation, OpenAPI authority/derived input placement, and generated artifact placement, use `specs/SDK_WORKSPACE_GENERATION_SPEC.md` as the subordinate detail standard under `SDK_SPEC.md`. For IAM login/session integration, appbase auth UI/runtime, logout clearing, and Rust AppContext validation, use `specs/IAM_LOGIN_INTEGRATION_SPEC.md`. For gRPC/protobuf contracts, use `specs/RPC_SPEC.md` and `specs/RUST_RPC_SPEC.md`. HTTP API contracts and RPC contracts must preserve shared operation semantics, but neither document replaces the other.
+For data persistence and database naming rules, use `specs/DATABASE_SPEC.md`. For canonical domain names, use `specs/DOMAIN_SPEC.md`. For file storage, upload sessions, download grants, object-storage providers, Drive spaces/nodes, and SDKWork-owned file lifecycle, use `specs/DRIVE_SPEC.md`. For media representation, generated asset DTOs, and bare URL cleanup, use `specs/MEDIA_RESOURCE_SPEC.md`. For web backend implementation layering, Java controller/Rust route crate boundaries, handler/service/repository naming, request context consumption, and route materialization responsibilities, use `specs/WEB_BACKEND_SPEC.md`. For SDK naming semantics, generated client behavior, auth integration, and frontend service boundaries, use `specs/SDK_SPEC.md`, `specs/MODULE_SPEC.md`, and `specs/FRONTEND_SPEC.md`; for application-root `sdks/` workspace generation, OpenAPI authority/derived input placement, and generated artifact placement, use `specs/SDK_WORKSPACE_GENERATION_SPEC.md` as the subordinate detail standard under `SDK_SPEC.md`. For IAM login/session integration, appbase auth UI/runtime, logout clearing, and Rust AppContext validation, use `specs/IAM_LOGIN_INTEGRATION_SPEC.md`. For gRPC/protobuf contracts, use `specs/RPC_SPEC.md` and `specs/RUST_RPC_SPEC.md`. HTTP API contracts and RPC contracts must preserve shared operation semantics, but neither document replaces the other.
 
 ## 1. Normative Language
 
@@ -55,27 +55,31 @@ SDK family semantics, SDK package naming, client behavior, auth handling, and se
 
 SDKWork uses three canonical API surfaces.
 
-| Surface | Prefix | Audience | Login endpoints |
-| --- | --- | --- | --- |
-| IM API | `/im/v3/api` | Current instant messaging application standard open API system | Forbidden |
-| App API | `/app/v3/api` | Instant messaging application app/client integration capabilities for mobile App, H5, PC applications, and other clients | Allowed and canonical |
-| Backend API | `/backend/v3/api` | Admin consoles, internal operators, backend SDKs, control plane | Forbidden |
+| Surface | Standard authority suffix | Prefix | Audience | Login endpoints |
+| --- | --- | --- | --- | --- |
+| Open API | `open-api` | Any approved SDKWork HTTP API prefix that is not `/app/v3/api` and not `/backend/v3/api`, for example `/im/v3/api` | External integrations, public/domain APIs, open platform clients, provider-facing API users | Forbidden |
+| App API | `app-api` | `/app/v3/api` | Application development clients, desktop apps, mobile apps, H5, PC applications, and other user-facing app clients | Allowed and canonical |
+| Backend API | `backend-api` | `/backend/v3/api` | Admin consoles, internal operators, backend SDKs, control plane, automation | Forbidden |
 
-The runtime request framework classifies open-style public/domain surfaces such as `/open/v3/api` and `/im/v3/api` as `open-api` for context resolution. This runtime classification does not rename the IM SDK family or IM API authority; it defines that protected IM/open operations use API key style context resolution unless a specific app/backend contract says otherwise.
+The runtime request framework classifies every SDKWork HTTP API path outside `/app/v3/api` and `/backend/v3/api` as `open-api` for context resolution. Open-api does not require the literal path segment `open`; domain-specific prefixes such as `/im/v3/api` are open-api when they are not app-api or backend-api. Protected open-api operations use API key style context resolution unless a specific contract says otherwise.
 
 Rules:
 
-- IM API, App API, and Backend API versions `MUST` stay aligned at `/im/v3/api`, `/app/v3/api`, and `/backend/v3/api`.
-- IM API is the Craw Chat standard open API for instant messaging runtime capabilities such as conversations, messages, contacts, device sessions, realtime subscriptions, streams, and RTC signaling. It `MUST` be generated from the IM contract and consumed through the generated IM SDK.
-- App API is the app/client integration surface for instant messaging applications across mobile App, H5, PC applications, desktop shells, and other clients. Shared appbase capabilities such as IAM login, registration, token refresh, verification, workspaces, app bootstrap, and reusable application modules `MUST` come from `sdkwork-appbase` / `spring-ai-plus-app-api`.
+- App API and Backend API versions `MUST` stay locked at `/app/v3/api` and `/backend/v3/api`.
+- Open API is the external and public integration surface for every SDKWork HTTP API that is not app-api and not backend-api. Each open-api domain `MUST` declare one approved versioned prefix, for example `/im/v3/api`; using the literal `/open/v3/api` is allowed only when a domain explicitly chooses that prefix.
+- Domain-specific open API systems such as Craw Chat IM use their locked prefix such as `/im/v3/api`, but they remain `open-api` for authority naming, request context classification, SDK family mapping, and security semantics.
+- Craw Chat IM open routes `MUST` start with `/im/v3/api`, be generated from the IM open contract, and be consumed through the generated IM SDK.
+- App API is the app/client integration surface for application development across mobile App, H5, PC applications, desktop shells, and other clients. Shared appbase capabilities such as IAM login, registration, token refresh, workspaces, app bootstrap, and reusable application modules `MUST` come from `sdkwork-appbase` / `spring-ai-plus-app-api`; verification-code delivery and verification `MUST` come from the owning messaging app API and generated messaging SDK surface.
 - Craw Chat `MUST NOT` reimplement, fork, or shadow `/app/v3/api` routes already owned by `sdkwork-appbase` or `spring-ai-plus-app-api`.
 - Applications integrating those shared IAM flows `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md` instead of creating product-local auth/session endpoints.
 - Backend API is the management, admin, operator, and control-plane surface. It `MUST` be generated from backend contracts and consumed through backend SDKs or backend-admin integrations.
+- Open-api authority documents `MUST` be declared as `sdkwork-<domain>-open-api` and placed under the owning `sdks/sdkwork-<domain>-sdk/openapi/` workspace when the application owns local SDK generation.
+- App API OpenAPI authority documents `MUST` be declared as `sdkwork-<domain>-app-api` and placed under the owning `sdks/sdkwork-<domain>-app-sdk/openapi/` workspace when the application owns local SDK generation.
 - Backend API OpenAPI authority documents `MUST` be declared as `sdkwork-<domain>-backend-api` and placed under the owning `sdks/sdkwork-<domain>-backend-sdk/openapi/` workspace when the application owns local SDK generation.
-- Login, register, refresh, logout, current session, OAuth callback, verification code, password reset, and device authorization flows `MUST` live in app-api only.
-- IM API and backend-api `MUST NOT` expose auth/session login endpoints. They may validate tokens and consume the validated AppContext projection.
+- Login, register, refresh, logout, current session, OAuth callback, password reset, device authorization, and verification-code delivery flows `MUST` live in app-api only.
+- Open-api and backend-api `MUST NOT` expose auth/session login endpoints. They may validate credentials/tokens and consume the validated request context projection.
 - Backend-api `MUST NOT` expose auth/session login endpoints. It may validate tokens and manage resources.
-- Backend-api `MUST NOT` expose an `auth` namespace for IAM login, session creation, verification code, password reset, OAuth session, MFA challenge, or device authorization APIs. These user-facing auth flows belong to app-api.
+- Backend-api `MUST NOT` expose an `auth` namespace for IAM login, session creation, password reset, OAuth session, MFA challenge, device authorization, or verification-code delivery APIs. These user-facing flows belong to app-api, with verification-code delivery owned by messaging.
 - SaaS Java deployment and Rust local/private deployment `MUST` expose identical paths, methods, operationIds, schemas, response envelopes, errors, and security declarations for shared modules.
 - When a shared capability exposes both HTTP and RPC, the HTTP `operationId` and RPC method manifest `operationId` `MUST` describe the same domain operation.
 - RPC services `MUST NOT` be used to hide missing or divergent HTTP/OpenAPI behavior for app/backend public APIs; divergence requires a documented compatibility decision.
@@ -84,11 +88,11 @@ Rules:
 
 ### 4.1 Canonical Prefix Lock
 
-The IM API, App API, and Backend API prefixes are locked. Runtime source, OpenAPI snapshots, generated SDK inputs, local Rust route tables, Java controller class-level mappings, frontend SDK bootstrap code, environment examples, and contract tests `MUST` use exactly these prefixes:
+App API and Backend API use global fixed prefixes. Open-api is not a literal `/open` namespace; each open-api domain declares an approved versioned prefix outside `/app/v3/api` and `/backend/v3/api`, and that approved domain prefix is then locked for that domain. Runtime source, OpenAPI snapshots, generated SDK inputs, local Rust route tables, Java controller class-level mappings, frontend SDK bootstrap code, environment examples, and contract tests `MUST` use the locked prefix for the owning surface/domain:
 
 | Surface | Required prefix |
 | --- | --- |
-| IM API | `/im/v3/api` |
+| Open API | The approved versioned domain prefix for that API, for example `/im/v3/api`; no literal `/open` segment is required |
 | App API | `/app/v3/api` |
 | Backend API | `/backend/v3/api` |
 
@@ -98,11 +102,14 @@ Forbidden runtime prefixes:
 - `/api/backend/v1`, `/api/backend/v2`, `/api/backend/v3`, `/api/backend/v3/api`
 - `/app/v1`, `/app/v2`
 - `/backend/v1`, `/backend/v2`
+- Any unapproved open-api prefix.
+- Any v1/v2 open-api prefix for new SDKWork API work, including literal `/open/v1` or `/open/v2` when a domain chooses the literal `open` prefix.
 - Bare backend resource prefixes such as `/v3/api/resources/*` when the API belongs to backend-api
 
 Rules:
 
-- Craw Chat IM routes `MUST` start with `/im/v3/api`.
+- Open-api routes `MUST` use their approved versioned domain prefix and `MUST NOT` use `/app/v3/api` or `/backend/v3/api`.
+- Craw Chat IM open routes `MUST` start with `/im/v3/api`.
 - Java app-api controller class-level mappings `MUST` start with `/app/v3/api`.
 - Java backend-api controller class-level mappings `MUST` start with `/backend/v3/api`.
 - Method-level relative mappings may use subpaths such as `/list` or `/{id}` only when the owning class-level mapping is already canonical.
@@ -110,6 +117,157 @@ Rules:
 - Backend-api `MUST NOT` publish bare `/v3/api/*` resources. If a resource is part of backend-api, it must move under `/backend/v3/api/...`; if it is not part of backend-api, it must be documented as a non-SDK static/public resource outside the backend-api OpenAPI surface.
 - Generated SDK manifests and OpenAPI source contracts `MUST` fail validation if any runtime path uses a forbidden prefix.
 - Environment examples and app bootstrap defaults `MUST` use canonical prefixes. Historical or migration documents may mention old prefixes only when explicitly labeled `legacy`, `deprecated`, `noncanonical`, or `migration-only`.
+
+### 4.2 Rust HTTP Route Crate Naming
+
+Rust HTTP route crates are the source-level route/path configuration layer. They are not generated SDK families and they are not final OpenAPI authority names.
+
+Required route crate name:
+
+```text
+sdkwork-routes-<capability>-<surface>
+```
+
+`<surface>` `MUST` be one of `open-api`, `app-api`, or `backend-api`. The full crate/package name therefore follows one of these shapes:
+
+```text
+sdkwork-routes-<capability>-open-api
+sdkwork-routes-<capability>-app-api
+sdkwork-routes-<capability>-backend-api
+```
+
+Examples:
+
+```text
+sdkwork-routes-product-app-api
+sdkwork-routes-cart-app-api
+sdkwork-routes-order-backend-api
+sdkwork-routes-payment-open-api
+```
+
+Rules:
+
+- Rust route crates that define HTTP route paths, mount points, route metadata, handler bindings, or router composition for SDKWork APIs `MUST` start with `sdkwork-routes-`.
+- `sdkwork-routes-product-app-api` owns product app-api route/path definitions only. It `MUST NOT` be used as an SDK family name, generated package name, OpenAPI authority name, generator `--sdk-name`, or frontend SDK package name.
+- Route crates `MUST` declare their API surface in their name and in their route manifest. A crate whose name ends in `app-api` may mount only `/app/v3/api` routes; a crate whose name ends in `backend-api` may mount only `/backend/v3/api` routes; a crate whose name ends in `open-api` may mount only approved open-api prefixes and `MUST NOT` mount `/app/v3/api` or `/backend/v3/api`.
+- Route crates `MUST` use lowercase kebab-case package names. The Rust crate import may use snake case, for example package `sdkwork-routes-product-app-api` imports as `sdkwork_routes_product_app_api`.
+- Route crates may be split by business capability for maintainability, for example product, cart, order, payment, catalog, shipment, tenant, and report. They `MUST` still preserve the canonical domain names from `DOMAIN_SPEC.md` in tags, operationIds, schemas, and route manifests.
+- Route crates `MUST` produce or feed a route manifest that can be materialized into an owner-only OpenAPI authority. Java controller mappings and Rust route crates are implementation inputs; the aggregated OpenAPI authority remains the HTTP contract source of truth for SDK generation.
+- A route crate `MUST NOT` copy appbase-owned routes. If a route is owned by `sdkwork-appbase`, the product application consumes the appbase Rust crate or appbase SDK dependency instead of creating `sdkwork-routes-<capability>-app-api` for that route.
+
+### 4.2.1 Route Manifest Shape
+
+A route manifest is the machine-readable contract between a Rust route crate and the OpenAPI authority materializer. Rust may build it from constants, macros, framework metadata, or generated files, but the materializer `MUST` see a deterministic manifest with this logical shape.
+
+Example:
+
+```yaml
+schemaVersion: 1
+kind: sdkwork.route.manifest
+packageName: sdkwork-routes-product-app-api
+surface: app-api
+owner: sdkwork-commerce
+domain: commerce
+capability: product
+apiAuthority: sdkwork-commerce-app-api
+sdkFamily: sdkwork-commerce-app-sdk
+prefix: /app/v3/api
+source:
+  crateRoot: packages/native-rust/routes/app-api/sdkwork-routes-product-app-api
+  crateImport: sdkwork_routes_product_app_api
+routes:
+  - method: GET
+    path: /app/v3/api/products
+    operationId: commerce.product.list
+    tags: [commerce.product]
+    auth:
+      mode: dual-token
+      required: true
+      permission: commerce.products.read
+      tenantScope: tenant
+      dataScope: organization
+    handler:
+      module: crate::handlers
+      name: list_products
+    schemas:
+      request: null
+      response: ProductListResponse
+      problem: ProblemDetail
+    ownership:
+      owner: sdkwork-commerce
+      apiAuthority: sdkwork-commerce-app-api
+    source:
+      file: src/routes.rs
+      line: 42
+```
+
+Required top-level fields:
+
+| Field | Requirement |
+| --- | --- |
+| `schemaVersion` | Positive integer. Version `1` is the current required profile. |
+| `kind` | Exact value `sdkwork.route.manifest`. |
+| `packageName` | Exact Cargo package name, for example `sdkwork-routes-product-app-api`. |
+| `surface` | `open-api`, `app-api`, or `backend-api`. |
+| `owner` | SDK generation owner, materialized to `x-sdkwork-owner`. |
+| `domain` | Canonical domain from `DOMAIN_SPEC.md`. |
+| `capability` | Business capability encoded in the route crate name. |
+| `apiAuthority` | Aggregated API authority name, for example `sdkwork-commerce-app-api`. |
+| `sdkFamily` | SDK family generated from the authority, for example `sdkwork-commerce-app-sdk`. |
+| `prefix` | Canonical path prefix for the surface/domain. |
+| `routes` | Non-empty list of route entries. |
+
+Required route fields:
+
+| Field | Requirement |
+| --- | --- |
+| `method` | Uppercase HTTP method. |
+| `path` | Full canonical path including `prefix`. |
+| `operationId` | Stable SDK operation id following this spec. |
+| `tags` | Non-empty OpenAPI tag list; the primary tag should preserve domain and capability. |
+| `auth` | Authentication and authorization projection for OpenAPI security metadata. |
+| `handler` | Framework-neutral handler binding reference for traceability. |
+| `schemas` | Request, response, and problem-detail schema references when known. |
+| `ownership` | Operation owner and API authority. Defaults to the top-level owner/authority when omitted by tooling, but materialized OpenAPI `MUST` contain explicit ownership extensions. |
+| `source` | Repo-relative source file and optional line for diagnostics. |
+
+Rules:
+
+- `packageName`, `surface`, and `capability` `MUST` agree. `sdkwork-routes-product-app-api` means capability `product` and surface `app-api`.
+- `apiAuthority` and `sdkFamily` `MUST` follow `SDK_SPEC.md`: `sdkwork-<domain>-open-api` -> `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-api` -> `sdkwork-<domain>-app-sdk`, and `sdkwork-<domain>-backend-api` -> `sdkwork-<domain>-backend-sdk`.
+- For `app-api`, `prefix` `MUST` be `/app/v3/api`. For `backend-api`, `prefix` `MUST` be `/backend/v3/api`. For `open-api`, `prefix` `MUST` be an approved versioned domain prefix that is not `/app/v3/api` or `/backend/v3/api`; literal `/open/v3/api` is valid only when the owning domain explicitly approves that prefix.
+- Every `routes[].path` `MUST` start with `prefix`; relative paths are not valid route-manifest materialization input.
+- `auth.mode` `MUST` be one of `public`, `dual-token`, `api-key`, or `compatibility`. Protected app-api and backend-api routes use `dual-token`; protected open-api routes use `api-key` unless a documented compatibility contract declares a different mode.
+- `ownership.owner` and `ownership.apiAuthority` materialize to `x-sdkwork-owner` and `x-sdkwork-api-authority`. `source.crateRoot` or `routes[].source` materializes to `x-sdkwork-source` and `x-sdkwork-source-route-crate`.
+- Route manifests `MUST NOT` contain duplicate `(method, path)` pairs after path-template normalization.
+- Route manifests `MUST NOT` include dependency-owned operations as product-owned operations. Appbase, Drive, IAM login/session, and other reusable-module routes remain in their owning route crates and SDK families.
+- Handler and schema references are traceability inputs, not permission to bypass OpenAPI review. The aggregated OpenAPI authority remains the SDK generation contract.
+
+### 4.3 Route Aggregation To API Authority
+
+An API authority is the aggregated contract for one project/domain and one surface. It may aggregate multiple Rust route crates, Java controllers, and generated route manifests that share the same owner and surface.
+
+Example:
+
+```text
+sdkwork-routes-product-app-api
+sdkwork-routes-cart-app-api
+sdkwork-routes-order-app-api
+sdkwork-routes-payment-app-api
+  -> sdkwork-commerce-app-api
+  -> sdkwork-commerce-app-sdk
+```
+
+Rules:
+
+- `sdkwork-commerce-app-api` is the aggregated app-api authority for the commerce project. It may aggregate commerce-owned route crates such as `sdkwork-routes-product-app-api`, `sdkwork-routes-cart-app-api`, `sdkwork-routes-order-app-api`, and `sdkwork-routes-payment-app-api`.
+- `sdkwork-commerce-app-api` `MUST` contain only commerce-owned app-api operations after dependency-owned routes are subtracted. Appbase, Drive, provider, or other dependency-owned operations remain dependency SDKs.
+- `sdkwork-commerce-app-sdk` is the generated SDK family produced from `sdkwork-commerce-app-api`. Product code consumes the SDK family or approved composed wrappers, not the route crates.
+- The same mapping applies to open-api and backend-api: `sdkwork-routes-<capability>-open-api` aggregates into `sdkwork-<domain>-open-api` and generates `sdkwork-<domain>-sdk`; `sdkwork-routes-<capability>-backend-api` aggregates into `sdkwork-<domain>-backend-api` and generates `sdkwork-<domain>-backend-sdk`.
+- Route manifest inputs `MUST` be grouped by `owner`, `domain`, `surface`, `apiAuthority`, `sdkFamily`, and `prefix`. A materializer `MUST NOT` merge manifests that disagree on any of those fields.
+- Materialization `MUST` reject mixed surfaces, mismatched prefixes, missing owner/domain/capability, a route crate package name that does not match `sdkwork-routes-<capability>-<surface>`, operationId/tag/domain mismatch, duplicate method/path pairs, and dependency-owned operations in a consuming app authority.
+- The materialized authority OpenAPI `MUST` write `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`, and `x-sdkwork-source-route-crate` for every operation produced from a route manifest.
+- Authority materialization `MUST` be deterministic: the same route manifests, dependency authorities, and generator configuration must produce byte-stable OpenAPI and derived SDK inputs except for explicitly allowed generated timestamps, which should be avoided in committed artifacts.
 
 ## 5. URL And Path Standard
 
@@ -201,7 +359,7 @@ Valid examples:
 ```text
 sessions.create
 sessions.current.retrieve
-verificationCodes.verify
+messaging.verificationCodes.verify
 tenants.members.list
 organizations.members.create
 roles.permissions.delete
@@ -284,8 +442,8 @@ Examples:
 | `POST` | `/app/v3/api/auth/sessions` | `auth` | `sessions.create` | `client.auth.sessions.create(body)` |
 | `GET` | `/app/v3/api/auth/sessions/current` | `auth` | `sessions.current.retrieve` | `client.auth.sessions.current.retrieve()` |
 | `DELETE` | `/app/v3/api/auth/sessions/current` | `auth` | `sessions.current.delete` | `client.auth.sessions.current.delete()` |
-| `POST` | `/app/v3/api/auth/verification_codes` | `auth` | `verificationCodes.create` | `client.auth.verificationCodes.create(body)` |
-| `POST` | `/app/v3/api/auth/verification_codes/verify` | `auth` | `verificationCodes.verify` | `client.auth.verificationCodes.verify(body)` |
+| `POST` | `/app/v3/api/messaging/verification_codes` | `messaging` | `messaging.verificationCodes.create` | `client.messaging.verificationCodes.create(body)` |
+| `POST` | `/app/v3/api/messaging/verification_codes/verify` | `messaging` | `messaging.verificationCodes.verify` | `client.messaging.verificationCodes.verify(body)` |
 | `GET` | `/backend/v3/api/iam/users` | `iam` | `users.list` | `client.iam.users.list(params)` |
 | `GET` | `/backend/v3/api/iam/users/{userId}` | `iam` | `users.retrieve` | `client.iam.users.retrieve(userId)` |
 | `PATCH` | `/backend/v3/api/iam/users/{userId}` | `iam` | `users.update` | `client.iam.users.update(userId, body)` |
@@ -309,7 +467,7 @@ Use standard action names consistently.
 | `POST /resources/{resourceId}/activate` | `activate` | `users.activate` |
 | `POST /resources/{resourceId}/deactivate` | `deactivate` | `users.deactivate` |
 | `POST /resources/{resourceId}/revoke` | `revoke` | `apiKeys.revoke` |
-| `POST /resources/{resourceId}/verify` | `verify` | `verificationCodes.verify` |
+| `POST /resources/{resourceId}/verify` | `verify` | `messaging.verificationCodes.verify` |
 | `POST /resources/refresh` | `refresh` | `sessions.refresh` |
 | `POST /resources/batch_create` | `batchCreate` | `users.batchCreate` |
 | `POST /resources/batch_update` | `batchUpdate` | `users.batchUpdate` |
@@ -518,7 +676,7 @@ API surface and resolver standard:
 
 | Surface | Prefixes | Auth mode | Resolver standard |
 | --- | --- | --- | --- |
-| `open-api` | `/open/v3/api`, `/im/v3/api` | API key | `ApiKeyParser` normalizes the credential, then `ApiKeyLookupService` resolves the API key record and produces `AppRequestPrincipal`. |
+| `open-api` | Any approved SDKWork HTTP API prefix outside `/app/v3/api` and `/backend/v3/api`, for example `/im/v3/api` | API key | `ApiKeyParser` normalizes the credential, then `ApiKeyLookupService` resolves the API key record and produces `AppRequestPrincipal`. |
 | `app-api` | `/app/v3/api` | Dual token | `AuthTokenParser` plus `AccessTokenParser` resolve and validate one principal context. |
 | `backend-api` | `/backend/v3/api` | Dual token | `AuthTokenParser` plus `AccessTokenParser` resolve and validate one principal context. |
 
@@ -586,8 +744,8 @@ IAM is the common base module for every app.
 
 | Method | Path | operationId |
 | --- | --- | --- |
-| `POST` | `/app/v3/api/auth/verification_codes` | `verificationCodes.create` |
-| `POST` | `/app/v3/api/auth/verification_codes/verify` | `verificationCodes.verify` |
+| `POST` | `/app/v3/api/messaging/verification_codes` | `messaging.verificationCodes.create` |
+| `POST` | `/app/v3/api/messaging/verification_codes/verify` | `messaging.verificationCodes.verify` |
 | `GET` | `/app/v3/api/auth/verification_policy` | `verificationPolicy.retrieve` |
 | `POST` | `/app/v3/api/auth/password_reset_requests` | `passwordResetRequests.create` |
 | `POST` | `/app/v3/api/auth/password_resets` | `passwordResets.create` |
@@ -899,6 +1057,7 @@ SDKWork governance tools may read these extensions.
 | `x-sdkwork-owner` | Owning application, repository, or reusable platform module that publishes this operation in its own SDK family |
 | `x-sdkwork-api-authority` | Logical API authority that owns the operation, for example `sdkwork-appbase.app`, `craw-chat.app`, `sdkwork-drive.backend` |
 | `x-sdkwork-source` | Physical source or scanned module that produced the operation |
+| `x-sdkwork-source-route-crate` | Rust route crate package name when the operation was materialized from `sdkwork.route.manifest` |
 | `x-sdkwork-integration-source` | Integrated dependency source when an operation is present only for runtime composition or compatibility |
 
 Rules:
@@ -922,7 +1081,7 @@ Rules:
 - Application-root `sdks/` workspace layout, authority OpenAPI files, derived `sdkgen` files, backend OpenAPI SDK generation, and generated-output placement `MUST` follow `SDK_WORKSPACE_GENERATION_SPEC.md`.
 - Do not use raw `fetch`, `axios`, manual auth headers, local SDK forks, or handwritten DTO shims to bypass missing SDK capabilities.
 - If a capability is missing, update OpenAPI and regenerate SDKs.
-- TypeScript SDKs for new SDKWork v3 app, backend, and IM contracts `MUST` use `--standard-profile sdkwork-v3`.
+- TypeScript SDKs for new SDKWork v3 open-api, app-api, and backend-api contracts `MUST` use `--standard-profile sdkwork-v3`.
 - Resource-style operationIds `MUST` produce nested SDK resources.
 - App-specific SDK clients may differ by package and constructor, but method shape `MUST` remain consistent.
 - SDK generation inputs `MUST` contain only operations whose `x-sdkwork-owner` matches the SDK family owner declared in the SDK assembly manifest.
@@ -1005,12 +1164,12 @@ Rules:
 
 Rules:
 
-- API version is carried in the path prefix: `/app/v3/api` and `/backend/v3/api`.
+- API version is carried in the path prefix. App-api uses `/app/v3/api`, backend-api uses `/backend/v3/api`, and open-api uses the approved versioned prefix for that domain, for example `/im/v3/api`.
 - Additive fields are allowed when clients can ignore unknown fields.
 - Removing fields, changing field types, changing operationId, changing security, changing path, or changing response status semantics is breaking.
 - Breaking changes require a new version or explicit no-compatibility approval for pre-launch systems.
 - Deprecated operations `SHOULD` include OpenAPI `deprecated: true` and `x-sdkwork-deprecation`.
-- Do not introduce `/app/v1` or `/backend/v1` for new work in this repository.
+- Do not introduce `/app/v1`, `/backend/v1`, or v1/v2 open-api prefixes for new work in this repository.
 
 ## 24. Contract Validation Checklist
 
@@ -1018,11 +1177,17 @@ An API is standard only when this checklist passes:
 
 - [ ] OpenAPI version is `3.1.2` or a documented `3.1.x` toolchain fallback.
 - [ ] Domain name follows `DOMAIN_SPEC.md`.
-- [ ] SDK API paths start with `/open/v3/api`, `/im/v3/api`, `/app/v3/api`, or `/backend/v3/api` according to their API surface.
+- [ ] SDK API paths use the approved prefix for their API surface: `/app/v3/api` for app-api, `/backend/v3/api` for backend-api, and an approved versioned non-app/non-backend prefix such as `/im/v3/api` for open-api.
 - [ ] Runtime source, OpenAPI snapshots, generated SDK inputs, route tables, frontend SDK bootstrap code, and environment examples contain no forbidden legacy API prefix.
+- [ ] Rust HTTP route crates, when present, are named `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`.
+- [ ] Rust route crate names, declared surfaces, and mounted path prefixes agree.
+- [ ] Route manifests, when present, use `kind: sdkwork.route.manifest`, validate package name, capability, surface, owner, domain, API authority, SDK family, prefix, auth mode, ownership, and duplicate route rules.
+- [ ] Route crate manifests, when present, aggregate into `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, or `sdkwork-<domain>-backend-api`; route crate names are not used as final OpenAPI authority names.
+- [ ] Route manifest materialization writes `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`, and `x-sdkwork-source-route-crate` into authority OpenAPI operations.
 - [ ] Every SDK-generated operation declares `x-sdkwork-owner` and `x-sdkwork-api-authority`.
 - [ ] No SDK generation input contains operations owned by another app/repo/module.
 - [ ] Integrated dependency APIs are declared as SDK dependencies or composed wrappers instead of duplicated into the current SDK.
+- [ ] Web backend implementation layers, naming, request context consumption, repository boundaries, provider adapters, and static boundary scans follow `WEB_BACKEND_SPEC.md`.
 - [ ] Java app-api class-level mappings start with `/app/v3/api`, and Java backend-api class-level mappings start with `/backend/v3/api`.
 - [ ] Backend-api publishes no bare `/v3/api/*` resource path.
 - [ ] `apps` Java implementations, app/backend Java SDK generation inputs, and generated app/backend Java SDK path helpers pass `cd apps && node scripts/api-spec-java-standard.test.mjs`.

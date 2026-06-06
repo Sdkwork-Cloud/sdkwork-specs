@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: logs, metrics, traces, audit correlation, diagnostics, HTTP/RPC runtime observability
-- Related: `SECURITY_SPEC.md`, `RPC_SPEC.md`, `DRIVE_SPEC.md`, `EVENT_SPEC.md`, `TEST_SPEC.md`
+- Related: `SECURITY_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RPC_SPEC.md`, `DRIVE_SPEC.md`, `EVENT_SPEC.md`, `TEST_SPEC.md`
 
 Production behavior must be observable without leaking sensitive data.
 
@@ -16,6 +16,7 @@ Rules:
 - Appbase problem responses `MUST` include the server-owned request id when available.
 - Logs, metrics, traces, audit events, and security events `SHOULD` be correlated.
 - Tenant and organization context may be logged only when allowed by security and privacy rules.
+- Web backend handlers and services `MUST` use the server-owned request context from `WEB_BACKEND_SPEC.md` for request id, operationId, surface, route template, and safe tenant context. They must not create competing request correlation IDs.
 
 ## 2. Logging
 
@@ -26,6 +27,8 @@ Rules:
 - RPC logs `SHOULD` include proto package, service, method, operationId, gRPC status code, deadline, duration, and safe tenant context.
 - Logs `MUST NOT` include raw tokens, API keys, access tokens, passwords, verification codes, secrets, private keys, or full sensitive payloads.
 - API key logs may include key id, safe key prefix, source, and status only after server-side validation.
+- HTTP route values in logs `MUST` use the route template, for example `/app/v3/api/products/{productId}`, not raw paths containing user, tenant, file, object, token, or provider identifiers.
+- Handler, service, repository, and provider adapter logs `SHOULD` include operationId when the work is tied to an HTTP or RPC operation. Free-form controller or handler class names are not a substitute for operationId.
 
 ## 3. Metrics
 
@@ -59,6 +62,8 @@ Required common labels:
 | `route` | HTTP route template, not raw path. |
 | `method` | HTTP method or RPC method. |
 | `status` | Normalized HTTP status class/code or RPC status. |
+| `api_surface` | `open-api`, `app-api`, `backend-api`, or `rpc` when known. |
+| `backend_layer` | `router`, `handler`, `service`, `repository`, `provider`, or `materializer` when the metric is emitted by a web backend implementation layer. |
 
 Label rules:
 
@@ -73,6 +78,9 @@ Label rules:
   database contract. Free-form display names are not valid labels.
 - High-cardinality diagnostics belong in traces, logs, or sampled exemplars,
   not metric labels.
+- Backend metrics `MUST NOT` use controller class names, handler function names, SQL text, raw URLs,
+  tenant names, user ids, or request ids as labels. Use operationId, route template, normalized
+  status, API surface, and bounded backend layer labels instead.
 
 Metric types:
 

@@ -1,0 +1,12 @@
+/local/
+/tmp/
+/cache/
+/secrets/
+*.secret
+*.token
+*.key
+*.pem
+*.p12
+*.pfx
+*.sqlite
+*.db

@@ -2,9 +2,9 @@
 
 - Version: 1.0
 - Scope: app/user-facing React mobile packages, mobile web, Capacitor/Tauri-mobile style shells, app SDK integration
-- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side mobile React UI is packaged and integrated. Mobile React UI is user-facing and must consume app-api through app SDK clients or approved appbase mobile wrappers. It must not depend on backend/admin UI packages.
+This standard defines how SDKWork app-side mobile React UI is packaged and integrated. Mobile React UI is user-facing and must consume app-api through generated TypeScript app SDK clients or approved appbase mobile wrappers. It must not depend on backend/admin UI packages. Cross-architecture SDK composition and appbase IAM token wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
 
 This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing mobile React packages.
 
@@ -84,9 +84,14 @@ Rules:
 Rules:
 
 - Services `MUST` use app SDK clients or approved service wrappers.
+- Runtime/bootstrap `MUST` construct generated TypeScript app SDK clients, appbase IAM clients, one global token manager, token/context stores, and mobile host adapters.
+- Mobile React IAM integration `MUST` use an appbase mobile wrapper when available. If a mobile-specific wrapper is not available, the app may use an approved adapter over `@sdkwork/iam-runtime` and `@sdkwork/appbase-app-sdk`; it must not create raw HTTP auth flows.
+- `appbaseApp`, optional `appbaseBackend`, and downstream product app-api/backend-api SDK clients `MUST` share the same global token manager through generated SDK credential APIs such as `setTokenManager`.
+- Login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user self-service `MUST` use appbase app SDK resources or appbase wrappers. Verification-code delivery and verification `MUST` use the generated messaging app SDK surface or an appbase wrapper that delegates to an injected messaging client.
 - Native bridge calls `MUST` go through typed host adapters.
-- UI components `MUST NOT` construct SDK clients, call raw HTTP, manually attach auth headers, or call native bridge globals directly.
+- UI components `MUST NOT` construct SDK clients, call raw HTTP, manually attach auth/API key headers, or call native bridge globals directly.
 - Push notification, QR scan, camera, location, biometric, secure storage, and deep-link handling must be represented as typed adapters with test doubles.
+- Secure storage adapters may persist appbase token/context data for the central runtime, but they `MUST NOT` own login, refresh, permission checks, or business authorization.
 - Missing app SDK methods must be fixed in `spring-ai-plus-app-api` and generator inputs before the mobile package consumes them.
 
 ## 5. Mobile Interaction And Design
@@ -105,6 +110,7 @@ Rules:
 Rules:
 
 - Tokens should be stored through secure storage host adapters where available.
+- Token/session clearing `MUST` clear secure storage, global token manager, context store, mobile caches, realtime/session bridges, and sensitive view state on logout, refresh failure, tenant switch, and account switch.
 - Verification codes, OAuth codes, reset tokens, QR keys, and access tokens `MUST NOT` be logged, persisted in insecure view state, or placed in analytics attributes.
 - Deep links must validate expected scheme, host, path, nonce/state, and expiry before completing sensitive flows.
 - Frontend permission checks are hints only. App-api authorization remains mandatory.
@@ -123,6 +129,7 @@ Acceptance checklist:
 
 - [ ] Package belongs to the correct mobile app domain/capability.
 - [ ] UI -> services -> injected app SDK clients boundary is respected.
+- [ ] Mobile runtime wires appbase IAM, generated app SDK clients, secure storage adapter, and one global token manager according to `APP_SDK_INTEGRATION_SPEC.md`.
 - [ ] Native concerns use host adapters.
-- [ ] No backend SDK, backend UI dependency, raw HTTP, manual auth headers, or generated SDK edits were introduced.
+- [ ] No backend SDK, backend UI dependency, raw HTTP, manual auth/API key headers, or generated SDK edits were introduced.
 - [ ] Mobile-specific state, offline, safe-area, and security behaviors are covered.

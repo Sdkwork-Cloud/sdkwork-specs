@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: app registration, app manifest, release metadata, install packages, media assets, PlusApp projection
-- Related: `APPLICATION_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `APPLICATION_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 SDKWork App Manifest Standard v3 defines the canonical app configuration used by new applications under `apps/`. The standard is intentionally strict: new apps do not carry legacy compatibility branches, and every field is designed to map cleanly into `PlusApp` while retaining enough metadata for professional multi-platform release operations.
 
@@ -25,9 +25,13 @@ The manifest must use:
 
 The schema lives at `apps/schemas/sdkwork.app.schema.v3.json`. The full example lives at `apps/examples/sdkwork.app.config.v3.full.example.json`. The examples file carries the version suffix only because it is a reusable reference; each real app directory must use the unsuffixed canonical filename above.
 
+The same `<app-root>` `MUST` contain the source-controlled `.sdkwork/` workspace required by
+`SDKWORK_WORKSPACE_SPEC.md`, including `.sdkwork/skills/` and `.sdkwork/plugins/`.
+
 ## 2. Design Principles
 
 - `sdkwork.app.config.json` is the source of truth for registration, package distribution, update checks, and release governance.
+- `.sdkwork/` is the source-controlled workspace metadata directory for the same application root. It stores local skills and plugins; it does not store manifest release payloads, runtime state, generated SDK transport output, or user-private data.
 - `PlusApp` is the database projection, not a second independent source.
 - App icons, screenshots, and preview assets are governed data, not loose files. SDKWork-owned media bytes must be stored through Drive, represented as `MediaResource` where app APIs expose them, and projected into `PlusApp.config.media`.
 - Backend enum names are used verbatim. Do not invent aliases such as `DESKTOP_UBUNTU`; use `DESKTOP_LINUX` plus package metadata for the Linux distribution.
@@ -408,6 +412,7 @@ The validator enforces:
 ## 16. New App Checklist
 
 - [ ] Create `sdkwork.app.config.json` from the v3 full example.
+- [ ] Create `.sdkwork/README.md`, `.sdkwork/skills/README.md`, and `.sdkwork/plugins/README.md` for the same app root.
 - [ ] Choose one immutable `app.key`.
 - [ ] Use backend enum names exactly.
 - [ ] Fill platform and package matrix before registration.

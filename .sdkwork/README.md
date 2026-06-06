@@ -1,0 +1,10 @@
+# SDKWork Workspace Metadata
+
+This directory follows `SDKWORK_WORKSPACE_SPEC.md`.
+
+It stores repository-local SDKWork development knowledge:
+
+- `skills/` contains reusable skills and workflows for this repository.
+- `plugins/` contains repository-local plugins or plugin placeholders.
+
+Do not store secrets, API keys, runtime files, generated SDK transport output, or user-private `~/.sdkwork` data here. Generated SDK output may have its own `.sdkwork/sdkwork-generator-*.json` control-plane files under generated package directories; those are owned by `sdkgen` and are not repository workspace metadata.

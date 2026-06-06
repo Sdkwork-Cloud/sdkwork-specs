@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: authentication, authorization, token use, API/RPC security, frontend handling, logging, secrets
-- Related: `API_SPEC.md`, `RPC_SPEC.md`, `DRIVE_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RPC_SPEC.md`, `DRIVE_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
 
 Security is a cross-cutting requirement. It must be enforced by backend services and reflected in OpenAPI contracts, SDK behavior, frontend service boundaries, and tests.
 
@@ -10,7 +10,7 @@ Security is a cross-cutting requirement. It must be enforced by backend services
 
 Rules:
 
-- Protected HTTP APIs `MUST` require both `AuthToken` and `AccessToken`.
+- Protected HTTP APIs `MUST` use the authentication mode declared by their API surface. Protected app-api and backend-api operations require both `AuthToken` and `AccessToken`; protected open-api operations require API key mode unless an explicitly documented compatibility contract defines a different scheme.
 - Protected RPC methods `MUST` require the equivalent `authorization` and `access-token` metadata unless the method is explicitly public or internal mTLS-only.
 - Product app login/session integration, AuthGate behavior, generated SDK token wiring, logout clearing, and Rust AppContext validation `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - Public endpoints `MUST` explicitly declare `security: []`.
@@ -19,6 +19,7 @@ Rules:
 - Tokens and secrets `MUST NOT` be logged.
 - Protected open-api requests `MUST` resolve API keys through a server-side API key lookup service. The API key record, not the raw submitted key alone, supplies tenant, organization, user, app, data scope, and permission scope.
 - API key lookup implementations `MUST` support different storage backends through an interface or service boundary. The standard may use IAM tables, tenant-local API key tables, encrypted secret stores, caches, or remote IAM services.
+- Web backend handlers, controller methods, services, repositories, and provider adapters `MUST` follow `WEB_BACKEND_SPEC.md`: they consume typed request context and must not reparse raw credential headers after framework context resolution.
 
 ## 2. Authorization
 
@@ -28,6 +29,8 @@ Rules:
 - Permission checks `MUST` include tenant and organization context.
 - Object-level authorization `MUST` be checked before returning or mutating tenant data.
 - Admin/backend APIs `MUST` use least privilege and audit sensitive operations.
+- Service/use-case code `MUST` enforce business authorization before repository access returns tenant-owned data. Router middleware and UI permission hints are not sufficient.
+- Repositories `MUST` receive tenant, organization, owner, and data-scope inputs from typed context or explicit service parameters; they `MUST NOT` infer authorization from global request state.
 
 ## 3. Input And Output Safety
 
@@ -85,6 +88,7 @@ All appbase HTTP frameworks `MUST` provide the following interceptor positions i
 Rules:
 
 - Security interceptors `MUST` be framework-owned or registered in the standard call chain. Business handlers `MUST NOT` implement ad hoc replacements for shared security policy.
+- Business handlers and services `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, request IDs, tenant IDs, organization IDs, user IDs, or permission scopes from raw headers. They consume the typed context injected by this chain.
 - SQL injection guards are heuristic request filters. All database access `MUST` still use bind parameters or query builders that bind values, and raw SQL string concatenation with user input is forbidden.
 - CORS and cross-site request protection are separate controls. Passing CORS does not replace authorization, CSRF protection for cookie flows, or tenant isolation.
 - Rate-limit and idempotency implementations must use bounded keys that do not expose raw tokens, API keys, passwords, or PII.
@@ -97,6 +101,23 @@ Rules:
 - Logs `MUST NOT` contain secrets, passwords, raw tokens, verification codes, or full private payloads.
 - Audit logs `MUST` be append-oriented and tamper-resistant for L3 domains.
 
+## 6.1 Repository Workspace Safety
+
+The source-controlled repository/application `.sdkwork/` workspace is governed by
+`SDKWORK_WORKSPACE_SPEC.md` and is reviewed as source.
+
+Rules:
+
+- `.sdkwork/skills/`, `.sdkwork/plugins/`, approved manifests, and their README files may be
+  committed when they contain reusable development knowledge only.
+- `.sdkwork/local/`, `.sdkwork/tmp/`, `.sdkwork/cache/`, `.sdkwork/secrets/`, local install state,
+  runtime databases, logs, generated transient outputs, and secret-bearing files `MUST` be ignored.
+- `.sdkwork/` `MUST NOT` contain API keys, auth tokens, passwords, private certificates, private
+  keys, provider credentials, local user data, runtime database files, generated SDK transport
+  output, or copied `~/.sdkwork/<app>` runtime state.
+- Generated SDK output `.sdkwork/sdkwork-generator-*.json` files are valid only below generated SDK
+  output and are not repository workspace secrets or skills.
+
 ## 7. Acceptance Checklist
 
 - [ ] OpenAPI security declarations are explicit.
@@ -104,9 +125,11 @@ Rules:
 - [ ] Dual-token validation is enforced server-side.
 - [ ] API key open-api validation resolves a server-side API key record before context injection.
 - [ ] Protected appbase routers run the standard interceptor chain or a stricter documented superset.
+- [ ] Web backend handlers/services consume typed request context and do not reparse raw credential, tenant, user, permission, or request-id headers.
 - [ ] Tenant/object authorization is tested.
 - [ ] Drive upload/download grants are short-lived, authorized, and do not leak provider credentials or signed URL material into logs.
 - [ ] Sensitive fields are write-only or omitted.
 - [ ] Rate limits exist for auth-sensitive paths.
 - [ ] CORS, cross-site request protection, request size, method guard, SQL injection guard, secure response headers, audit, and logging are configured through framework interceptors.
 - [ ] Logs redact sensitive data.
+- [ ] Source-controlled `.sdkwork/` contains no secrets, runtime data, generated SDK transport output, or user-private files.

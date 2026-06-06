@@ -2,11 +2,16 @@
 
 - Version: 1.0
 - Scope: runtime directories, server install layout, desktop private files, development layout, release configuration files, database configuration, Redis configuration, secrets, logs, cache, temporary files, cross-OS path conventions
-- Related: `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `NGINX_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `NGINX_SPEC.md`
 
 This standard is the canonical SDKWork authority for host filesystem layout and
 infrastructure runtime configuration. Application-local documents may provide
 examples, but they must not define competing path or database/Redis conventions.
+
+The source-controlled repository/application `.sdkwork/` workspace is governed
+by `SDKWORK_WORKSPACE_SPEC.md`. It is not a runtime directory and must not be
+used for user-private data, server state, secrets, logs, caches, databases, or
+temporary runtime files.
 
 Every SDKWork application must keep runtime files under an SDKWork namespace and
 must use a short lowercase application code as the final directory segment. For
@@ -44,6 +49,7 @@ Runtime layout and infrastructure configuration must satisfy these goals:
 | Data directory | Durable mutable application state owned by the process. |
 | Cache directory | Rebuildable local cache. Cache loss must not destroy authoritative data. |
 | Runtime directory | Ephemeral PID files, sockets, locks, and generated state that should disappear after reboot. |
+| Repository workspace `.sdkwork/` | Source-controlled development metadata at a git repository root or application root. It is not runtime state and is governed by `SDKWORK_WORKSPACE_SPEC.md`. |
 
 ## 3. Naming Rules
 
@@ -57,6 +63,8 @@ Rules:
   service name, executable name, package name, or repository name.
 - System scope paths must use `sdkwork/<app>`.
 - User private paths must use `.sdkwork/<app>`.
+- Source-controlled repository/application `.sdkwork/` directories are not user private runtime
+  paths. Do not write runtime files under a source root `.sdkwork/`.
 - Process-specific files may use the process name inside the application
   directory when it improves operator clarity. For example:
   `/etc/sdkwork/router/clawrouter.toml`.

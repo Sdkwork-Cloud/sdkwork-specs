@@ -467,7 +467,7 @@ Example commands:
 
 ```text
 cargo test --manifest-path apps/sdkwork-appbase/packages/native-rust/iam/sdkwork-iam-rpc-rust/Cargo.toml
-cargo test --manifest-path apps/sdkwork-appbase/packages/native-rust/commerce/sdkwork-commerce-rpc-rust/Cargo.toml
+cargo test --manifest-path apps/sdkwork-commerce/packages/native-rust/commerce/sdkwork-commerce-rpc-rust/Cargo.toml
 ```
 
 ## 14. Environment And Deployment

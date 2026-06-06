@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: reusable frontend/backend modules, appbase packages, service facades, extension points, module composition
-- Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`
+- Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the building-block model for SDKWork applications. A reusable module must be installable, understandable, replaceable, and testable without copying app-specific code.
 
@@ -42,13 +42,17 @@ Rules:
 | `runtime` | Providers, bootstrap, storage adapters, host adapters | domain invariants |
 | `host` | browser/mobile/native/runtime boundary | API business logic |
 | `backend-domain-ui` | Backend/admin domain pages, route/menu metadata, operator services using backend SDK | app/user-facing UI, app SDK calls, backend SDK construction |
+| `pc-console-ui` | User-facing PC management console pages, route metadata, console services using app SDKs | company-internal admin workflows, backend-only operation center behavior |
+| `pc-admin-ui` | Company-internal PC admin pages, route/menu metadata, internal operator services using backend SDKs | app/user-facing UI, user console workflows, app SDK login/session creation |
 
 Rules:
 
 - Shared foundation modules `SHOULD` split contracts, service, UI, feature, runtime, and host only when the split reduces coupling.
 - Small modules may keep these layers in one package, but boundaries must remain visible in folders and exports.
 - A package named `core` must be domain-specific, such as `sdkwork-iam-core-pc-react`; generic `sdkwork-core` is forbidden for new shared domain behavior.
-- Backend/admin UI modules `MUST` follow `BACKEND_UI_SPEC.md` and be split by business domain as `@sdkwork/react-backend-<domain>`.
+- PC user console modules `MUST` follow `APP_PC_ARCHITECTURE_SPEC.md` and be split as `sdkwork-<product>-pc-console-<capability>`.
+- PC internal admin modules `MUST` follow `APP_PC_ARCHITECTURE_SPEC.md` and `BACKEND_UI_SPEC.md` and be split as `sdkwork-<product>-pc-admin-<capability>`.
+- Standalone backend/admin UI modules `MUST` follow `BACKEND_UI_SPEC.md` and be split by business domain as `@sdkwork/react-backend-<domain>`.
 - `@sdkwork/react-backend-ui` may contain only domain-neutral primitives; backend business pages and services must live in the owning backend domain package.
 
 ## 3. Appbase Canonical Modules
@@ -122,8 +126,9 @@ IAM example:
 ```ts
 createIamRuntime({
   clients: {
-    app: appSdkClient,
-    backend: backendSdkClient,
+    appbaseApp,
+    appbaseBackend,
+    sdkClients: [productAppSdk, productBackendSdk],
   },
   config: {
     appId: "sdkwork-router",
@@ -137,7 +142,7 @@ createIamRuntime({
 Communication modules follow the same rule. IM and RTC consumers use the public packages `@sdkwork/im-sdk` and `@sdkwork/rtc-sdk`, whose active source workspaces are:
 
 - `apps/craw-chat/sdks/sdkwork-im-sdk`
-- `apps/craw-chat/sdks/sdkwork-rtc-sdk`
+- `D:/sdkwork-opensource/sdkwork-rtc/sdks/sdkwork-rtc-sdk`
 
 Deprecated `openchat` sources `MUST NOT` be used for new appbase modules.
 
@@ -145,17 +150,19 @@ Deprecated `openchat` sources `MUST NOT` be used for new appbase modules.
 
 | Architecture | Canonical package family | Required spec |
 | --- | --- | --- |
-| App PC React | `packages/pc-react/<domain>/sdkwork-<capability>-pc-react` | `APP_PC_REACT_UI_SPEC.md` |
+| App PC React | `packages/pc-react/<domain>/sdkwork-<capability>-pc-react` or `apps/<product>-pc/packages/sdkwork-<product>-pc-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
+| PC user console React | `apps/<product>-pc/packages/sdkwork-<product>-pc-console-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
+| PC internal admin React | `apps/<product>-pc/packages/sdkwork-<product>-pc-admin-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` |
 | App mobile React | `packages/mobile-react/<domain>/sdkwork-<capability>-mobile-react` | `APP_MOBILE_REACT_UI_SPEC.md` |
 | App Flutter | `packages/mobile-flutter/<domain>/sdkwork_<capability>_flutter` | `APP_FLUTTER_UI_SPEC.md` |
-| Backend/admin React | `apps/sdkwork-backend-react-web/packages/sdkwork-react-backend-<domain>` | `BACKEND_UI_SPEC.md` |
+| Standalone backend/admin React | `apps/sdkwork-backend-react-web/packages/sdkwork-react-backend-<domain>` | `BACKEND_UI_SPEC.md` |
 
 Rules:
 
 - A UI module `MUST` choose the architecture package family through `UI_ARCHITECTURE_SPEC.md` before implementation.
-- App-side UI modules consume app SDK surfaces; backend/admin UI modules consume backend SDK surfaces.
+- App-side and PC user console UI modules consume app SDK surfaces; PC internal admin and standalone backend/admin UI modules consume backend SDK surfaces.
 - Modules for different UI architectures may share contracts and service concepts, but must not import each other's UI components, routes, or host adapters.
-- Backend/admin modules must not be consolidated into a single backend business package. Split them by business domain and permission prefix.
+- PC internal admin and standalone backend/admin modules must not be consolidated into a single backend business package. Split them by business domain, capability, and permission prefix.
 - Catch-all backend/admin packages are forbidden for business pages, business services, repositories, route records, menu records, permission constants, and domain i18n.
 
 ## 6. Extension Points

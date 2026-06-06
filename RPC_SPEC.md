@@ -91,7 +91,7 @@ SDKWork RPC has the same app/backend separation as HTTP plus an internal-only su
 
 Rules:
 
-- Login, register, refresh, logout, OAuth session, password reset, verification code, current user, and QR auth RPC methods `MUST` live in app RPC only.
+- Login, register, refresh, logout, OAuth session, password reset, current user, QR auth, and verification-code RPC methods `MUST` live in app RPC only. Verification-code RPCs are messaging-owned and must align with the messaging app API operationIds.
 - Backend RPC `MUST NOT` expose auth/session login methods.
 - Internal RPC `MUST NOT` be reachable from public app clients.
 - App and backend RPC packages MUST preserve the same semantic separation as `/app/v3/api` and `/backend/v3/api`.
@@ -489,7 +489,7 @@ Package: `sdkwork.iam.app.v3`
 | Service | Methods | operationIds |
 | --- | --- | --- |
 | `SessionService` | `CreateSession`, `RetrieveCurrentSession`, `UpdateCurrentSession`, `DeleteCurrentSession`, `RefreshSession` | `sessions.create`, `sessions.current.retrieve`, `sessions.current.update`, `sessions.current.delete`, `sessions.refresh` |
-| `VerificationService` | `CreateVerificationCode`, `VerifyVerificationCode` | `verificationCodes.create`, `verificationCodes.verify` |
+| `VerificationService` | `CreateVerificationCode`, `VerifyVerificationCode` | `messaging.verificationCodes.create`, `messaging.verificationCodes.verify` |
 | `PasswordRecoveryService` | `CreatePasswordResetRequest`, `CreatePasswordReset` | `passwordResetRequests.create`, `passwordResets.create` |
 | `RegistrationService` | `CreateRegistration` | `registrations.create` |
 | `OAuthSessionService` | `RetrieveOAuthAuthorizationUrl`, `CreateOAuthSession` | `oauthAuthorizationUrls.retrieve`, `oauthSessions.create` |

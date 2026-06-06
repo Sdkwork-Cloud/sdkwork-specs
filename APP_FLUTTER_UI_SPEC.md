@@ -2,9 +2,9 @@
 
 - Version: 1.0
 - Scope: app/user-facing Flutter packages, mobile/desktop Flutter shells, generated app SDK integration, platform adapters
-- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side Flutter UI is packaged and integrated. Flutter UI packages are app/user-facing and consume app-api through generated Flutter/Dart app SDK clients or approved appbase Flutter wrappers. They must not consume backend/admin UI packages or backend SDKs for user-facing workflows.
+This standard defines how SDKWork app-side Flutter UI is packaged and integrated. Flutter UI packages are app/user-facing and consume app-api through generated Flutter/Dart app SDK clients or approved appbase Flutter wrappers. They must not consume backend/admin UI packages or backend SDKs for user-facing workflows. Cross-architecture SDK composition and appbase IAM token wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
 
 This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing Flutter packages.
 
@@ -89,7 +89,11 @@ Rules:
 Rules:
 
 - Flutter services/repositories `MUST` receive generated app SDK clients or narrow app SDK ports through dependency injection.
-- Widgets `MUST NOT` construct SDK clients, call raw HTTP, manually attach auth headers, or read secrets.
+- Flutter runtime/bootstrap `MUST` construct generated Dart/Flutter app SDK clients, generated Dart/Flutter appbase SDK clients or approved appbase Flutter wrappers, one global token-manager equivalent, token/context storage, and platform adapters.
+- Flutter IAM integration `MUST` use generated appbase app SDK resources or an approved appbase Flutter wrapper for login, registration, current session, refresh, logout, verification, OAuth, QR auth, password reset, runtime metadata, and current-user self-service.
+- If an appbase Flutter wrapper is missing a required resource, the missing capability `MUST` be added to appbase app-api/OpenAPI/generator inputs and regenerated. Flutter UI packages `MUST NOT` fill the gap with raw `http` calls, manual headers, or copied TypeScript wrapper logic.
+- The Flutter token-manager equivalent `MUST` be global for the authenticated session context and shared by appbase app SDK, optional appbase backend SDK, and every authenticated product app-api/backend-api SDK client.
+- Widgets `MUST NOT` construct SDK clients, call raw HTTP, manually attach auth/API key headers, or read secrets.
 - Missing Flutter/Dart SDK methods `MUST` be fixed by updating app-api OpenAPI and generator inputs, then regenerating.
 - Platform capabilities must be behind interfaces so tests can use fake adapters.
 - Generated SDK output `MUST NOT` be hand-edited.
@@ -110,6 +114,8 @@ Rules:
 Rules:
 
 - Tokens should be stored through secure platform storage where available.
+- Secure platform storage may persist centralized token/context state, but it `MUST NOT` own login, token refresh, permission checks, or business authorization.
+- Logout, refresh failure, tenant switch, and account switch `MUST` clear platform storage, global token-manager equivalent, context store, sensitive Flutter state, and realtime/session bridges.
 - Verification codes, OAuth codes, password reset tokens, QR keys, access tokens, and refresh tokens `MUST NOT` be logged or placed in crash/analytics breadcrumbs.
 - Deep link callbacks must validate expected scheme/host/path, state, nonce, and expiry before completing sensitive flows.
 - Frontend permission checks are hints only. App-api authorization remains mandatory.
@@ -128,6 +134,7 @@ Acceptance checklist:
 
 - [ ] Package belongs to the correct Flutter app domain/capability.
 - [ ] Widgets call controllers/services; services call injected app SDK clients.
+- [ ] Flutter runtime wires generated Dart/Flutter app SDKs, appbase SDK/wrapper, platform storage, and one global token-manager equivalent according to `APP_SDK_INTEGRATION_SPEC.md`.
 - [ ] Platform behavior uses typed adapters.
-- [ ] No backend SDK, backend UI dependency, raw HTTP, manual auth headers, or generated SDK edits were introduced.
+- [ ] No backend SDK, backend UI dependency, raw HTTP, manual auth/API key headers, or generated SDK edits were introduced.
 - [ ] Tests cover SDK orchestration, platform adapters, and representative UI states.

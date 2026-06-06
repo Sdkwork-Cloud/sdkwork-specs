@@ -1,8 +1,8 @@
 # Configuration And Environment Standard
 
 - Version: 1.0
-- Scope: environment config, SDK client initialization, secrets, feature flags, typed runtime config, SaaS/private/local switching
-- Related: `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`
+- Scope: environment config, SDK client initialization, secrets, feature flags, typed runtime config, dev/test/staging/prod profiles, desktop/server/container/web switching
+- Related: `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`
 
 This standard defines how applications select environment, deployment mode, base URLs, SDK clients, token storage, and feature flags without leaking those decisions into reusable modules.
 
@@ -17,6 +17,7 @@ Allowed config sources:
 | secret manager / secure storage | Secrets, tokens, private keys, signing credentials |
 | bootstrap file | Local development defaults and app shell wiring |
 | server config | Java/Rust service process settings |
+| platform config | Tauri/native target packaging metadata, permissions, capabilities, signing references |
 
 Rules:
 
@@ -24,18 +25,49 @@ Rules:
 - Shared modules receive typed config from runtime/bootstrap.
 - Secrets `MUST NOT` be stored in app manifests or committed config files.
 - SaaS/private/local differences `MUST` be represented as typed deployment mode, not scattered conditionals.
+- Lifecycle environment, deployment mode, and runtime target `MUST` be represented as separate typed fields. A single `NODE_ENV`, Vite mode, Spring profile, or Tauri target must not be used as the whole runtime decision model.
 
 ## 2. Standard Runtime Config
 
 ```ts
 export type SdkworkEnvironment = "development" | "test" | "staging" | "production";
-export type SdkworkDeploymentMode = "saas" | "private" | "local" | "test";
+export type SdkworkConfigProfile = "dev" | "test" | "staging" | "prod";
+export type SdkworkBuildMode = "development" | "test" | "staging" | "production";
+export type SdkworkDeploymentMode =
+  | "web"
+  | "desktop"
+  | "tablet-ipados"
+  | "tablet-android"
+  | "server"
+  | "container"
+  | "saas"
+  | "private"
+  | "local"
+  | "test";
+export type SdkworkRuntimeTarget =
+  | "browser"
+  | "desktop"
+  | "tablet-ipados"
+  | "tablet-android"
+  | "server"
+  | "container"
+  | "test-runner";
 
 export interface SdkworkRuntimeConfig {
   environment: SdkworkEnvironment;
+  configProfile?: SdkworkConfigProfile;
+  buildMode?: SdkworkBuildMode;
   deploymentMode: SdkworkDeploymentMode;
+  runtimeTarget: SdkworkRuntimeTarget;
+  openApiBaseUrl?: string;
   appApiBaseUrl: string;
   backendApiBaseUrl?: string;
+  sdkBaseUrls?: SdkworkSdkBaseUrlConfig;
+  auth?: SdkworkAuthRuntimeConfig;
+  publicRuntime?: SdkworkPublicRuntimeConfig;
+  server?: SdkworkServerConfig;
+  desktop?: SdkworkDesktopConfig;
+  tablet?: SdkworkTabletConfig;
   paths?: SdkworkRuntimePaths;
   database?: SdkworkDatabaseConfig;
   redis?: SdkworkRedisConfig;
@@ -43,6 +75,63 @@ export interface SdkworkRuntimeConfig {
   tenantId?: string;
   organizationId?: string;
   featureFlags?: Record<string, boolean | string | number>;
+}
+
+export interface SdkworkSdkBaseUrlConfig {
+  defaultApiBaseUrl?: string;
+  openApiBaseUrl?: string;
+  appApiBaseUrl: string;
+  backendApiBaseUrl?: string;
+  dependencySdkBaseUrls?: Record<string, SdkworkDependencySdkBaseUrls>;
+}
+
+export interface SdkworkDependencySdkBaseUrls {
+  openApiBaseUrl?: string;
+  appApiBaseUrl?: string;
+  backendApiBaseUrl?: string;
+}
+
+export interface SdkworkAuthRuntimeConfig {
+  tokenManagerMode: "appbase-global" | "service-context" | "test";
+  tokenStorage: "memory" | "browser-session" | "browser-local" | "os-secure-storage" | "server-context";
+  accessTokenHeader: "Access-Token";
+  authTokenHeader: "Authorization";
+  refreshEnabled?: boolean;
+  apiKeyCredentialProvider?: "server" | "secure-storage" | "short-lived" | "test";
+}
+
+export interface SdkworkPublicRuntimeConfig {
+  apiBaseUrl?: string;
+  openApiBaseUrl?: string;
+  appApiBaseUrl?: string;
+  backendApiBaseUrl?: string;
+  dependencySdkBaseUrls?: Record<string, SdkworkDependencySdkBaseUrls>;
+  runtimeEnvFile?: string;
+  featureFlags?: Record<string, boolean | string | number>;
+}
+
+export interface SdkworkServerConfig {
+  bind?: string;
+  externalScheme?: "http" | "https";
+  publicBaseUrl?: string;
+  trustForwardedHeaders?: boolean;
+  profileConfigFile?: string;
+}
+
+export interface SdkworkDesktopConfig {
+  nativeHost: "tauri" | "electron" | "browser-installed" | "custom";
+  localServiceEnabled?: boolean;
+  localServiceBind?: string;
+  userConfigFile?: string;
+  secureStorageProvider?: string;
+}
+
+export interface SdkworkTabletConfig {
+  platform: "ipad-os" | "android-tablet";
+  nativeHost: "tauri" | "custom";
+  bundleId?: string;
+  packageName?: string;
+  platformConfigFile?: string;
 }
 
 export interface SdkworkRuntimePaths {
@@ -97,10 +186,21 @@ export interface SdkworkRedisConfig {
 Rules:
 
 - `environment` describes lifecycle stage.
-- `deploymentMode` describes backend architecture.
-- `appApiBaseUrl` and `backendApiBaseUrl` are selected before SDK clients are created.
+- `configProfile` is a file/profile alias used by scripts and config file names. `dev` maps to `development`; `prod` maps to `production`. Application code should normalize to `environment`.
+- `buildMode` describes the bundler/build tool mode. It is useful for Vite or native package scripts, but it is not the lifecycle authority for runtime behavior.
+- `deploymentMode` describes deployment topology or packaging shape.
+- `runtimeTarget` describes where this config is consumed: browser renderer, desktop host, tablet host, server process, container process, or test runner.
+- `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` are selected before SDK clients are created.
+- `openApiBaseUrl` is optional because not every application consumes an open-api SDK. When present for a SDKWork-owned business open-api, it `MUST` use that domain's approved non-app/non-backend prefix from `API_SPEC.md`, for example `/im/v3/api`. It does not require a literal `/open` path segment. `/v1` is valid only for explicitly documented compatibility APIs such as OpenAI-compatible AI API.
+- `sdkBaseUrls` is the canonical per-SDK-surface base URL map for bootstrap. Top-level `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` remain convenience aliases and must resolve to the same effective values.
+- `sdkBaseUrls.dependencySdkBaseUrls` owns base URLs for dependency SDK families such as appbase, Drive, IM, or another product app. It must be keyed by stable SDK family id, not by ad hoc host names.
+- `auth` config describes how the runtime obtains and stores credentials. It must not contain actual `authToken`, `accessToken`, `refreshToken`, API key values, or session DTOs.
 - `tenantId` and `organizationId` in config are defaults only; token context is authoritative after authentication.
 - Config objects crossing host/native boundaries `SHOULD` be serializable.
+- `publicRuntime` is browser-visible and may contain only non-secret values. Browser bundles must not read private process config.
+- `server` owns process bind, public URL, reverse-proxy trust, and service profile config. It must not own renderer-only build settings.
+- `desktop` owns native host, user config, local service lifecycle, and secure storage provider. It must not own remote business API contracts.
+- `tablet` owns iPadOS/Android tablet package identity and platform config references. It must not own phone-first H5 behavior or business SDK bypasses.
 - `paths` resolves the canonical directories defined by `RUNTIME_DIRECTORY_SPEC.md`.
 - `database` resolves the structured database fields defined by `RUNTIME_DIRECTORY_SPEC.md` and `DATABASE_SPEC.md`.
 - Server and container deployments should use structured PostgreSQL fields.
@@ -133,15 +233,26 @@ Rules:
 Bootstrap creates SDK clients:
 
 ```ts
+const openApiBaseUrl = config.sdkBaseUrls?.openApiBaseUrl ?? config.openApiBaseUrl;
+
+const openApiClient = openApiBaseUrl
+  ? createOpenApiClient({
+      baseUrl: openApiBaseUrl,
+      apiKey: apiKeyProvider,
+    })
+  : undefined;
+
 const appClient = createAppClient({
-  baseUrl: config.appApiBaseUrl,
-  auth: tokenProvider,
+  baseUrl: config.sdkBaseUrls?.appApiBaseUrl ?? config.appApiBaseUrl,
+  tokenManager,
 });
 
-const backendClient = config.backendApiBaseUrl
+const backendApiBaseUrl = config.sdkBaseUrls?.backendApiBaseUrl ?? config.backendApiBaseUrl;
+
+const backendClient = backendApiBaseUrl
   ? createBackendClient({
-      baseUrl: config.backendApiBaseUrl,
-      auth: tokenProvider,
+      baseUrl: backendApiBaseUrl,
+      tokenManager,
     })
   : undefined;
 ```
@@ -150,7 +261,12 @@ Rules:
 
 - SDK client constructors may differ by generated SDK package.
 - Service modules receive constructed clients, not constructor details.
-- Token providers `MUST` support both `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>`.
+- Token providers for app-api and backend-api SDKs `MUST` support both `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>`.
+- App-api and backend-api SDK clients `MUST` receive credentials from the global TokenManager or service-context credential provider. They `MUST NOT` receive `authToken`, `accessToken`, or `refreshToken` through environment variables, public runtime config, feature flags, app manifests, or per-call manual headers.
+- `Access-Token` is the canonical access isolation header. Generated SDKs, runtime adapters, server guards, and tests must not introduce aliases such as `X-Access-Token`, `access_token` query parameters, or product-specific access headers.
+- Bootstrap may expose `getAuthHeaders()` only for approved runtime bridges, local service calls, or tests. UI components and feature service facades must call SDK methods instead of assembling headers.
+- API key providers for protected open-api SDKs `MUST` be separate from the app login token manager. Raw API key values `MUST NOT` be stored in browser runtime env, app manifests, generated SDK docs, frontend bundles, logs, screenshots, or telemetry. Browser-facing open-api usage must be public, session-mediated, or backed by an approved short-lived credential flow.
+- Dependency SDK base URLs `MUST` be configured explicitly when they do not inherit the product app's same-origin defaults. Dependency-owned SDKs must not be regenerated or hard-coded into product SDK base URLs.
 - Token refresh behavior `MUST` be centralized so modules do not implement competing refresh flows.
 - Test mode may use fake SDK clients or mock servers with the same resource surface.
 
@@ -165,9 +281,95 @@ staging
 production
 ```
 
+Standard profile aliases and file suffixes:
+
+| Profile alias | Canonical environment | Allowed file suffixes | Typical use |
+| --- | --- | --- | --- |
+| `dev` | `development` | `.dev`, `.development` | Local development, dev services, desktop dev shell |
+| `test` | `test` | `.test` | Automated tests, isolated test databases, CI smoke runs |
+| `staging` | `staging` | `.staging` | Production-like rehearsal, release verification |
+| `prod` | `production` | `.prod`, `.production` | Production release/runtime |
+
+Recommended checked-in templates:
+
+```text
+.env.example
+.env.development.example
+.env.test.example
+.env.staging.example
+.env.production.example
+.env.postgres.example
+config/<app>.toml.example
+config/<app>.development.toml.example
+config/<app>.test.toml.example
+config/<app>.staging.toml.example
+config/<app>.production.toml.example
+```
+
+Recommended host-local ignored overrides:
+
+```text
+.env.local
+.env.development.local
+.env.test.local
+.env.staging.local
+.env.production.local
+.env.postgres
+.env.release.local
+config/*.local.toml
+```
+
+PC/browser/desktop application roots should keep deployment-target templates grouped when the app has more than one runtime target:
+
+```text
+config/
+  browser/
+    runtime-env.development.example.json
+    runtime-env.test.example.json
+    runtime-env.staging.example.json
+    runtime-env.production.example.json
+  desktop/
+    <app>.development.toml.example
+    <app>.test.toml.example
+    <app>.staging.toml.example
+    <app>.production.toml.example
+  server/
+    <app>.development.toml.example
+    <app>.test.toml.example
+    <app>.staging.toml.example
+    <app>.production.toml.example
+  container/
+    <app>.development.toml.example
+    <app>.test.toml.example
+    <app>.staging.toml.example
+    <app>.production.toml.example
+  tauri/
+    tauri.conf.json
+    tauri.windows.conf.json
+    tauri.macos.conf.json
+    tauri.linux.conf.json
+    tauri.ios.conf.json
+    tauri.android.conf.json
+```
+
+Java/Spring server packages may additionally provide checked-in examples such as
+`application-dev.yml.example`, `application-test.yml.example`, and
+`application-prod.yml.example`. Rust server packages should prefer TOML runtime
+config. The profile names are an integration convenience; SDKWork code still
+normalizes them into `SdkworkEnvironment`.
+
 Rules:
 
+- The runtime must validate the declared `environment`; it must not infer production safety from a file name alone.
+- `dev` and `prod` are file/profile aliases only. Persisted runtime config should use `development` and `production`.
+- `development`, `test`, `staging`, and `production` templates may be checked in only as examples with safe placeholders.
 - `.env.local` and developer machine config must not be required for CI.
+- Vite `.env`, `.env.local`, `.env.[mode]`, and `.env.[mode].local` files are build/dev-server inputs. Only `VITE_` values are exposed to browser code, and `VITE_*` must contain only public non-secret values.
+- Browser deploy-time SDK URLs should be served through `/runtime-env.js` or an equivalent public runtime config document instead of being frozen into a hashed bundle when the same build artifact is promoted across environments.
+- Server production config must come from process env, an administrator-managed runtime config file, deployment infrastructure, or a secret manager, not from a committed `.env.production`.
+- Test config must isolate database names or schemas, Redis key prefixes, log directories, cache directories, and temp directories from development and production.
+- Desktop installed runtime config must live in the SDKWork user private config directory and default to SQLite user data. Desktop/Tauri development service config is a separate server config profile and defaults to PostgreSQL.
+- Tauri platform config files may own bundle identifiers, icons, permissions, capabilities, window metadata, mobile/tablet target metadata, and signing references. They must not contain secrets, business API route contracts, or SDK ownership decisions.
 - `.env.postgres.example` is the checked-in local PostgreSQL template for apps
   that support PostgreSQL development. It must use split fields such as
   `SDKWORK_<APP>_DATABASE_ENGINE=postgresql` and
@@ -201,9 +403,17 @@ Rules:
 
 - [ ] Runtime config is typed.
 - [ ] Shared modules do not read env/global config directly.
+- [ ] Lifecycle environment, profile alias, deployment mode, build mode, and runtime target are normalized separately.
+- [ ] Dev/test/staging/prod example files are checked in only as safe templates, and local overrides are ignored.
+- [ ] Browser public runtime config, desktop user config, server config, container config, and Tauri platform config are separated.
 - [ ] Database env parsing maps `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE` to typed config and rejects `DATABASE_PROVIDER`/`DATABASE_SSLMODE`.
 - [ ] Apps with PostgreSQL development support provide `.env.postgres.example` and ignore `.env.postgres`.
-- [ ] SDK clients are constructed in bootstrap.
+- [ ] SDK clients are constructed in bootstrap with separate open-api, app-api, and backend-api base URLs where those surfaces are consumed.
+- [ ] App-api/backend-api SDKs receive the global token manager; protected open-api SDKs receive API key credentials through a separate provider.
+- [ ] Runtime config contains SDK base URL values and token-manager behavior, but does not contain actual auth/access/refresh tokens or raw API keys.
+- [ ] Dependency SDK base URLs are keyed by SDK family id and are injected during bootstrap instead of hard-coded in services.
 - [ ] Deployment mode and environment are explicit.
+- [ ] Desktop installed config defaults to user-private SQLite, while desktop-started backend service config uses the server PostgreSQL dev profile unless an explicit SQLite profile is selected.
+- [ ] Test config isolates database/schema, Redis key prefix, logs, cache, and temp directories from development and production.
 - [ ] Secrets are isolated from manifests and committed files.
 - [ ] Feature flags are scoped and documented.
