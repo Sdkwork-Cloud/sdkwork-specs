@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: SDKWork PC application roots that support PC browser web, desktop, and large-screen tablet native packaging, including app modules, user-facing console modules, internal admin modules, shared renderer packages, Tauri/native host packages, and iPadOS/Android tablet deployment targets
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `APPLICATION_SPEC.md`, `NAMING_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the application-root architecture for SDKWork PC applications. A PC application is one product application root that can run as a browser web application and, when required, as a desktop or large-screen tablet native application through a host such as Tauri.
 
@@ -322,7 +322,7 @@ Rules:
 - `hooks/` owns React binding around service and state behavior.
 - `services/` owns SDK orchestration, validation mapping, error normalization, and business workflow coordination.
 - `state/` owns view/cache state only. API invariants remain on the backend.
-- `i18n/` owns surface-appropriate messages. User-facing app/console copy and internal admin copy `MUST NOT` be conflated.
+- `i18n/` owns surface-appropriate package-local locale fragments and thin aggregation exports. User-facing app/console copy and internal admin copy `MUST NOT` be conflated, and authored whole-root locale monoliths are forbidden by `I18N_SPEC.md`.
 - `types/` owns local view models only. API DTOs come from generated SDKs or shared contract packages.
 - `routes/` owns route metadata contributed to the owning shell. It does not own raw URL constants for API calls.
 - `specs/` follows `COMPONENT_SPEC.md` for authored packages.

@@ -1,8 +1,8 @@
 # Standards Governance
 
 - Version: 1.0
-- Scope: spec ownership, changes, exceptions, compatibility, migration
-- Related: `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, all specs
+- Scope: spec ownership, changes, exceptions, compatibility, lifecycle gates, release, migration, supply-chain governance
+- Related: `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `CODE_REVIEW_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, all specs
 
 This document defines how SDKWork standards evolve without fragmenting across applications.
 
@@ -27,6 +27,9 @@ Rules:
 | Clarification | Better wording, examples | Review and update affected docs |
 | Additive | New optional extension, new recommended module | Tests if executable behavior changes |
 | Breaking | Rename operationId, change token header, change required DB field | Migration plan and explicit approval |
+| Lifecycle gate | Change Definition of Ready, Definition of Done, review rule, merge gate, release gate, or exception gate | `QUALITY_GATE_SPEC.md` evidence and reviewer approval |
+| Release-affecting | Change versioning, artifact, rollout, rollback, changelog, signing, or publication policy | `RELEASE_SPEC.md` and `SUPPLY_CHAIN_SECURITY_SPEC.md` review |
+| Supply-chain | Change dependency source, generator authority, build integrity, signing, SBOM, provenance, or attestation policy | Security review, supply-chain evidence, and exception expiry when policy is weakened |
 | Exception | Temporary legacy deviation | Exception record with owner and expiry |
 
 ## 3. Exception Record
@@ -56,7 +59,15 @@ removal_plan: regenerate app SDK with sdkwork-v3 profile
 - Agent entrypoint compatibility follows `AGENTS_SPEC.md`.
 - Code style compatibility follows `CODE_STYLE_SPEC.md` and the relevant language-specific spec only for touched languages.
 - Naming compatibility follows `NAMING_SPEC.md`.
-- UI architecture compatibility follows `UI_ARCHITECTURE_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, and `BACKEND_UI_SPEC.md`.
+- Requirements compatibility follows `REQUIREMENTS_SPEC.md`; requirement changes must preserve traceability to acceptance criteria and verification evidence.
+- Architecture decision compatibility follows `ARCHITECTURE_DECISION_SPEC.md`; superseded decisions must stay discoverable until affected implementations and docs migrate.
+- Engineering workflow compatibility follows `ENGINEERING_WORKFLOW_SPEC.md`; local workflow automation may narrow checkpoints but must not remove clarification, verification, review, or evidence requirements.
+- Code review compatibility follows `CODE_REVIEW_SPEC.md`; local review rules may add stricter ownership but must not treat generated artifacts, security changes, or standards changes as review-free.
+- Quality gate compatibility follows `QUALITY_GATE_SPEC.md`; local gates may add checks but must not weaken Definition of Ready, Definition of Done, merge gates, release gates, or exception evidence.
+- Release compatibility follows `RELEASE_SPEC.md`; release trains, versioning, changelog, rollout, rollback, and freeze rules must remain aligned with app manifests and workflow packaging.
+- Migration compatibility follows `MIGRATION_SPEC.md`; breaking or compatibility-sensitive changes require migration plan, compatibility window, rollback, and owner approval.
+- Supply-chain compatibility follows `SUPPLY_CHAIN_SECURITY_SPEC.md`; dependency, build, generated artifact, SBOM, provenance, signing, checksum, and attestation rules cannot be weakened without explicit security exception.
+- UI architecture compatibility follows `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, and `BACKEND_UI_SPEC.md`.
 - Security rules cannot be weakened by local exception without explicit owner approval and compensating control.
 
 UI architecture boundary exceptions are breaking architecture exceptions. They must include a migration plan back to the correct package family and SDK surface. In particular, new PC application packages may not omit the `pc` segment; PC user console modules may not be named as admin modules; PC internal admin modules may not be named as user console or app modules; backend/admin UI may not use a single catch-all backend package as an exception unless the record names every affected domain package that will receive the split before expiry.
@@ -64,11 +75,16 @@ UI architecture boundary exceptions are breaking architecture exceptions. They m
 ## 5. Review Checklist
 
 - [ ] Correct spec files were consulted.
+- [ ] Requirements and acceptance criteria were added or updated when behavior, contract, runtime, security, release, or migration intent changed.
+- [ ] Architecture decisions were recorded or superseded when boundaries, ownership, runtime topology, or cross-client alignment changed.
 - [ ] `SOUL.md`, `AGENTS_SPEC.md`, `CODE_STYLE_SPEC.md`, and `NAMING_SPEC.md` were updated or cited when agent behavior, execution entrypoints, code structure, or public naming changed.
 - [ ] Repository/application `.sdkwork/` skills or plugins do not contradict root standards.
 - [ ] Repository/application `AGENTS.md` files do not contradict root standards or copy stale spec bodies.
 - [ ] Tool compatibility files such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` point to `AGENTS.md` and do not become competing standards.
 - [ ] Changes do not create conflicting standards.
+- [ ] Review evidence follows `CODE_REVIEW_SPEC.md`, and merge/release/exception evidence follows `QUALITY_GATE_SPEC.md`.
+- [ ] Release-affecting changes cite `RELEASE_SPEC.md` and supply-chain-affecting changes cite `SUPPLY_CHAIN_SECURITY_SPEC.md`.
+- [ ] Compatibility-sensitive changes include a `MIGRATION_SPEC.md` migration plan with rollback and owner.
 - [ ] Any exception is documented with owner and expiry.
 - [ ] Tooling or tests were updated when a standard becomes executable.
 - [ ] AGENTS.md references still point to root `specs/`.

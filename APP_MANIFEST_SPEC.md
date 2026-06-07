@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: app registration, app manifest, release metadata, install packages, media assets, PlusApp projection
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `APPLICATION_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `CONFIG_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 SDKWork App Manifest Standard v3 defines the canonical app configuration used by new applications under `apps/`. The standard is intentionally strict: new apps do not carry legacy compatibility branches, and every field is designed to map cleanly into `PlusApp` while retaining enough metadata for professional multi-platform release operations.
 
@@ -38,6 +38,7 @@ The same `<app-root>` `MUST` contain the source-controlled `.sdkwork/` workspace
 - Latest download resolution is a matrix query across version, channel, platform, architecture, and optional Linux distribution.
 - Production release artifacts require immutable URLs or digests, checksums, signing metadata, and SBOM/provenance references.
 - The manifest must never contain passwords, access tokens, API keys, private keys, or credentials.
+- Source/build dependency checkout roots are governed by `DEPENDENCY_MANAGEMENT_SPEC.md` and `sdkwork.workflow.json`; app manifests must not carry machine-specific dependency source paths.
 
 ## 3. Top-Level Contract
 
@@ -124,9 +125,35 @@ Ubuntu is represented as:
 web, mobile, desktop, server, cli, mini-program, library, plugin
 ```
 
-`runtime.framework` is descriptive and should be specific, for example `react-tauri`, `electron`, `flutter`, `react-capacitor`, `spring-boot`, `node-service`, `go-service`, or `rust-service`.
+`runtime.framework` is descriptive and should be specific, for example `react`, `react-tauri`, `react-h5`, `react-capacitor`, `flutter`, `android-native`, `ios-native`, `harmony-native`, `weixin-mini-program`, `multi-mini-program`, `electron`, `spring-boot`, `node-service`, `go-service`, or `rust-service`.
 
 `runtime.defaultPlatform` and `runtime.defaultArchitecture` drive default latest download resolution and `PlusApp.downloadUrl` projection.
+
+### 6.1 Client Architecture Manifest Alignment
+
+Client roots must keep manifest runtime metadata aligned with their root architecture standard.
+
+| Root architecture | Runtime family | Runtime framework examples | Publish platform examples |
+| --- | --- | --- | --- |
+| PC browser/desktop/tablet root | `web` or `desktop` | `react`, `react-tauri` | `WEB`, `DESKTOP_WINDOWS`, `DESKTOP_MACOS`, `DESKTOP_LINUX` |
+| H5/Capacitor mobile root | `mobile` | `react-h5`, `react-capacitor` | `H5`, `H5_WEIXIN`, `APP_IOS`, `APP_ANDROID` |
+| Flutter mobile root | `mobile` | `flutter` | `APP_IOS`, `APP_ANDROID`, `APP_HARMONY` when supported |
+| Mini program root | `mini-program` | `weixin-mini-program`, `alipay-mini-program`, `multi-mini-program` | `MP_WEIXIN`, `MP_ALIPAY`, `MP_DINGTALK`, `MP_LARK` |
+| Native Android mobile root | `mobile` | `android-native` | `APP_ANDROID` |
+| Native iOS mobile root | `mobile` | `ios-native` | `APP_IOS` |
+| Native HarmonyOS mobile root | `mobile` | `harmony-native` | `APP_HARMONY` |
+
+Rules:
+
+- The application root selected in `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` and the matching root architecture standard `MUST` match `runtime.family`, `runtime.framework`, `publish.platforms`, and `artifacts.installConfig.packages[]`.
+- H5-only apps should use `runtime.family = "mobile"` and `runtime.framework = "react-h5"`. H5 plus Capacitor apps should use `runtime.framework = "react-capacitor"`.
+- Flutter apps should use `runtime.family = "mobile"` and `runtime.framework = "flutter"`.
+- Mini program apps should use `runtime.family = "mini-program"` and a platform-specific or multi-platform mini program framework value.
+- Native Android apps should use `runtime.family = "mobile"` and `runtime.framework = "android-native"`.
+- Native iOS apps should use `runtime.family = "mobile"` and `runtime.framework = "ios-native"`.
+- Native HarmonyOS apps should use `runtime.family = "mobile"` and `runtime.framework = "harmony-native"`.
+- Package ids and artifact names in the manifest follow `NAMING_SPEC.md`; source package names follow the matching architecture standard and are not copied into release package ids unless they are also the release artifact identity.
+- `publish.platforms` must list only actually supported platforms. Do not list `APP_IOS`, `APP_ANDROID`, `APP_HARMONY`, or `MP_*` values just because the source architecture could support them later.
 
 ## 7. Media Assets
 
@@ -235,7 +262,7 @@ Required fields:
 
 ```json
 {
-  "id": "windows-x64-msi",
+  "id": "windows-x64-desktop-msi",
   "name": "SDKWork Drive Windows x64 MSI",
   "sourceType": "BINARY_URL",
   "packageFormat": "MSI",
@@ -259,9 +286,20 @@ WEB_URL, SCRIPT
 Allowed package formats:
 
 ```text
-SOURCE_CODE, JAR, WAR, ZIP, TAR_GZ, APK, IPA, EXE, MSI, DMG,
+SOURCE_CODE, JAR, WAR, ZIP, TAR_GZ, APK, AAB, IPA, EXE, MSI, DMG,
 APPIMAGE, DEB, RPM, DOCKER_IMAGE, MINI_PROGRAM_PACKAGE, OTHER
 ```
+
+Package ids must follow `NAMING_SPEC.md`:
+
+| Package type | Package id example | Source type | Package format | Platform |
+| --- | --- | --- | --- | --- |
+| H5 mobile URL | `h5-universal-mobile-web-url` | `WEB_URL` | `OTHER` | `H5` |
+| WeChat H5 URL | `h5-weixin-universal-mobile-web-url` | `WEB_URL` | `OTHER` | `H5_WEIXIN` |
+| Android mobile app bundle | `android-arm64-mobile-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
+| iOS mobile app archive | `ios-universal-mobile-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
+| Harmony mobile app package | `harmony-arm64-mobile-other` | `BINARY_URL` or `APP_STORE` | `OTHER` until a backend package format enum for Harmony package artifacts is available; metadata must state the HAP/APP artifact kind | `APP_HARMONY` |
+| WeChat mini program package | `mp-weixin-universal-mini-program-mini-program-package` | `MINI_PROGRAM` | `MINI_PROGRAM_PACKAGE` | `MP_WEIXIN` |
 
 Desktop packages must declare `architecture`. Recommended values are `x64`, `arm64`, `universal`, `all`, or `any`.
 
@@ -400,7 +438,9 @@ The validator enforces:
 - required media icons, screenshots, and preview assets
 - store-grade icon, screenshot, and preview dimensions
 - desktop architecture
+- client runtime family/framework alignment with the selected PC, H5, Flutter, mini program, Android native, iOS native, or Harmony native root architecture
 - mobile identifiers
+- H5, Capacitor, Flutter, mini program, Android native, iOS native, and Harmony native package/platform consistency
 - release package references
 - checksum requirements
 - HTTP/HTTPS URLs for binary, store, web, and mini-program delivery

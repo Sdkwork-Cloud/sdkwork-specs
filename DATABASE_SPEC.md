@@ -2511,7 +2511,7 @@ L3 表的 runbook MUST 至少每半年演练一次，并记录演练结果。
 
 ### 30.1 当前工程表名前缀兼容映射
 
-对 `spring-ai-plus-business-entity/src/main/java/com/sdkwork/spring/ai/plus/entity` 的实体表定义进行扫描，用于校验本规范对既有系统的兼容映射能力，当前结论：
+对 `legacy-java-plus-entity/src/main/java/com/sdkwork/spring/ai/plus/entity` 的实体表定义进行扫描，用于校验本规范对既有系统的兼容映射能力，当前结论：
 
 - 扫描 `278` 个 Java 文件，识别到 `196` 个 `@Entity + @Table(name=...)` 实体表定义。
 - 实体表唯一物理表名为 `193` 个。

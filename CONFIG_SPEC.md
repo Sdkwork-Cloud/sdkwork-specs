@@ -1,8 +1,8 @@
 # Configuration And Environment Standard
 
 - Version: 1.0
-- Scope: environment config, SDK client initialization, secrets, feature flags, typed runtime config, dev/test/staging/prod profiles, desktop/server/container/web switching
-- Related: `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`
+- Scope: environment config, SDK client initialization, secrets, feature flags, typed runtime config, dev/test/staging/prod profiles, desktop/server/container/web/H5/Flutter/mini-program/native Android/native iOS/native Harmony switching
+- Related: `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`
 
 This standard defines how applications select environment, deployment mode, base URLs, SDK clients, token storage, and feature flags without leaking those decisions into reusable modules.
 
@@ -26,6 +26,7 @@ Rules:
 - Secrets `MUST NOT` be stored in app manifests or committed config files.
 - SaaS/private/local differences `MUST` be represented as typed deployment mode, not scattered conditionals.
 - Lifecycle environment, deployment mode, and runtime target `MUST` be represented as separate typed fields. A single `NODE_ENV`, Vite mode, Spring profile, or Tauri target must not be used as the whole runtime decision model.
+- Source/build dependency paths in package, workspace, SDK, or tool config `MUST` follow `DEPENDENCY_MANAGEMENT_SPEC.md` and must not use machine-specific absolute paths.
 
 ## 2. Standard Runtime Config
 
@@ -35,9 +36,30 @@ export type SdkworkConfigProfile = "dev" | "test" | "staging" | "prod";
 export type SdkworkBuildMode = "development" | "test" | "staging" | "production";
 export type SdkworkDeploymentMode =
   | "web"
+  | "h5"
+  | "h5-weixin"
   | "desktop"
   | "tablet-ipados"
   | "tablet-android"
+  | "capacitor-ios"
+  | "capacitor-android"
+  | "flutter-ios"
+  | "flutter-android"
+  | "android-native"
+  | "ios-native"
+  | "harmony-native"
+  | "mini-program"
+  | "mp-weixin"
+  | "mp-alipay"
+  | "mp-baidu"
+  | "mp-toutiao"
+  | "mp-lark"
+  | "mp-qq"
+  | "mp-kuaishou"
+  | "mp-jd"
+  | "mp-360"
+  | "mp-dingtalk"
+  | "mp-ali"
   | "server"
   | "container"
   | "saas"
@@ -49,6 +71,14 @@ export type SdkworkRuntimeTarget =
   | "desktop"
   | "tablet-ipados"
   | "tablet-android"
+  | "capacitor-ios"
+  | "capacitor-android"
+  | "flutter-ios"
+  | "flutter-android"
+  | "android-native"
+  | "ios-native"
+  | "harmony-native"
+  | "mini-program"
   | "server"
   | "container"
   | "test-runner";
@@ -64,10 +94,13 @@ export interface SdkworkRuntimeConfig {
   backendApiBaseUrl?: string;
   sdkBaseUrls?: SdkworkSdkBaseUrlConfig;
   auth?: SdkworkAuthRuntimeConfig;
+  i18n?: SdkworkI18nRuntimeConfig;
   publicRuntime?: SdkworkPublicRuntimeConfig;
   server?: SdkworkServerConfig;
   desktop?: SdkworkDesktopConfig;
   tablet?: SdkworkTabletConfig;
+  mobile?: SdkworkMobileConfig;
+  miniProgram?: SdkworkMiniProgramConfig;
   paths?: SdkworkRuntimePaths;
   database?: SdkworkDatabaseConfig;
   redis?: SdkworkRedisConfig;
@@ -100,12 +133,21 @@ export interface SdkworkAuthRuntimeConfig {
   apiKeyCredentialProvider?: "server" | "secure-storage" | "short-lived" | "test";
 }
 
+export interface SdkworkI18nRuntimeConfig {
+  defaultLocale: string;
+  supportedLocales: string[];
+  fallbackLocale: string;
+  loadingStrategy?: "eager-core-lazy-feature" | "lazy-route-fragments" | "platform-generated-bundle";
+  catalogManifestUrl?: string;
+}
+
 export interface SdkworkPublicRuntimeConfig {
   apiBaseUrl?: string;
   openApiBaseUrl?: string;
   appApiBaseUrl?: string;
   backendApiBaseUrl?: string;
   dependencySdkBaseUrls?: Record<string, SdkworkDependencySdkBaseUrls>;
+  i18n?: SdkworkI18nRuntimeConfig;
   runtimeEnvFile?: string;
   featureFlags?: Record<string, boolean | string | number>;
 }
@@ -132,6 +174,23 @@ export interface SdkworkTabletConfig {
   bundleId?: string;
   packageName?: string;
   platformConfigFile?: string;
+}
+
+export interface SdkworkMobileConfig {
+  architecture: "h5" | "capacitor" | "flutter" | "android-native" | "ios-native" | "harmony-native";
+  platform?: "ios" | "android" | "harmony" | "browser" | "weixin-browser";
+  nativeHost?: "capacitor" | "flutter" | "android-native" | "ios-native" | "harmony-native" | "browser" | "custom";
+  bundleId?: string;
+  packageName?: string;
+  platformConfigFile?: string;
+  secureStorageProvider?: string;
+}
+
+export interface SdkworkMiniProgramConfig {
+  platform: "weixin" | "alipay" | "baidu" | "toutiao" | "lark" | "qq" | "kuaishou" | "jd" | "360" | "dingtalk" | "ali" | "custom";
+  appId?: string;
+  platformConfigFile?: string;
+  subpackageStrategy?: "capability" | "manual" | "single-package";
 }
 
 export interface SdkworkRuntimePaths {
@@ -189,18 +248,21 @@ Rules:
 - `configProfile` is a file/profile alias used by scripts and config file names. `dev` maps to `development`; `prod` maps to `production`. Application code should normalize to `environment`.
 - `buildMode` describes the bundler/build tool mode. It is useful for Vite or native package scripts, but it is not the lifecycle authority for runtime behavior.
 - `deploymentMode` describes deployment topology or packaging shape.
-- `runtimeTarget` describes where this config is consumed: browser renderer, desktop host, tablet host, server process, container process, or test runner.
+- `runtimeTarget` describes where this config is consumed: browser renderer, desktop host, tablet host, Capacitor host, Flutter host, mini program runtime, server process, container process, or test runner.
 - `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` are selected before SDK clients are created.
 - `openApiBaseUrl` is optional because not every application consumes an open-api SDK. When present for a SDKWork-owned business open-api, it `MUST` use that domain's approved non-app/non-backend prefix from `API_SPEC.md`, for example `/im/v3/api`. It does not require a literal `/open` path segment. `/v1` is valid only for explicitly documented compatibility APIs such as OpenAI-compatible AI API.
 - `sdkBaseUrls` is the canonical per-SDK-surface base URL map for bootstrap. Top-level `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` remain convenience aliases and must resolve to the same effective values.
 - `sdkBaseUrls.dependencySdkBaseUrls` owns base URLs for dependency SDK families such as appbase, Drive, IM, or another product app. It must be keyed by stable SDK family id, not by ad hoc host names.
 - `auth` config describes how the runtime obtains and stores credentials. It must not contain actual `authToken`, `accessToken`, `refreshToken`, API key values, or session DTOs.
+- `i18n` config describes locale selection, supported locale list, fallback locale, and catalog loading strategy only. It must not contain translated message content, product copy, validation copy, or generated catalog bundles.
 - `tenantId` and `organizationId` in config are defaults only; token context is authoritative after authentication.
 - Config objects crossing host/native boundaries `SHOULD` be serializable.
 - `publicRuntime` is browser-visible and may contain only non-secret values. Browser bundles must not read private process config.
 - `server` owns process bind, public URL, reverse-proxy trust, and service profile config. It must not own renderer-only build settings.
 - `desktop` owns native host, user config, local service lifecycle, and secure storage provider. It must not own remote business API contracts.
 - `tablet` owns iPadOS/Android tablet package identity and platform config references. It must not own phone-first H5 behavior or business SDK bypasses.
+- `mobile` owns H5/Capacitor/Flutter/native Android/native iOS/native Harmony mobile package identity, platform config references, secure storage provider selection, and mobile host metadata. It must not own SDK package ownership, business route constants, auth tokens, refresh tokens, signing keys, or business authorization.
+- `miniProgram` owns mini program platform identity, app id references, platform config file references, and page/subpackage strategy. It must not own platform private keys, business API contracts, generated SDK ownership, or feature-local auth behavior.
 - `paths` resolves the canonical directories defined by `RUNTIME_DIRECTORY_SPEC.md`.
 - `database` resolves the structured database fields defined by `RUNTIME_DIRECTORY_SPEC.md` and `DATABASE_SPEC.md`.
 - Server and container deployments should use structured PostgreSQL fields.
@@ -261,12 +323,26 @@ Rules:
 
 - SDK client constructors may differ by generated SDK package.
 - Service modules receive constructed clients, not constructor details.
+- Runtime config selects SDK base URLs, dependency surfaces, and credential modes. It `MUST NOT` contain live tokens, raw API keys, or per-user session credential values.
+- Bootstrap `MUST` classify every SDK before constructing feature services: authenticated app-api, authenticated backend-api, protected open-api API-key, public open-api, local/native, or test fake.
 - Token providers for app-api and backend-api SDKs `MUST` support both `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>`.
-- App-api and backend-api SDK clients `MUST` receive credentials from the global TokenManager or service-context credential provider. They `MUST NOT` receive `authToken`, `accessToken`, or `refreshToken` through environment variables, public runtime config, feature flags, app manifests, or per-call manual headers.
+- In an authenticated application session context, every app-api and backend-api SDK client `MUST` receive credentials from the same global `TokenManager`. This includes appbase app/backend SDKs, product app/backend SDKs, dependency app/backend SDKs, and approved composed wrappers backed by those SDKs.
+- Server service-context runtimes that do not represent a user login session `MUST` use one request/service credential provider per service context. They must not create per-domain or per-SDK credential providers for calls that share the same context.
+- App-api and backend-api SDK clients `MUST NOT` receive `authToken`, `accessToken`, or `refreshToken` through environment variables, public runtime config, feature flags, app manifests, or per-call manual headers.
 - `Access-Token` is the canonical access isolation header. Generated SDKs, runtime adapters, server guards, and tests must not introduce aliases such as `X-Access-Token`, `access_token` query parameters, or product-specific access headers.
 - Bootstrap may expose `getAuthHeaders()` only for approved runtime bridges, local service calls, or tests. UI components and feature service facades must call SDK methods instead of assembling headers.
 - API key providers for protected open-api SDKs `MUST` be separate from the app login token manager. Raw API key values `MUST NOT` be stored in browser runtime env, app manifests, generated SDK docs, frontend bundles, logs, screenshots, or telemetry. Browser-facing open-api usage must be public, session-mediated, or backed by an approved short-lived credential flow.
 - Dependency SDK base URLs `MUST` be configured explicitly when they do not inherit the product app's same-origin defaults. Dependency-owned SDKs must not be regenerated or hard-coded into product SDK base URLs.
+- Dependency SDK base URLs may inherit a product same-origin app/backend default only when the
+  application runtime declares `dependencyApiSurfaces` mount coverage for that dependency SDK
+  family, surface, and prefix. A route contract or `sdkDependencies` entry alone is not enough.
+- If `dependencyApiSurfaces` marks a dependency SDK surface as external-service, not-mounted, or
+  unverified, SDK client bootstrap `MUST` require the dependency-specific base URL from
+  `sdkBaseUrls.dependencySdkBaseUrls` or an equivalent env/runtime config key and must fail fast
+  before constructing a client with the product-owned base URL.
+- Backend/admin dependency SDKs `MUST` not inherit a browser-visible product backend base URL unless
+  the backend/admin UI is allowed to call that surface and runtime mount coverage proves every
+  dependency-owned method/path is served at that same origin.
 - Token refresh behavior `MUST` be centralized so modules do not implement competing refresh flows.
 - Test mode may use fake SDK clients or mock servers with the same resource surface.
 
@@ -352,6 +428,8 @@ config/
     tauri.android.conf.json
 ```
 
+H5/Capacitor, Flutter, mini program, native Android, native iOS, and native Harmony roots use the equivalent grouped layout defined by their root architecture standards. Browser-based H5 roots use `config/browser/`; Flutter and native mobile roots use `config/app/`; mini program roots use `config/mini-program/`; all mobile roots keep platform metadata in `config/host/` and server/container templates outside public app config.
+
 Java/Spring server packages may additionally provide checked-in examples such as
 `application-dev.yml.example`, `application-test.yml.example`, and
 `application-prod.yml.example`. Rust server packages should prefer TOML runtime
@@ -370,6 +448,7 @@ Rules:
 - Test config must isolate database names or schemas, Redis key prefixes, log directories, cache directories, and temp directories from development and production.
 - Desktop installed runtime config must live in the SDKWork user private config directory and default to SQLite user data. Desktop/Tauri development service config is a separate server config profile and defaults to PostgreSQL.
 - Tauri platform config files may own bundle identifiers, icons, permissions, capabilities, window metadata, mobile/tablet target metadata, and signing references. They must not contain secrets, business API route contracts, or SDK ownership decisions.
+- Native Android, iOS, and Harmony host config files may own application ids, bundle ids, module ids, icons, permissions, capabilities, app links/universal links/wants, push profiles, store profiles, signing reference names, and OS version requirements. They must not contain signing private keys, tokens, business API route contracts, or SDK ownership decisions.
 - `.env.postgres.example` is the checked-in local PostgreSQL template for apps
   that support PostgreSQL development. It must use split fields such as
   `SDKWORK_<APP>_DATABASE_ENGINE=postgresql` and
@@ -380,6 +459,7 @@ Rules:
 - Production config must come from deployment infrastructure or secret manager.
 - Config keys `SHOULD` be namespaced by capability, such as `SDKWORK_IAM_*`.
 - Unknown config keys in machine-readable manifests `SHOULD` fail validation to prevent drift.
+- Locale and i18n runtime config keys should stay small and declarative: default locale, supported locales, fallback locale, and catalog manifest URL. Translation catalogs follow `I18N_SPEC.md` package-local fragment ownership and must not be embedded in runtime config, feature flags, app manifests, or environment files.
 
 ## 5. Feature Flags
 
@@ -405,12 +485,15 @@ Rules:
 - [ ] Shared modules do not read env/global config directly.
 - [ ] Lifecycle environment, profile alias, deployment mode, build mode, and runtime target are normalized separately.
 - [ ] Dev/test/staging/prod example files are checked in only as safe templates, and local overrides are ignored.
-- [ ] Browser public runtime config, desktop user config, server config, container config, and Tauri platform config are separated.
+- [ ] Browser public runtime config, desktop user config, H5/Capacitor config, Flutter config, mini program config, native Android config, native iOS config, native Harmony config, server config, container config, and Tauri platform config are separated.
 - [ ] Database env parsing maps `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE` to typed config and rejects `DATABASE_PROVIDER`/`DATABASE_SSLMODE`.
 - [ ] Apps with PostgreSQL development support provide `.env.postgres.example` and ignore `.env.postgres`.
 - [ ] SDK clients are constructed in bootstrap with separate open-api, app-api, and backend-api base URLs where those surfaces are consumed.
-- [ ] App-api/backend-api SDKs receive the global token manager; protected open-api SDKs receive API key credentials through a separate provider.
+- [ ] SDK inventory classifies every consumed SDK as authenticated app-api, authenticated backend-api, protected open-api API-key, public open-api, local/native, or test fake before services are constructed.
+- [ ] Appbase app/backend SDKs, product app/backend SDKs, dependency app/backend SDKs, and approved composed wrappers in the same authenticated application session receive the same global `TokenManager`; server service-context runtimes use one request/service credential provider per service context.
+- [ ] Protected open-api SDKs receive API key credentials through a separate provider and are not placed in login TokenManager client lists.
 - [ ] Runtime config contains SDK base URL values and token-manager behavior, but does not contain actual auth/access/refresh tokens or raw API keys.
+- [ ] Runtime config contains only i18n locale strategy and catalog manifest references, not translated message content or monolithic locale bundles.
 - [ ] Dependency SDK base URLs are keyed by SDK family id and are injected during bootstrap instead of hard-coded in services.
 - [ ] Deployment mode and environment are explicit.
 - [ ] Desktop installed config defaults to user-private SQLite, while desktop-started backend service config uses the server PostgreSQL dev profile unless an explicit SQLite profile is selected.

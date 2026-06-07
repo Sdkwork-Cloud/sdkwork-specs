@@ -1,8 +1,8 @@
 # Environment Variable And Runtime Configuration Standard
 
 - Version: 1.0
-- Scope: environment variables, runtime config files, public browser runtime config, secrets, database selection, desktop/server/container deployment modes, SDK base URLs, Access-Token and TokenManager credential config rules, RPC endpoints
-- Related: `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DATABASE_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `APPLICATION_SPEC.md`, `TEST_SPEC.md`
+- Scope: environment variables, runtime config files, public browser runtime config, secrets, database selection, desktop/server/container/H5/Flutter/mini-program/native Android/native iOS/native Harmony deployment modes, SDK base URLs, locale strategy, Access-Token and TokenManager credential config rules, RPC endpoints
+- Related: `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DATABASE_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the canonical environment and runtime configuration model for SDKWork applications. It exists to prevent each application from inventing different `.env` names, database defaults, SDK base URL rules, config file locations, and secret handling behavior.
 
@@ -14,8 +14,8 @@ Environment configuration must satisfy these goals:
 
 - One application can run in development, test, staging, and production without code changes.
 - `dev`, `test`, `staging`, and `prod` file profiles can be used by scripts while application runtime normalizes them to `development`, `test`, `staging`, and `production`.
-- One product can support browser, desktop, service/server, and container deployment modes with explicit defaults.
-- Browser renderer, desktop native host, tablet native host, server process, container process, and test runner config are separated.
+- One product can support browser, H5, desktop, mobile-native, mini program, service/server, and container deployment modes with explicit defaults.
+- Browser renderer, H5 mobile renderer, desktop native host, tablet native host, Capacitor host, Flutter host, mini program runtime, native Android host, native iOS host, native Harmony host, server process, container process, and test runner config are separated.
 - Server-side release deployments use PostgreSQL by default.
 - Desktop installs use SQLite by default in the SDKWork user private data directory defined by `RUNTIME_DIRECTORY_SPEC.md`.
 - Desktop/Tauri development commands that start backend services use the server PostgreSQL development profile by default; SQLite is used only by explicit local-data profiles or installed desktop runtime config.
@@ -30,8 +30,8 @@ Environment configuration must satisfy these goals:
 | --- | --- |
 | Environment | Lifecycle stage: `development`, `test`, `staging`, or `production`. |
 | Environment profile alias | Short file/script profile: `dev`, `test`, `staging`, or `prod`. `dev` maps to `development`; `prod` maps to `production`. |
-| Deployment mode | Runtime architecture or packaging shape: `web`, `desktop`, `tablet-ipados`, `tablet-android`, `server`, `container`, `saas`, `private`, `local`, or `test`. |
-| Runtime target | Code execution target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `server`, `container`, or `test-runner`. |
+| Deployment mode | Runtime architecture or packaging shape: `web`, `h5`, `h5-weixin`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, platform-specific `mp-*` modes such as `mp-weixin`, `mp-alipay`, `mp-dingtalk`, and `mp-lark`, `server`, `container`, `saas`, `private`, `local`, or `test`. |
+| Runtime target | Code execution target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, or `test-runner`. |
 | Build mode | Build tool mode such as Vite mode, Tauri build target, or Spring profile alias. It is not sufficient as the full runtime environment model. |
 | Process env | Environment variables available to a service process. |
 | Runtime config file | Host-local TOML/YAML/JSON config file loaded at startup. TOML is preferred for SDKWork Rust services. |
@@ -123,8 +123,8 @@ These variables form the baseline for SDKWork applications.
 | --- | --- | --- | --- |
 | `SDKWORK_<APP>_ENVIRONMENT` | private | SHOULD | Lifecycle stage: `development`, `test`, `staging`, `production`. |
 | `SDKWORK_<APP>_CONFIG_PROFILE` | private | SHOULD | File/script profile alias: `dev`, `test`, `staging`, `prod`. Startup must normalize it to `SDKWORK_<APP>_ENVIRONMENT`. |
-| `SDKWORK_<APP>_DEPLOYMENT_MODE` | private | SHOULD | Runtime architecture or packaging shape: `web`, `desktop`, `tablet-ipados`, `tablet-android`, `server`, `container`, `saas`, `private`, `local`, `test`. |
-| `SDKWORK_<APP>_RUNTIME_TARGET` | private | SHOULD | Execution target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `server`, `container`, `test-runner`. |
+| `SDKWORK_<APP>_DEPLOYMENT_MODE` | private | SHOULD | Runtime architecture or packaging shape: `web`, `h5`, `h5-weixin`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, platform-specific `mp-*` modes such as `mp-weixin`, `mp-alipay`, `mp-dingtalk`, and `mp-lark`, `server`, `container`, `saas`, `private`, `local`, `test`. |
+| `SDKWORK_<APP>_RUNTIME_TARGET` | private | SHOULD | Execution target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, `test-runner`. |
 | `SDKWORK_<APP>_BUILD_MODE` | private/public by tool | MAY | Build tool mode. It must not replace `ENVIRONMENT`, `DEPLOYMENT_MODE`, or `RUNTIME_TARGET`. |
 | `SDKWORK_<APP>_CONFIG_FILE` | private | MAY | Explicit runtime config file path. |
 | `SDKWORK_<APP>_SERVER_CONFIG_FILE` | private | MAY | Explicit server process config file path when a PC/desktop root also owns server profiles. Defaults to `CONFIG_FILE` when absent. |
@@ -140,6 +140,10 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_<APP>_TOKEN_STORAGE` | private | MAY | Token storage strategy: `memory`, `browser-session`, `browser-local`, `os-secure-storage`, or `server-context`. Browser strategies must pass security review. |
 | `SDKWORK_<APP>_ACCESS_TOKEN_HEADER` | private | MAY | Must be `Access-Token` for SDKWork v3 app-api/backend-api. Present only for compatibility validation, not customization. |
 | `SDKWORK_<APP>_AUTH_TOKEN_HEADER` | private | MAY | Must be `Authorization` for SDKWork v3 bearer auth. Present only for compatibility validation, not customization. |
+| `SDKWORK_<APP>_DEFAULT_LOCALE` | private/public | MAY | Default BCP 47 locale such as `en-US` or `zh-CN`. This configures selection only; translated messages stay in i18n catalog fragments. |
+| `SDKWORK_<APP>_SUPPORTED_LOCALES` | private/public | MAY | Comma-separated supported locale list. It must not contain translated message content. |
+| `SDKWORK_<APP>_FALLBACK_LOCALE` | private/public | MAY | Explicit fallback locale, normally `en-US` for first-party SDKWork apps unless a product spec narrows it. |
+| `SDKWORK_<APP>_I18N_CATALOG_MANIFEST_URL` | private/public | MAY | URL or path to a generated catalog manifest. The manifest points to package-local fragments or generated bundles and must not be an authored monolithic locale file. |
 | `SDKWORK_<APP>_DATABASE_ENGINE` | private | MAY | Database engine, normally `postgresql` for server/container and `sqlite` for desktop/local-only. |
 | `SDKWORK_<APP>_DATABASE_HOST` | private | MAY | PostgreSQL host. Prefer this structured field over a URL for release deployments. |
 | `SDKWORK_<APP>_DATABASE_PORT` | private | MAY | PostgreSQL port, normally `5432`. |
@@ -278,6 +282,14 @@ one PC application root.
 | `desktop` | `~/.sdkwork/<app>/config/<app>.toml` or `%USERPROFILE%\.sdkwork\<app>\config\<app>.toml` | SQLite under SDKWork user-private data directory | Installed desktop runtime; may start local services but desktop user config stays separate. |
 | `tablet-ipados` | Platform app-private config plus approved Tauri iOS config | SQLite or approved encrypted platform-local storage | Same PC renderer and SDK/IAM runtime; iPadOS packaging metadata is target config. |
 | `tablet-android` | Platform app-private config plus approved Tauri Android config | SQLite or approved encrypted platform-local storage | Same PC renderer and SDK/IAM runtime; Android package/signing metadata is target config. |
+| `capacitor-ios` | H5 mobile `config/browser` plus `config/host` Capacitor iOS profile and platform app-private storage | Approved secure storage adapter; local caches only | Same H5 mobile renderer and SDK/IAM runtime; iOS package/signing metadata is host config. |
+| `capacitor-android` | H5 mobile `config/browser` plus `config/host` Capacitor Android profile and platform app-private storage | Approved secure storage adapter; local caches only | Same H5 mobile renderer and SDK/IAM runtime; Android package/signing metadata is host config. |
+| `flutter-ios` | Flutter `config/app` plus `config/host` iOS profile and platform app-private storage | Approved secure storage adapter; local caches only | Generated Dart SDK/IAM runtime; iOS package/signing metadata is host config. |
+| `flutter-android` | Flutter `config/app` plus `config/host` Android profile and platform app-private storage | Approved secure storage adapter; local caches only | Generated Dart SDK/IAM runtime; Android package/signing metadata is host config. |
+| `android-native` | Android native `config/app` plus `config/host` Android profile and platform app-private storage | Approved secure storage adapter; local caches only | Generated Kotlin/Java SDK/IAM runtime; Android package/signing metadata is host config. |
+| `ios-native` | iOS native `config/app` plus `config/host` iOS profile and platform app-private storage | Approved secure storage adapter; local caches only | Generated Swift SDK/IAM runtime; iOS package/signing metadata is host config. |
+| `harmony-native` | Harmony native `config/app` plus `config/host` Harmony profile and platform app-private storage | Approved secure storage adapter; local caches only | Generated ArkTS/TypeScript SDK/IAM runtime adapted for Harmony; Harmony package/signing metadata is host config. |
+| `mini-program` | Mini program `config/mini-program` plus `config/host` platform profile | Platform storage through approved host adapter | Generated TypeScript app SDK or approved wrapper; platform pages/subpackages are route projections. |
 | `server` | `/etc/sdkwork/<app>/<process>.toml` or `%ProgramData%\sdkwork\<app>\<process>.toml` | PostgreSQL, Redis when required | Long-running service, explicit bind, reverse proxy assumptions, strict secret handling. |
 | `container` | Mounted `/etc/sdkwork/<app>/<process>.toml`, env, and `/run/secrets/...` | External PostgreSQL/Redis or mounted volumes | Image contains examples only; runtime config and secrets are injected. |
 | `test-runner` | Ephemeral generated config under test temp directory | Isolated SQLite or isolated PostgreSQL schema/database | No shared dev/prod state; deterministic cleanup. |
@@ -313,7 +325,13 @@ Rules:
 - App SDK and backend/admin SDK base URLs must remain independent because they may terminate at different hosts in private deployments.
 - Appbase, Drive, IM, payment, media, or other dependency SDK base URLs must be keyed by dependency SDK family/app code. Do not hide dependency base URLs behind a product-local `API_BASE_URL` when the dependency can be deployed independently.
 - Browser public runtime config may expose SDK base URLs only when the browser is allowed to call that SDK surface directly. Backend/admin base URLs must not be exposed to user-facing app UI unless that route surface explicitly includes console/admin mode.
-- Defaults should be same-origin paths in browser deployments so remote browsers are not given loopback addresses.
+- Defaults should be same-origin paths in browser deployments so remote browsers are not given loopback addresses, but dependency SDK same-origin defaults are allowed only when `dependencyApiSurfaces` records verified mount coverage for that dependency surface.
+- Dependency backend-api SDK variables such as
+  `SDKWORK_<APP>_APPBASE_BACKEND_API_BASE_URL`,
+  `PORTAL_PUBLIC_APPBASE_BACKEND_API_BASE_URL`, and
+  `VITE_SDKWORK_APPBASE_BACKEND_API_BASE_URL` `MUST` remain independent from product backend variables such as `SDKWORK_<APP>_BACKEND_API_BASE_URL`,
+  `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, and `VITE_<APP_CODE>_BACKEND_API_BASE_URL` unless verified dependency backend mount coverage allows same-origin inheritance.
+- A checked-in example may leave a required external dependency backend base URL empty to force deployment configuration, but it `MUST NOT` set that dependency URL to `/backend/v3/api` or another product-owned default without matching `dependencyApiSurfaces` coverage evidence.
 - Absolute HTTP/HTTPS origins must be added to the production Content Security Policy `connect-src`.
 - Generated SDK examples must not hard-code tenant-specific hosts.
 - Base URL values must not include query strings, fragments, embedded credentials, API keys, tokens, or tenant-specific secret material.
@@ -1125,6 +1143,7 @@ PORTAL_PUBLIC_TOOL_API_ENABLED=false
 - CSP `connect-src` must include only validated absolute API origins and the application origin.
 - Env parsing must fail closed on malformed URLs, invalid booleans, invalid numbers, and missing required release secrets.
 - Local development default secrets must be clearly marked as development-only.
+- Env and public runtime config may expose locale strategy values such as default locale, supported locales, fallback locale, and catalog manifest URL, but must not embed translated message catalogs, product copy overrides, or generated locale bundle contents.
 
 ## 14. Validation And Tests
 
@@ -1132,11 +1151,12 @@ Every application that adopts this standard should provide:
 
 - Unit tests for env parsing and default resolution.
 - Profile normalization tests for `dev -> development`, `prod -> production`, and rejection of unknown profile names.
-- Runtime target tests for browser, desktop, tablet, server, container, and test-runner defaults.
+- Runtime target tests for browser, desktop, tablet, Capacitor, Flutter, mini program, native Android, native iOS, native Harmony, server, container, and test-runner defaults.
 - Config file parsing tests for canonical and explicit paths.
 - Release preflight validation for required production variables.
 - Browser runtime env tests that verify public values load before SDK clients are constructed.
 - Browser public runtime tests that verify no secret, database URL, Redis URL, token, signing key, or private endpoint is emitted through `/runtime-env.js`, `PORTAL_PUBLIC_*`, or `VITE_*`.
+- I18n runtime config tests that verify env/public config contains only locale strategy and catalog manifest references, not translated message content or app/root/package locale monoliths.
 - Database selection tests for desktop SQLite and server PostgreSQL behavior.
 - Test-profile isolation tests for database/schema names, Redis key prefix, logs, cache, runtime, and temp directories.
 - Tauri/native config tests that verify platform config contains packaging metadata, permissions, capabilities, and signing references only, not API secrets or business SDK contracts.
@@ -1150,11 +1170,12 @@ Acceptance checklist:
 - [ ] Dev/test/staging/prod example files exist where applicable and local overrides are ignored.
 - [ ] Public values are separated from private and secret values.
 - [ ] Generated SDK base URLs are independent per surface.
+- [ ] Locale env/public runtime values contain only default/supported/fallback locale strategy and catalog manifest references; translated messages remain in `I18N_SPEC.md` catalog fragments.
 - [ ] Server release defaults require PostgreSQL.
 - [ ] PostgreSQL development templates use `.env.postgres.example` with `SDKWORK_<APP>_DATABASE_ENGINE=postgresql`, `SDKWORK_<APP>_DATABASE_SSL_MODE`, and matching `DATABASE_ADMIN_*` split fields when admin initialization is needed.
 - [ ] Legacy database env aliases such as `DATABASE_PROVIDER` and `DATABASE_SSLMODE` are rejected for new apps.
 - [ ] Desktop install defaults to SQLite in the SDKWork user private data directory.
-- [ ] Desktop installed config, desktop-started server dev config, browser public runtime config, container config, and Tauri platform config are separate files or clearly separate sections.
+- [ ] Desktop installed config, desktop-started server dev config, browser public runtime config, H5/Capacitor config, Flutter config, mini program config, container config, and Tauri platform config are separate files or clearly separate sections.
 - [ ] Test config isolates database/schema, Redis key prefix, logs, cache, runtime, and temp directories.
 - [ ] Runtime config file path can be specified explicitly.
 - [ ] Canonical runtime directory paths are documented for Linux, macOS, Windows, and containers.

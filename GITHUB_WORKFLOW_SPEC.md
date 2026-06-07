@@ -1,10 +1,12 @@
 # GitHub Workflow Standard
 
 - Version: 1.0
-- Scope: SDKWork application GitHub Actions packaging, release, artifact publication, deployment workflow integration, and the reusable `sdkwork-github-workflow` framework
-- Related: `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `CODE_STYLE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, `APP_MANIFEST_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`
+- Scope: SDKWork application GitHub Actions packaging, release workflow integration, artifact publication, deployment workflow integration, supply-chain policy execution, and the reusable `sdkwork-github-workflow` framework
+- Related: `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `CODE_STYLE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, `APP_MANIFEST_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `RELEASE_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `QUALITY_GATE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork applications integrate with GitHub Actions for packaging and deployment. The goal is one reusable framework and one application-side contract, not copied release YAML in every application repository.
+
+Release policy is governed by `RELEASE_SPEC.md`. Supply-chain security policy is governed by `SUPPLY_CHAIN_SECURITY_SPEC.md`. This workflow standard defines how `sdkwork-github-workflow` executes and verifies those policies through reusable workflow configuration.
 
 ## 1. System Model
 
@@ -187,6 +189,8 @@ Examples:
 
 ## 6. Dependency Checkout
 
+Dependency relationship policy, local source materialization, cross-platform source path rules, stale dependency cleanup, and dependency-owned SDK/API ownership are governed by `DEPENDENCY_MANAGEMENT_SPEC.md`. This section defines how the GitHub workflow framework executes that policy in release and CI jobs.
+
 Rules:
 
 - Dependencies `MUST` be declared in `sdkwork.workflow.json`, not hidden in application YAML.
@@ -201,6 +205,8 @@ Rules:
 - Dependency checkout paths `MUST` be safe relative paths and must not overlap or overwrite the application source path or framework checkout path.
 
 ## 7. Publication And Supply Chain Policy
+
+Publication workflow fields execute release and supply-chain policy; they do not define the policy authority. Release readiness follows `QUALITY_GATE_SPEC.md` and `RELEASE_SPEC.md`. Dependency, signing, SBOM, provenance, checksum, and attestation requirements follow `SUPPLY_CHAIN_SECURITY_SPEC.md`.
 
 Rules:
 
@@ -267,6 +273,8 @@ Application integration verification `MUST` check:
 - Variant package lifecycle and deployment lifecycle receive `SDKWORK_PACKAGE_VARIANT`.
 - Lifecycle steps receive the standard package and deployment environment variables.
 - Signing, SBOM, attestation, workflow artifact, GitHub Release, dependency checkout, and deployment policies are enforced by executable tests or framework validation.
+- Release gate evidence from `QUALITY_GATE_SPEC.md` and `RELEASE_SPEC.md` is available before publishing release artifacts.
+- Supply-chain evidence from `SUPPLY_CHAIN_SECURITY_SPEC.md` is available for published artifacts, including dependency integrity, build integrity, SBOM/provenance/signing/checksum/attestation evidence required by the target policy.
 - GitHub Release notes are rendered by framework changelog planning from `release.changelog`, manifest `release.notes[]`, a declared changelog file, or git commit subjects.
 - Aggregate Release publication, when configured, downloads workflow artifacts, runs final `lifecycle.publish` in aggregate context, renders framework Release notes, and uploads configured aggregate assets only once.
 - Output globs resolve to the expected release artifacts during package validation.
@@ -282,6 +290,7 @@ Framework verification `MUST` check:
 - Shell-based composite actions pass action inputs through environment variables or structured argument arrays before command execution.
 - Repository validation rejects `${{ inputs.* }}` inside literal `run` shell bodies while allowing those expressions in GitHub-evaluated `env:`, `with:`, and workflow metadata contexts.
 - The reusable workflow gates upload, Release publishing, and attestation through the resolved config policy.
+- Release and supply-chain gates align with `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, and `SUPPLY_CHAIN_SECURITY_SPEC.md`.
 - Version resolution tests prove matrix summaries, lifecycle environments, and changelog planning prefer explicit package versions, then normalized release tags, then `release.defaultVersion`.
 - Changelog tests prove `release.changelog` validation, manifest release note rendering, file-based changelog rendering, git fallback behavior, and GitHub Release `notes-file` upload wiring.
 - Aggregate Release tests prove per-target GitHub Release upload is disabled, the aggregate publish job downloads workflow artifacts, `lifecycle.publish` receives aggregate release context, Release notes are rendered by the framework, and upload uses `publish.aggregateUploadGlobs`.
@@ -298,6 +307,8 @@ Framework verification `MUST` check:
 - [ ] Lifecycle steps use safe paths, supported shells, string env values, and `run` commands only.
 - [ ] Dependency refs and checkout paths are safe.
 - [ ] Signing, SBOM, attestation, artifact upload, Release upload, and deployment policies are declared and enforced.
+- [ ] Release gate evidence follows `QUALITY_GATE_SPEC.md` and `RELEASE_SPEC.md`.
+- [ ] Supply-chain evidence follows `SUPPLY_CHAIN_SECURITY_SPEC.md`.
 - [ ] Release changelog policy is declared or defaults to `release.changelog.source: auto`, and GitHub Release upload receives framework-rendered notes.
 - [ ] Aggregate Release publication is declared when final manifest/readiness/changelog aggregation is required, and finalization logic lives in `lifecycle.publish` instead of copied local workflow YAML.
 - [ ] Deployment jobs use GitHub Environments when deployments are configured.

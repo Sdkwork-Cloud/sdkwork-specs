@@ -1,14 +1,25 @@
 # App Mobile React UI Standard
 
 - Version: 1.0
-- Scope: app/user-facing React mobile packages, mobile web, Capacitor/Tauri-mobile style shells, app SDK integration
-- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Scope: app/user-facing React mobile packages, H5 mobile web screens, Capacitor mobile renderer packages, app SDK integration
+- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side mobile React UI is packaged and integrated. Mobile React UI is user-facing and must consume app-api through generated TypeScript app SDK clients or approved appbase mobile wrappers. It must not depend on backend/admin UI packages. Cross-architecture SDK composition and appbase IAM token wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
+This standard defines how SDKWork app-side mobile React UI is packaged and integrated. In application roots it is applied after `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed mobile React package standard. Mobile React UI is user-facing and must consume app-api through generated TypeScript app SDK clients or approved appbase mobile wrappers. It must not depend on backend/admin UI packages. Cross-architecture SDK composition and appbase IAM token wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
 
-This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing mobile React packages.
+This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing H5/mobile React packages.
 
-Canonical mobile React package shape:
+Canonical app-root H5 mobile package shape:
+
+```text
+apps/<product>-h5-mobile/
+  packages/
+    sdkwork-<product>-h5-mobile-core/
+    sdkwork-<product>-h5-mobile-commons/
+    sdkwork-<product>-h5-mobile-shell/
+    sdkwork-<product>-h5-mobile-<capability>/
+```
+
+Shared mobile React package shape:
 
 ```text
 apps/sdkwork-appbase/
@@ -27,7 +38,7 @@ apps/sdkwork-appbase/
 
 Rules:
 
-- Mobile React app UI `MUST` live in `mobile-react/<domain>/<package>` package families.
+- Mobile React app UI `MUST` live in normalized H5 application packages such as `apps/<product>-h5-mobile/packages/sdkwork-<product>-h5-mobile-<capability>` or shared mobile React package families such as `packages/mobile-react/<domain>/<package>`.
 - Mobile React app UI `MUST` consume `/app/v3/api` through the generated app SDK or approved appbase wrappers.
 - Mobile React app UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, or `@sdkwork/react-backend-*` packages.
 - Backend/admin UI and operator-only workflows are forbidden in mobile React app packages unless the product is explicitly an admin mobile app with its own approved package family.
@@ -37,10 +48,10 @@ Rules:
 
 | Package type | Naming | Owns | Must not own |
 | --- | --- | --- | --- |
-| mobile shell/runtime | app-specific mobile shell | navigation container, safe-area provider, SDK bootstrap, token storage adapter, host adapters | reusable domain services and pages |
-| mobile foundation | `sdkwork-<foundation>-mobile-react` | appbase, router, command, search, workspace primitives for mobile | business-domain shortcuts |
-| mobile domain package | `sdkwork-<capability>-mobile-react` | screens, components, hooks, services, i18n, navigation metadata | concrete SDK construction, backend admin logic |
-| host adapter package | `sdkwork-<host>-mobile-react` when needed | native bridge abstraction and permissions | API business logic |
+| mobile shell/runtime | `sdkwork-<product>-h5-mobile-shell` or app-specific mobile shell | navigation container, safe-area provider, SDK bootstrap, token storage adapter, host adapters | reusable domain services and pages |
+| mobile foundation | `sdkwork-<product>-h5-mobile-commons` or `sdkwork-<foundation>-mobile-react` | appbase, router, command, search, workspace primitives for mobile | business-domain shortcuts |
+| mobile domain package | `sdkwork-<product>-h5-mobile-<capability>` or `sdkwork-<capability>-mobile-react` | screens, components, hooks, services, i18n, navigation metadata | concrete SDK construction, backend admin logic |
+| host adapter package | `sdkwork-<product>-h5-mobile-capacitor` or `sdkwork-<host>-mobile-react` when needed | native bridge abstraction and permissions | API business logic |
 
 Rules:
 
@@ -51,7 +62,27 @@ Rules:
 
 ## 3. Internal Shape
 
-Recommended package structure:
+Recommended app-root package structure:
+
+```text
+apps/<product>-h5-mobile/packages/sdkwork-<product>-h5-mobile-<capability>/
+  package.json
+  src/
+    index.ts
+    screens/
+    components/
+    hooks/
+    services/
+    state/
+    i18n/
+    navigation/
+    host/
+    types/
+  tests/
+  specs/
+```
+
+Recommended shared package structure:
 
 ```text
 packages/mobile-react/<domain>/<package>/
@@ -78,6 +109,7 @@ Rules:
 - `host/` owns injected host adapter contracts only, not native implementation details unless the package is a host package.
 - `services/` owns app SDK orchestration through injected clients or shared service interfaces.
 - `state/` owns mobile view/cache state and must clear sensitive state on logout and account/tenant switch.
+- `i18n/` owns package-local mobile locale fragments and thin aggregation exports. It must not contain an authored whole-app or whole-package locale monolith; follow `I18N_SPEC.md`.
 
 ## 4. SDK And Host Integration
 
@@ -92,7 +124,7 @@ Rules:
 - UI components `MUST NOT` construct SDK clients, call raw HTTP, manually attach auth/API key headers, or call native bridge globals directly.
 - Push notification, QR scan, camera, location, biometric, secure storage, and deep-link handling must be represented as typed adapters with test doubles.
 - Secure storage adapters may persist appbase token/context data for the central runtime, but they `MUST NOT` own login, refresh, permission checks, or business authorization.
-- Missing app SDK methods must be fixed in `spring-ai-plus-app-api` and generator inputs before the mobile package consumes them.
+- Missing app SDK methods must be fixed in `legacy-java-plus-app-api` and generator inputs before the mobile package consumes them.
 
 ## 5. Mobile Interaction And Design
 

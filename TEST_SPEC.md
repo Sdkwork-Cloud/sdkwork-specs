@@ -14,20 +14,40 @@ No standard is complete until it is executable.
 | Repository workspace | Git repository root and application root `.sdkwork/` presence checks, tracked `skills/` and `plugins/` placeholders, skill/plugin manifest checks, static scans for forbidden secrets/runtime/generated SDK files |
 | Code style and naming | `CODE_STYLE_SPEC.md` and `NAMING_SPEC.md` checks for focused entrypoints, public exports, generated-code boundaries, canonical names, and no catch-all implementation files |
 | Language-specific code | On-demand Rust, Java, TypeScript, and frontend checks only when those languages/frameworks are touched |
+| Requirements | Validate `REQUIREMENTS_SPEC.md`: requirement id, owner, status, priority, acceptance criteria, non-functional requirements when relevant, traceability to affected specs/components, and verification evidence |
+| Architecture decisions | Validate `ARCHITECTURE_DECISION_SPEC.md`: ADR presence when required, decision shape, architecture views when applicable, alternatives, consequences, verification, and supersession links |
+| Engineering workflow | Validate `ENGINEERING_WORKFLOW_SPEC.md`: intake, clarification, decision, plan, implementation, verification, review, release handoff, checkpoints, blockers, and evidence bundle references |
+| Code review | Validate `CODE_REVIEW_SPEC.md`: reviewer evidence, risk level, generated artifact boundaries, findings/outcomes, and no review-free security, migration, release, or standards changes |
+| Quality gates | Validate `QUALITY_GATE_SPEC.md`: Definition of Ready, Definition of Done, merge gate, release gate, exception gate, risk level, and evidence bundle completeness |
+| Release | Validate `RELEASE_SPEC.md`: version, artifacts, changelog, rollout, rollback, freeze, post-release evidence, and release gate satisfaction |
+| Migration | Validate `MIGRATION_SPEC.md`: migration plan, compatibility window, affected consumers, sequencing, rollback, data/contract/config/package coverage, and owner approval |
+| Dependency management | Validate `DEPENDENCY_MANAGEMENT_SPEC.md`: source/build dependency paths, `.sdkwork/dependencies/<dependency-id>` materialization, release Git refs, stale dependency cleanup, cross-platform path separators, and dependency-owned SDK/API filtering |
+| Supply chain security | Validate `SUPPLY_CHAIN_SECURITY_SPEC.md`: dependency integrity, build integrity, generator authority, SBOM, provenance, signing, checksums, attestations, and supply-chain exceptions |
 | API | OpenAPI validation, strict profile validation, request/response examples, Rust route crate naming and route-manifest aggregation checks |
 | Web backend | Controller/router path checks, handler/service/repository boundary tests, typed request-context checks, transaction/idempotency tests, static scans for raw credential parsing |
 | RPC | Proto compile, proto lint, breaking-change check, service manifest, unary server/client smoke tests, generated cross-language client checks |
-| SDK | Validate `SDK_SPEC.md` semantics, validate application-root `sdks/` layout from `SDK_WORKSPACE_GENERATION_SPEC.md`, materialize OpenAPI authority to derived generator inputs, generate SDK through `D:\javasource\spring-ai-plus\sdk\sdkwork-sdk-generator` (`@sdkwork/sdk-generator` / `sdkgen`), compile SDK, verify README examples and method surface |
+| SDK | Validate `SDK_SPEC.md` semantics, validate application-root `sdks/` layout from `SDK_WORKSPACE_GENERATION_SPEC.md`, materialize OpenAPI authority to derived generator inputs, generate SDK through `..\sdkwork-sdk-generator` (`@sdkwork/sdk-generator` / `sdkgen`), compile SDK, verify README examples and method surface |
 | App SDK composition | Validate `APP_SDK_INTEGRATION_SPEC.md`: architecture-specific SDK language, dependency SDK declarations, appbase IAM runtime wiring, one global TokenManager, and no dependency API regeneration |
+| Dependency API surface | Validate dependency SDK runtime composition: every `sdkDependencies` HTTP entry has a `dependencyApiSurfaces` runtime declaration, same-origin dependency SDK defaults have verified mount coverage, route metadata is not treated as an executable router, and external dependency SDKs fail fast without explicit base URLs |
+| Client architecture alignment | Validate `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`: package taxonomy, dependency direction, route identity, host adapter boundary, SDK/IAM/runtime composition, and cross-client workflow alignment |
 | PC application architecture | Validate `APP_PC_ARCHITECTURE_SPEC.md`: application root layout, normalized `sdkwork-<product>-pc-*` package names, app/console/admin separation, shared renderer, desktop/tablet host placement, SDK/IAM boundaries |
-| Environment/config | Validate `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`: lifecycle environment, profile alias, deployment mode, build mode, runtime target, dev/test/staging/prod files, browser/desktop/server/container/Tauri config separation, public/private/secret boundaries |
+| H5 app mobile architecture | Validate `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`: `sdkwork-<product>-h5-mobile-*` package names, shared H5/Capacitor renderer, typed host adapters, SDK/IAM boundaries, mobile config, and release metadata |
+| Flutter app mobile architecture | Validate `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`: Dart package naming, thin root `lib/`, generated Dart SDK boundary, platform adapters, route identity, and Flutter release metadata |
+| Mini program architecture | Validate `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`: SDKWork source package taxonomy, page/subpackage projection, platform host adapters, generated TypeScript app SDK boundary, and platform package config |
+| Mini program UI | Validate `APP_MINI_PROGRAM_UI_SPEC.md`: package-local pages/components/services/state/i18n/routes, route projection inputs, host adapter contracts, app SDK boundary, UI states, and package-size checks |
+| Android native mobile architecture | Validate `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`: `sdkwork-<product>-android-mobile-*` package names, thin root `app/`, generated Kotlin/Java SDK boundary, Android host adapters, route identity, Android config, and release metadata |
+| iOS native mobile architecture | Validate `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`: `sdkwork-<product>-ios-mobile-*` package names, thin root `App/`, generated Swift SDK boundary, iOS host adapters, route identity, iOS config, and release metadata |
+| Harmony native mobile architecture | Validate `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`: `sdkwork-<product>-harmony-mobile-*` package names, thin root `entry/`, generated ArkTS/TypeScript SDK boundary, HarmonyOS host adapters, route identity, Harmony config, and release metadata |
+| Native mobile UI | Validate `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, or `APP_HARMONY_NATIVE_UI_SPEC.md`: package-local screens/pages/components/services/state/i18n/routes, host adapter contracts, app SDK boundary, UI states, and lifecycle/security checks |
+| Internationalization | Validate `I18N_SPEC.md`: package-local catalog fragments, thin aggregators, duplicate-key checks, missing-key checks, fallback behavior, and no authored app/root/package locale monoliths |
+| Environment/config | Validate `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`: lifecycle environment, profile alias, deployment mode, build mode, runtime target, dev/test/staging/prod files, browser/desktop/H5/Capacitor/Flutter/mini-program/native Android/native iOS/native Harmony/server/container/Tauri config separation, public/private/secret boundaries |
 | Database | Schema lint, migration test, tenant/index checks |
 | Drive | Drive API/SDK contract tests, Drive Uploader App SDK tests, Rust `DriveUploaderService` tests, upload-session idempotency, resumable part tests, attribution/statistic tests, retention cleanup tests, provider capability tests, business-module scans for forbidden app-local storage lifecycle |
 | IAM/security | Token validation, permission denial, tenant isolation, audit event, appbase login integration, logout clearing, Rust AppContext guard |
 | Frontend | Service tests with injected SDK client, UI integration tests |
-| UI architecture | Static/package scan that the package family matches `UI_ARCHITECTURE_SPEC.md` plus `APP_PC_ARCHITECTURE_SPEC.md` for PC roots and exactly one detailed UI spec such as `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, or `BACKEND_UI_SPEC.md` |
+| UI architecture | Static/package scan that the package family matches `UI_ARCHITECTURE_SPEC.md` plus the relevant root architecture spec and exactly one detailed UI/package spec such as `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, or `BACKEND_UI_SPEC.md` |
 | Deployment | SaaS/local/private parity tests |
-| GitHub workflow | `GITHUB_WORKFLOW_SPEC.md` checks for `sdkwork.workflow.json`, thin reusable workflow entrypoint, planner/schema alignment, safe refs and paths, lifecycle env, publication policy gates, attestation policy, deployment environment binding, and repository validation |
+| GitHub workflow | `GITHUB_WORKFLOW_SPEC.md` checks for `sdkwork.workflow.json`, thin reusable workflow entrypoint, planner/schema alignment, safe refs and paths, lifecycle env, release policy, publication policy gates, supply-chain policy, attestation policy, deployment environment binding, and repository validation |
 | Events | Schema compatibility, idempotent consumer, replay behavior |
 | Performance | Pagination, latency budget, retry, rate-limit behavior |
 | Documentation | README/examples match public contracts |
@@ -41,7 +61,15 @@ Rules:
   declared surface, mounted path prefix, route manifest, aggregated API authority, and generated SDK
   family mapping satisfy `API_SPEC.md`, `SDK_SPEC.md`, and `SDK_WORKSPACE_GENERATION_SPEC.md`.
 - Every SDK workspace or OpenAPI generation change `MUST` satisfy `SDK_SPEC.md` first for canonical SDK/API naming vocabulary, family naming, package semantics, generated client behavior, auth behavior, and service integration; then satisfy `SDK_WORKSPACE_GENERATION_SPEC.md` for application-root `sdks/` layout, authority OpenAPI location, deterministic derived inputs, generated-output placement, and component specs.
-- SDK generation verification `MUST` prove the command uses the canonical `@sdkwork/sdk-generator` / `sdkgen` from `D:\javasource\spring-ai-plus\sdk\sdkwork-sdk-generator`; `sdkwork-code-generator`, local stubs, copied generator code, or generic OpenAPI generators are not valid production SDK verification evidence.
+- SDK generation verification `MUST` prove the command uses the canonical `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`; `sdkwork-code-generator`, local stubs, copied generator code, or generic OpenAPI generators are not valid production SDK verification evidence.
+- Dependency API surface verification `MUST` prove each HTTP `sdkDependencies` entry has a matching
+  `dependencyApiSurfaces` runtime declaration. The test must fail when route contracts, route
+  manifests, or OpenAPI authority files are treated as same-origin executable router coverage
+  without an executable router/controller export.
+- Same-origin dependency SDK tests `MUST` compare dependency method/path expectations against the
+  runtime mount coverage evidence. External-service dependency SDK tests `MUST` prove SDK bootstrap
+  uses dependency-specific base URL config and does not fall back to product same-origin app/backend
+  base URLs.
 - File storage, upload, download, and object-storage contract changes `MUST` verify Drive API/SDK generation and must scan business modules for forbidden app-local upload/session/provider/object lifecycle code.
 - Drive Uploader contract changes `MUST` verify App API operations `uploader.uploads.prepare`, `uploader.uploads.parts.markUploaded`, `uploadSessions.parts.presign`, and `uploadSessions.complete`, plus generated SDK/composed SDK exposure of `client.uploader.*`.
 - Every RPC change `MUST` include a test that proves proto contracts compile and generated clients expose the intended service/method surface.
@@ -91,6 +119,7 @@ Rules:
 - Java code scans `MUST` verify Spring controllers stay thin and do not own business logic, persistence, or provider calls.
 - TypeScript code scans `MUST` verify `src/index.ts` is a public export boundary and that business modules do not import package internals through `/src/...`.
 - Frontend code scans `MUST` verify UI components do not construct SDK clients or raw HTTP requests.
+- I18n scans `MUST` fail when authored locale resources collapse a whole app, client root, backend/admin root, or package into one locale file instead of package-local fragments defined by `I18N_SPEC.md`.
 - Generated-code scans `MUST` fail when generated SDK transport output is hand-edited outside approved `custom/` roots or composed facades.
 
 ## 2.0.2 GitHub Workflow Tests
@@ -116,10 +145,27 @@ Rules:
 - Changelog tests `MUST` prove `release.changelog` validation, manifest `release.notes[]` rendering, stale manifest note rejection for non-matching package versions or release tags, file-based changelog rendering, git fallback rendering, generated `init-app` default changelog config, and GitHub Release `notes-file` upload wiring.
 - Supply-chain tests `MUST` prove `security.signingRequired`, `security.sbomRequired`, `security.artifactAttestations`, target-level signing overrides, and artifact attestation gates are enforced.
 - Dependency checkout tests `MUST` prove refs are safe before `git fetch`, checkout paths are safe, tokens are not embedded in clone URLs, and dependency ref JSON inputs are passed through environment variables or files rather than direct shell expression interpolation.
+- Dependency checkout tests `MUST` prove application workspaces use `.sdkwork/dependencies/<dependency-id>` or another approved safe relative checkout root, do not depend on machine-specific absolute source paths, and do not leave unused dependencies in `sdkwork.workflow.json`.
 - Composite action tests `MUST` prove shell-based actions pass action inputs through environment variables or structured argument arrays instead of embedding `${{ inputs.* }}` directly in shell script bodies.
 - Repository validation tests `MUST` include both a negative case for `${{ inputs.* }}` inside literal `run` script bodies and a positive case proving later `env:`, `with:`, `if:`, or reusable workflow metadata expressions are not misclassified as shell script content.
 - Deployment tests `MUST` prove configured deployments bind to GitHub Environments and pass deployment environment, URL, and lifecycle values to the lifecycle runner.
 - Repository validation for `sdkwork-github-workflow` `MUST` check `AGENTS.md`, compatibility shims, `.sdkwork/` files, reusable workflow YAML, composite actions, schema, examples, templates, generator output, and repository documentation.
+
+## 2.0.3 Engineering Lifecycle Tests
+
+Engineering lifecycle tests make `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `CODE_REVIEW_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, and `SUPPLY_CHAIN_SECURITY_SPEC.md` executable.
+
+Rules:
+
+- Requirement checks `MUST` fail when non-trivial behavior, contract, runtime, security, release, or migration changes have no requirement record, no acceptance criteria, no owner, or no verification mapping.
+- ADR checks `MUST` fail when boundary, ownership, API/SDK authority, persistence, runtime topology, security posture, release posture, or cross-client architecture decisions are implemented without an architecture decision record.
+- Workflow checks `MUST` verify the work records intake, clarification or explicit no-ambiguity statement, decision/plan when applicable, implementation scope, verification evidence, review state, release/migration handoff, and blocker handling.
+- Review checks `MUST` verify risk level, reviewer evidence, generated artifact treatment, security/privacy/supply-chain coverage when applicable, and explicit review outcome.
+- Quality gate checks `MUST` verify Definition of Ready before implementation, Definition of Done before completion, merge gate before merge, release gate before release, and exception gate before an approved deviation.
+- Release checks `MUST` verify version, artifacts, changelog, rollout, rollback, release freeze when applicable, post-release follow-up, and release gate evidence.
+- Migration checks `MUST` verify compatibility window, affected consumers, sequencing, rollback, data/contract/config/package coverage, verification commands, and owner approval.
+- Supply-chain checks `MUST` verify dependency sources, lockfiles or pinned refs, generated artifact authority, build inputs, SBOM, provenance, signing, checksums, attestations, and exception expiry.
+- Lifecycle evidence checks `SHOULD` be static and deterministic when possible; manual evidence is acceptable only when the local repository has no executable source for the decision.
 
 ## 2.1 Rust Route Manifest Contract Tests
 
@@ -218,6 +264,144 @@ Rules:
 - Release preflight tests `MUST` fail when production PC/desktop/server config contains localhost service endpoints, development secrets, test database names, writable developer directories, unresolved placeholders, or source-controlled secret files.
 - Tauri platform config tests `MUST` prove platform files own bundle ids, package names, window metadata, permissions, capabilities, icons, mobile/tablet metadata, and signing references only; they must not contain auth tokens, database credentials, API keys, SDK package ownership, or business route constants.
 
+## 2.4.1 Client Architecture Alignment Tests
+
+Client architecture alignment tests make `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` executable across PC, H5, Flutter, mini program, native Android, native iOS, native HarmonyOS, and future client roots.
+
+Rules:
+
+- Client root tests `MUST` verify root layout, `.sdkwork/`, `config/`, `src/` or `lib/` bootstrap, `packages/`, `sdks/`, `specs/`, scripts, and tests according to the selected root architecture standard.
+- Package taxonomy tests `MUST` prove packages use the selected architecture segment and reserved roles such as `core`, `commons`, `shell`, capability, `console-*`, `admin-*`, and `host`.
+- Dependency direction tests `MUST` fail when `core` or `commons` imports capability packages, when capability packages deep import each other, or when host packages own business SDK transport.
+- Route identity tests `MUST` prove route ids follow `<surface>.<domain>.<capability>.<screen>` and route metadata does not declare API URLs, SDK methods, or HTTP path constants.
+- Cross-client alignment tests `SHOULD` prove workflows implemented in multiple client roots share route id, title key, permission hint, SDK surface, service contract, and i18n key.
+- I18n alignment tests `SHOULD` prove shared workflows use stable key prefixes while each client architecture keeps authored locale resources in its own package-local fragments.
+- Host adapter tests `MUST` prove feature packages depend on adapter contracts instead of platform globals or native plugin APIs.
+- SDK/IAM tests `MUST` prove bootstrap/core constructs SDK clients, binds the authenticated token manager, and injects SDK/service ports into feature packages.
+
+## 2.4.2 H5 App Mobile Architecture Tests
+
+H5 app mobile architecture tests make `H5_APP_MOBILE_ARCHITECTURE_SPEC.md` executable.
+
+Rules:
+
+- H5 mobile root tests `MUST` verify `.sdkwork/`, `config/browser`, `config/host`, `src/bootstrap`, `packages/`, `sdks/`, `scripts/`, and tests exist.
+- Package naming tests `MUST` prove packages use `sdkwork-<product>-h5-mobile-*`, including reserved `core`, `commons`, `shell`, `console-*`, `admin-*`, and `capacitor` package roles.
+- Renderer sharing tests `MUST` prove H5, Capacitor iOS, and Capacitor Android targets reuse the same renderer build, route contributions, SDK clients, appbase IAM runtime, and global TokenManager.
+- Capacitor boundary tests `MUST` fail when feature packages import Capacitor plugins or platform globals directly.
+- Mobile host adapter tests `MUST` cover unsupported, permission-denied, unavailable, cancelled, and invalid-state errors for native capabilities used by features.
+- Deep-link tests `MUST` validate expected scheme, host, path, state, nonce, expiry, and unsafe-link rejection.
+- Push lifecycle tests `MUST` cover permission denied, token registration, token refresh, logout unregister/clear, and foreground/background handling when push is enabled.
+- H5 config tests `MUST` prove browser public runtime config loads before SDK construction and contains no secrets, tokens, database URLs, Redis URLs, private endpoints, or signing material.
+- Capacitor host config tests `MUST` prove host config owns only bundle/package ids, schemes, app links/universal links, permissions, capabilities, icons, signing references, and store metadata.
+- H5/Capacitor release preflight tests `MUST` validate H5 URLs, IPA/App Store metadata, APK/AAB/Google Play metadata, governed media, checksums, SBOM/provenance, signing references, and secret absence.
+
+## 2.4.3 Flutter App Mobile Architecture Tests
+
+Flutter app mobile architecture tests make `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` executable.
+
+Rules:
+
+- Flutter root tests `MUST` verify `.sdkwork/`, `config/app`, `config/host`, `lib/bootstrap`, `packages/`, `sdks/`, scripts, and tests exist.
+- Dart package naming tests `MUST` prove Flutter mobile packages use lower snake case names such as `sdkwork_<product>_flutter_mobile_<capability>`.
+- Root thinness tests `SHOULD` fail when root `lib/` contains business screens, generated SDK orchestration outside bootstrap, mock data arrays, or feature-specific services.
+- Flutter SDK boundary tests `MUST` prove generated Dart app SDK clients or approved appbase Flutter wrappers are injected and no raw `http`, manual auth headers, TypeScript wrappers, React packages, or generated SDK edits are introduced.
+- Platform adapter tests `MUST` prove widgets, controllers, blocs, notifiers, and services do not call platform plugins or method channels directly.
+- Flutter route tests `MUST` prove named routes or router entries map to SDKWork route ids and align with cross-client route metadata when the workflow exists elsewhere.
+- Flutter state tests `MUST` prove logout, refresh failure, tenant switch, and account switch clear secure platform storage, token manager, context store, sensitive state, and realtime/session bridges.
+- Flutter release preflight tests `MUST` validate iOS/Android package metadata, signing references, icons, screenshots, checksums/SBOM/provenance, and secret absence.
+
+## 2.4.4 Mini Program Architecture Tests
+
+Mini program architecture tests make `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` executable.
+
+Rules:
+
+- Mini program root tests `MUST` verify `.sdkwork/`, `config/mini-program`, `config/host`, `src/bootstrap`, `packages/`, route projection targets, `sdks/`, scripts, and tests exist.
+- Package naming tests `MUST` prove SDKWork source packages use `sdkwork-<product>-mp-*` and reserved `core`, `commons`, `shell`, `console-*`, `admin-*`, and `host` roles.
+- Package/subpackage boundary tests `MUST` fail when platform `pages` or `subpackages` become the source business architecture instead of projections or thin wrappers from SDKWork packages.
+- Route projection tests `MUST` prove route contributions generate or assemble `app.json` pages/subpackages deterministically.
+- Platform host tests `MUST` fail when feature packages call `wx.*`, `my.*`, `dd.*`, `tt.*`, or equivalent platform globals directly.
+- Mini program SDK boundary tests `MUST` prove generated TypeScript app SDK clients or approved mini program wrappers are injected and no raw request APIs, manual auth headers, backend SDKs for user workflows, or generated SDK edits are introduced.
+- Mini program IAM tests `MUST` prove platform login codes, phone-number grants, scene/query inputs, and provider-specific auth facts are exchanged through approved app-api/appbase flows.
+- Mini program config tests `MUST` prove platform app ids and host metadata are separated from private keys, auth tokens, API keys, database URLs, private endpoints, and business route constants.
+- Package-size tests `SHOULD` prove root package and subpackages stay within documented platform limits when tooling supports it.
+
+## 2.4.5 Mini Program UI Tests
+
+Mini program UI tests make `APP_MINI_PROGRAM_UI_SPEC.md` executable.
+
+Rules:
+
+- Mini program UI package tests `MUST` verify package placement under `apps/<product>-mini-program/packages/sdkwork-<product>-mp-*` or approved `packages/mini-program/<domain>/sdkwork-<capability>-mini-program` shared packages.
+- Package-local boundary tests `MUST` prove `pages`, `components`, `services`, `state`, `i18n`, `routes`, `navigation`, `host`, and `types` responsibilities remain visible when those concerns exist.
+- I18n tests `MUST` prove mini program locale resources are package-local fragments and that platform page/subpackage resource aggregates are generated or thin assemblies, not hand-authored app-wide locale files.
+- Route contribution tests `MUST` prove every route declares `id`, `surface`, `domain`, `capability`, `screen`, `titleKey`, `auth`, and mini program placement metadata without API URLs or SDK method names.
+- SDK tests `MUST` prove services receive generated app SDK clients or approved wrappers through injection and do not use raw request APIs or manual auth headers.
+- Host adapter tests `MUST` prove source pages/components/services do not call platform globals such as `wx.*`, `my.*`, `dd.*`, or `tt.*` directly.
+- State clearing tests `MUST` prove logout, refresh failure, account switch, and tenant switch clear token storage, context state, sensitive package state, caches, and realtime/session bridges.
+- UI state tests `SHOULD` cover loading, empty, validation-error, permission-denied, offline/unavailable, and unknown-error states for representative pages.
+- Package-size tests `SHOULD` prove large dependencies, media, and compatibility layers do not exceed platform package or subpackage budgets when tooling supports it.
+
+## 2.4.6 Android Native Mobile Architecture Tests
+
+Android native mobile architecture tests make `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` executable.
+
+Rules:
+
+- Android root tests `MUST` verify `.sdkwork/`, `config/app`, `config/host`, root `app` bootstrap, `packages/`, `sdks/`, scripts, Gradle files, and tests exist.
+- Android package naming tests `MUST` prove packages use `sdkwork-<product>-android-mobile-*` and reserved `core`, `commons`, `shell`, `console-*`, `admin-*`, and `host` roles.
+- Android root thinness tests `MUST` fail when the root `app/` module owns business screens, mock data arrays, feature services, or concrete SDK orchestration outside bootstrap.
+- Android SDK boundary tests `MUST` prove generated Kotlin/Java app SDK clients or approved Android wrappers are injected and no raw HTTP, manual auth headers, TypeScript/Flutter/Swift/ArkTS wrappers, or generated SDK edits are introduced.
+- Android host adapter tests `MUST` prove feature screens, view models, and services do not call Android framework APIs, Activity result APIs, Play Services clients, or push/camera/secure-storage APIs directly for host capabilities.
+- Android route tests `MUST` prove navigation destinations map to SDKWork route ids and align with cross-client route metadata when the workflow exists elsewhere.
+- Android config tests `MUST` prove application ids, permissions, app links, push metadata, signing references, icons, and store metadata are separated from private keys, auth tokens, API keys, database URLs, private endpoints, and business route constants.
+- Android release preflight tests `MUST` validate APK/AAB or store package metadata, signing references, icons, screenshots, checksums/SBOM/provenance, and secret absence.
+
+## 2.4.7 iOS Native Mobile Architecture Tests
+
+iOS native mobile architecture tests make `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` executable.
+
+Rules:
+
+- iOS root tests `MUST` verify `.sdkwork/`, `config/app`, `config/host`, root `App` bootstrap, `packages/`, `sdks/`, scripts, Xcode/SPM files, and tests exist.
+- iOS package naming tests `MUST` prove packages use `sdkwork-<product>-ios-mobile-*` and reserved `core`, `commons`, `shell`, `console-*`, `admin-*`, and `host` roles.
+- iOS root thinness tests `MUST` fail when the root `App/` target owns business screens, mock data arrays, feature services, or concrete SDK orchestration outside bootstrap.
+- iOS SDK boundary tests `MUST` prove generated Swift app SDK clients or approved iOS wrappers are injected and no raw HTTP, manual auth headers, TypeScript/Flutter/Kotlin/ArkTS wrappers, or generated SDK edits are introduced.
+- iOS host adapter tests `MUST` prove feature screens, view models, and services do not call iOS framework APIs, keychain, push, universal-link, camera, biometric, or file APIs directly for host capabilities.
+- iOS route tests `MUST` prove navigation routes map to SDKWork route ids and align with cross-client route metadata when the workflow exists elsewhere.
+- iOS config tests `MUST` prove bundle ids, entitlements, associated domains, push metadata, signing references, icons, and store metadata are separated from private keys, auth tokens, API keys, database URLs, private endpoints, and business route constants.
+- iOS release preflight tests `MUST` validate IPA/App Store/TestFlight or private package metadata, signing references, icons, screenshots, checksums/SBOM/provenance, and secret absence.
+
+## 2.4.8 Harmony Native Mobile Architecture Tests
+
+Harmony native mobile architecture tests make `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` executable.
+
+Rules:
+
+- Harmony root tests `MUST` verify `.sdkwork/`, `config/app`, `config/host`, root `entry` bootstrap, `packages/`, `sdks/`, scripts, ohpm/hvigor files, and tests exist.
+- Harmony package naming tests `MUST` prove packages use `sdkwork-<product>-harmony-mobile-*` and reserved `core`, `commons`, `shell`, `console-*`, `admin-*`, and `host` roles.
+- Harmony root thinness tests `MUST` fail when the root `entry/` module owns business pages, mock data arrays, feature services, or concrete SDK orchestration outside bootstrap.
+- Harmony SDK boundary tests `MUST` prove generated ArkTS/TypeScript app SDK clients or approved Harmony wrappers are injected and no raw request APIs, manual auth headers, React/Flutter/Kotlin/Swift wrappers, or generated SDK edits are introduced.
+- Harmony host adapter tests `MUST` prove feature pages, view models, and services do not call HarmonyOS system APIs, ability context, want handling, push, camera, secure-storage, or file APIs directly for host capabilities.
+- Harmony route tests `MUST` prove page/navigation routes map to SDKWork route ids and align with cross-client route metadata when the workflow exists elsewhere.
+- Harmony config tests `MUST` prove bundle/app ids, module metadata, device types, permissions, push metadata, signing references, icons, and store metadata are separated from private keys, auth tokens, API keys, database URLs, private endpoints, and business route constants.
+- Harmony release preflight tests `MUST` validate Harmony direct or store package metadata, HAP/APP artifact metadata when represented through `OTHER`, signing references, icons, screenshots, checksums/SBOM/provenance, and secret absence.
+
+## 2.4.9 Native Mobile UI Tests
+
+Native mobile UI tests make `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, and `APP_HARMONY_NATIVE_UI_SPEC.md` executable.
+
+Rules:
+
+- Native UI package tests `MUST` verify package placement under the selected root family, such as `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-*`, `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-*`, or `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-*`.
+- Package-local boundary tests `MUST` prove screens/pages, components/views, presentation/view models/controllers, services, state, i18n/resources, routes/navigation, host adapter contracts, and models remain visible when those concerns exist.
+- I18n/resource tests `MUST` prove platform resource aggregates are generated or assembled from package-local fragments and that authored resources do not collapse whole-root copy into one file.
+- SDK tests `MUST` prove services receive generated app SDK clients or approved wrappers through injection and do not use raw HTTP/request APIs or manual auth headers.
+- Host adapter tests `MUST` prove feature UI and view models do not call platform APIs directly for host capabilities.
+- State clearing tests `MUST` prove logout, refresh failure, account switch, and tenant switch clear token storage, context state, sensitive package state, caches, and realtime/session bridges.
+- UI state tests `SHOULD` cover loading, empty, validation-error, permission-denied, offline/unavailable, and unknown-error states for representative screens/pages.
+
 ## 2.5 Drive Uploader Tests
 
 Drive Uploader tests make `DRIVE_SPEC.md` executable for all client and server upload paths.
@@ -242,8 +426,10 @@ Rules:
 - Protected app-api and backend-api operations `MUST` test missing auth token, missing access token, invalid token, expired token, wrong tenant, and insufficient permission.
 - Protected open-api operations `MUST` test missing API key, invalid API key, expired/revoked API key, wrong tenant/app binding, insufficient permission scope, and the absence of app login token fallback.
 - IAM login integration `MUST` test the checks required by `IAM_LOGIN_INTEGRATION_SPEC.md`: appbase boundary, SDK token wiring, route guard, logout clearing, forbidden product-local auth routes, Rust dual-token guard, and AppContext safety.
-- App SDK composition tests `MUST` prove appbase app SDK, optional appbase backend SDK, product app SDKs, and product backend SDKs share one token manager through `setTokenManager` or the language-equivalent credential hook.
-- App SDK composition tests `MUST` prove Drive app SDK clients are declared as dependency SDKs for upload-capable applications, share the authenticated global TokenManager when required, and are not regenerated into product SDK families.
+- App SDK composition tests `MUST` prove the application bootstrap declares or derives an SDK inventory and classifies every consumed SDK as authenticated app-api, authenticated backend-api, protected open-api API-key, public open-api, local/native, or test fake before feature services are constructed.
+- App SDK composition tests `MUST` prove appbase app SDK, optional appbase backend SDK, product app/backend SDKs, dependency app/backend SDKs, and approved composed wrappers backed by those SDKs share one TokenManager through `setTokenManager`, constructor injection, or the language-equivalent credential hook.
+- App SDK composition tests `MUST` prove Drive app SDK clients and other dependency SDK clients are declared as dependency SDKs for consuming applications, share the authenticated global TokenManager when required, and are not regenerated into product SDK families.
+- App SDK composition tests `MUST` prove product app auth runtime integration uses the approved high-level appbase auth runtime/factory for the architecture when one exists, for example `createSdkworkAppbasePcAuthRuntime(...)` on PC React.
 - Appbase IAM runtime tests `MUST` prove token persistence failure does not update the global token manager, context propagation failure rolls back token/context state, stale AppContext is cleared when a committed session has no context, new sessions do not inherit old refresh tokens, and refresh/current-session continuation preserves refresh tokens only when allowed.
 - Logout tests `MUST` prove local token store, global token manager, context store, sensitive caches, realtime/session bridges, and native/platform secure storage clear even when remote session deletion fails.
 - Backend/admin SDK tests `MUST` prove backend IAM SDK clients do not expose user-facing `auth.sessions.create`, `auth.registrations.create`, refresh, logout, or equivalent login/session creation resources.
@@ -261,6 +447,8 @@ Rules:
 - Static SDK and OpenAPI scans MUST fail when generated app/backend HTTP SDKs or app/backend OpenAPI documents expose `xRequestId` or `X-Request-Id`.
 - Static SDK/bootstrap scans MUST fail when protected open-api SDK clients are added to app/backend global token-manager client lists instead of an API key credential provider.
 - Static SDK/bootstrap scans MUST fail when authenticated app-api/backend-api SDK clients are not passed through the global token-manager-aware SDK list such as `clients.sdkClients`.
+- Static SDK/bootstrap scans MUST fail when the same application runtime/session context creates more than one live `TokenManager`, creates per-domain/per-package/per-service TokenManagers, or constructs an authenticated app/backend SDK client without joining the global TokenManager closure.
+- Static SDK/bootstrap scans MUST fail when product application packages import `@sdkwork/iam-sdk-adapter`, call `createIamAppSdkAdapter(...)`, call `createIamBackendSdkAdapter(...)`, or wire `createIamRuntime(...)` directly for appbase login instead of using the approved high-level appbase runtime/factory.
 - Static env/config scans MUST fail when `.env`, runtime TOML examples, `/runtime-env.js`, `PORTAL_PUBLIC_*`, or `VITE_*` contain live auth tokens, access tokens, refresh tokens, API keys, generated auth headers, or SDK credential DTOs.
 - Static frontend/service scans MUST fail when UI packages or service facades manually assemble auth/API key headers such as `Authorization`, `Access-Token`, or `X-API-Key` instead of using SDK credential APIs.
 - Static frontend/service scans MUST fail when UI packages or service facades import Rust route crates such as `sdkwork-routes-*-app-api` or assemble URLs from route constants instead of calling generated SDK clients.
@@ -269,11 +457,11 @@ Rules:
 - Static frontend scans MUST fail when UI components or feature services persist `File`, object URL, presigned URL, provider URL, bucket, object key, upload part list, or local uploader state as business identity.
 - Static frontend/service scans MUST fail when upload services do not supply Drive Uploader attribution metadata such as `appId`, `appResourceType`, `appResourceId`, `scene`, `source`, and upload profile from a stable service/component configuration.
 - Static Rust scans MUST fail when server-side upload paths for SDKWork-owned files create app-local upload tables, generate provider object keys, call S3/OSS/MinIO/local filesystem provider SDKs directly, or call Drive App API HTTP routes instead of `DriveUploaderService` or an approved Drive product uploader facade.
-- App PC React, PC user console React, PC internal admin React, mobile React, Flutter, and backend/admin React packages `MUST` run the package placement and SDK boundary checks required by `UI_ARCHITECTURE_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md` for PC roots, and their detailed UI spec.
-- Architecture SDK checks `MUST` verify TypeScript SDKs stay in React packages, Dart/Flutter SDKs stay in Flutter packages, Rust SDKs or Rust service clients stay in Rust/native runtime code, and no package imports another architecture's UI/runtime wrapper to bypass a missing SDK method.
+- App PC React, PC user console React, PC internal admin React, H5 mobile React, Flutter, mini program, Android native, iOS native, Harmony native, and backend/admin React packages `MUST` run the package placement and SDK boundary checks required by `UI_ARCHITECTURE_SPEC.md`, their root architecture standard, and their detailed UI/package spec.
+- Architecture SDK checks `MUST` verify TypeScript SDKs stay in React and mini program packages, Dart/Flutter SDKs stay in Flutter packages, Kotlin/Java SDKs stay in Android native packages, Swift SDKs stay in iOS native packages, ArkTS/TypeScript Harmony SDKs stay in Harmony native packages, Rust SDKs or Rust service clients stay in Rust/native runtime code, and no package imports another architecture's UI/runtime wrapper to bypass a missing SDK method.
 - Public runtime env checks `MUST` fail if `/runtime-env.js`, `/runtime-env.json`, `PORTAL_PUBLIC_*`, `VITE_*`, `PUBLIC_*`, or `NEXT_PUBLIC_*` exposes secrets, database URLs, Redis URLs, tokens, signing keys, private service endpoints, or backend-only credentials.
 - Browser bootstrap tests `MUST` prove public runtime config loads before generated SDK clients are constructed and that open-api, app-api, and backend-api base URLs remain independent.
-- TokenManager bootstrap tests `MUST` prove base URLs are resolved before SDK construction, the same global token manager is injected into every authenticated app-api/backend-api SDK, and protected open-api SDKs use API key credential providers instead.
+- TokenManager bootstrap tests `MUST` prove base URLs and SDK inventory classification are resolved before SDK construction, the same global TokenManager is injected into appbase, product app/backend, dependency app/backend, and approved composed SDK clients for the same authenticated session context, and protected open-api SDKs use API key credential providers instead.
 - Backend/admin UI verification `MUST` fail if business pages, services, or repositories are placed in `@sdkwork/react-backend-ui`, `@sdkwork/react-backend-core`, or one catch-all backend package instead of `@sdkwork/react-backend-<domain>`.
 - PC application architecture verification `MUST` fail if new app, console, or admin packages omit the `pc` segment or if `pc-console` and `pc-admin` packages import each other's business internals.
 - App UI verification `MUST` fail if user-facing packages call `/backend/v3/api`, import backend SDK packages, or depend on backend/admin UI packages.
@@ -294,6 +482,10 @@ Rules:
 
 - [ ] Relevant spec checklist is satisfied.
 - [ ] `AGENTS.md` exists and resolves root `sdkwork-specs` by relative path when repository/application entrypoints are touched.
+- [ ] Requirement records, acceptance criteria, and traceability checks pass when non-trivial behavior, contract, runtime, security, release, or migration work is touched.
+- [ ] Architecture decision checks pass when boundaries, ownership, runtime topology, persistence, API/SDK authority, release posture, security posture, or cross-client alignment change.
+- [ ] Engineering workflow checkpoints, review evidence, and quality gate evidence are recorded when work crosses a planning, merge, release, migration, or exception boundary.
+- [ ] Release, migration, and supply-chain evidence checks pass when package versions, artifacts, rollout/rollback, compatibility windows, dependencies, build inputs, generated artifacts, SBOM/provenance/signing/checksums/attestations, or publication policy are touched.
 - [ ] Code style, naming, and only relevant language-specific checks pass when authored code is touched.
 - [ ] Repository/application `.sdkwork/skills/` and `.sdkwork/plugins/` checks pass when a repository root or application root is created or maintained.
 - [ ] OpenAPI/SDK generation verification passes under `SDK_SPEC.md`.
@@ -307,7 +499,8 @@ Rules:
 - [ ] Frontend service uses injected SDK clients.
 - [ ] UI architecture package placement and SDK surface checks pass for touched UI packages.
 - [ ] PC application architecture root layout, package naming, app/console/admin separation, desktop/tablet host checks, and iPadOS/Android tablet packaging checks pass when a PC application root is touched.
-- [ ] Environment/config checks pass for lifecycle environment, profile alias, deployment mode, build mode, runtime target, dev/test/staging/prod files, local override ignore rules, desktop/server split, browser public runtime, container config, and Tauri platform config.
+- [ ] H5 mobile, Flutter mobile, mini program, Android native, iOS native, and Harmony native architecture checks pass when those client roots or packages are touched.
+- [ ] Environment/config checks pass for lifecycle environment, profile alias, deployment mode, build mode, runtime target, dev/test/staging/prod files, local override ignore rules, browser public runtime, desktop user/server split, H5/Capacitor config, Flutter config, mini program config, native Android config, native iOS config, native Harmony config, container config, and Tauri platform config.
 - [ ] GitHub workflow checks pass for thin reusable workflow entrypoints, config validation, matrix planning, dependency checkout safety, lifecycle env injection, publication policy gates, artifact attestation policy, deployment environment binding, and framework repository validation when GitHub packaging/release/deployment workflows are touched.
 - [ ] SDK base URL and Access-Token checks pass for per-surface base URL resolution, dependency SDK base URLs, forbidden token env variables, `Access-Token` header semantics, and global TokenManager injection.
 - [ ] Drive Uploader checks pass for client `client.uploader.*` usage, Rust `DriveUploaderService` usage, attribution/statistics, retention cleanup, and forbidden app-local upload/provider bypasses when upload is touched.

@@ -1,0 +1,243 @@
+# App Mini Program UI Standard
+
+- Version: 1.0
+- Scope: app/user-facing mini program UI packages, source pages/components, route projection inputs, generated app SDK integration, mini program host adapters, and package-size-aware interaction rules
+- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+
+This standard defines how SDKWork app-side mini program UI is packaged and integrated. In application roots it is applied after `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed mini program package standard. Mini program UI packages are user-facing and consume app-api through generated TypeScript app SDK clients or approved appbase mini program wrappers. They must not consume backend/admin UI packages or backend SDKs for user-facing workflows.
+
+SDKWork source packages and platform pages/subpackages remain separate. This file owns the package-local UI/service/state/i18n/route rules. `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` owns the root app layout, platform pages/subpackages projection, host/platform config, and release boundary.
+
+Canonical app-root mini program package shape:
+
+```text
+apps/<product>-mini-program/
+  packages/
+    sdkwork-<product>-mp-core/
+    sdkwork-<product>-mp-commons/
+    sdkwork-<product>-mp-shell/
+    sdkwork-<product>-mp-<capability>/
+```
+
+Optional shared mini program package shape:
+
+```text
+packages/
+  mini-program/
+    iam/
+    foundation/
+    commerce/
+    communication/
+    content/
+    intelligence/
+    system/
+```
+
+## 1. Surface Boundary
+
+Rules:
+
+- Mini program app UI `MUST` live in normalized mini program application packages such as `apps/<product>-mini-program/packages/sdkwork-<product>-mp-<capability>` or approved shared mini program package families such as `packages/mini-program/<domain>/<package>`.
+- Mini program app UI `MUST` consume `/app/v3/api` through generated TypeScript app SDK clients or approved appbase mini program wrappers.
+- Mini program app UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, or backend UI service facades for user-facing workflows.
+- Operator/admin screens require separately approved mini program admin package families and must follow backend-api and backend SDK rules.
+- Platform APIs such as `wx.*`, `my.*`, `dd.*`, `tt.*`, or equivalent `MUST` go through typed host adapters.
+- Platform `pages` and `subpackages` are runtime projections. They must not become the source dependency boundary.
+
+## 2. Package Split
+
+| Package type | Naming | Owns | Must not own |
+| --- | --- | --- | --- |
+| mini program shell/runtime | `sdkwork-<product>-mp-shell` or app-specific mini program shell | app shell, tab/page composition, route projection inputs, AuthGate integration | reusable domain pages and services |
+| mini program foundation | `sdkwork-<product>-mp-commons` or `sdkwork-<foundation>-mini-program` | domain-neutral components, form/list/error primitives, design tokens, i18n helpers | business-domain shortcuts |
+| mini program domain package | `sdkwork-<product>-mp-<capability>` or `sdkwork-<capability>-mini-program` | source pages, components, services, state, i18n, route metadata, view models | concrete SDK construction, unrelated capabilities |
+| platform host package | `sdkwork-<product>-mp-host` or `sdkwork-<host>-mini-program` when needed | platform API adapters, permissions, login bridge, storage, media/file picker, share, scene/deep-link handling | business API transport, business authorization |
+
+Rules:
+
+- Mini program packages `MUST` be split by domain/capability.
+- A single mini program package `MUST NOT` accumulate unrelated product workflows.
+- Shared components remain domain-neutral unless they live inside the owning capability package.
+- Domain packages may share route ids, i18n keys, design tokens, SDK port contracts, and service contracts with PC/H5/Flutter packages, but must not import their UI implementations.
+- Capability packages should be small enough to project cleanly into platform subpackages when package-size limits require it.
+
+## 3. Internal Shape
+
+Recommended app-root package structure:
+
+```text
+apps/<product>-mini-program/packages/sdkwork-<product>-mp-<capability>/
+  package.json
+  README.md
+  src/
+    index.ts
+    pages/
+    components/
+    services/
+    state/
+    i18n/
+    routes/
+    navigation/
+    host/
+    types/
+  tests/
+  specs/
+```
+
+Recommended shared package structure:
+
+```text
+packages/mini-program/<domain>/<package>/
+  package.json
+  README.md
+  src/
+    index.ts
+    pages/
+    components/
+    services/
+    state/
+    i18n/
+    routes/
+    navigation/
+    host/
+    types/
+  tests/
+  specs/
+```
+
+Rules:
+
+- `src/index.ts` is the public export boundary.
+- `pages/` owns SDKWork source pages before projection into platform runtime pages.
+- `components/` owns package-local mini program components and reusable domain components.
+- `services/` owns app SDK orchestration through injected clients or service ports.
+- `state/` owns view/cache state and must clear sensitive state on logout, refresh failure, account switch, and tenant switch.
+- `i18n/` owns package-local mini program locale fragments and thin aggregation exports before platform page/subpackage projection. It must not contain an authored whole-app or whole-package locale monolith; follow `I18N_SPEC.md`.
+- `routes/` owns SDKWork route contributions and mini program route placement metadata.
+- `navigation/` owns tab, stack, redirect, scene, and subpackage preload metadata.
+- `host/` owns adapter contracts used by the package, not platform global implementations.
+- Local `types/` owns view models and route params. API DTOs come from generated SDKs.
+
+## 4. Route Projection
+
+Mini program UI packages contribute SDKWork routes that the root projects into platform pages and subpackages.
+
+Standard contribution fields:
+
+```ts
+export interface SdkworkMiniProgramRouteContribution {
+  id: string;
+  surface: "app" | "console" | "admin";
+  domain: string;
+  capability: string;
+  screen: string;
+  titleKey: string;
+  auth: "public" | "required";
+  permissionHint?: string;
+  miniProgram: {
+    rootPackage?: boolean;
+    subpackage?: string;
+    pagePath: string;
+    preload?: boolean;
+  };
+}
+```
+
+Rules:
+
+- Route ids `MUST` follow `<surface>.<domain>.<capability>.<screen>`.
+- Route ids, title keys, permission hints, and screen semantics should align with PC, H5, and Flutter implementations of the same workflow.
+- Route metadata must not contain API URLs, SDK method names, access tokens, app secrets, or platform private keys.
+- Package route contributions may choose root package placement only for login, first-run, authorization callback, tab entry, or other startup-critical pages.
+- Business capabilities should default to platform subpackages when they contain more than trivial pages.
+- Projection tooling must be deterministic so `app.json`, pages, and subpackages can be verified.
+
+## 5. SDK And IAM Integration
+
+Rules:
+
+- Services `MUST` use generated TypeScript app SDK clients or approved appbase mini program wrappers.
+- Runtime/bootstrap `MUST` construct generated app SDK clients, appbase IAM clients or wrappers, one global TokenManager equivalent, token/context stores, and host adapters.
+- Mini program login codes, phone-number grants, profile prompts, subscription permissions, and scene inputs are platform facts. They must be exchanged through approved app-api or appbase flows, not feature-local raw request calls.
+- Missing app SDK methods must be fixed in the owning app-api/OpenAPI/generator inputs and regenerated. Mini program packages must not fill gaps with raw request APIs, manual headers, or copied browser wrappers.
+- `appbaseApp`, optional `appbaseBackend`, and downstream product/dependency app-api/backend-api SDK clients must share the same authenticated session token manager or approved mini program equivalent.
+- UI pages and components must not construct SDK clients, attach auth/API key headers, parse JWTs for authorization, or call raw platform request APIs for business transport.
+
+## 6. Host Adapter Boundary
+
+Standard host adapter categories:
+
+```text
+platformLogin
+secureStorage
+camera
+qrScanner
+mediaPicker
+filePicker
+share
+subscriptionsOrPush
+deepLinksOrScene
+networkStatus
+appLifecycle
+clipboard
+geolocation
+deviceInfo
+haptics
+paymentBridge
+```
+
+Rules:
+
+- Feature packages depend on adapter interfaces, not platform globals.
+- Host adapters normalize platform errors into stable SDKWork errors such as `unsupported`, `permission-denied`, `unavailable`, `cancelled`, and `invalid-state`.
+- Scene, query, QR, and deep-link inputs must validate expected source, path, nonce/state, expiry, and auth requirements before sensitive flows complete.
+- File/media upload uses Drive app SDK or approved Drive uploader facades. Host adapters may select or capture files but must not create upload sessions, presign URLs, object keys, or provider SDK flows.
+- Payment bridge adapters may collect platform payment facts, but payment authorization and order state remain backend/app-api responsibilities.
+
+## 7. Mini Program Interaction Rules
+
+Rules:
+
+- UI must be touch-first, safe-area-aware, and usable at common phone widths.
+- Screens must cover loading, success, empty, validation-error, permission-denied, offline/unavailable, and unknown-error states for representative workflows.
+- Lists must support refresh, pagination or bounded incremental loading, empty state, retry, and package-size-conscious rendering.
+- Forms must use platform-appropriate inputs, validation messages, duplicate-submit protection, and privacy-safe temporary state.
+- Login, phone authorization, QR, subscription, payment, share, and scene-entry flows must handle foreground/background transitions where the platform supports them.
+- Text must fit compact containers without overlap or viewport-scaled font hacks.
+- Package-size budgets must be considered before adding large dependencies, media, or cross-platform compatibility layers.
+
+## 8. Security
+
+Rules:
+
+- Tokens should be stored through platform secure storage adapters when available.
+- Token/session clearing `MUST` clear platform storage, global token manager, context store, sensitive state, caches, and realtime/session bridges on logout, refresh failure, tenant switch, and account switch.
+- Verification codes, OAuth codes, reset tokens, login codes, phone grants, QR keys, access tokens, and refresh tokens `MUST NOT` be logged, persisted in insecure view state, or placed in analytics attributes.
+- Platform private keys, app secrets, upload credentials, and signing credentials must not appear in source packages, route metadata, committed config, or manifest metadata.
+- Frontend permission checks are hints only. App-api/backend-api authorization remains mandatory.
+
+## 9. Testing
+
+Required coverage for new mini program UI capabilities:
+
+| Test | Requirement |
+| --- | --- |
+| Package boundary | Static scan proves packages follow `sdkwork-<product>-mp-*` or approved shared mini program package names and do not deep-import another package's private source. |
+| Route projection | Tests prove route contributions generate or assemble platform pages/subpackages deterministically. |
+| SDK boundary | Static scan proves generated SDK clients or approved wrappers are used and no raw request APIs, manual auth headers, or generated SDK edits were introduced. |
+| IAM clearing | Tests prove platform storage, token manager, context store, caches, and sensitive state clear on logout, refresh failure, tenant switch, and account switch. |
+| Host boundary | Static scan proves feature pages/components do not call platform globals directly. |
+| UI states | Tests or documented fixtures cover loading, empty, validation-error, permission-denied, unavailable, and unknown-error states. |
+| Package size | Build or static check proves root package/subpackage size budgets are respected when tooling supports it. |
+
+Acceptance checklist:
+
+- [ ] Mini program UI package placement follows `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`.
+- [ ] Source packages, not platform pages/subpackages, define the business architecture.
+- [ ] Packages are split by domain/capability and expose only public integration contracts.
+- [ ] Route ids and i18n keys align with other client architectures where workflows match.
+- [ ] Services use generated app SDK clients or approved wrappers through injection.
+- [ ] Platform APIs are behind typed host adapters.
+- [ ] UI covers mobile interaction states and package-size constraints.
+- [ ] Security-sensitive platform facts and tokens are not logged or persisted insecurely.
+- [ ] Verification evidence is recorded before completion.

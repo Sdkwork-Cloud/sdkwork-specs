@@ -59,7 +59,8 @@ Desktop applications have two different persistence concerns:
 
 | Concern | Standard database | Owner |
 | --- | --- | --- |
-| Desktop/tablet local user data | SQLite or approved platform-local encrypted storage | Native runtime, installed package, host-local user config |
+| Desktop local user data | SQLite | Native runtime, installed package, host-local user config |
+| Tablet local user data | SQLite or approved platform-local encrypted storage | Native runtime, installed package, platform app-private storage |
 | Service/backend runtime started by desktop development commands | PostgreSQL | Server/runtime service profile |
 
 Rules:

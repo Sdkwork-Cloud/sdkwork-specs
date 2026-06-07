@@ -58,7 +58,22 @@ Code style or naming changes:
 Contract or platform changes:
 
 - `README.md`
+- `REQUIREMENTS_SPEC.md`
+- `ARCHITECTURE_DECISION_SPEC.md`
+- `ENGINEERING_WORKFLOW_SPEC.md`
+- `CODE_REVIEW_SPEC.md`
+- `QUALITY_GATE_SPEC.md`
 - the affected domain spec
+- `GOVERNANCE_SPEC.md`
+- `TEST_SPEC.md`
+
+Release, migration, or supply-chain standard changes:
+
+- `RELEASE_SPEC.md`
+- `MIGRATION_SPEC.md`
+- `SUPPLY_CHAIN_SECURITY_SPEC.md`
+- `QUALITY_GATE_SPEC.md`
+- `GITHUB_WORKFLOW_SPEC.md`
 - `GOVERNANCE_SPEC.md`
 - `TEST_SPEC.md`
 

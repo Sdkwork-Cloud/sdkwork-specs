@@ -245,6 +245,17 @@ Rules:
 
 - Application shells compose routers/controllers, middleware/interceptors, request context, dependency SDK clients, repositories, provider adapters, and service instances.
 - Rust-enabled application shells that participate in app composition `MUST` follow `APP_SDK_INTEGRATION_SPEC.md`: compose Rust route crates, appbase Rust context/auth/bootstrap crates, dependency SDK clients, product service crates, and generated product SDK families without copying dependency-owned API routes.
+- Dependency route metadata is not handler coverage. A Rust route manifest, path list, OpenAPI
+  authority, or route contract crate can describe expected routes, but the runtime may treat a
+  dependency API as same-origin mounted only when an executable router, controller, or handler
+  adapter is imported through a public dependency export and covered by tests.
+- Application shells that compose dependency APIs in-process `MUST` declare the result in
+  `dependencyApiSurfaces`, including dependency workspace, surface, prefix, Rust route contract
+  source, executable router export, mount mode, and coverage evidence. A backend runtime that lacks
+  this declaration must be treated as not serving the dependency API for SDK base URL defaults.
+- If the dependency exports route metadata but no executable router export, the consuming backend
+  must configure that dependency SDK as an external service or add an approved handler adapter before
+  same-origin dependency SDK calls are allowed.
 - Runtime composition `MUST` be environment-aware through `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`, not hard-coded per handler.
 - SaaS/private/local parity follows `DEPLOYMENT_SPEC.md`: shared APIs preserve paths, operationIds, schemas, auth semantics, and problem-detail behavior across runtime modes.
 - Rust local/private implementations that expose or validate appbase capabilities `MUST` use appbase Rust runtime crates for context, auth, bootstrap, and protected route behavior, plus generated appbase SDKs when Rust code calls appbase HTTP APIs directly.
@@ -263,6 +274,9 @@ Every web backend change should verify the relevant subset:
 - Repository tests cover tenant predicates, indexes/query shape where relevant, optimistic concurrency, and migration compatibility.
 - Security tests cover missing/invalid credentials, insufficient permission, wrong tenant, and absence of app login token fallback for protected open-api.
 - Static scans fail on UI/service imports of route crates, generated SDK output edits, raw HTTP fallback, manual auth/API key headers, and handler-level credential reparsing.
+- Dependency API surface tests compare `sdkDependencies` with `dependencyApiSurfaces`, fail when a
+  same-origin dependency has no verified executable router/controller coverage, and fail when an
+  external dependency SDK can silently fall back to product-owned app/backend base URLs.
 - Observability tests or smoke checks verify request id propagation, structured logs, metrics, traces, and audit events for protected or high-risk operations.
 
 ## 11. Acceptance Checklist

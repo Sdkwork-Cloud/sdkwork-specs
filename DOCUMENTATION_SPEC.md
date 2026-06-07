@@ -1,8 +1,8 @@
 # Documentation Standard
 
 - Version: 1.0
-- Scope: module README, API examples, architecture decisions, runbooks, changelogs, spec references
-- Related: all specs, including `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `CODE_STYLE_SPEC.md`, and `NAMING_SPEC.md`
+- Scope: module README, requirements, architecture decisions, API examples, runbooks, changelogs, release notes, migration plans, quality evidence, supply-chain evidence, spec references
+- Related: all specs, including `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `CODE_REVIEW_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `CODE_STYLE_SPEC.md`, and `NAMING_SPEC.md`
 
 This standard defines the documentation required for reusable SDKWork capabilities. Documentation must make a module installable and operable by another application without reading its internals.
 
@@ -18,9 +18,12 @@ Rules:
 - Repository/application `.sdkwork/README.md`, `.sdkwork/skills/README.md`, and
   `.sdkwork/plugins/README.md` are local documentation entrypoints governed by
   `SDKWORK_WORKSPACE_SPEC.md`.
+- Requirements, acceptance criteria, architecture decisions, workflow checkpoints, review evidence, quality gates, release evidence, migration plans, and supply-chain evidence `MUST` link to their governing root spec instead of inventing local-only lifecycle vocabulary.
+- Lifecycle documentation `MUST` be traceable: requirement -> architecture decision when applicable -> implementation/change -> verification -> review -> release or migration evidence.
 - API examples `MUST` match the OpenAPI contract and generated SDK method shape.
 - Database docs `MUST` match migrations/entities/schema contracts.
 - Generated documentation `MUST` identify the generator and source contract.
+- Source/build dependency path examples `MUST` follow `DEPENDENCY_MANAGEMENT_SPEC.md`: use relative paths or placeholders such as `<workspace-root>` and `<release-root>`, not one developer's absolute machine path.
 
 ## 2. Required Module README
 
@@ -86,9 +89,20 @@ Rules:
 - Auth examples `MUST` show both `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>` for protected APIs.
 - Backend API docs `MUST NOT` show login/session creation endpoints.
 
-## 4. Architecture Decisions
+## 4. Requirements Documentation
 
-Reusable foundation changes `SHOULD` record decisions when they affect:
+Rules:
+
+- Product and engineering requirements `MUST` follow `REQUIREMENTS_SPEC.md`.
+- Requirement docs `MUST` include owner, status, priority, acceptance criteria, non-functional requirements when relevant, affected specs/components, and verification evidence.
+- Requirement changes `MUST` preserve traceability to the original requirement id or explicitly supersede it.
+- Requirement docs `MUST NOT` hide breaking contract, security, privacy, release, or migration impact inside informal notes.
+
+## 5. Architecture Decisions
+
+Architecture decisions are governed by `ARCHITECTURE_DECISION_SPEC.md`.
+
+Reusable foundation changes `MUST` record decisions when they affect:
 
 - domain boundary or naming.
 - API path, operationId, or schema shape.
@@ -97,10 +111,12 @@ Reusable foundation changes `SHOULD` record decisions when they affect:
 - SDK generator behavior.
 - Java/Rust parity.
 - deployment mode switching.
+- client architecture alignment, route identity, or package family ownership.
+- release, migration, security, privacy, or supply-chain posture.
 
-Decision records should include context, decision, alternatives, consequences, and verification.
+Decision records `MUST` include context, decision, alternatives, consequences, verification, and supersession when replacing an earlier decision.
 
-## 5. Runbooks
+## 6. Runbooks
 
 L3 foundation domains `MUST` have operational runbooks for:
 
@@ -113,22 +129,38 @@ L3 foundation domains `MUST` have operational runbooks for:
 
 Runbooks `SHOULD` include signals, dashboards, commands, rollback steps, and escalation owner.
 
-## 6. Changelog
+## 7. Release, Migration, And Supply-Chain Docs
+
+Rules:
+
+- Release notes and changelog entries `MUST` follow `RELEASE_SPEC.md` and identify version, artifacts, compatibility impact, rollout/rollback posture, and verification evidence.
+- Migration docs `MUST` follow `MIGRATION_SPEC.md` and identify scope, compatibility window, sequencing, rollback, affected consumers, and owner.
+- Supply-chain evidence docs `MUST` follow `SUPPLY_CHAIN_SECURITY_SPEC.md` and identify dependency sources, build inputs, generated artifact authority, SBOM/provenance/signing/checksum/attestation locations, and exceptions.
+- Quality gate evidence `MUST` follow `QUALITY_GATE_SPEC.md` and cite requirement, review, verification, release, migration, and supply-chain evidence when applicable.
+- Code/spec review evidence `MUST` follow `CODE_REVIEW_SPEC.md` and record outcomes without copying generated SDK output into authored documentation.
+
+## 8. Changelog
 
 Rules:
 
 - API, SDK, database, and module contract changes `MUST` be recorded.
 - Breaking changes `MUST` include migration instructions or explicit no-compatibility approval.
 - SDK generator version and OpenAPI version `SHOULD` be recorded for SDK releases.
+- Release changelog entries `MUST` identify the release version or tag used by packaging and publication workflows.
+- Standards changelog entries `SHOULD` identify affected requirement, ADR, review, quality gate, migration, or supply-chain evidence when applicable.
 - Spec changes `SHOULD` reference affected validation tooling.
 
-## 7. Acceptance Checklist
+## 9. Acceptance Checklist
 
 - [ ] Root specs are linked from local docs.
 - [ ] `AGENTS.md` links to root `sdkwork-specs`, `SOUL.md`, and `AGENTS_SPEC.md` by relative path.
 - [ ] Tool compatibility files such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` point to `AGENTS.md` and do not duplicate divergent rules.
 - [ ] Repository/application `.sdkwork/` README files exist and cite `SDKWORK_WORKSPACE_SPEC.md`.
+- [ ] Requirements and acceptance criteria link to `REQUIREMENTS_SPEC.md` when non-trivial behavior is documented.
+- [ ] Architecture decisions link to `ARCHITECTURE_DECISION_SPEC.md` and record supersession when decisions change.
 - [ ] Module README includes public API, SDK surface, config, security, and verification.
 - [ ] API examples match OpenAPI and generated SDK.
+- [ ] Review and quality gate evidence link to `CODE_REVIEW_SPEC.md` and `QUALITY_GATE_SPEC.md` when work is reviewed or gated.
+- [ ] Release notes, migration plans, and supply-chain evidence link to `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, and `SUPPLY_CHAIN_SECURITY_SPEC.md` when applicable.
 - [ ] Operationally critical modules include runbooks.
 - [ ] Contract changes have changelog entries.

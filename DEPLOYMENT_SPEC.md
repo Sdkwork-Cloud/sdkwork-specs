@@ -12,7 +12,7 @@ Use `CONFIG_SPEC.md` for typed runtime config, SDK client construction, token st
 
 | Mode | Backend | Use case |
 | --- | --- | --- |
-| `saas` | Java Spring `spring-ai-plus-business` | Cloud hosted SDKWork services |
+| `saas` | Java Spring `legacy-java-plus-workspace` | Cloud hosted SDKWork services |
 | `private` | Java Spring or Rust service | Customer-controlled deployment |
 | `local` | Rust local backend or embedded runtime | Desktop/local-first usage |
 | `test` | Mock, fixture, or local test server | Automated tests |

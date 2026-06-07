@@ -1,14 +1,25 @@
 # App Flutter UI Standard
 
 - Version: 1.0
-- Scope: app/user-facing Flutter packages, mobile/desktop Flutter shells, generated app SDK integration, platform adapters
-- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Scope: app/user-facing Flutter packages, Flutter mobile app packages, generated app SDK integration, platform adapters
+- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side Flutter UI is packaged and integrated. Flutter UI packages are app/user-facing and consume app-api through generated Flutter/Dart app SDK clients or approved appbase Flutter wrappers. They must not consume backend/admin UI packages or backend SDKs for user-facing workflows. Cross-architecture SDK composition and appbase IAM token wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
+This standard defines how SDKWork app-side Flutter UI is packaged and integrated. In application roots it is applied after `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed Flutter package standard. Flutter UI packages are app/user-facing and consume app-api through generated Flutter/Dart app SDK clients or approved appbase Flutter wrappers. They must not consume backend/admin UI packages or backend SDKs for user-facing workflows. Cross-architecture SDK composition and appbase IAM token wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
 
 This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing Flutter packages.
 
-Canonical Flutter package shape:
+Canonical app-root Flutter mobile package shape:
+
+```text
+apps/<product>-flutter-mobile/
+  packages/
+    sdkwork_<product>_flutter_mobile_core/
+    sdkwork_<product>_flutter_mobile_commons/
+    sdkwork_<product>_flutter_mobile_shell/
+    sdkwork_<product>_flutter_mobile_<capability>/
+```
+
+Shared Flutter package shape:
 
 ```text
 apps/sdkwork-appbase/
@@ -27,7 +38,7 @@ apps/sdkwork-appbase/
 
 Rules:
 
-- Flutter app UI `MUST` live in Flutter app package families such as `mobile-flutter/<domain>/<package>`.
+- Flutter app UI `MUST` live in normalized Flutter application packages such as `apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>` or shared Flutter package families such as `packages/mobile-flutter/<domain>/<package>`.
 - Flutter app UI `MUST` consume `/app/v3/api` through generated Dart/Flutter app SDK clients or approved wrappers.
 - Flutter app UI `MUST NOT` consume `/backend/v3/api`, backend SDKs, backend React packages, or backend UI service facades.
 - App login, registration, OAuth, verification-code login, password reset, QR login, and current user flows belong to Flutter app UI when implemented in Flutter.
@@ -37,10 +48,10 @@ Rules:
 
 | Package type | Naming | Owns | Must not own |
 | --- | --- | --- | --- |
-| Flutter app shell | app-specific Flutter shell | `MaterialApp`/router, providers, SDK bootstrap, token store, platform adapters | reusable domain features |
-| Flutter foundation package | `sdkwork_<foundation>_flutter` | appbase, router, workspace, command/search primitives | business-domain shortcuts |
-| Flutter domain package | `sdkwork_<capability>_flutter` | screens, widgets, controllers/blocs, repositories, services, i18n | concrete SDK construction, backend admin logic |
-| platform adapter package | `sdkwork_<host>_flutter` when needed | camera, QR scanner, secure storage, biometric, push, deep links | API business logic |
+| Flutter app shell | `sdkwork_<product>_flutter_mobile_shell` or app-specific Flutter shell | `MaterialApp`/router, providers, SDK bootstrap, token store, platform adapters | reusable domain features |
+| Flutter foundation package | `sdkwork_<product>_flutter_mobile_commons` or `sdkwork_<foundation>_flutter` | appbase, router, workspace, command/search primitives | business-domain shortcuts |
+| Flutter domain package | `sdkwork_<product>_flutter_mobile_<capability>` or `sdkwork_<capability>_flutter` | screens, widgets, controllers/blocs, repositories, services, i18n | concrete SDK construction, backend admin logic |
+| platform adapter package | `sdkwork_<product>_flutter_mobile_host` or `sdkwork_<host>_flutter` when needed | camera, QR scanner, secure storage, biometric, push, deep links | API business logic |
 
 Rules:
 
@@ -51,7 +62,29 @@ Rules:
 
 ## 3. Internal Shape
 
-Recommended package structure:
+Recommended app-root package structure:
+
+```text
+apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>/
+  pubspec.yaml
+  lib/
+    sdkwork_<product>_flutter_mobile_<capability>.dart
+    src/
+      screens/
+      widgets/
+      controllers/     # or blocs/, choose one pattern per package
+      services/
+      repositories/
+      state/
+      i18n/
+      navigation/
+      platform/
+      models/
+  test/
+  specs/
+```
+
+Recommended shared package structure:
 
 ```text
 packages/mobile-flutter/<domain>/<package>/
@@ -81,6 +114,7 @@ Rules:
 - `controllers/` or `blocs/` owns presentation logic. New packages should choose one pattern and stay consistent.
 - `services/` owns use-case orchestration.
 - `repositories/` owns thin generated app SDK calls where repository naming is used.
+- `i18n/` owns package-local Flutter locale fragments and thin aggregation exports. It must not contain an authored whole-app or whole-package locale monolith; follow `I18N_SPEC.md`.
 - `models/` owns view models only. API DTOs come from the generated Dart app SDK.
 - `platform/` owns adapter interfaces for platform capabilities.
 

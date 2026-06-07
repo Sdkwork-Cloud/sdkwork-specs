@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: reusable frontend/backend modules, appbase packages, service facades, extension points, module composition
-- Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `RUST_CODE_SPEC.md`, `JAVA_CODE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, `FRONTEND_CODE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`
+- Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `RUST_CODE_SPEC.md`, `JAVA_CODE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, `FRONTEND_CODE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the building-block model for SDKWork applications. A reusable module must be installable, understandable, replaceable, and testable without copying app-specific code.
 
@@ -26,7 +26,7 @@ export interface SdkworkModule<TClients, TConfig, TServices> {
 Rules:
 
 - A module `MUST` declare one primary domain and one capability.
-- A module `MUST` expose one package root export from `src/index.ts`.
+- A module `MUST` expose one package root export from `src/index.ts` or the language-equivalent public export file defined by its architecture standard.
 - A module `MUST NOT` require app-local globals, hidden singleton SDK clients, hard-coded URLs, hard-coded tenant IDs, or manually assembled auth headers.
 - A module `MUST` be usable with SaaS Java SDK clients and Rust local/private SDK clients when its domain is shared.
 - A module `SHOULD` publish a small public type surface and hide implementation internals.
@@ -45,6 +45,7 @@ Rules:
 | `backend-domain-ui` | Backend/admin domain pages, route/menu metadata, operator services using backend SDK | app/user-facing UI, app SDK calls, backend SDK construction |
 | `pc-console-ui` | User-facing PC management console pages, route metadata, console services using app SDKs | company-internal admin workflows, backend-only operation center behavior |
 | `pc-admin-ui` | Company-internal PC admin pages, route/menu metadata, internal operator services using backend SDKs | app/user-facing UI, user console workflows, app SDK login/session creation |
+| `client-app-ui` | Client app-root packages aligned by core, commons, shell, capability, console/admin, and host roles | cross-architecture UI imports, hidden SDK constructors, platform globals |
 
 Rules:
 
@@ -53,6 +54,12 @@ Rules:
 - A package named `core` must be domain-specific, such as `sdkwork-iam-core-pc-react`; generic `sdkwork-core` is forbidden for new shared domain behavior.
 - PC user console modules `MUST` follow `APP_PC_ARCHITECTURE_SPEC.md` and be split as `sdkwork-<product>-pc-console-<capability>`.
 - PC internal admin modules `MUST` follow `APP_PC_ARCHITECTURE_SPEC.md` and `BACKEND_UI_SPEC.md` and be split as `sdkwork-<product>-pc-admin-<capability>`.
+- H5 mobile modules `MUST` follow `H5_APP_MOBILE_ARCHITECTURE_SPEC.md` and be split as `sdkwork-<product>-h5-mobile-<capability>`, with Capacitor host code in `sdkwork-<product>-h5-mobile-capacitor`.
+- Flutter mobile modules `MUST` follow `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` and be split as lower snake case Dart packages such as `sdkwork_<product>_flutter_mobile_<capability>`.
+- Mini program modules `MUST` follow `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` and `APP_MINI_PROGRAM_UI_SPEC.md` and be split as `sdkwork-<product>-mp-<capability>` source packages or approved shared `sdkwork-<capability>-mini-program` packages. Platform `pages` and `subpackages` are projections, not the source module boundary.
+- Android native modules `MUST` follow `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_ANDROID_NATIVE_UI_SPEC.md` and be split as `sdkwork-<product>-android-mobile-<capability>` source packages or approved shared `sdkwork-<capability>-android-native` packages.
+- iOS native modules `MUST` follow `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_IOS_NATIVE_UI_SPEC.md` and be split as `sdkwork-<product>-ios-mobile-<capability>` source packages or approved shared `sdkwork-<capability>-ios-native` packages.
+- Harmony native modules `MUST` follow `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_HARMONY_NATIVE_UI_SPEC.md` and be split as `sdkwork-<product>-harmony-mobile-<capability>` source packages or approved shared `sdkwork-<capability>-harmony-native` packages.
 - Standalone backend/admin UI modules `MUST` follow `BACKEND_UI_SPEC.md` and be split by business domain as `@sdkwork/react-backend-<domain>`.
 - `@sdkwork/react-backend-ui` may contain only domain-neutral primitives; backend business pages and services must live in the owning backend domain package.
 
@@ -158,7 +165,7 @@ createIamRuntime({
 Communication modules follow the same rule. IM and RTC consumers use the public packages `@sdkwork/im-sdk` and `@sdkwork/rtc-sdk`, whose active source workspaces are:
 
 - `apps/craw-chat/sdks/sdkwork-im-sdk`
-- `D:/sdkwork-opensource/sdkwork-rtc/sdks/sdkwork-rtc-sdk`
+- `../sdkwork-rtc/sdks/sdkwork-rtc-sdk`
 
 Deprecated `openchat` sources `MUST NOT` be used for new appbase modules.
 
@@ -169,15 +176,19 @@ Deprecated `openchat` sources `MUST NOT` be used for new appbase modules.
 | App PC React | `packages/pc-react/<domain>/sdkwork-<capability>-pc-react` or `apps/<product>-pc/packages/sdkwork-<product>-pc-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
 | PC user console React | `apps/<product>-pc/packages/sdkwork-<product>-pc-console-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
 | PC internal admin React | `apps/<product>-pc/packages/sdkwork-<product>-pc-admin-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` |
-| App mobile React | `packages/mobile-react/<domain>/sdkwork-<capability>-mobile-react` | `APP_MOBILE_REACT_UI_SPEC.md` |
-| App Flutter | `packages/mobile-flutter/<domain>/sdkwork_<capability>_flutter` | `APP_FLUTTER_UI_SPEC.md` |
+| H5 app mobile React | `apps/<product>-h5-mobile/packages/sdkwork-<product>-h5-mobile-<capability>` or `packages/mobile-react/<domain>/sdkwork-<capability>-mobile-react` | `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_MOBILE_REACT_UI_SPEC.md` |
+| App Flutter | `apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>` or `packages/mobile-flutter/<domain>/sdkwork_<capability>_flutter` | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_FLUTTER_UI_SPEC.md` |
+| Mini program app | `apps/<product>-mini-program/packages/sdkwork-<product>-mp-<capability>` or `packages/mini-program/<domain>/sdkwork-<capability>-mini-program` | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md` |
+| Android native app | `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>` or `packages/android-native/<domain>/sdkwork-<capability>-android-native` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md` |
+| iOS native app | `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>` or `packages/ios-native/<domain>/sdkwork-<capability>-ios-native` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md` |
+| Harmony native app | `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>` or `packages/harmony-native/<domain>/sdkwork-<capability>-harmony-native` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md` |
 | Standalone backend/admin React | `apps/sdkwork-backend-react-web/packages/sdkwork-react-backend-<domain>` | `BACKEND_UI_SPEC.md` |
 
 Rules:
 
 - A UI module `MUST` choose the architecture package family through `UI_ARCHITECTURE_SPEC.md` before implementation.
 - App-side and PC user console UI modules consume app SDK surfaces; PC internal admin and standalone backend/admin UI modules consume backend SDK surfaces.
-- Modules for different UI architectures may share contracts and service concepts, but must not import each other's UI components, routes, or host adapters.
+- Modules for different UI architectures may share contracts, generated SDK surfaces, service concepts, route ids, i18n keys, and design tokens, but must not import each other's UI components, routes, platform pages, widgets, or host implementations.
 - PC internal admin and standalone backend/admin modules must not be consolidated into a single backend business package. Split them by business domain, capability, and permission prefix.
 - Catch-all backend/admin packages are forbidden for business pages, business services, repositories, route records, menu records, permission constants, and domain i18n.
 

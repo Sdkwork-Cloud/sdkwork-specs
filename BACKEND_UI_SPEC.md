@@ -31,10 +31,10 @@ Backend UI packages are not app UI packages.
 
 | Surface | Package family | API surface | SDK source | Typical users |
 | --- | --- | --- | --- | --- |
-| App UI | `sdkwork-*-pc-react`, `sdkwork-*-mobile-react`, appbase packages | `/app/v3/api` | `spring-ai-plus-app-api` generated SDK | end users, customer apps, desktop/mobile clients |
+| App UI | `sdkwork-*-pc-react`, `sdkwork-*-mobile-react`, appbase packages | `/app/v3/api` | `legacy-java-plus-app-api` generated SDK | end users, customer apps, desktop/mobile clients |
 | PC user console UI | `sdkwork-<product>-pc-console-*` | `/app/v3/api` or approved console-facing app SDK surface | generated app SDK or approved appbase wrapper | customers, tenants, app owners, business users managing their own resources |
 | PC internal admin UI | `sdkwork-<product>-pc-admin-*` | `/backend/v3/api` | generated backend SDK or approved backend wrapper | company-internal staff, support, auditors, operators |
-| Standalone backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | `spring-ai-plus-backend-api` generated SDK | company-internal platform admins, support staff, auditors, operators |
+| Standalone backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | `legacy-java-plus-backend-api` generated SDK | company-internal platform admins, support staff, auditors, operators |
 
 Rules:
 
@@ -151,7 +151,7 @@ Rules:
 - `repository/` or `repositories/` owns thin SDK resource calls when the package uses repository naming. Do not use both names in new packages.
 - `hooks/` owns React integration around services and state.
 - `routes/` owns exported route records and menu metadata when the host shell composes package routes.
-- `i18n/` owns operator-facing localized copy for the package.
+- `i18n/` owns package-local operator-facing locale fragments and thin aggregation exports. It must not contain an authored whole-backend, whole-domain, or whole-package locale monolith; follow `I18N_SPEC.md`.
 - `types/` owns view models only. API DTOs come from the generated backend SDK.
 - `permissions.ts` owns permission constants that match backend permission codes such as `iam.users.read`.
 
@@ -220,7 +220,7 @@ Rules:
 - Backend domain packages `MUST NOT` read `.env` files, `process.env`, local storage, or global runtime config directly.
 - Runtime config belongs to the host shell and backend core provider.
 - Feature flags that hide or reveal backend pages `MUST` be passed through typed config or route metadata.
-- Operator-facing text `SHOULD` live in the domain package `i18n/` folder.
+- Operator-facing text `SHOULD` live in the domain package `i18n/` folder as domain/capability/route fragments, not in a shared backend-wide locale file.
 - App/user-facing login copy `MUST NOT` be reused as backend operator copy unless the text is truly surface-neutral.
 
 ## 10. Testing And Governance

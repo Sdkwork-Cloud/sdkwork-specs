@@ -1,18 +1,18 @@
 # Frontend Code Standard
 
 - Version: 1.0
-- Scope: React, PC browser UI, PC desktop renderer UI, mobile React, Flutter UI, backend/admin UI, frontend services, state, i18n, and UI tests
-- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
+- Scope: React, PC browser UI, PC desktop renderer UI, H5 mobile React, Flutter UI, mini program UI, native Android UI, native iOS UI, native HarmonyOS UI, backend/admin UI, frontend services, state, i18n, and UI tests
+- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
 
-This standard applies only when frontend, renderer, UI, React, Flutter, or backend/admin UI code is touched.
+This standard applies only when frontend, renderer, UI, React, Flutter, mini program UI, native Android/iOS/Harmony UI, or backend/admin UI code is touched.
 
 ## 1. Architecture Selection
 
 Rules:
 
 - Read `UI_ARCHITECTURE_SPEC.md` before creating or moving UI packages.
-- PC app, PC console, and PC admin packages also follow `APP_PC_ARCHITECTURE_SPEC.md`.
-- Then load exactly one detailed UI spec for the touched surface: `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, or `BACKEND_UI_SPEC.md`.
+- Client app roots also follow `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` and their matching root standard: `APP_PC_ARCHITECTURE_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, or `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`.
+- Then load exactly one detailed UI/package spec for the touched surface: `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, or `BACKEND_UI_SPEC.md`.
 - Do not import UI components, routes, host adapters, or runtime wrappers across architecture families.
 
 ## 2. UI-Service-SDK Flow
@@ -51,6 +51,8 @@ src/
   tests/
 ```
 
+Architecture-specific standards may replace `src/`, `index.ts`, and package manifests with Dart, Kotlin/Gradle, Swift Package, ArkTS/ohpm, mini program, or React equivalents. The logical responsibilities stay aligned: public export, screens/pages, components/widgets/views, services, state, i18n, routes/navigation, host adapter contracts, tests, and component specs.
+
 Rules:
 
 - Components focus on rendering and local interaction.
@@ -58,6 +60,7 @@ Rules:
 - Services own SDK calls and business orchestration.
 - Route/menu metadata stays in the owning package family.
 - User-facing text uses i18n/message catalogs when the package is reusable or user-facing.
+- `i18n/` owns package-local locale fragments and thin exports only. Do not author a whole app, whole client root, or whole package locale in one large file; follow `I18N_SPEC.md` catalog fragmentation rules.
 
 ## 4. UX And Accessibility
 
@@ -94,4 +97,3 @@ Rules:
 - [ ] Components do not construct SDK clients or raw HTTP requests.
 - [ ] Text, errors, and permissions are surfaced intentionally.
 - [ ] Package family naming and SDK surface checks pass.
-

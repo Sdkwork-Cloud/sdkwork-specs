@@ -8,7 +8,7 @@ This detail standard implements the SDK workspace and OpenAPI generation parts o
 
 `SDK_SPEC.md` is the primary SDK standard and owns the SDK system model, canonical naming vocabulary, package semantics, generated client surface, auth handling, service facade boundary, integration rules, and generated client quality rules. This file is subordinate to `SDK_SPEC.md`; it owns only the physical application-root `sdks/` structure, SDK family directory placement, OpenAPI authority document materialization, derived generator inputs, generated output placement, and backend API SDK generation workflow.
 
-The canonical SDK generator is defined by `SDK_SPEC.md`: repository-relative `sdk/sdkwork-sdk-generator`, local path `D:\javasource\spring-ai-plus\sdk\sdkwork-sdk-generator`, package `@sdkwork/sdk-generator`, CLI `sdkgen`, and executable `D:\javasource\spring-ai-plus\sdk\sdkwork-sdk-generator\bin\sdkgen.js`. Repository-local generation scripts are allowed only as thin wrappers that materialize input OpenAPI, pass standardized generator arguments, and route output into the application `sdks/` workspace. They must not substitute another generator, use copied generator source, call ad hoc OpenAPI client tools, present `sdkwork-code-generator` as a separate standard, or silently fall back to local stubs for committed SDK output. `sdkwork-code-generator` is only an alias/wrapper name when a repository explicitly documents that it executes this canonical `sdkgen.js` entrypoint; it is not an independent SDKWork HTTP SDK generator.
+The canonical SDK generator is defined by `SDK_SPEC.md`: repository-relative `sdk/sdkwork-sdk-generator`, local path `..\sdkwork-sdk-generator`, package `@sdkwork/sdk-generator`, CLI `sdkgen`, and executable `..\sdkwork-sdk-generator\bin\sdkgen.js`. Repository-local generation scripts are allowed only as thin wrappers that materialize input OpenAPI, pass standardized generator arguments, and route output into the application `sdks/` workspace. They must not substitute another generator, use copied generator source, call ad hoc OpenAPI client tools, present `sdkwork-code-generator` as a separate standard, or silently fall back to local stubs for committed SDK output. `sdkwork-code-generator` is only an alias/wrapper name when a repository explicitly documents that it executes this canonical `sdkgen.js` entrypoint; it is not an independent SDKWork HTTP SDK generator.
 
 If this file appears to conflict with `SDK_SPEC.md`, follow `SDK_SPEC.md` for SDK semantics and package/client behavior. Use this file for repository layout and generation artifact placement only when consistent with `SDK_SPEC.md`.
 
@@ -23,7 +23,7 @@ Rules:
 - Every application root that owns generated SDKs also `MUST` satisfy `SDKWORK_WORKSPACE_SPEC.md` by providing root `.sdkwork/skills/` and `.sdkwork/plugins/`; those directories live beside `sdks/`, not inside generated SDK output.
 - The `sdks/` directory `MUST` be organized by SDK family directories. API authority documents live inside the owning SDK family; API authority names are not top-level SDK family directories.
 - OpenAPI 3.x documents are the authority for HTTP SDK generation.
-- HTTP SDK generation `MUST` call `D:\javasource\spring-ai-plus\sdk\sdkwork-sdk-generator\bin\sdkgen.js`.
+- HTTP SDK generation `MUST` call `..\sdkwork-sdk-generator\bin\sdkgen.js`.
 - Generated SDK output `MUST NOT` be hand-edited. Fix the runtime API, OpenAPI authority, generator profile, or composed facade, then regenerate.
 - Generated HTTP SDK output `MUST` retain the `sdkgen` control plane: `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and the regeneration-safe `custom/` root.
 - Generated output `.sdkwork/` directories are generator-owned. They `MUST NOT` contain repository/application skills, plugins, root workspace manifests, local caches, runtime databases, logs, or secrets.
@@ -334,8 +334,8 @@ Rules:
   failure; merge the package-language metadata into one dependency entry instead.
 - Each dependency declaration's `workspace` `MUST` resolve to exactly one SDK family discovered by
   the same global ownership check. Global checks therefore include both consuming application roots
-  and dependency SDK roots, for example app roots plus `D:\sdkwork-opensource\sdkwork-drive` and
-  `D:\sdkwork-opensource\sdkwork-knowledgebase`.
+  and dependency SDK roots, for example app roots plus sibling repositories such as
+  `../sdkwork-drive` and `../sdkwork-knowledgebase`.
 - If a dependency declaration includes `owner`, `apiOwner`, `apiAuthority`, `authoritySpec`, or
   `apiPrefix`, those values `MUST` match the referenced SDK family. `apiPrefix: null` is valid only
   when the referenced SDK family has no HTTP API prefix; it cannot be used to bypass app/backend/open
@@ -353,6 +353,20 @@ Rules:
   input. A generator that only overwrites files is not sufficient for owner-only SDKs.
 - Verification `MUST` compare the consuming authority, derived inputs, and generated output against
   dependency route sets and fail on overlap.
+- Dependency authority exclusion is not runtime mount proof. If a consuming application serves or
+  intends to serve dependency-owned routes through the same app/backend origin, it `MUST` also
+  declare a `dependencyApiSurfaces` runtime integration manifest as required by `SDK_SPEC.md`.
+- `dependencyApiSurfaces` entries `MUST` mirror the relevant `sdkDependencies` by workspace,
+  consuming SDK family, surface, role, dependency mode, and `apiPrefix`, then add runtime-only
+  evidence such as `mode`, `sameOriginAllowed`, required dependency base URL env names, Rust route
+  contract crate, executable router export, and mount coverage status.
+- A route contract crate or normalized route manifest may be used to compute expected coverage, but
+  same-origin dependency SDK base URL inheritance is valid only when the runtime integration entry
+  records executable router/controller coverage for all dependency-owned method/path pairs consumed
+  by that dependency SDK surface.
+- When coverage is absent or partial, SDK workspace verification `MUST` require explicit dependency
+  SDK base URL configuration and fail on product app/backend base URL fallbacks such as using the
+  product `/app/v3/api` or `/backend/v3/api` default for dependency-owned SDK clients.
 
 Example:
 
@@ -394,7 +408,7 @@ runtime API/controller/route crate manifest
   -> normalized route manifest artifacts
   -> authority OpenAPI
   -> materialized sdkgen OpenAPI
-  -> D:\javasource\spring-ai-plus\sdk\sdkwork-sdk-generator\bin\sdkgen.js
+  -> ..\sdkwork-sdk-generator\bin\sdkgen.js
   -> generated language SDK
   -> composed facade when needed
   -> consumer service integration
@@ -411,7 +425,7 @@ Rules:
   route crate manifest entrypoints before creating authority OpenAPI.
 - Run the family materialization script before SDK generation.
 - Generate language packages from derived `*.sdkgen.yaml` inputs, not from ad hoc Swagger UI output.
-- Generate language packages with the canonical `sdkgen.js` entrypoint from `D:\javasource\spring-ai-plus\sdk\sdkwork-sdk-generator`; do not use PATH-resolved generators unless the wrapper first proves they are the same canonical generator installation.
+- Generate language packages with the canonical `sdkgen.js` entrypoint from the materialized dependency root `.sdkwork/dependencies/sdkwork-sdk-generator`; do not use PATH-resolved generators unless the wrapper first proves they are the same canonical generator installation.
 - Before calling `sdkgen`, materialize owner-only OpenAPI inputs and subtract dependency-owned
   authority routes. Do not pass a runtime-wide or dependency-inclusive OpenAPI document directly to
   `sdkgen`.
@@ -463,7 +477,7 @@ Rules:
 Rules:
 
 - UI code calls services. Services call injected SDK clients. SDK clients own transport.
-- App-side PC React, mobile React, Flutter, desktop, and Tauri renderers use app SDKs for user-facing remote business capability.
+- App-side PC React, H5 mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, desktop, and Tauri renderers use app SDKs for user-facing remote business capability.
 - Backend/admin UI uses backend SDKs for operator capability and follows `BACKEND_UI_SPEC.md`.
 - IAM login/session integration follows `IAM_LOGIN_INTEGRATION_SPEC.md`; do not regenerate product-local login SDKs for appbase-owned auth flows.
 - Rust local/private implementations must expose the same OpenAPI paths, operationIds, schemas, errors, and security semantics as the Java SaaS contract for shared APIs.
@@ -477,8 +491,8 @@ Every SDK family change should verify the relevant subset:
 - OpenAPI validates under `API_SPEC.md`.
 - Application-root `.sdkwork/skills/` and `.sdkwork/plugins/` validate under
   `SDKWORK_WORKSPACE_SPEC.md`.
-- HTTP SDK generation uses `@sdkwork/sdk-generator` / `sdkgen` from `D:\javasource\spring-ai-plus\sdk\sdkwork-sdk-generator`.
-- No official SDK generation command, manifest, README, or CI job uses copied generator code, local stubs, generic OpenAPI generators, product-local aliases, or an independent `sdkwork-code-generator`. `sdkwork-code-generator` is only an alias/wrapper name for the canonical `D:\javasource\spring-ai-plus\sdk\sdkwork-sdk-generator\bin\sdkgen.js` entrypoint.
+- HTTP SDK generation uses `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`.
+- No official SDK generation command, manifest, README, or CI job uses copied generator code, local stubs, generic OpenAPI generators, product-local aliases, or an independent `sdkwork-code-generator`. `sdkwork-code-generator` is only an alias/wrapper name for the canonical `..\sdkwork-sdk-generator\bin\sdkgen.js` entrypoint.
 - The application root has no forbidden SDK family directories matching `sdks/sdkwork-<domain>-open-api`, `sdks/sdkwork-<domain>-app-api`, `sdks/sdkwork-<domain>-backend-api`, `sdks/<domain>-open-sdk`, `sdks/<domain>-app-sdk`, or `sdks/<domain>-backend-sdk`.
 - Rust route crates, when present, follow
   `packages/native-rust/routes/<surface>/sdkwork-routes-<capability>-<surface>/` and are not placed
@@ -528,7 +542,7 @@ node .\sdks\sdkwork-<domain>-backend-sdk\bin\verify-sdk.mjs
 
 - [ ] `<application-root>/sdks/` exists.
 - [ ] `<application-root>/.sdkwork/skills/` and `<application-root>/.sdkwork/plugins/` exist and follow `SDKWORK_WORKSPACE_SPEC.md`.
-- [ ] HTTP SDK generation uses the canonical `@sdkwork/sdk-generator` / `sdkgen` from `D:\javasource\spring-ai-plus\sdk\sdkwork-sdk-generator`.
+- [ ] HTTP SDK generation uses the canonical `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`.
 - [ ] Generation manifest or README records generator package, canonical path or resolved package location, generator version or commit, command, input, output, language, SDK type, package name, SDK family name, and standard profile.
 - [ ] Generated output retains `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and `custom/`.
 - [ ] Generated control-plane and source metadata stays canonical: `sdkwork-sdk.json`, generated package manifests, generated `sdk-manifest.json` when present, and generated source files do not contain owner/dependency overlay fields.
