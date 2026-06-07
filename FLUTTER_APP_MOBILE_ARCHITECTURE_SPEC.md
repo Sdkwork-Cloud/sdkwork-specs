@@ -123,7 +123,7 @@ Rules:
 - New Flutter packages `MUST` be split by domain/capability and must not become catch-all mobile business packages.
 - Shared widgets remain domain-neutral unless they live inside the owning capability package.
 - A Flutter app root should choose one primary presentation-state pattern for new packages, such as `controllers`, `blocs`, or `notifiers`, and document it in the root component spec.
-- Mobile admin packages require product approval and backend SDK boundary verification.
+- Mobile admin packages require product approval, an explicit `backend-admin` surface classification, and backend SDK boundary verification.
 
 ## 4. Package Internal Shape
 
@@ -186,9 +186,9 @@ Rules:
 Rules:
 
 - Flutter app packages `MUST` consume `/app/v3/api` through generated Dart/Flutter app SDK clients or approved appbase Flutter wrappers.
-- Flutter admin packages, when approved, `MUST` consume `/backend/v3/api` through generated Dart/Flutter backend SDK clients or approved backend wrappers.
+- Flutter admin packages, when approved as `backend-admin` surfaces, `MUST` consume `/backend/v3/api` through generated Dart/Flutter backend SDK clients or approved backend wrappers.
 - Runtime/bootstrap `MUST` construct generated Dart SDK clients, appbase SDK clients or wrappers, a global token-manager equivalent, token/context stores, and platform adapters before feature services are initialized.
-- The global token-manager equivalent must be shared by appbase app SDK, optional appbase backend SDK, and every authenticated product or dependency app-api/backend-api SDK client.
+- The global token-manager equivalent must be shared by appbase app SDK, every authenticated product/dependency app-api SDK client, and explicit `backend-admin` appbase backend/product backend/dependency backend SDK clients.
 - Missing Dart SDK methods must be fixed in OpenAPI/generator inputs and regenerated. Flutter packages must not fill gaps with raw `http`, manual headers, copied TypeScript wrappers, or local DTO forks.
 - Logout and refresh failure must clear secure platform storage, token manager, context store, sensitive Flutter state, and realtime/session bridges.
 

@@ -188,7 +188,7 @@ Rules:
 
 - Desktop apps `MUST` use the same generated SDK boundary as web apps.
 - Desktop IAM login/session integration `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`; Tauri may support host storage, OAuth/deep-link bridging, and local runtime lifecycle, but must not own business authentication.
-- Desktop runtime/bootstrap `MUST` follow `APP_SDK_INTEGRATION_SPEC.md`: construct appbase app/backend SDK clients, product app/backend SDK clients, one global token manager, token/context stores, API key providers, and host adapters in one composition boundary.
+- Desktop runtime/bootstrap `MUST` follow `APP_SDK_INTEGRATION_SPEC.md`: construct appbase app SDK clients, product/dependency app SDK clients, explicit `backend-admin` backend SDK clients only when the desktop runtime owns a `backend-admin` surface, one global token manager, token/context stores, API key providers, and host adapters in one composition boundary.
 - Renderer appbase IAM runtime `MUST` own login, registration, current session, refresh, logout, verification, OAuth, QR auth, password reset, runtime metadata, current-user self-service, and token propagation to authenticated SDK clients.
 - SDK clients are constructed in bootstrap/core code and injected into service facades.
 - UI components `MUST NOT` create SDK clients, manually attach auth headers, parse JWTs for authorization, or call raw HTTP for business behavior.

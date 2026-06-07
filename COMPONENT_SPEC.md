@@ -54,6 +54,7 @@ Rules:
     "root": "sdkwork-appbase/packages/pc-react/iam/example",
     "domain": "iam",
     "capability": "auth",
+    "surface": "app",
     "languages": ["typescript"],
     "generated": false,
     "manifests": ["package.json"]
@@ -70,6 +71,9 @@ Rules:
     "runtimeEntrypoints": ["package.json#scripts.typecheck"],
     "routeManifest": null,
     "sdkClients": [],
+    "sdkDependencies": [],
+    "dependencyApiExports": [],
+    "dependencyApiSurfaces": [],
     "events": [],
     "configKeys": ["package.json#sdkwork"]
   },
@@ -83,14 +87,38 @@ Rules:
 
 - `component.name`, `component.type`, `component.root`, `component.domain`, `component.capability`, and `component.languages` are required.
 - `component.domain` uses canonical root domain names such as `iam`, not legacy group aliases such as `identity`.
+- `component.surface` is required when SDK surface access, route exposure, or package visibility
+  depends on whether the component is app-side, console-side, backend-admin, public/open-api,
+  backend service, host/native, or generated SDK infrastructure.
+- `component.surface: "backend-admin"` is the machine-readable backend/admin UI boundary. PC React
+  internal admin packages named with the `pc-admin` segment, such as
+  `sdkwork-<product>-pc-admin-<capability>`, `MUST` declare this surface before importing product
+  backend SDKs or appbase backend SDKs.
+- Route paths, menu groups, page titles, and navigation labels are not component surfaces. A route
+  under `/admin` is still non-admin unless its owning package/component declares the backend-admin
+  surface and follows the backend UI package rules.
 - `canonicalSpecs` must link to actual root spec files.
 - `canonicalSpecs` must include `CODE_STYLE_SPEC.md` and `NAMING_SPEC.md` when the component owns authored source code.
 - `canonicalSpecs` must include language-specific specs only for languages declared in `component.languages`.
 - `contracts.publicExports` lists supported integration entrypoints, not internal source paths.
+- `contracts.runtimeEntrypoints` lists executable integration entrypoints, service builders, router
+  builders, scripts, or host adapters that a consumer can actually run or mount. Route metadata,
+  OpenAPI files, and README examples are not executable runtime entrypoints.
 - `contracts.routeManifest` is used only by Rust HTTP route crate components. It points to the
   route crate manifest entrypoint or normalized `sdks/_route-manifests/<surface>/<packageName>.route-manifest.json`
   artifact, and it is not an SDK client list.
 - `contracts.sdkClients` lists generated SDK client classes or public SDK client exports only when the component owns a generated SDK family. It is not a runtime credential-injection list and `MUST NOT` be used as an IAM token-manager list, app/backend SDK injection list, or open-api API key provider list.
+- `contracts.sdkDependencies` lists dependency SDK families consumed by this component, SDK family,
+  or composed facade. It `MUST` be an explicit array for every authored SDK family, composed facade,
+  application core package, or runtime component that consumes dependency SDKs; use `[]` when there
+  are no dependency SDKs.
+- `contracts.dependencyApiExports` lists dependency-owned API capabilities intentionally exposed by
+  this component's public exports, composed wrappers, service ports, or application core surface.
+  It `MUST` be explicit for authored SDK families and composed facades. The default is `[]`, which
+  means dependency APIs are not re-exported by this component.
+- `contracts.dependencyApiSurfaces` lists dependency-owned HTTP API surfaces that this runtime
+  component serves, proxies, or requires as an external service. It is required for app shells,
+  web-backend services, and Rust/native runtimes that declare HTTP `sdkDependencies`.
 - Runtime SDK injection and credential wiring `MUST` follow `CONFIG_SPEC.md`, `SDK_SPEC.md`, and `IAM_LOGIN_INTEGRATION_SPEC.md`: app-api/backend-api SDKs receive the global token manager, while protected open-api SDKs receive API key credentials through a separate provider when their contract declares API key mode.
 - `verification.commands` must include at least one command that validates the component or the component specs inventory.
 
@@ -179,6 +207,10 @@ Rules:
   `MUST` include `CACHE_SPEC.md`.
 - A `web-backend-service` component `MUST` document its API authority, owned surface, and generated
   SDK family or explicitly state that it is an implementation-only module with no HTTP authority.
+- A `web-backend-service`, `rust-crate`, `tauri-host`, or app shell that mounts dependency APIs
+  `MUST` declare `contracts.dependencyApiSurfaces` with dependency workspace, SDK family, API
+  authority, surface, `apiPrefix`, runtime mode, executable public export, and coverage evidence.
+  A dependency route manifest alone does not satisfy this runtime contract.
 
 ## 5. Discovery Rules
 
@@ -213,6 +245,23 @@ Rules:
 - Consumers integrate through package root exports, generated SDK clients, documented adapters, or runtime entrypoints declared in `component.spec.json`.
 - Reusable UI and service components must not require app-local globals, concrete app names, hard-coded base URLs, hard-coded tenant IDs, or manual token/API key headers.
 - SDK clients must be injected through service/runtime boundaries according to `SDK_SPEC.md` and `FRONTEND_SPEC.md`.
+- Component-level dependency API exports `MUST` follow `SDK_SPEC.md`: dependency APIs are not
+  exported by default, `contracts.dependencyApiExports: []` is the no-export state, and any
+  `composed-wrapper` or `service-port` export must point to authored public code outside generated
+  SDK transport.
+- Runtime components that expose Rust HTTP integration `SHOULD` provide stable surface-specific
+  public modules or files such as `sdkwork_<component>_open_api`,
+  `sdkwork_<component>_app_api`, and `sdkwork_<component>_backend_api`. Each mounted surface
+  `SHOULD` expose a public router/controller/service builder such as
+  `build_sdkwork_<component>_<surface>_router` or a documented service builder with equivalent
+  semantics.
+- A consuming application integrates a dependency component by importing the declared public
+  surface entrypoint, dependency SDK family, or composed facade. It `MUST NOT` deep-import private
+  source files, copy dependency handlers, copy dependency OpenAPI, or infer executable coverage from
+  route metadata.
+- If a component exposes only route contracts or manifests and no executable router/controller or
+  service builder, consumers `MUST` treat its HTTP SDK as an external dependency surface for runtime
+  base URL configuration.
 - App-specific visual identity may be passed as configuration or design tokens, not embedded as a dependency from shared component packages to product apps.
 - Component specs should make extension points explicit when the component is intended for reuse by multiple applications.
 
@@ -234,6 +283,15 @@ Rules:
 - [ ] UI component manifests link to `UI_ARCHITECTURE_SPEC.md` and exactly one architecture-specific UI spec.
 - [ ] Manifest uses canonical domain names.
 - [ ] Public integration entrypoints are declared.
+- [ ] Dependency SDK consumption is declared through `contracts.sdkDependencies`, including `[]`
+  when there are no dependency SDKs.
+- [ ] Dependency API export policy is declared through `contracts.dependencyApiExports`, including
+  `[]` when the component does not re-export dependency capabilities.
+- [ ] Runtime dependency API mounting or external-service requirements are declared through
+  `contracts.dependencyApiSurfaces` when the component serves, proxies, or depends on dependency
+  HTTP APIs.
+- [ ] Rust/runtime components expose executable surface-specific integration entrypoints when they
+  claim same-origin dependency API coverage.
 - [ ] Generated SDK language outputs are represented at the SDK family root.
 - [ ] Verification commands are present and runnable from the repository root or the component root.
 - [ ] Authored source is split by responsibility and does not hide component behavior in a catch-all entrypoint file.

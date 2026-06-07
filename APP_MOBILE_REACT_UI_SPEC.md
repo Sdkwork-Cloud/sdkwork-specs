@@ -4,7 +4,7 @@
 - Scope: app/user-facing React mobile packages, H5 mobile web screens, Capacitor mobile renderer packages, app SDK integration
 - Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side mobile React UI is packaged and integrated. In application roots it is applied after `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed mobile React package standard. Mobile React UI is user-facing and must consume app-api through generated TypeScript app SDK clients or approved appbase mobile wrappers. It must not depend on backend/admin UI packages. Cross-architecture SDK composition and appbase IAM token wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
+This standard defines how SDKWork app-side mobile React UI is packaged and integrated. In application roots it is applied after `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed mobile React package standard. Mobile React UI is user-facing and must consume app-api through generated TypeScript app SDK clients or approved appbase mobile wrappers. It must not depend on `backend-admin` UI packages. Cross-architecture SDK composition and appbase IAM token wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
 
 This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing H5/mobile React packages.
 
@@ -41,7 +41,7 @@ Rules:
 - Mobile React app UI `MUST` live in normalized H5 application packages such as `apps/<product>-h5-mobile/packages/sdkwork-<product>-h5-mobile-<capability>` or shared mobile React package families such as `packages/mobile-react/<domain>/<package>`.
 - Mobile React app UI `MUST` consume `/app/v3/api` through the generated app SDK or approved appbase wrappers.
 - Mobile React app UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, or `@sdkwork/react-backend-*` packages.
-- Backend/admin UI and operator-only workflows are forbidden in mobile React app packages unless the product is explicitly an admin mobile app with its own approved package family.
+- `backend-admin` UI and operator-only workflows are forbidden in mobile React app packages unless the product is explicitly an admin mobile app with its own approved `backend-admin` package family.
 - Native-only concerns such as camera, push token, deep link, biometric prompt, secure storage, and OS share sheet `MUST` go through host adapters.
 
 ## 2. Package Split
@@ -118,7 +118,7 @@ Rules:
 - Services `MUST` use app SDK clients or approved service wrappers.
 - Runtime/bootstrap `MUST` construct generated TypeScript app SDK clients, appbase IAM clients, one global token manager, token/context stores, and mobile host adapters.
 - Mobile React IAM integration `MUST` use an appbase mobile wrapper when available. If a mobile-specific wrapper is not available, the app may use an approved adapter over `@sdkwork/iam-runtime` and `@sdkwork/appbase-app-sdk`; it must not create raw HTTP auth flows.
-- `appbaseApp`, optional `appbaseBackend`, and downstream product app-api/backend-api SDK clients `MUST` share the same global token manager through generated SDK credential APIs such as `setTokenManager`.
+- `appbaseApp`, optional `backend-admin` `appbaseBackend`, downstream product app-api SDK clients, and explicit `backend-admin` backend-api SDK clients `MUST` share the same global token manager through generated SDK credential APIs such as `setTokenManager`.
 - Login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user self-service `MUST` use appbase app SDK resources or appbase wrappers. Verification-code delivery and verification `MUST` use the generated messaging app SDK surface or an appbase wrapper that delegates to an injected messaging client.
 - Native bridge calls `MUST` go through typed host adapters.
 - UI components `MUST NOT` construct SDK clients, call raw HTTP, manually attach auth/API key headers, or call native bridge globals directly.

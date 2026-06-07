@@ -134,7 +134,7 @@ Rules:
 Rules:
 
 - H5 mobile capability packages follow `APP_MOBILE_REACT_UI_SPEC.md` for screens, components, hooks, services, state, i18n, navigation, and host contracts.
-- Admin package families for mobile roots require explicit product approval and must follow backend SDK rules.
+- Admin package families for mobile roots require explicit product approval, `backend-admin` surface classification, and backend SDK boundary verification.
 - Shared UI primitives belong in `h5-mobile-commons`. Shared runtime/session/SDK behavior belongs in `h5-mobile-core`.
 - Capability names `MUST` be lower kebab-case and align with canonical domains or approved business capabilities.
 
@@ -213,8 +213,8 @@ Rules:
 Rules:
 
 - App and mobile console packages `MUST` use generated TypeScript app SDK clients or approved appbase wrappers for `/app/v3/api`.
-- Mobile admin packages, when approved, `MUST` use generated TypeScript backend SDK clients or approved backend wrappers for `/backend/v3/api`.
-- Runtime/bootstrap `MUST` create one global TokenManager per authenticated session context and bind it to appbase app SDK, optional appbase backend SDK, product app/backend SDKs when used, Drive app SDK, IM app SDK, and other authenticated dependency SDKs.
+- Mobile admin packages, when approved as `backend-admin` surfaces, `MUST` use generated TypeScript backend SDK clients or approved backend wrappers for `/backend/v3/api`.
+- Runtime/bootstrap `MUST` create one global TokenManager per authenticated session context and bind it to appbase app SDK, product/dependency app SDKs, explicit `backend-admin` appbase backend/product backend/dependency backend SDKs, Drive app SDK, IM app SDK, and other authenticated dependency SDKs.
 - H5 token storage should prefer server-managed httpOnly cookie architectures when available. If browser session/local storage is used, the security risk and clearing behavior must be documented.
 - Capacitor token/context storage must use secure storage host adapters where available.
 - Secure storage adapters may persist appbase token/context state for the central runtime. They must not own login, refresh, permission checks, or business authorization.
@@ -330,7 +330,7 @@ Required verification for H5 app mobile architecture changes:
 | Root layout | Static check proves `.sdkwork/`, `config/browser`, `config/host`, `src/bootstrap`, `packages/`, `sdks/`, `scripts/`, and tests exist for application roots. |
 | Package naming | Static check proves new packages use `sdkwork-<product>-h5-mobile-*`, including reserved console/admin/host forms. |
 | Renderer sharing | Tests or static checks prove H5, iOS, and Android targets reuse the same renderer, route contributions, SDK clients, IAM runtime, and TokenManager. |
-| SDK boundary | Static scan proves app/console packages use app SDKs, approved admin packages use backend SDKs, and no raw HTTP/manual auth headers/generated SDK edits were introduced. |
+| SDK boundary | Static scan proves app/console packages use app SDKs, approved `backend-admin` packages use backend SDKs, and no raw HTTP/manual auth headers/generated SDK edits were introduced. |
 | IAM clearing | Tests prove logout, refresh failure, tenant switch, and account switch clear browser storage, secure storage, token manager, context store, caches, realtime/session bridges, and sensitive state. |
 | Host boundary | Static scan proves feature packages do not import Capacitor plugins or platform globals directly. |
 | Deep link security | Tests prove scheme, host, path, state, nonce, expiry, and unsafe-link rejection behavior. |

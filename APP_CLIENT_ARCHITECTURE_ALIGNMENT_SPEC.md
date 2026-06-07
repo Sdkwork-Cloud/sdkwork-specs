@@ -143,7 +143,7 @@ Rules:
 - Shared business behavior across capabilities should use a new explicit domain/capability package or a service/contract package, not a catch-all `commons` package.
 - `core`, `commons`, and `shell` package names are reserved for infrastructure and must not own business pages or business services.
 - Console and admin package families are optional. They should be created only when the product has that surface.
-- Mobile admin packages require explicit product approval because they expose internal operator behavior on portable devices.
+- Mobile admin packages require explicit product approval and `backend-admin` surface classification because they expose internal operator behavior on portable devices.
 
 ## 5. Dependency Direction
 
@@ -255,7 +255,7 @@ Client roots share the SDK composition model from `APP_SDK_INTEGRATION_SPEC.md`.
 Rules:
 
 - Runtime/bootstrap constructs concrete SDK clients after typed runtime config is resolved.
-- Authenticated app-api/backend-api SDK clients share one global TokenManager or language-equivalent token manager per authenticated session context.
+- Authenticated app-api SDK clients and explicit `backend-admin` backend-api SDK clients share one global TokenManager or language-equivalent token manager per authenticated session context.
 - Protected open-api SDK clients use declared API key credential providers and must not be added to app/backend token-manager lists unless the API contract explicitly declares that mode.
 - Appbase IAM owns login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, current-user self-service, and token propagation.
 - Feature packages must not implement raw HTTP fallbacks for missing SDK methods. Missing methods are fixed in the owning API contract, generator input, and generated SDK family.

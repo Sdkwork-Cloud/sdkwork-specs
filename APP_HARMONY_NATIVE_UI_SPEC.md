@@ -4,7 +4,7 @@
 - Scope: app/user-facing HarmonyOS native packages, ArkTS/ArkUI UI, generated ArkTS/TypeScript app SDK integration, HarmonyOS host adapters, mobile interaction, and package-local state
 - Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side Harmony native UI is packaged and integrated. In application roots it is applied after `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed Harmony native package standard. Harmony UI packages are app/user-facing and consume app-api through generated ArkTS/TypeScript app SDK clients adapted for Harmony runtime or approved appbase Harmony wrappers. They must not consume backend/admin UI packages or backend SDKs for user-facing workflows.
+This standard defines how SDKWork app-side Harmony native UI is packaged and integrated. In application roots it is applied after `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed Harmony native package standard. Harmony UI packages are app/user-facing and consume app-api through generated ArkTS/TypeScript app SDK clients adapted for Harmony runtime or approved appbase Harmony wrappers. They must not consume `backend-admin` UI packages or backend SDKs for user-facing workflows.
 
 This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing Harmony native packages.
 
@@ -39,7 +39,7 @@ Rules:
 - Harmony app UI `MUST` live in normalized Harmony application packages such as `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>` or approved shared Harmony package families such as `packages/harmony-native/<domain>/<package>`.
 - Harmony app UI `MUST` consume `/app/v3/api` through generated ArkTS/TypeScript app SDK clients adapted for Harmony runtime or approved wrappers.
 - Harmony app UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, Flutter packages, Android packages, or iOS packages for user-facing workflows.
-- Operator/admin screens require a separately approved Harmony admin package family and must follow backend-api and backend SDK rules.
+- Operator/admin screens require a separately approved Harmony admin package family classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
 - HarmonyOS system APIs such as camera, biometric, secure storage, push, want/deep-link handling, files, and lifecycle `MUST` go through typed host adapters.
 
 ## 2. Package Split

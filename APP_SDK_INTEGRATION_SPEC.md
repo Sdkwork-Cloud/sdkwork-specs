@@ -14,11 +14,11 @@ The normative IAM reference is `sdkwork-appbase`:
 - `packages/pc-react/iam/sdkwork-iam-react/src/index.tsx`
 - `packages/pc-react/iam/sdkwork-auth-pc-react/src/auth-service.ts`
 
-Those packages implement the standard runtime shape: `createIamRuntime(...)` creates or receives one `AuthTokenManager` from `@sdkwork/sdk-common/createTokenManager`, binds the same manager to `appbaseApp`, optional `appbaseBackend`, and every downstream `sdkClients` entry through `setTokenManager`, persists tokens in a `tokenStore`, persists `AppContext` in a `contextStore`, emits standard dual-token headers through `getAuthHeaders()`, and clears local token/context state even when remote logout fails.
+Those packages implement the standard runtime shape: `createIamRuntime(...)` creates or receives one `AuthTokenManager` from `@sdkwork/sdk-common/createTokenManager`, binds the same manager to `appbaseApp`, optional `backend-admin` `appbaseBackend`, and every downstream `sdkClients` entry through `setTokenManager`, persists tokens in a `tokenStore`, persists `AppContext` in a `contextStore`, emits standard dual-token headers through `getAuthHeaders()`, and clears local token/context state even when remote logout fails.
 
 Product applications normally consume a higher-level appbase auth runtime factory for their architecture, for example `@sdkwork/auth-runtime-pc-react` `createSdkworkAppbasePcAuthRuntime(...)` on PC React. The low-level `@sdkwork/iam-runtime` and `@sdkwork/iam-sdk-adapter` packages are appbase implementation details or approved wrapper internals. Product app bootstrap code provides app identity, runtime config, generated SDK clients, the global TokenManager, and session bridge hooks to the high-level factory; it must not reassemble appbase IAM adapters locally when an architecture-level appbase runtime factory exists.
 
-Every SDKWork application uses this as the TokenManager closure rule: within one authenticated session context, every SDK client that sends SDKWork app-api or backend-api dual-token credentials `MUST` share the same `TokenManager` instance. This includes appbase SDKs, product app/backend SDKs, dependency app/backend SDKs such as Drive, Messaging, IM, and any approved composed wrapper backed by those SDKs. Public SDKs that need no credentials receive no token manager. Protected open-api SDKs that declare API key mode receive a separate API key credential provider and `MUST NOT` be added to the login TokenManager client list.
+Every SDKWork application uses this as the TokenManager closure rule: within one authenticated session context, every SDK client that sends SDKWork app-api or explicit `backend-admin` backend-api dual-token credentials `MUST` share the same `TokenManager` instance. This includes appbase app SDKs, product/dependency app SDKs such as Drive, Messaging, and IM, explicit `backend-admin` backend SDKs, and any approved composed wrapper backed by those SDKs. Public SDKs that need no credentials receive no token manager. Protected open-api SDKs that declare API key mode receive a separate API key credential provider and `MUST NOT` be added to the login TokenManager client list.
 
 ## 1. Composition Model
 
@@ -56,7 +56,9 @@ Applications depend on each other through stable artifacts.
 | Appbase IAM/session/workspace/bootstrap | `sdkwork-appbase` packages, generated appbase SDKs, appbase Rust crates | product-local login routes, copied auth UI, regenerated appbase APIs |
 | Drive upload/download/storage | Client upload through `sdkwork-drive-app-sdk client.uploader.*`; server-side Rust upload through `DriveUploaderService` or approved `sdkwork_drive_product::uploader`; product SDKs accept Drive references or `MediaResource` | product-local upload endpoints, raw Drive HTTP, provider SDK calls, app-local upload tables/counters, regenerating Drive APIs into product SDKs |
 | Product app API | generated `sdkwork-<domain>-app-sdk` for the target language | raw HTTP, backend SDK, route constants |
-| Product backend API | generated `sdkwork-<domain>-backend-sdk` for admin/operator clients | app SDK for operator resources, raw HTTP |
+| Product backend API | generated `sdkwork-<domain>-backend-sdk` for `backend-admin` clients | app SDK for operator resources, raw HTTP, app/user/console runtime construction |
+| Appbase app API | generated `sdkwork-appbase-app-sdk` and approved appbase app wrappers, including user-visible IAM directory/contact read resources | backend SDK, product-local appbase forks, deleting app SDK exports to hide backend leakage |
+| Appbase backend API | generated `sdkwork-appbase-backend-sdk` for `backend-admin` IAM management | app/user/console login flows, app auth runtime construction, user-facing directory reads |
 | Product open/domain API | generated `sdkwork-<domain>-sdk` with declared open-api credential mode | app login token manager unless explicitly declared by contract |
 | Rust route capability | route manifest, aggregated authority, generated SDK family | frontend import of Rust route crates or path constants |
 | Reusable UI/service package | package root export and component spec | imports from private package internals |
@@ -70,9 +72,49 @@ Rules:
 - `sdkDependencies` `MUST` declare dependency SDK families in SDK assembly metadata and component specs when a product SDK or composed facade depends on them.
 - A consuming application may compose dependency SDKs in runtime/bootstrap, service facades, or approved composed packages outside generated transport ownership.
 - Generated transport output `MUST NOT` import, vendor, re-export, or rewrite dependency SDK packages.
+- Dependency APIs are not exported by a consuming application or component by default. App/core
+  packages, composed facades, and SDK family roots `MUST` declare `dependencyApiExports: []` when
+  they consume dependency SDKs but do not re-expose dependency capabilities.
+- A dependency app/backend/open API capability may be exposed from the consuming app only through an
+  explicit `dependencyApiExports` entry using `dependency-sdk`, `composed-wrapper`, `service-port`,
+  or `documentation-only` mode. The export must live in authored application core, composed facade,
+  service-port, or host-adapter code outside `generated/server-openapi`.
+- Enabling a dependency API export `MUST NOT` add dependency-owned operations to the product
+  generated SDK family. Product generated SDKs remain owner-only; dependency capabilities remain in
+  the dependency SDK or approved authored facade.
 - Component specs `MUST` expose the dependency contract clearly enough that a consumer can tell whether it depends on a generated SDK, a composed wrapper, a service port, or a host adapter.
+- Application core packages and runtime bootstrap packages `MUST` export the product app SDK. They
+  export dependency app SDK wrappers only when a `dependencyApiExports` entry or the approved
+  appbase auth/runtime integration declares that wrapper as required by frontend app integration.
+  Appbase app SDK wrappers are required when the app uses appbase login, current user, runtime
+  metadata, workspace, contacts, address book, or user-visible IAM directory read/list/tree
+  resources.
+- Backend SDK wrappers `MUST` be exported only from `backend-admin` package boundaries. A frontend app core may construct backend SDK clients only when it is explicitly a `backend-admin` core surface; otherwise backend SDK imports, backend base URL resolvers, and appbase backend clients are forbidden in app and user-facing console packages.
+- Except for explicit `backend-admin` boundaries, app, console, app auth runtime, shared frontend core, mobile/native/desktop renderer, and app-side service packages `MUST` consume generated app SDKs or approved app SDK wrappers. They `MUST NOT` import, export, construct, wrap, proxy, or route through backend SDK packages or appbase backend SDK clients.
 
-### 2.1 Drive Uploader Composition
+### 2.1 Backend-Admin Package Boundary
+
+The backend-admin package boundary is the authored package/component boundary that is allowed to
+construct or consume generated backend SDK clients for operator-only workflows. A route path is not a surface classification. Placing a page under `/admin`, naming a route "admin", or showing an operator
+navigation item does not make an app, console, shared frontend core, or auth-runtime package eligible
+to import backend SDKs. The machine-readable component spec owns that classification.
+
+Rules:
+
+- PC React admin feature packages that use backend SDKs `MUST` live in a package named
+  `sdkwork-<product>-pc-admin-<capability>` and declare `component.surface: "backend-admin"`.
+- App, console, app auth runtime, shared frontend core, mobile/native/desktop renderer, and app-side
+  service packages `MUST NOT` import, construct, export, or wrap product backend SDKs or appbase
+  backend SDKs. They may receive app SDK clients, appbase app SDK clients, or approved app-side
+  service ports only.
+- Shared runtime/bootstrap code may own a narrow SDK client factory when it is explicitly documented
+  as the application SDK inventory boundary. Feature packages outside `backend-admin` still may not
+  call backend SDK getters through that boundary.
+- The default SDK base-url model is one common SDK root when a gateway serves all required SDK
+  surfaces. Runtime bootstrap derives open-api, app-api, backend-api, and dependency SDK surface URLs
+  from that root, while per-surface or per-SDK overrides remain available for split services.
+
+### 2.2 Drive Uploader Composition
 
 Applications that upload files must compose Drive Uploader as a dependency, not as product-local infrastructure.
 
@@ -101,12 +143,15 @@ Each application architecture uses the SDK family and IAM wrapper that match its
 | Harmony native app | ArkTS/TypeScript | generated ArkTS/TypeScript app SDKs adapted for Harmony runtime plus typed HarmonyOS host adapters | appbase Harmony wrapper when available, otherwise generated appbase app SDK through an approved Harmony runtime adapter |
 | Desktop/Tauri renderer | TypeScript | generated TypeScript app SDKs injected by renderer bootstrap | appbase IAM runtime in renderer, native secure storage only through host adapter |
 | Rust local/private backend | Rust | generated Rust dependency SDKs or Rust service traits for dependency calls | appbase Rust crates for context/auth/bootstrap and generated appbase SDKs when Rust calls appbase HTTP APIs |
-| Backend/admin React | TypeScript | generated TypeScript backend SDKs | appbase backend SDK for IAM administration, no user-facing auth session creation |
+| Backend/admin React | TypeScript | generated TypeScript backend SDKs for the `backend-admin` surface | appbase backend SDK for IAM administration, no user-facing auth session creation |
 
 Rules:
 
 - App-side UI packages `MUST` consume app-api through the generated app SDK for their language or through an approved appbase wrapper built on that SDK.
-- Backend/admin UI packages `MUST` consume backend-api through generated backend SDKs or approved backend wrappers.
+- `backend-admin` UI packages `MUST` consume backend-api through generated backend SDKs or approved backend wrappers.
+- Non-admin UI packages `MUST` consume app-api through generated app SDK clients or approved app SDK wrappers. A package is non-admin unless it is explicitly classified as `backend-admin`; naming a user-facing console, app settings page, or customer-owned management page as "management" does not permit backend SDK use.
+- User-facing app and console workflows that read organizations, departments, memberships, assignments, positions, role bindings, and organization/department trees for contacts, address books, workspace navigation, or customer-owned management `MUST` consume appbase app SDK resources or an approved app SDK wrapper. They must not use appbase backend SDK merely because the resource is IAM-related.
+- `backend-admin` IAM creation, deletion, mutation, tenant-wide administration, and operator audit workflows `MUST` consume appbase backend SDK resources from a `backend-admin` boundary. If a user-facing console needs a management capability that is missing from app SDK, the owning app-api/app SDK contract must be extended or the workflow must move to `backend-admin`; the console must not import backend SDK as a shortcut.
 - Flutter packages `MUST` use generated Dart/Flutter SDK clients. They must not call TypeScript wrappers or React packages.
 - Android native packages `MUST` use generated Kotlin/Java SDK clients. They must not call TypeScript, Dart/Flutter, Swift, ArkTS, or React wrappers.
 - iOS native packages `MUST` use generated Swift SDK clients. They must not call TypeScript, Dart/Flutter, Kotlin/Java, ArkTS, or React wrappers.
@@ -129,13 +174,14 @@ import { createIamRuntime } from "@sdkwork/iam-runtime";
 const tokenManager = createTokenManager();
 
 const sdkBaseUrls = resolveSdkBaseUrls(runtimeConfig);
+const isBackendAdminRuntime = classifyRuntimeSurface(runtimeConfig) === "backend-admin";
 
 const productAppSdk = createProductAppSdk({
   baseUrl: sdkBaseUrls.appApiBaseUrl,
   tokenManager,
 });
 
-const productBackendSdk = sdkBaseUrls.backendApiBaseUrl
+const productBackendSdk = isBackendAdminRuntime && sdkBaseUrls.backendApiBaseUrl
   ? createProductBackendSdk({
       baseUrl: sdkBaseUrls.backendApiBaseUrl,
       tokenManager,
@@ -145,10 +191,10 @@ const productBackendSdk = sdkBaseUrls.backendApiBaseUrl
 const iamRuntime = createIamRuntime({
   clients: {
     appbaseApp,
-    appbaseBackend,
+    appbaseBackend: isBackendAdminRuntime ? appbaseBackend : undefined,
     sdkClients: [
       productAppSdk,
-      productBackendSdk,
+      ...(productBackendSdk ? [productBackendSdk] : []),
     ],
   },
   config,
@@ -165,16 +211,18 @@ Rules:
 - Product application bootstrap `MUST NOT` import `@sdkwork/iam-sdk-adapter`, call `createIamAppSdkAdapter(...)`, call `createIamBackendSdkAdapter(...)`, or locally wire appbase SDK resources into IAM ports when an appbase high-level runtime/factory can do that wiring.
 - Product application bootstrap `MUST NOT` call `createIamRuntime(...)` directly except inside an approved appbase-owned wrapper package or a documented temporary compatibility wrapper that exposes the same high-level inputs and is tracked for removal.
 - Runtime/bootstrap `MUST` resolve SDK base URLs from `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md` before creating generated SDK clients.
-- Product app SDK, product backend SDK, appbase app SDK, appbase backend SDK, Drive SDK, IM SDK, and other dependency SDK base URLs `MUST` be configured per SDK surface. They must not be hidden behind one ambiguous `API_BASE_URL` when the surfaces can deploy independently.
+- Product app SDK, product backend SDK, appbase app SDK, appbase backend SDK, Drive SDK, IM SDK, and other dependency SDK base URLs `SHOULD` be derived from one common SDK root when a single public gateway serves those SDK surfaces. Per-surface and per-SDK base URL overrides `MUST` remain available for split services, external dependency services, private dependency hosts, or tenant-specific routing.
+- A common SDK root is not the same as an arbitrary product `API_BASE_URL`. It must be a root/origin/path prefix that can safely derive standard SDK surface URLs by appending prefixes such as `/v1`, `/app/v3/api`, and `/backend/v3/api`; a surface URL such as `/v1` must not be reused as the root for app/backend SDKs.
 - Base URL config may come from private process env, public browser runtime env, or runtime TOML depending on target, but token values must never come from these config sources.
-- Runtime/bootstrap `MUST` build an SDK inventory before constructing feature services. The inventory classifies each SDK as authenticated app-api, authenticated backend-api, protected open-api API-key, public open-api, local/native, or test fake.
-- The same `TokenManager` instance `MUST` be passed to `@sdkwork/appbase-app-sdk`, optional `@sdkwork/appbase-backend-sdk`, every product app/backend SDK client, and every dependency app/backend SDK client that participates in authenticated dual-token calls.
+- Runtime/bootstrap `MUST` build an SDK inventory before constructing feature services. The inventory classifies each SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, public open-api, local/native, or test fake.
+- The same `TokenManager` instance `MUST` be passed to `@sdkwork/appbase-app-sdk`, every product/dependency app SDK client, and only those `@sdkwork/appbase-backend-sdk`, product backend SDK, or dependency backend SDK clients that are present in an explicit `backend-admin` authenticated SDK inventory.
+- App auth/login runtime for user-facing application sessions `MUST` construct appbase app SDK and downstream app SDK clients required for login/session/current-user/directory app-side behavior. It `MUST NOT` construct appbase backend SDK or product backend SDK clients just because the application root also contains admin packages.
 - Generated SDK clients that support `setTokenManager(manager)` `MUST` receive the same instance during bootstrap. Generated SDK clients that accept `tokenManager` in a constructor `MUST` receive that same instance instead of a package-local manager.
 - The appbase app SDK client `MUST` be named `appbaseApp` or `appbaseAppClient` in runtime code so it cannot be confused with product app SDK clients.
-- Product and dependency app/backend SDK clients `MUST` be passed as downstream `sdkClients` or the local language equivalent. They must not own login, token refresh, independent token stores, independent `TokenManager` instances, or session restoration.
+- Product and dependency app SDK clients, plus explicit `backend-admin` backend SDK clients, `MUST` be passed as downstream `sdkClients` or the local language equivalent. They must not own login, token refresh, independent token stores, independent `TokenManager` instances, or session restoration.
 - Applications `MUST NOT` create per-domain, per-package, per-service, or per-SDK TokenManagers for the same authenticated session. Account switch, tenant switch, logout, refresh failure, or session replacement creates or clears the application session context as a whole, then rebinds every authenticated SDK through the single runtime path.
 - Login, registration, OAuth, QR auth, password reset, current session, refresh, logout, runtime metadata, and current-user self-service `MUST` call appbase app SDK resources under `appbaseApp.auth.*`, `appbaseApp.openPlatform.qrAuth.*`, `appbaseApp.system.iam.*`, and `appbaseApp.iam.users.current.*`. Verification-code delivery and verification `MUST` call the generated messaging app SDK surface under `messagingApp.messaging.verificationCodes.*` or the approved appbase auth wrapper that delegates to that injected messaging client.
-- Backend/admin IAM management `MUST` use `appbaseBackend.iam.*`. Backend SDK clients `MUST NOT` expose an `auth` namespace for user-facing session creation.
+- `backend-admin` IAM management `MUST` use `appbaseBackend.iam.*`. Backend SDK clients `MUST NOT` expose an `auth` namespace for user-facing session creation.
 - Reusable auth services `MUST` expose `commitSession(session, options?)`, not `persistSession`.
 - `commitSession` `MUST` validate and normalize the appbase session, persist `authToken`, `accessToken`, and optional `refreshToken`, write returned `AppContext` or clear stale context, then sync the global token manager.
 - Token persistence failure `MUST NOT` update the in-memory token manager.
@@ -225,10 +273,25 @@ Rules:
 - Application roots that mount dependency APIs through the same origin `MUST` record the mount in
   `dependencyApiSurfaces` with `sameOriginAllowed: true`, an executable router export, and coverage
   evidence comparing dependency route contracts or OpenAPI paths against the runtime router.
+- The executable dependency router/controller/service export `MUST` be a public integration
+  entrypoint declared by the dependency component. Surface-specific Rust entrypoints should follow
+  the pattern `sdkwork_<component>_open_api`, `sdkwork_<component>_app_api`, and
+  `sdkwork_<component>_backend_api`, with public builders such as
+  `build_sdkwork_<component>_<surface>_router` or an equivalent service builder.
+- Split/server mode and embedded/same-process mode have different requirements. Split/server mode
+  `MUST` configure a common SDK root that serves every consumed dependency surface or an explicit
+  dependency SDK base URL for each dependency surface. Embedded mode
+  `MUST` mount the dependency-owned executable router/controller/service export and record verified
+  coverage in `dependencyApiSurfaces`.
+- `pnpm tauri:dev`, a local server launcher, or any host command starting a backend process does not
+  by itself prove that dependency APIs are served. The launched runtime must either configure the
+  dependency surface as an external service or mount the executable dependency integration entrypoint.
 - Application roots that do not mount the dependency executable router `MUST` configure dependency
-  SDK clients with explicit dependency base URLs and fail fast when those base URLs are missing.
-- Backend/admin appbase IAM management uses the appbase backend SDK and backend dependency base URL;
-  it must not fall back to a product backend route prefix unless appbase backend IAM executable
+  SDK clients with either a common SDK root that serves the dependency surface or explicit dependency
+  base URLs, and fail fast when neither is available.
+- `backend-admin` appbase IAM management uses the appbase backend SDK and backend dependency base URL;
+  it may use the common SDK root only when that root is an explicit gateway for appbase backend IAM.
+  It must not fall back to a product backend route prefix unless appbase backend IAM executable
   routes are mounted and verified in the product runtime.
 
 ## 6. Frontend Service And Component Rules
@@ -253,10 +316,13 @@ Required checks for app SDK composition:
 | --- | --- |
 | Appbase IAM boundary | Static scan shows login/register/session/refresh/logout/current-user calls use appbase SDK resources or appbase wrappers, and product app bootstrap uses the approved high-level appbase auth runtime/factory instead of low-level IAM SDK adapters. |
 | SDK inventory closure | Tests or deterministic static checks list every appbase, product, and dependency SDK consumed by the app and classify its credential mode before service construction. |
-| Global TokenManager | Tests prove one `TokenManager` is bound to appbase app, optional appbase backend, product app/backend SDKs, dependency app/backend SDKs, and approved composed wrappers through `setTokenManager`, constructor injection, or the language equivalent. |
+| Global TokenManager | Tests prove one `TokenManager` is bound to appbase app SDKs, product/dependency app SDKs, explicit `backend-admin` appbase backend/product backend/dependency backend SDKs, and approved composed wrappers through `setTokenManager`, constructor injection, or the language equivalent. |
 | Session commit order | Tests prove persistence failure does not update token manager, context propagation failure rolls back token/context state, stale context is cleared, and continuation flows preserve refresh token only when allowed. |
 | Logout clearing | Tests prove local token/context state clears even when remote logout fails. |
 | Architecture SDK boundary | Static scans prove PC React/H5 mobile React/Flutter/mini program/Android/iOS/Harmony/backend-admin packages use the correct generated SDK language and surface. |
+| App SDK export boundary | Static scans prove application/frontend core exports product app SDK and required dependency app SDK wrappers, including appbase app SDK wrappers, while backend SDK wrappers are exported only from `backend-admin` boundaries. |
+| Dependency API export configuration | Static scans and component spec checks prove dependency APIs are not re-exported unless `dependencyApiExports` declares the dependency workspace, surface, export mode, method set, visibility, and public export symbol. |
+| User console SDK boundary | Static scans prove app and user-facing console packages do not import backend SDKs, backend SDK wrapper functions, backend base URL resolvers, or appbase backend SDK clients; missing user-facing capabilities fail closed or are added to app-api/app SDK. |
 | Drive Uploader dependency | Tests and static scans prove upload-capable apps use injected `sdkwork-drive-app-sdk client.uploader.*`, Rust server upload paths use `DriveUploaderService` or an approved Drive product facade, and product SDK authorities do not contain Drive uploader operations. |
 | No transport bypass | Static scans prove no raw HTTP, manual auth headers, local DTO forks, generated SDK edits, product-local appbase auth routes, direct product-side `@sdkwork/iam-sdk-adapter` imports, or product-side `createIamRuntime(...)` wiring were introduced. |
 | Rust composition | Route manifest tests prove route crate naming, authority aggregation, owner-only SDK generation, and no frontend imports of route crates. |
@@ -280,15 +346,26 @@ rg -n "createTokenManager\\(|new .*TokenManager|setAuthToken|setAccessToken" app
 - [ ] Application root composes dependencies instead of copying source, routes, DTOs, or generated SDK output.
 - [ ] Product SDK families generate only product-owned operations.
 - [ ] Dependency SDK families are declared through `sdkDependencies`, component specs, or approved composed wrappers.
+- [ ] `dependencyApiExports` is explicit. Dependency APIs are not exported by default; configured
+  exports live in authored composed wrappers, application core, service ports, or host adapters
+  outside generated transport.
+- [ ] Application/frontend core exports the product app SDK and only the required dependency app SDK
+  wrappers for app integration, including appbase app SDK when appbase IAM, current-user, workspace,
+  contacts, or address-book resources are used.
+- [ ] Backend SDK wrappers are exported only from `backend-admin` boundaries and are absent from app auth runtime, app packages, and user-facing console packages.
 - [ ] Upload-capable apps declare Drive app SDK as a dependency, client upload services call `client.uploader.*`, Rust server upload services call the Drive product uploader component, and product SDKs accept only Drive references or `MediaResource`.
 - [ ] The selected UI architecture uses the matching generated SDK language and surface.
 - [ ] Runtime/bootstrap declares or derives an SDK inventory and classifies each SDK credential mode before services are constructed.
+- [ ] Runtime/bootstrap supports one common SDK base URL as the default and supports per-surface or per-SDK overrides for split and external dependency services.
 - [ ] Runtime/bootstrap uses the approved high-level appbase auth runtime/factory for the architecture and does not locally wire low-level IAM SDK adapters in product code.
 - [ ] Runtime/bootstrap creates exactly one global `TokenManager` per authenticated session context.
-- [ ] Appbase app SDK, optional appbase backend SDK, every product app/backend SDK, every dependency app/backend SDK, and every approved composed wrapper backed by those SDKs share that same `TokenManager`.
+- [ ] Appbase app SDK, every product/dependency app SDK, explicit `backend-admin` appbase backend/product backend/dependency backend SDKs, and every approved composed wrapper backed by those SDKs share that same `TokenManager`.
 - [ ] Protected open-api SDKs that declare API key mode use a separate API key credential provider and are not placed in app/backend TokenManager client lists.
 - [ ] Login, registration, session, refresh, logout, QR/OAuth, password reset, runtime metadata, and current-user self-service use appbase app SDK resources, while verification-code delivery uses the generated messaging app SDK surface.
-- [ ] Backend/admin IAM management uses appbase backend SDK and does not expose user-facing auth session creation.
+- [ ] `backend-admin` IAM management uses appbase backend SDK and does not expose user-facing auth session creation.
 - [ ] Rust route crates and route aggregation follow the route crate -> API authority -> SDK family model.
+- [ ] Embedded Rust runtimes mount dependency-owned executable router/controller/service exports for
+  every same-origin dependency surface; split/server runtimes configure one common SDK root that
+  serves the dependency surface or explicit dependency SDK base URLs.
 - [ ] Frontend services use injected SDK clients and no raw HTTP/manual auth header fallback.
 - [ ] Logout, refresh failure, token persistence failure, context rollback, stale context clearing, and refresh-token continuation behavior are tested.

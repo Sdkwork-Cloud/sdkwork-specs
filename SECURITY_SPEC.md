@@ -16,6 +16,10 @@ Rules:
 - Public endpoints `MUST` explicitly declare `security: []`.
 - Tokens `MUST` be signed or resolved through a trusted server-side session store.
 - Token expiry, revocation, rotation, and audience checks are mandatory for production.
+- Login success, registration success, OAuth/session-bridge completion, QR completion, refresh, and current-session bootstrap `MUST NOT` be mocked or synthesized from user/profile data, cached users, user ids, emails, usernames, QR keys, bridge hints, or legacy session identifiers. SDKWork app/backend authenticated state requires a validated appbase IAM session with non-empty `authToken` and `accessToken`; incomplete or user-only results fail closed.
+- Current-session bootstrap `MUST` validate stored dual-token state through the appbase current-session SDK resource when available. A failed or incomplete current-session validation clears local session/token/context state and remains anonymous; cached tokens or profiles are not sufficient to report authenticated state.
+- Registration and password-reset services `MUST NOT` synthesize a missing confirmation by copying the password into `confirmPassword`; they `MUST` reject explicitly mismatched password confirmation values before calling SDK resources, and backend handlers `MUST` enforce the same rule.
+- Development verification-code values may prefill UI fields only. They `MUST NOT` bypass SDK verification, challenge creation, session creation, registration creation, or password reset completion.
 - Tokens and secrets `MUST NOT` be logged.
 - Protected open-api requests `MUST` resolve API keys through a server-side API key lookup service. The API key record, not the raw submitted key alone, supplies tenant, organization, user, app, data scope, and permission scope.
 - API key lookup implementations `MUST` support different storage backends through an interface or service boundary. The standard may use IAM tables, tenant-local API key tables, encrypted secret stores, caches, or remote IAM services.

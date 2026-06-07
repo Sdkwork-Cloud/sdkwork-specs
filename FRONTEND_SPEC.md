@@ -12,14 +12,14 @@ This standard defines the shared frontend rules for SDKWork modules. It is archi
 | --- | --- | --- |
 | App PC React | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` | `/app/v3/api` through generated app SDK; supports web, desktop, and large-screen tablet renderer targets |
 | PC user console React | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` | `/app/v3/api` or approved console-facing app SDK surface; supports web, desktop, and large-screen tablet renderer targets |
-| PC internal admin React | `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` | `/backend/v3/api` through generated backend SDK; supports web, desktop, and large-screen tablet renderer targets when enabled |
+| PC internal admin React | `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` | `backend-admin` surface; `/backend/v3/api` through generated backend SDK; supports web, desktop, and large-screen tablet renderer targets when enabled |
 | H5 app mobile React | `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_MOBILE_REACT_UI_SPEC.md` | `/app/v3/api` through generated app SDK and H5/Capacitor host adapters |
 | App Flutter | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_FLUTTER_UI_SPEC.md` | `/app/v3/api` through generated Dart/Flutter app SDK and platform adapters |
 | Mini program app | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md` | `/app/v3/api` through generated TypeScript app SDK or approved mini program wrapper and host adapters |
 | Android native app | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md` | `/app/v3/api` through generated Kotlin/Java app SDK or approved Android wrapper and host adapters |
 | iOS native app | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md` | `/app/v3/api` through generated Swift app SDK or approved iOS wrapper and host adapters |
 | Harmony native app | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md` | `/app/v3/api` through generated ArkTS/TypeScript app SDK adapted for Harmony runtime or approved Harmony wrapper and host adapters |
-| Standalone backend/admin React | `BACKEND_UI_SPEC.md` | `/backend/v3/api` through generated backend SDK |
+| Standalone backend/admin React | `BACKEND_UI_SPEC.md` | `backend-admin` surface; `/backend/v3/api` through generated backend SDK |
 
 ## 1. Layering
 
@@ -40,15 +40,17 @@ Rules:
 - UI components `MUST` receive data, callbacks, and state through props, hooks, or providers.
 - UI components `MUST NOT` call raw HTTP, manually set token or API key headers, parse JWTs for authorization, or choose tenant isolation rules.
 - Services `MUST` call generated SDK clients or approved service interfaces.
-- Runtime/bootstrap code `MUST` construct SDK clients, create the appbase IAM runtime, provide one global token manager for authenticated app-api/backend-api SDK clients, provide token/context stores, and provide open-api API key credential providers when protected open-api SDKs are consumed.
-- Runtime/bootstrap code `MUST` bind the same global token manager to `appbaseApp`, optional `appbaseBackend`, and every authenticated downstream app-api/backend-api SDK client through generated SDK credential APIs such as `setTokenManager`.
+- Runtime/bootstrap code `MUST` construct SDK clients, create the appbase IAM runtime, provide one global token manager for authenticated app-api SDK clients and explicit `backend-admin` backend-api SDK clients, provide token/context stores, and provide open-api API key credential providers when protected open-api SDKs are consumed.
+- Runtime/bootstrap code `MUST` bind the same global token manager to `appbaseApp`, optional `backend-admin` `appbaseBackend`, every authenticated downstream app-api SDK client, and every explicit `backend-admin` backend-api SDK client through generated SDK credential APIs such as `setTokenManager`.
 - IAM login/session bootstrap, AuthGate behavior, token refresh, logout clearing, and appbase auth UI/runtime integration `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - App SDK and dependency composition `MUST` follow `APP_SDK_INTEGRATION_SPEC.md`; product UI packages consume dependency capabilities through generated SDKs, service ports, or approved composed wrappers.
 - App shell code `MUST` stay thin: router, layout, providers, environment selection, host integration.
 - Frontend work `MUST` select exactly one primary UI architecture through `UI_ARCHITECTURE_SPEC.md` before package placement.
-- App/user-facing UI `MUST NOT` import backend/admin UI packages or call backend-api for user workflows.
+- App/user-facing UI `MUST NOT` import `backend-admin` UI packages or call backend-api for user workflows.
+- App/user-facing UI and PC user console UI `MUST` consume generated app SDK clients or approved appbase app wrappers for user-facing workflows, including contacts, address books, workspace navigation, and user-visible IAM directory read/list/tree resources. They `MUST NOT` import backend SDK packages, backend SDK wrapper functions, backend base URL resolvers, or appbase backend SDK clients.
+- Every frontend package outside an explicit `backend-admin` boundary `MUST` use generated app SDK clients or approved app SDK wrappers for SDKWork remote capabilities. User-facing app packages, PC user console packages, shared frontend core packages, app auth runtime packages, and mobile/native/desktop renderer packages `MUST NOT` import, export, construct, proxy, or route through backend SDK clients.
 - PC user console UI `MUST` stay in `sdkwork-<product>-pc-console-*` packages and must not import PC internal admin business internals.
-- PC internal admin UI `MUST` stay in `sdkwork-<product>-pc-admin-*` packages and must follow backend-domain split rules from `BACKEND_UI_SPEC.md`.
+- PC internal admin UI is `backend-admin`. It `MUST` stay in `sdkwork-<product>-pc-admin-*` packages and must follow backend-domain split rules from `BACKEND_UI_SPEC.md`.
 - Standalone backend/admin UI `MUST NOT` be mixed into app UI packages and must follow business-domain backend package split rules from `BACKEND_UI_SPEC.md`.
 
 ## 1.1 UI Architecture Selection
@@ -165,7 +167,7 @@ Rules:
 - Application-specific generated SDK constructors belong in runtime/bootstrap, not shared modules.
 - A module must not import a generated SDK package only to construct clients internally.
 - Appbase login/session service ports `MUST` name the login authority `appbaseApp` or `appbaseAppClient`, not a generic `appClient`, so product SDK clients cannot be mistaken for the IAM authority.
-- App-api/backend-api service modules `MUST` receive token-manager-aware SDK clients from bootstrap. They must not create independent token stores, refresh flows, or login clients.
+- App-api service modules and explicit `backend-admin` backend-api service modules `MUST` receive token-manager-aware SDK clients from bootstrap. They must not create independent token stores, refresh flows, or login clients.
 - Appbase current-user, login, registration, verification, OAuth, QR auth, password reset, refresh, current session, and logout calls `MUST` use appbase SDK resources or approved appbase wrappers.
 - Services that consume protected open-api SDKs `MUST` receive injected SDK clients and an approved API key credential provider from runtime/bootstrap. They `MUST NOT` receive raw API key strings from UI components or construct `X-API-Key` headers manually.
 - Frontend services MUST NOT generate requestId or xRequestId values, set `X-Request-Id`/`x-request-id`, or pass generated SDK `xRequestId` params. They may generate business `Idempotency-Key` values for retriable commands and must read returned `requestId` values from server responses when correlation is needed.
@@ -204,7 +206,7 @@ Rules:
 - Server state `SHOULD` be fetched through services and cached with a predictable query key strategy.
 - Query keys `SHOULD` include domain, resource, tenant/organization scope when safe, and stable parameters.
 - Auth/session state `MUST` react to token refresh, logout, tenant switch, and permission changes.
-- Auth/session state `MUST` clear according to `IAM_LOGIN_INTEGRATION_SPEC.md`: persisted session, app-api/backend-api SDK token managers, approved open-api credential provider state when present, realtime connections, sensitive caches, and native secure storage when present.
+- Auth/session state `MUST` clear according to `IAM_LOGIN_INTEGRATION_SPEC.md`: persisted session, app-api SDK token managers, explicit `backend-admin` backend-api SDK token managers, approved open-api credential provider state when present, realtime connections, sensitive caches, and native secure storage when present.
 - UI-only state may be local component state.
 - Sensitive state `MUST` be cleared on logout and tenant switch.
 - Media preview object URLs, drag/drop files, upload queue progress, retry counters, and presigned upload URLs are UI-only or service-local state. They must not be cached as persisted server state or submitted as business media identity.
@@ -255,7 +257,7 @@ Rules:
 
 - [ ] UI-service-SDK boundaries are respected.
 - [ ] SDK clients are injected.
-- [ ] Appbase IAM runtime and one global token manager are wired in runtime/bootstrap when authenticated app-api/backend-api SDK clients are used.
+- [ ] Appbase IAM runtime and one global token manager are wired in runtime/bootstrap when authenticated app-api SDK clients or explicit `backend-admin` backend-api SDK clients are used.
 - [ ] Architecture-specific SDK language and dependency SDK composition follow `APP_SDK_INTEGRATION_SPEC.md`.
 - [ ] No raw HTTP, manual auth headers, or manual API key headers exist in shared business modules.
 - [ ] Upload services use injected Drive app SDK `client.uploader.*`, supply required attribution/profile/retention metadata, and persist only Drive references or `MediaResource`.

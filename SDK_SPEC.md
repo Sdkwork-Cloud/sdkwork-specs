@@ -45,7 +45,7 @@ Rules:
 - Generated HTTP SDK output `MUST` retain the generator control plane written by `sdkgen`: `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and `custom/` for handwritten extensions.
 - Generated HTTP SDK output `.sdkwork/` is generator-owned and `MUST NOT` be used for repository/application skills, plugins, local workspace manifests, runtime files, or user-private data.
 - SDK ownership standard metadata `MUST NOT` be injected into generator-owned files under `generated/server-openapi`, including `sdkwork-sdk.json`, `package.json`, `sdk-manifest.json` when a legacy or product wrapper created one there, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, or generated source files such as `src/index.ts`.
-- Generated source files `MUST NOT` be post-processed with `sdkMetadata` fields such as `sdkOwner`, `apiAuthority`, `sdkFamily`, `generationInputSpec`, `sdkDependencies`, `ownerOnlyOperationCount`, `standardProfile`, or `standardVersion`. If a product needs runtime operation maps or family metadata, place that code in an approved `composed/` wrapper outside `generated/server-openapi`.
+- Generated source files `MUST NOT` be post-processed with `sdkMetadata` fields such as `sdkOwner`, `apiAuthority`, `sdkFamily`, `generationInputSpec`, `sdkDependencies`, `dependencyApiExports`, `dependencyApiSurfaces`, `ownerOnlyOperationCount`, `standardProfile`, or `standardVersion`. If a product needs runtime operation maps or family metadata, place that code in an approved `composed/` wrapper outside `generated/server-openapi`.
 - Repository or application ownership metadata belongs in SDK family files outside generated ownership, such as `.sdkwork-assembly.json`, `sdk-manifest.json` when present, `specs/component.spec.json`, and approved wrapper/composed package metadata outside `generated/server-openapi`.
 - Handwritten code belongs only in generator-scaffolded `custom/` roots or approved composed facade directories outside generated ownership. Generated-owned files `MUST NOT` be edited directly.
 - Missing HTTP SDK capability `MUST` be fixed by updating OpenAPI and the generator, then regenerating.
@@ -102,12 +102,13 @@ Rules:
   top-level `.sdkwork-assembly.json sdkDependencies` plus any per-surface `sdkDependencies`.
   Families with no dependencies `MUST` still declare `contracts.sdkDependencies: []`, so "no
   dependency" and "forgot to declare dependencies" remain machine-distinguishable.
-- `sdkDependencies`, `sdkOwner`, `apiAuthority`, `generationInputSpec`, standard profiles, and
-  owner-only operation counts `MUST NOT` be synced into generated `sdkwork-sdk.json`, generated
-  `package.json`, generated `sdk-manifest.json`, or generated source `sdkMetadata`. If a repository
-  needs a machine-readable family summary, write `sdk-manifest.json` at the SDK family root or use
-  `.sdkwork-assembly.json` / `specs/component.spec.json`; if runtime code needs an operation map or
-  composed metadata, write it under `composed/` outside `generated/server-openapi`.
+- `sdkDependencies`, `dependencyApiExports`, `dependencyApiSurfaces`, `sdkOwner`, `apiAuthority`,
+  `generationInputSpec`, standard profiles, and owner-only operation counts `MUST NOT` be synced
+  into generated `sdkwork-sdk.json`, generated `package.json`, generated `sdk-manifest.json`, or
+  generated source `sdkMetadata`. If a repository needs a machine-readable family summary, write
+  `sdk-manifest.json` at the SDK family root or use `.sdkwork-assembly.json` /
+  `specs/component.spec.json`; if runtime code needs an operation map or composed metadata, write it
+  under `composed/` outside `generated/server-openapi`.
 - If a family-root `sdk-manifest.json` exists, it `MUST` stay a mirror of the SDK family metadata,
   not a second source of truth. Its `sdkOwner`, `apiAuthority`, `sdkFamily`/`sdkName`,
   `generationInputSpec`, and explicit `sdkDependencies` array `MUST` match `.sdkwork-assembly.json`
@@ -135,8 +136,8 @@ Rules:
   and `sdkwork-appbase.app` as equivalent, but mismatched app/backend/open authorities are standards
   failures.
 - When two authorities use the same prefix, route ownership still belongs to the authority that
-  declares the route. The consuming SDK's materialized input `MUST` subtract dependency-owned routes
-  by normalized path template, and by method when ownership differs per method.
+  declares the route. The consuming SDK's derived generator input `MUST` subtract dependency-owned
+  routes by normalized path template, and by method when ownership differs per method.
 - Generated transport for a consuming SDK family `MUST NOT` import, vendor, re-export, or declare
   dependency SDK packages. Dependency SDK composition belongs in service bootstrap, runtime
   injection, or approved composed facades outside generated transport ownership.
@@ -163,10 +164,80 @@ Rules:
 
 ## 1.2 Dependency API Authority Export And Runtime Mount Boundaries
 
-`sdkDependencies` proves SDK generation ownership. It does not prove that the consuming
-application runtime serves the dependency API through the same origin. Runtime API composition needs
-its own explicit `dependencyApiSurfaces` declaration so consumers can distinguish dependency SDK
-imports from Rust backend route exports and actual mounted HTTP handler coverage.
+`sdkDependencies`, `dependencyApiExports`, and `dependencyApiSurfaces` describe different
+integration facts. They `MUST` stay separate so a new application can prove what it consumes, what
+it re-exposes, and what its runtime actually serves.
+
+Definitions:
+
+- `sdkDependencies` declares dependency SDK families consumed by a SDK family, component, facade, or
+  runtime. It proves SDK ownership and generation exclusion only.
+- `dependencyApiExports` declares dependency-owned API capabilities that a consuming component,
+  application core, or composed package intentionally exposes through its own public integration
+  surface. It is a package/composition export policy, not a generator input.
+- `dependencyApiSurfaces` declares runtime availability for dependency-owned HTTP API surfaces. It
+  proves whether a dependency SDK may use the consuming app's same-origin app/backend URL or must
+  use an explicit dependency base URL.
+- A common SDK base URL is a configured root, origin, or deployment path prefix from which bootstrap
+  derives open-api, app-api, backend-api, and dependency SDK surface URLs by appending each surface's
+  standard prefix. It is the recommended default for simple deployments, while per-surface and
+  per-SDK base URL overrides remain available for split services and dependency services.
+- backend-admin package boundaries are the only frontend/admin package boundaries that may import,
+  construct, or expose product backend SDK clients or appbase backend SDK clients. Route paths,
+  menu labels, and feature names are not SDK surface authority.
+
+Export policy:
+
+- The default dependency API export mode is `none`. When a SDK family, component, or application
+  root declares `sdkDependencies` but omits `dependencyApiExports`, the dependency APIs are consumed
+  only through their owning dependency SDKs and are not re-exported by the consuming component.
+- Authored SDK families and authored composed facades `MUST` record `dependencyApiExports` as an
+  explicit array in their family/component metadata. `dependencyApiExports: []` means no dependency
+  API capability is intentionally re-exposed by that family or facade.
+- A consuming SDK family's generated transport `MUST NOT` include dependency API methods, schemas,
+  namespaces, generated API classes, package imports, package exports, or documentation examples by
+  default. This remains true even when the consuming runtime mounts the dependency API same-origin.
+- Re-exposing dependency capabilities is allowed only outside `generated/server-openapi`, through an
+  approved composed wrapper, service facade, application core export, host adapter, or documented
+  runtime service port. The composed export must delegate to the dependency SDK client, dependency
+  service trait, or approved dependency runtime service; it must not regenerate or copy dependency
+  transport code.
+- Each `dependencyApiExports` entry `MUST` reference exactly one `sdkDependencies[].workspace`, its
+  SDK family, API authority, surface, and `apiPrefix` or `null`. Export entries that do not resolve
+  to a declared dependency SDK family are invalid.
+- Each `dependencyApiExports` entry `MUST` declare `exportMode`, `visibility`, `methods` or an
+  approved `methodSelector`, `packageExport` or service port name when code is exported, and
+  `runtimeRequired` when the exported capability needs the consuming runtime to serve or proxy the
+  dependency API.
+- Allowed `exportMode` values are:
+  - `none`: explicit no-export record for a dependency surface.
+  - `dependency-sdk`: consumers import or receive the dependency SDK client directly; the current
+    package may document injection but does not re-export dependency methods.
+  - `composed-wrapper`: the current package exports a stable facade that delegates to the dependency
+    SDK or approved service trait outside generated transport ownership.
+  - `service-port`: the current component exposes a typed runtime/service port backed by dependency
+    implementation, not an HTTP generated SDK merge.
+  - `documentation-only`: documentation lists required dependency SDK wiring but no code symbol is
+    exported.
+- `generated-merge` and any mode that copies dependency-owned operations into the consuming
+  generated SDK are forbidden unless a governance-approved migration exception names the owner,
+  compatibility window, removal plan, and validation that no duplicate long-term SDK authority is
+  created.
+- `dependencyApiExports` is not runtime mount proof. An export with `runtimeRequired: true` `MUST`
+  also have matching `dependencyApiSurfaces` evidence or an explicit dependency SDK base URL
+  requirement. Otherwise integration checks must fail before users encounter backend `502` or `404`
+  responses.
+- Application shell or "left-side" integration configuration may let an app choose which dependency
+  API capabilities are exposed to a package, plugin, or UI surface. That configuration `MUST`
+  materialize as `dependencyApiExports` and `dependencyApiSurfaces`; UI menu visibility, route
+  metadata, or feature flags alone do not authorize dependency API export.
+
+Runtime policy:
+
+`sdkDependencies` proves SDK generation ownership. It does not prove that the consuming application
+runtime serves the dependency API through the same origin. Runtime API composition needs its own
+explicit `dependencyApiSurfaces` declaration so consumers can distinguish dependency SDK imports
+from Rust backend route exports and actual mounted HTTP handler coverage.
 
 Rules:
 
@@ -183,23 +254,37 @@ Rules:
   not an executable router. A same-process runtime may use those artifacts for coverage checks, but
   it still needs an executable router, controller, service adapter, or approved handler export before
   a dependency API is treated as mounted.
-- Dependency SDK base URLs may use a product application's same-origin app/backend default only
+- Dependency SDK base URLs may use a configured common SDK base URL when that root is documented as
+  a gateway serving the dependency surface. They may use a product application's same-origin
+  app/backend default only
   when `dependencyApiSurfaces` declares `same-origin` runtime mode and mount coverage has verified
   every dependency-owned method/path the SDK can call on that surface.
 - When mount coverage is not verified, dependency SDK clients `MUST` use an explicit dependency SDK
-  base URL keyed by SDK family or dependency app code and `MUST` fail fast when that base URL is
-  missing. They `MUST NOT` silently inherit the product app SDK or backend SDK base URL.
-- Backend/admin dependency SDKs, especially appbase IAM backend management, `MUST NOT` default to a
+  base URL keyed by SDK family or dependency app code, or a configured common SDK base URL that is
+  declared to serve that dependency surface, and `MUST` fail fast when neither is available.
+  Dependency SDK clients MUST NOT silently inherit the product app SDK or backend SDK base URL.
+- `backend-admin` dependency SDKs, especially appbase IAM backend management, `MUST NOT` default to a
   product `/backend/v3/api` base URL unless the product runtime has verified the dependency backend
   executable router coverage. This prevents false positives where SDK generation is correct but the
-  running backend returns 404 for dependency-owned management routes.
+  running backend returns 404 for dependency-owned management routes. They `MAY` use a common SDK
+  base URL only when that root is explicitly configured as a gateway that serves the dependency
+  backend API surface.
 - A consuming SDK family may document dependency package names for composed wrappers and bootstrap,
   but generated transport `MUST NOT` import or re-export dependency SDKs. Runtime composition owns
   dependency SDK client construction; generated transport remains owner-only.
 - Standards checks `MUST` compare `sdkDependencies` against `dependencyApiSurfaces` and fail when a
   dependency SDK has no runtime integration declaration, when a same-origin declaration lacks mount
   coverage evidence, or when an external-service declaration still falls back to a product-owned
-  base URL.
+  base URL. A configured common SDK base URL counts only when the runtime contract states that the
+  common root serves that dependency surface.
+- Standards checks `MUST` compare `dependencyApiExports` against `sdkDependencies` and
+  `dependencyApiSurfaces`. They must fail when an exported dependency capability is not declared as
+  a dependency SDK, when its `exportMode` is not one of the allowed values, when a
+  `composed-wrapper` or `service-port` has no public export symbol, or when a runtime-required
+  export lacks either same-origin mount evidence or dependency-specific base URL configuration.
+- Standards checks `MUST` fail when a generated SDK method surface expands merely because a
+  dependency API export was enabled. Enabling `dependencyApiExports` changes authored composition
+  exports only; it does not change owner-only generated transport.
 
 ## 2. Package Naming
 
@@ -259,7 +344,7 @@ Rules:
 - `sdkwork-appbase` owns the standard reusable appbase app/backend SDK families: `sdkwork-appbase-app-sdk` generated from `sdkwork-appbase-app-api` and `sdkwork-appbase-backend-sdk` generated from `sdkwork-appbase-backend-api`.
 - Applications that consume appbase API capabilities `MUST` integrate those generated SDKs or approved composed wrappers. They `MUST NOT` create app-local raw HTTP clients, local SDK forks, or duplicate appbase OpenAPI authority files for the same capabilities.
 - Independent `apps/` repositories with Rust local/private, Tauri, or native Rust runtime code
-  `MUST` list `sdkwork-appbase-app-sdk` and, when backend/admin capabilities are used,
+  `MUST` list `sdkwork-appbase-app-sdk` and, when `backend-admin` capabilities are used,
   `sdkwork-appbase-backend-sdk` as SDK dependencies. Their Rust manifests must also declare the
   required appbase Rust crates instead of reimplementing appbase request context, token validation,
   session restoration, workspace/bootstrap, or IAM helper logic locally.
@@ -310,9 +395,13 @@ Rules:
 - Frontend service modules `MUST` set tokens or API keys through SDK credential APIs, not manual headers.
 - IAM login/session token wiring `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`: the appbase auth runtime, `@sdkwork/appbase-app-sdk`, and one global token manager own token injection, route guards, refresh, logout, and session clearing.
 - Appbase login, registration, session validation, current-session retrieval/update/delete, refresh, OAuth, QR auth, password reset, verification-code operations, runtime metadata, and current-user self-service `MUST` use `@sdkwork/appbase-app-sdk` generated from `sdkwork-appbase-app-api`.
-- Appbase backend/admin IAM management operations `MUST` use `@sdkwork/appbase-backend-sdk` generated from `sdkwork-appbase-backend-api`; backend SDKs `MUST NOT` expose or own user-facing login/session creation.
-- Every application runtime `MUST` create exactly one global `TokenManager` per authenticated session context and pass that same instance to `@sdkwork/appbase-app-sdk`, `@sdkwork/appbase-backend-sdk`, every product app/backend SDK, and every dependency app/backend SDK that participates in authenticated dual-token calls.
-- Application bootstrap `MUST` classify every consumed SDK before service construction: authenticated app-api/backend-api SDKs join the single TokenManager closure; protected open-api SDKs with API key mode use a separate API key credential provider; public SDKs receive no credentials; local/native adapters stay outside HTTP credential injection.
+- Appbase app-side IAM directory resources that are visible to authenticated application users `MUST` remain app SDK capabilities. This includes organization, department, membership, assignment, position, role-binding, and tree read/list resources used for contacts, address books, workspace selection, and customer-owned management views. They `MUST` be exported through `@sdkwork/appbase-app-sdk` or an approved app SDK wrapper when the frontend app needs them; they `MUST NOT` be removed from the app SDK merely because appbase backend SDK also owns administrator IAM management resources.
+- Appbase `backend-admin` IAM management operations `MUST` use `@sdkwork/appbase-backend-sdk` generated from `sdkwork-appbase-backend-api`; backend SDKs `MUST NOT` expose or own user-facing login/session creation.
+- Backend SDKs and appbase backend SDK wrappers are `backend-admin` surfaces. `backend-admin` means admin-only backend/API/SDK use for internal staff, operators, support, auditors, platform administrators, or trusted backend services acting for those admin workflows. They `MUST` be exported only from `backend-admin` package boundaries such as backend service modules, backend-core packages, standalone backend/admin UI core packages, or PC `pc-admin-core` SDK subpaths. App packages, user-facing console packages, frontend app core packages, and app auth runtime public exports `MUST NOT` expose backend SDK wrapper functions, backend SDK generated packages, backend base URL resolvers, or appbase backend SDK clients.
+- Except for explicit `backend-admin` package or service boundaries, SDKWork application consumers `MUST` use the generated app SDK family or an approved app SDK wrapper for SDKWork remote capabilities. Non-admin modules `MUST NOT` import, export, construct, wrap, re-export, proxy, or indirectly call backend SDK clients, appbase backend SDK clients, backend SDK wrapper functions, backend generated SDK packages, or backend base URL resolvers.
+- Application and frontend core packages that compose SDK clients `MUST` continue to export the product app SDK and required dependency app SDK wrappers for app integration, including appbase app SDK wrappers. Fixing backend SDK leakage by deleting app SDK exports is forbidden. If a user-facing app or console workflow needs a missing method, add the method to the owning app-api/app SDK or move the workflow to a `backend-admin` surface; do not route the workflow through backend SDK from a non-admin module.
+- Every application runtime `MUST` create exactly one global `TokenManager` per authenticated session context and pass that same instance to `@sdkwork/appbase-app-sdk`, every product/dependency app SDK, and only those appbase backend SDK, product backend SDK, or dependency backend SDK clients that are present in an explicit `backend-admin` authenticated SDK inventory.
+- Application bootstrap `MUST` classify every consumed SDK before service construction: authenticated app-api SDKs and explicit `backend-admin` backend-api SDKs join the single TokenManager closure; protected open-api SDKs with API key mode use a separate API key credential provider; public SDKs receive no credentials; local/native adapters stay outside HTTP credential injection.
 - Other app-api SDKs and backend-api SDKs `MUST NOT` accept a separate login client, parse auth/access tokens, persist login state, refresh tokens independently, expose app-local session stores, or create their own `TokenManager`. They only receive the global `TokenManager` and use it for request auth headers.
 - Login, registration, OAuth session creation, refresh, current-session retrieval/update, and session restoration `MUST` update the global token manager, central session store, and context store through the ordered appbase IAM runtime lifecycle. The standard commit order is: validate the appbase session payload, persist normalized tokens in the central session store, write returned AppContext or clear stale AppContext, then sync the global token manager. Token persistence failure `MUST NOT` expose new in-memory tokens; context propagation failure `MUST` roll back token/context stores and clear the global token manager.
 - New appbase session flows such as login, registration, and OAuth session creation `MUST` replace the stored token set and `MUST NOT` inherit an old `refreshToken` when appbase does not return one. Current-session retrieval/update and refresh continuation may preserve the current stored `refreshToken` only when appbase returns rotated `authToken`/`accessToken` without a new `refreshToken`.
@@ -343,22 +432,26 @@ Rules:
 ```ts
 export interface AppbaseIamRuntimeClients {
   appbaseApp: AppbaseAppSdkClient;
+  // Only `backend-admin` runtimes may provide appbaseBackend.
   appbaseBackend?: AppbaseBackendSdkClient;
   sdkClients?: TokenManagerAwareSdkClient[];
 }
 
 const tokenManager = createTokenManager();
 const apiKeyProvider = createApiKeyProvider();
+const isBackendAdminRuntime = classifyRuntimeSurface(config) === "backend-admin";
+const backendAdminSdkClients = isBackendAdminRuntime
+  ? [productBackendSdk, dependencyBackendSdk]
+  : [];
 
 const runtime = createIamRuntime({
   clients: {
     appbaseApp,
-    appbaseBackend,
+    appbaseBackend: isBackendAdminRuntime ? appbaseBackend : undefined,
     sdkClients: [
       productAppSdk,
-      productBackendSdk,
       dependencyAppSdk,
-      dependencyBackendSdk,
+      ...backendAdminSdkClients,
     ],
   },
   config,
@@ -377,8 +470,8 @@ Rules:
 - UI packages receive services or service providers.
 - Service packages receive generated SDK clients or approved adapters with standard resource-style surfaces.
 - Appbase IAM service/runtime packages name the login authority `appbaseAppClient` or `appbaseApp`, not generic `appClient`, so product SDKs cannot be confused with the login/session authority.
-- Appbase app/backend SDK clients participate in the app login TokenManager through `clients.appbaseApp`, optional `clients.appbaseBackend`, or the language-equivalent appbase client slots. Downstream product/dependency app/backend SDK clients and approved composed wrappers participate through `clients.sdkClients` or the language-equivalent token-manager-aware SDK list for the same authenticated session context. Open-api SDK clients that declare API key security participate in a separate API key credential provider and `MUST NOT` be placed in TokenManager-only SDK client lists.
-- Bootstrap code constructs generated clients for development, test, production, SaaS, private, or local mode. It injects the global `TokenManager` into every authenticated app-api/backend-api SDK client, and injects API key credentials into protected open-api SDK clients through a separate provider when their contract declares API key mode.
+- Appbase app SDK clients participate in the app login TokenManager through `clients.appbaseApp` or the language-equivalent appbase client slot. Appbase backend SDK clients participate only through an explicit `backend-admin` `clients.appbaseBackend` slot. Downstream product/dependency app SDK clients, explicit `backend-admin` backend SDK clients, and approved composed wrappers participate through `clients.sdkClients` or the language-equivalent token-manager-aware SDK list for the same authenticated session context. Open-api SDK clients that declare API key security participate in a separate API key credential provider and `MUST NOT` be placed in TokenManager-only SDK client lists.
+- Bootstrap code constructs generated clients for development, test, production, SaaS, private, or local mode. It injects the global `TokenManager` into every authenticated app-api SDK client and explicit `backend-admin` backend-api SDK client, and injects API key credentials into protected open-api SDK clients through a separate provider when their contract declares API key mode.
 - Bootstrap code may vary by application, generated SDK constructor, deployment mode, auth provider, and host runtime. The injected service-facing client surface `MUST NOT` vary.
 - Test code may provide fake SDK clients that implement the same resource surface.
 - Reusable frontend modules follow `FRONTEND_SPEC.md`: UI calls services, services call injected SDK clients.
@@ -417,7 +510,7 @@ Rules:
 
 - Frontend and app service modules `MUST` use `sdkwork-drive-app-sdk client.uploader.*` for client uploads, and Drive app SDK methods for node metadata and download grants.
 - Server-side Rust upload modules `MUST` use the Drive product Rust uploader component, such as `DriveUploaderService`, `PrepareUploaderUploadCommand`, or an approved `sdkwork_drive_product::uploader` facade, rather than product-local SDK forks or HTTP calls to Drive App API from the same trusted backend.
-- Backend/admin modules `MUST` use Drive backend SDK methods for storage providers, policies, quota, reconciliation, and diagnostics.
+- `backend-admin` modules `MUST` use Drive backend SDK methods for storage providers, policies, quota, reconciliation, and diagnostics.
 - Business SDK packages such as IM, commerce, app manifest, user profile, and AI workflow SDKs should expose attachment commands that accept Drive references or `MediaResource`, not raw files, upload sessions, presign URLs, provider URLs, buckets, object keys, or upload parts.
 - Consumers `MUST NOT` use raw `fetch`, `axios`, direct S3/OSS/MinIO SDKs, manual auth headers, local OpenAPI forks, app-local upload counters, or product-local upload endpoints to bypass missing Drive SDK methods.
 - Upload-capable applications `MUST` declare Drive app SDK as a dependency SDK and keep Drive uploader operations out of product-owned SDK authority generation.
@@ -434,7 +527,7 @@ Rules:
 - Frontend components should depend on service contracts, not generated SDK constructors.
 - App PC React, H5 mobile React, Flutter, mini program, Android native, iOS native, and Harmony native UI packages `MUST` use app SDK clients for user-facing capabilities and follow `UI_ARCHITECTURE_SPEC.md` plus the matching root architecture standard and detailed UI/package standard.
 - Appbase current-user profile and self-service facades `MUST` depend on generated `appbaseApp.iam.users.current.*` resources. If update or password-change resources are missing, fix `sdkwork-appbase-app-api`, OpenAPI, and generated SDKs for every supported language before integrating editable UI.
-- Backend/admin UI packages `MUST` use backend SDK clients for operator capabilities and follow `UI_ARCHITECTURE_SPEC.md` plus the package split rules in `BACKEND_UI_SPEC.md`.
+- `backend-admin` UI packages `MUST` use backend SDK clients for operator capabilities and follow `UI_ARCHITECTURE_SPEC.md` plus the package split rules in `BACKEND_UI_SPEC.md`.
 - UI architecture packages `MUST NOT` bridge a missing SDK method with raw HTTP; fix the owning API contract and regenerate the SDK.
 
 ## 8. SDK Verification
@@ -445,7 +538,7 @@ Every SDK generation flow `MUST` verify:
 - [ ] HTTP SDK generation uses `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`. `sdkwork-code-generator` is only an alias/wrapper name for that canonical `sdkgen.js` entrypoint; copied generator code, local stubs, ad hoc OpenAPI client tools, and independent `sdkwork-code-generator` implementations are forbidden.
 - [ ] Generation manifest or README records generator package, canonical path or resolved package location, generator version or commit, command, input, output, language, SDK type, `--sdk-name`, package name, and standard profile.
 - [ ] Generated output retains `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and the regeneration-safe `custom/` root.
-- [ ] Generated `sdkwork-sdk.json`, generated `package.json`, generated `sdk-manifest.json` when present, and generated source files remain canonical generator output and do not carry `sdkOwner`, `apiAuthority`, `sdkFamily`, `generationInputSpec`, `sdkDependencies`, `ownerOnlyOperationCount`, `standardProfile`, `standardVersion`, or `sdkwork` ownership metadata blocks.
+- [ ] Generated `sdkwork-sdk.json`, generated `package.json`, generated `sdk-manifest.json` when present, and generated source files remain canonical generator output and do not carry `sdkOwner`, `apiAuthority`, `sdkFamily`, `generationInputSpec`, `sdkDependencies`, `dependencyApiExports`, `dependencyApiSurfaces`, `ownerOnlyOperationCount`, `standardProfile`, `standardVersion`, or `sdkwork` ownership metadata blocks.
 - [ ] Every directory with `openapi/*.sdkgen.{json,yaml,yml}` has `.sdkwork-assembly.json`; the global ownership checker reports no `SDK_ASSEMBLY_MISSING` failures.
 - [ ] Every SDK family with `generated/server-openapi` output has `.sdkwork-assembly.json`; the global ownership checker reports no `SDK_GENERATED_OUTPUT_ASSEMBLY_MISSING` failures.
 - [ ] Every authored SDK family has family-root `specs/component.spec.json`, and
@@ -458,6 +551,15 @@ Every SDK generation flow `MUST` verify:
 - [ ] Every declared `sdkDependencies[].workspace` resolves to exactly one discoverable SDK family in
   the same global ownership check, is unique within its dependency list, and declared owner,
   authority, authority spec, and API prefix values match that dependency family.
+- [ ] Every authored SDK family and composed facade declares `dependencyApiExports` explicitly,
+  including `[]` when no dependency API capability is re-exported.
+- [ ] Every `dependencyApiExports` entry references a declared `sdkDependencies[].workspace`, uses an
+  allowed `exportMode`, and exports code only through `composed/`, service ports, application core,
+  or other approved authored boundaries outside `generated/server-openapi`.
+- [ ] Generated SDK method surfaces remain owner-only after dependency API export configuration is
+  enabled; dependency capabilities appear only in the dependency SDK or approved authored facade.
+- [ ] Runtime-required dependency API exports have matching `dependencyApiSurfaces` evidence or an
+  explicit dependency SDK base URL requirement so missing mounts fail before runtime `502` or `404`.
 - [ ] Generated transport output, generated documentation, generated manifests, and generated package/build metadata do not reference package names declared in `sdkDependencies[].packageByLanguage`.
 - [ ] SDK family names, API authority names, generated package names, generated metadata, and generator `--sdk-name` values follow this document's canonical SDK/API naming model.
 - [ ] Rust route crate names, when present, follow `sdkwork-routes-<capability>-open-api`,
@@ -476,7 +578,7 @@ Every SDK generation flow `MUST` verify:
 - [ ] Generated README examples use intended resource-style calls.
 - [ ] Generated method surface includes nested resources from dotted operationIds.
 - [ ] Auth headers are generated correctly.
-- [ ] App-api/backend-api SDK examples use the single application `TokenManager` shared by appbase, product, and dependency SDK clients, while protected open-api SDK examples use API key credential providers and do not reuse app login tokens.
+- [ ] App-api SDK examples and explicit `backend-admin` backend-api SDK examples use the single application `TokenManager` shared by appbase, product, and dependency SDK clients, while protected open-api SDK examples use API key credential providers and do not reuse app login tokens.
 - [ ] Problem-detail errors map to SDK error metadata.
 - [ ] No raw HTTP fallback is introduced in consumers.
 - [ ] Service facade tests can swap app SDK, backend SDK, fake clients, and local/private clients without changing UI code.
@@ -491,7 +593,7 @@ Rules:
 - Generated RPC clients `MUST` support metadata injection for `authorization`, `access-token`, `traceparent`, `idempotency-key`, and `x-request-hash`; request correlation ids remain server-owned and must not be client-injected as `x-request-id`.
 - Generated RPC clients `SHOULD` expose deadlines, cancellation, retry policy, and typed status/error details.
 - RPC clients `MUST NOT` be wrapped with raw HTTP fallbacks for missing methods.
-- Frontend UI packages SHOULD continue to use generated HTTP app/backend SDKs unless the product explicitly enables gRPC-Web and documents the browser transport policy.
+- Frontend app UI packages SHOULD continue to use generated HTTP app SDKs, and `backend-admin` UI packages SHOULD continue to use generated HTTP backend SDKs, unless the product explicitly enables gRPC-Web and documents the browser transport policy.
 - Backend services, private deployments, local hosts, CLI tools, and cross-language integrations MAY consume RPC SDKs directly.
 - RPC SDK package versions `MUST` be traceable to proto source version, generator version, and RPC manifest version.
 

@@ -124,7 +124,8 @@ Examples:
 Rules:
 
 - Client application root packages `MUST` include the architecture segment required by `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` and the matching root architecture standard.
-- PC packages use kebab-case names under `sdkwork-<product>-pc-*`, with `pc-console` and `pc-admin` reserved for user-facing console and company-internal admin surfaces.
+- PC packages use kebab-case names under `sdkwork-<product>-pc-*`, with `pc-console` reserved for user-facing console surfaces and `pc-admin` reserved for `backend-admin` company-internal admin surfaces.
+- `backend-admin` is the canonical surface term for admin-only backend UI, backend SDK, and backend API consumption by internal staff, operators, support, auditors, platform administrators, or trusted backend services acting for those workflows. `pc-admin-*` packages map to `backend-admin`; `pc-console-*`, app packages, app auth runtime packages, and shared frontend core packages do not.
 - H5/Capacitor packages use kebab-case names under `sdkwork-<product>-h5-mobile-*`; the Capacitor host package is exactly `sdkwork-<product>-h5-mobile-capacitor`.
 - Flutter mobile packages use Dart lower snake case names under `sdkwork_<product>_flutter_mobile_*`; do not publish Flutter app-root packages with hyphenated Dart package names.
 - Mini program source packages use kebab-case names under `sdkwork-<product>-mp-*`; shared mini program packages use `sdkwork-<capability>-mini-program`; platform subpackages, pages, and platform config files must not replace SDKWork source package naming.

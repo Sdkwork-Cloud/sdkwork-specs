@@ -42,7 +42,7 @@ Rules:
 | `feature` | Integrated pages/hooks using services and UI | transport configuration |
 | `runtime` | Providers, bootstrap, storage adapters, host adapters | domain invariants |
 | `host` | browser/mobile/native/runtime boundary | API business logic |
-| `backend-domain-ui` | Backend/admin domain pages, route/menu metadata, operator services using backend SDK | app/user-facing UI, app SDK calls, backend SDK construction |
+| `backend-domain-ui` | `backend-admin` domain pages, route/menu metadata, operator services using backend SDK | app/user-facing UI, app SDK calls, backend SDK construction |
 | `pc-console-ui` | User-facing PC management console pages, route metadata, console services using app SDKs | company-internal admin workflows, backend-only operation center behavior |
 | `pc-admin-ui` | Company-internal PC admin pages, route/menu metadata, internal operator services using backend SDKs | app/user-facing UI, user console workflows, app SDK login/session creation |
 | `client-app-ui` | Client app-root packages aligned by core, commons, shell, capability, console/admin, and host roles | cross-architecture UI imports, hidden SDK constructors, platform globals |
@@ -147,11 +147,16 @@ Rules:
 IAM example:
 
 ```ts
+const isBackendAdminRuntime = classifyRuntimeSurface(config) === "backend-admin";
+
 createIamRuntime({
   clients: {
     appbaseApp,
-    appbaseBackend,
-    sdkClients: [productAppSdk, productBackendSdk],
+    appbaseBackend: isBackendAdminRuntime ? appbaseBackend : undefined,
+    sdkClients: [
+      productAppSdk,
+      ...(isBackendAdminRuntime ? [productBackendSdk] : []),
+    ],
   },
   config: {
     appId: "sdkwork-router",
@@ -187,9 +192,9 @@ Deprecated `openchat` sources `MUST NOT` be used for new appbase modules.
 Rules:
 
 - A UI module `MUST` choose the architecture package family through `UI_ARCHITECTURE_SPEC.md` before implementation.
-- App-side and PC user console UI modules consume app SDK surfaces; PC internal admin and standalone backend/admin UI modules consume backend SDK surfaces.
+- App-side and PC user console UI modules consume app SDK surfaces; PC internal admin and standalone backend/admin UI modules are `backend-admin` modules and consume backend SDK surfaces.
 - Modules for different UI architectures may share contracts, generated SDK surfaces, service concepts, route ids, i18n keys, and design tokens, but must not import each other's UI components, routes, platform pages, widgets, or host implementations.
-- PC internal admin and standalone backend/admin modules must not be consolidated into a single backend business package. Split them by business domain, capability, and permission prefix.
+- PC internal admin and standalone backend React modules are `backend-admin` modules and must not be consolidated into a single backend business package. Split them by business domain, capability, and permission prefix.
 - Catch-all backend/admin packages are forbidden for business pages, business services, repositories, route records, menu records, permission constants, and domain i18n.
 
 ## 6. Extension Points

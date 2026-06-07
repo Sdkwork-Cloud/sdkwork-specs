@@ -4,7 +4,7 @@
 - Scope: app/user-facing Android native packages, Jetpack Compose or Android View UI, generated Kotlin/Java app SDK integration, Android host adapters, mobile interaction, and package-local state
 - Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side Android native UI is packaged and integrated. In application roots it is applied after `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed Android native package standard. Android UI packages are app/user-facing and consume app-api through generated Kotlin/Java app SDK clients or approved appbase Android wrappers. They must not consume backend/admin UI packages or backend SDKs for user-facing workflows.
+This standard defines how SDKWork app-side Android native UI is packaged and integrated. In application roots it is applied after `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed Android native package standard. Android UI packages are app/user-facing and consume app-api through generated Kotlin/Java app SDK clients or approved appbase Android wrappers. They must not consume `backend-admin` UI packages or backend SDKs for user-facing workflows.
 
 This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing Android native packages.
 
@@ -39,7 +39,7 @@ Rules:
 - Android app UI `MUST` live in normalized Android application packages such as `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>` or approved shared Android package families such as `packages/android-native/<domain>/<package>`.
 - Android app UI `MUST` consume `/app/v3/api` through generated Kotlin/Java app SDK clients or approved wrappers.
 - Android app UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, Flutter packages, iOS packages, or Harmony packages for user-facing workflows.
-- Operator/admin screens require a separately approved Android admin package family and must follow backend-api and backend SDK rules.
+- Operator/admin screens require a separately approved Android admin package family classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
 - Android framework and platform APIs such as camera, biometric, secure storage, push, intents, app links, files, and lifecycle `MUST` go through typed host adapters.
 
 ## 2. Package Split

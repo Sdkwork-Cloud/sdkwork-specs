@@ -4,7 +4,7 @@
 - Scope: app/user-facing PC React packages, PC browser/desktop/tablet renderer UI packages, appbase PC modules, service-to-app-SDK integration
 - Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `COMPONENT_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side PC React UI is packaged and integrated. PC React app UI is user-facing product UI. It must be independent from backend/admin UI packages and must consume app API capabilities through the generated app SDK or approved appbase wrappers.
+This standard defines how SDKWork app-side PC React UI is packaged and integrated. PC React app UI is user-facing product UI. It must be independent from `backend-admin` UI packages and must consume app API capabilities through the generated app SDK or approved appbase wrappers.
 
 For a complete PC browser/desktop/tablet application root, first apply `APP_PC_ARCHITECTURE_SPEC.md`. That standard owns `apps/<product>-pc/`, normalized package names such as `sdkwork-<product>-pc-<capability>`, user-facing console package names such as `sdkwork-<product>-pc-console-<capability>`, company-internal admin package names such as `sdkwork-<product>-pc-admin-<capability>`, and the shared web/desktop/tablet renderer boundary. This file owns the detailed app-side React UI rules inside those packages.
 
@@ -41,7 +41,7 @@ apps/sdkwork-appbase/
 | --- | --- | --- | --- | --- |
 | App PC React UI | `sdkwork-<capability>-pc-react` or `sdkwork-<product>-pc-<capability>` | `/app/v3/api` | `legacy-java-plus-app-api` generated SDK | end users and app users |
 | PC user console React UI | `sdkwork-<product>-pc-console-<capability>` | `/app/v3/api` or approved console-facing app SDK surface | generated app SDK or approved appbase wrapper | customers, tenants, app owners, business users managing their own resources |
-| Backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | `legacy-java-plus-backend-api` generated SDK | admins and operators |
+| Backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | `legacy-java-plus-backend-api` generated SDK for `backend-admin` | admins and operators |
 
 Rules:
 
@@ -51,8 +51,9 @@ Rules:
 - PC user console modules `MUST` be named `sdkwork-<product>-pc-console-<capability>` and must not be treated as company-internal admin modules.
 - App PC React services `MUST` consume `/app/v3/api` through generated app SDK clients or approved appbase service wrappers.
 - App PC React UI `MUST NOT` call backend-api or backend SDK for user-facing workflows.
+- App PC React packages and PC user console packages are non-admin unless their package boundary is explicitly `backend-admin`. They `MUST` use generated app SDK clients or approved app SDK wrappers and `MUST NOT` import, export, construct, proxy, or route through backend SDK clients, appbase backend SDK clients, backend wrapper functions, backend generated SDK packages, or backend base URL resolvers.
 - Login, registration, sessions, OAuth, password reset, QR login, current user flows, and messaging-owned verification-code delivery belong to app UI and app-api.
-- Operator-only resource management, tenant administration, platform settings, and audit consoles belong to backend UI.
+- Operator-only resource management, tenant administration, platform settings, and audit consoles belong to `backend-admin` backend UI.
 
 ## 2. Package Split
 
@@ -114,10 +115,13 @@ Rules:
 Rules:
 
 - Services `MUST` accept app SDK clients or narrow SDK port interfaces.
-- Runtime/bootstrap `MUST` construct generated TypeScript app SDK clients, appbase app/backend SDK clients when used, one global token manager, appbase IAM runtime, and product service providers.
+- Runtime/bootstrap `MUST` construct generated TypeScript app SDK clients, appbase app SDK clients, one global token manager, appbase IAM runtime, and product service providers. It may construct appbase backend SDK clients only inside a `backend-admin` runtime boundary.
 - The PC React IAM runtime `MUST` use `@sdkwork/iam-runtime` / `@sdkwork/iam-react` or an approved wrapper with the same `createIamRuntime` semantics.
-- `appbaseApp`, optional `appbaseBackend`, and downstream product app-api/backend-api SDK clients `MUST` share the same global token manager through `setTokenManager` or equivalent generated SDK credential APIs.
+- `appbaseApp`, optional `backend-admin` `appbaseBackend`, downstream product app-api SDK clients, and explicit `backend-admin` backend-api SDK clients `MUST` share the same global token manager through `setTokenManager` or equivalent generated SDK credential APIs.
 - Login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user profile reads `MUST` use `@sdkwork/appbase-app-sdk` resources or appbase PC React auth wrappers built on those resources. Verification-code delivery and verification `MUST` use the generated messaging app SDK surface or an appbase auth wrapper that delegates to an injected messaging client.
+- Contacts, address books, workspace navigation, organization trees, department trees, memberships, assignments, positions, and role-binding read views in app PC React or PC user console packages `MUST` use appbase app SDK resources or approved app SDK wrappers. They `MUST NOT` use appbase backend SDK, product backend SDK, backend wrapper functions, or backend base URL resolvers.
+- App/user-facing PC React core exports `MUST` keep product app SDK and appbase app SDK wrappers available to frontend app integration. Removing app SDK exports to avoid backend SDK leakage is forbidden; move backend wrappers to a `backend-admin` export boundary instead.
+- Backend SDK and appbase backend SDK wrappers may be constructed only by `backend-admin` packages or their admin-core providers. App auth runtime and user-facing app/console packages `MUST NOT` construct them.
 - Product PC React packages `MUST NOT` create local auth SDK ports such as `auth.login`, `auth.refreshToken`, `auth.register`, `user.getUserProfile`, or user-center session clients when the standard appbase resource exists.
 - UI components `MUST NOT` construct SDK clients, call raw HTTP, manually attach auth/API key headers, or parse JWTs for authorization.
 - Missing app SDK methods `MUST` be fixed in `legacy-java-plus-app-api`, OpenAPI, and generator inputs before integration.

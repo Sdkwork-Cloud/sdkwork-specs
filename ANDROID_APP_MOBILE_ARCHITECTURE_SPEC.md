@@ -137,7 +137,7 @@ Rules:
 Rules:
 
 - New Android packages `MUST` be split by domain/capability and must not become catch-all mobile business modules.
-- Console and admin package families are optional. Mobile admin packages require explicit product approval and backend SDK boundary verification.
+- Console and admin package families are optional. Mobile admin packages require explicit product approval, `backend-admin` surface classification, and backend SDK boundary verification.
 - Shared UI primitives remain domain-neutral unless they live inside the owning capability package.
 - Android packages may share route ids, i18n keys, design tokens, SDK port contracts, and service contracts with other client roots, but must not import another architecture's UI/runtime implementation.
 
@@ -210,9 +210,9 @@ Rules:
 Rules:
 
 - Android app packages `MUST` consume `/app/v3/api` through generated Kotlin/Java app SDK clients or approved Android appbase wrappers.
-- Android admin packages, when approved, `MUST` consume `/backend/v3/api` through generated Kotlin/Java backend SDK clients or approved backend wrappers.
+- Android admin packages, when approved as `backend-admin` surfaces, `MUST` consume `/backend/v3/api` through generated Kotlin/Java backend SDK clients or approved backend wrappers.
 - Runtime/bootstrap `MUST` construct generated Kotlin/Java SDK clients, appbase SDK clients or wrappers, a global token-manager equivalent, token/context stores, and Android host adapters before feature services are initialized.
-- The global token-manager equivalent must be shared by appbase app SDK, optional appbase backend SDK, and every authenticated product or dependency app-api/backend-api SDK client.
+- The global token-manager equivalent must be shared by appbase app SDK, every authenticated product/dependency app-api SDK client, and explicit `backend-admin` appbase backend/product backend/dependency backend SDK clients.
 - Missing Kotlin/Java SDK methods must be fixed in OpenAPI/generator inputs and regenerated. Android packages must not fill gaps with raw OkHttp/Retrofit calls, manual headers, copied TypeScript/Flutter wrappers, or local DTO forks.
 - Logout and refresh failure must clear secure platform storage, token manager, context store, sensitive Android state, and realtime/session bridges.
 

@@ -4,7 +4,7 @@
 - Scope: app/user-facing mini program UI packages, source pages/components, route projection inputs, generated app SDK integration, mini program host adapters, and package-size-aware interaction rules
 - Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side mini program UI is packaged and integrated. In application roots it is applied after `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed mini program package standard. Mini program UI packages are user-facing and consume app-api through generated TypeScript app SDK clients or approved appbase mini program wrappers. They must not consume backend/admin UI packages or backend SDKs for user-facing workflows.
+This standard defines how SDKWork app-side mini program UI is packaged and integrated. In application roots it is applied after `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed mini program package standard. Mini program UI packages are user-facing and consume app-api through generated TypeScript app SDK clients or approved appbase mini program wrappers. They must not consume `backend-admin` UI packages or backend SDKs for user-facing workflows.
 
 SDKWork source packages and platform pages/subpackages remain separate. This file owns the package-local UI/service/state/i18n/route rules. `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` owns the root app layout, platform pages/subpackages projection, host/platform config, and release boundary.
 
@@ -40,7 +40,7 @@ Rules:
 - Mini program app UI `MUST` live in normalized mini program application packages such as `apps/<product>-mini-program/packages/sdkwork-<product>-mp-<capability>` or approved shared mini program package families such as `packages/mini-program/<domain>/<package>`.
 - Mini program app UI `MUST` consume `/app/v3/api` through generated TypeScript app SDK clients or approved appbase mini program wrappers.
 - Mini program app UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, or backend UI service facades for user-facing workflows.
-- Operator/admin screens require separately approved mini program admin package families and must follow backend-api and backend SDK rules.
+- Operator/admin screens require separately approved mini program admin package families classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
 - Platform APIs such as `wx.*`, `my.*`, `dd.*`, `tt.*`, or equivalent `MUST` go through typed host adapters.
 - Platform `pages` and `subpackages` are runtime projections. They must not become the source dependency boundary.
 
@@ -160,7 +160,7 @@ Rules:
 - Runtime/bootstrap `MUST` construct generated app SDK clients, appbase IAM clients or wrappers, one global TokenManager equivalent, token/context stores, and host adapters.
 - Mini program login codes, phone-number grants, profile prompts, subscription permissions, and scene inputs are platform facts. They must be exchanged through approved app-api or appbase flows, not feature-local raw request calls.
 - Missing app SDK methods must be fixed in the owning app-api/OpenAPI/generator inputs and regenerated. Mini program packages must not fill gaps with raw request APIs, manual headers, or copied browser wrappers.
-- `appbaseApp`, optional `appbaseBackend`, and downstream product/dependency app-api/backend-api SDK clients must share the same authenticated session token manager or approved mini program equivalent.
+- `appbaseApp`, optional `backend-admin` `appbaseBackend`, downstream product/dependency app-api SDK clients, and explicit `backend-admin` backend-api SDK clients must share the same authenticated session token manager or approved mini program equivalent.
 - UI pages and components must not construct SDK clients, attach auth/API key headers, parse JWTs for authorization, or call raw platform request APIs for business transport.
 
 ## 6. Host Adapter Boundary

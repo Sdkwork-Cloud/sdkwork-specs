@@ -16,14 +16,14 @@ Every UI change `MUST` declare exactly one primary UI architecture before implem
 | --- | --- | --- | --- | --- | --- |
 | App PC React | `packages/pc-react/<domain>/sdkwork-<capability>-pc-react` or `apps/<product>-pc/packages/sdkwork-<product>-pc-<capability>` | `/app/v3/api` | generated TypeScript app SDK or approved appbase wrapper | `@sdkwork/iam-runtime`, `@sdkwork/iam-react`, `@sdkwork/auth-pc-react`, global TokenManager | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
 | PC user console React | `apps/<product>-pc/packages/sdkwork-<product>-pc-console-<capability>` | `/app/v3/api` or approved console-facing app SDK surface | generated TypeScript app SDK or approved appbase/console wrapper | appbase IAM runtime, console route guards, global TokenManager | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
-| PC internal admin React | `apps/<product>-pc/packages/sdkwork-<product>-pc-admin-<capability>` | `/backend/v3/api` | generated TypeScript backend SDK or approved backend wrapper | appbase backend SDK for IAM administration; no user-facing auth sessions | `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` |
+| PC internal admin React | `apps/<product>-pc/packages/sdkwork-<product>-pc-admin-<capability>` | `/backend/v3/api` | generated TypeScript backend SDK or approved backend wrapper for `backend-admin` | appbase backend SDK for IAM administration; no user-facing auth sessions | `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` |
 | H5 app mobile React | `apps/<product>-h5-mobile/packages/sdkwork-<product>-h5-mobile-<capability>` or `packages/mobile-react/<domain>/sdkwork-<capability>-mobile-react` | `/app/v3/api` | generated TypeScript app SDK plus typed H5/Capacitor host adapters | appbase mobile wrapper or approved appbase IAM runtime adapter, global TokenManager | `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_MOBILE_REACT_UI_SPEC.md` |
 | App Flutter | `apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>` or `packages/mobile-flutter/<domain>/sdkwork_<capability>_flutter` | `/app/v3/api` | generated Dart/Flutter app SDK plus platform adapters | generated Dart/Flutter appbase SDK or approved appbase Flutter wrapper, global token-manager equivalent | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_FLUTTER_UI_SPEC.md` |
 | Mini program app | `apps/<product>-mini-program/packages/sdkwork-<product>-mp-<capability>` or `packages/mini-program/<domain>/sdkwork-<capability>-mini-program` | `/app/v3/api` | generated TypeScript app SDK adapted for mini program runtime plus typed mini program host adapters | appbase mini program wrapper or approved appbase IAM runtime adapter, global TokenManager equivalent | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md` |
 | Android native app | `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>` or `packages/android-native/<domain>/sdkwork-<capability>-android-native` | `/app/v3/api` | generated Kotlin/Java app SDK plus typed Android host adapters | generated Kotlin/Java appbase SDK or approved appbase Android wrapper, global token-manager equivalent | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md` |
 | iOS native app | `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>` or `packages/ios-native/<domain>/sdkwork-<capability>-ios-native` | `/app/v3/api` | generated Swift app SDK plus typed iOS host adapters | generated Swift appbase SDK or approved appbase iOS wrapper, global token-manager equivalent | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md` |
 | Harmony native app | `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>` or `packages/harmony-native/<domain>/sdkwork-<capability>-harmony-native` | `/app/v3/api` | generated ArkTS/TypeScript app SDK adapted for Harmony runtime plus typed HarmonyOS host adapters | appbase Harmony wrapper or approved appbase ArkTS adapter, global token-manager equivalent | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md` |
-| Backend/admin React | `apps/sdkwork-backend-react-web/packages/sdkwork-react-backend-<domain>` | `/backend/v3/api` | generated TypeScript backend SDK or approved backend wrapper | appbase backend SDK for IAM administration; no user-facing auth sessions | `BACKEND_UI_SPEC.md` |
+| Backend/admin React | `apps/sdkwork-backend-react-web/packages/sdkwork-react-backend-<domain>` | `/backend/v3/api` | generated TypeScript backend SDK or approved backend wrapper for `backend-admin` | appbase backend SDK for IAM administration; no user-facing auth sessions | `BACKEND_UI_SPEC.md` |
 
 Rules:
 
@@ -34,8 +34,10 @@ Rules:
 - User-facing auth, registration, session, OAuth, verification-code login, QR login, password reset, and current user flows belong to app UI and app-api.
 - PC packages without `pc-console` or `pc-admin` are app/user packages by default.
 - PC `console` packages are user-facing management console packages for customers, tenants, app owners, or product users who manage their own resources.
-- PC `admin` packages are company-internal staff/operator packages and use backend-api/backend SDK boundaries.
-- Operator-only configuration, audit, provider binding, tenant administration, resource moderation, and platform management belong to backend/admin UI and backend-api.
+- PC `admin` packages are `backend-admin` company-internal staff/operator packages and use backend-api/backend SDK boundaries.
+- `backend-admin` means admin-only backend UI/API/SDK use for internal staff, operators, support, auditors, platform administrators, or trusted backend services acting for those admin workflows. PC user console packages are not `backend-admin`.
+- Every UI package outside an explicit `backend-admin` boundary `MUST` use app-api through generated app SDK clients or approved app SDK wrappers. Non-admin UI packages `MUST NOT` import, export, construct, or wrap backend SDK clients, appbase backend SDK clients, backend wrapper functions, backend generated SDK packages, or backend base URL resolvers.
+- Operator-only configuration, audit, provider binding, tenant administration, resource moderation, and platform management belong to `backend-admin` UI and backend-api.
 
 ## 2. Package Ownership
 
@@ -46,9 +48,9 @@ Rules:
 - Domain names `MUST` come from `DOMAIN_SPEC.md`.
 - App UI packages `MUST` be split by user-facing domain and capability.
 - Client app-root packages `MUST` follow `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` for core, commons, shell, capability, optional console/admin, host package roles, route id, and dependency direction.
-- Backend/admin UI packages `MUST` be split as `@sdkwork/react-backend-<domain>` and aligned with permission prefixes.
+- Backend/admin UI packages are `backend-admin` packages. They `MUST` be split as `@sdkwork/react-backend-<domain>` and aligned with permission prefixes.
 - PC user-facing console packages `MUST` be split as `sdkwork-<product>-pc-console-<capability>` and must not be named or treated as internal admin packages.
-- PC internal admin packages `MUST` be split as `sdkwork-<product>-pc-admin-<capability>` and must not be placed in user app or console package families.
+- PC internal admin packages are `backend-admin` packages. They `MUST` be split as `sdkwork-<product>-pc-admin-<capability>` and must not be placed in user app or console package families.
 - `@sdkwork/react-backend-ui` may contain only domain-neutral primitives.
 - `@sdkwork/react-backend-core` may contain only SDK/runtime/provider infrastructure.
 - Packages named `common`, `misc`, `manager`, `base`, `core`, `admin`, `backend`, or `console` `MUST NOT` own business pages, business services, repositories, route records, menu records, permission constants, or domain i18n unless a root spec explicitly defines their bounded context.
@@ -61,7 +63,7 @@ UI architecture decides the SDK surface.
 | UI package type | Must use | Must not use |
 | --- | --- | --- |
 | App PC React | injected app SDK client or appbase service wrapper | backend SDK, backend UI packages, raw HTTP |
-| PC user console React | injected app SDK client or approved console-facing appbase wrapper | admin package internals, backend-only SDK resources without an approved console contract, raw HTTP |
+| PC user console React | injected app SDK client or approved console-facing appbase app wrapper | admin package internals, backend SDK packages, appbase backend SDK clients, backend wrapper functions, raw HTTP |
 | PC internal admin React | injected backend SDK client or backend-core/admin wrapper | app SDK login/session creation, app/console package internals, raw HTTP |
 | H5 app mobile React | injected app SDK client, typed H5/Capacitor host adapters | backend SDK, backend UI packages, native globals for business API calls |
 | App Flutter | generated Dart/Flutter app SDK, platform adapter interfaces | backend SDK, React packages, raw `http` calls for app business |
@@ -77,9 +79,12 @@ Rules:
 - Missing SDK methods `MUST` be fixed in the owning app-api, backend-api, or approved open-api OpenAPI contract and generator flow.
 - Handwritten raw HTTP fallbacks, manual token/API key headers, local DTO forks, and generated SDK output edits are forbidden for UI business flows.
 - Runtime/bootstrap constructs concrete SDK clients. Reusable UI packages receive typed clients, services, or providers.
-- Runtime/bootstrap `MUST` apply `APP_SDK_INTEGRATION_SPEC.md`: create one global token manager for authenticated app-api/backend-api SDK clients, bind it to appbase and downstream SDK clients, and keep protected open-api credentials in a separate provider when API key mode is declared.
+- Runtime/bootstrap `MUST` apply `APP_SDK_INTEGRATION_SPEC.md`: create one global token manager for authenticated app-api SDK clients and explicit `backend-admin` backend-api SDK clients, bind it to appbase and downstream SDK clients, and keep protected open-api credentials in a separate provider when API key mode is declared.
 - Appbase IAM login, registration, session, refresh, logout, verification, OAuth, QR auth, password reset, runtime metadata, and current-user self-service `MUST` remain appbase app SDK or approved appbase wrapper responsibilities.
-- Backend/admin IAM management `MUST` use appbase backend SDK resources and must not expose or consume user-facing `auth.sessions.create` through backend SDKs.
+- App/user-facing UI, PC user console UI, mobile/native/desktop renderer UI, and shared frontend UI packages `MUST` use generated app SDK clients or approved app SDK wrappers for SDKWork remote capabilities. They are not allowed to use backend SDKs unless the package is explicitly a `backend-admin` package.
+- Appbase app-side IAM directory resources for contacts, address books, workspace navigation, customer-owned management views, and organization/department tree reads `MUST` remain app SDK resources in app and user-facing console UI. A UI package must not switch to backend SDK merely because the resource belongs to the IAM domain.
+- `backend-admin` IAM management `MUST` use appbase backend SDK resources and must not expose or consume user-facing `auth.sessions.create` through backend SDKs.
+- Backend SDK wrappers `MUST` be exported and imported only through `backend-admin` package boundaries. PC `pc-admin-*` packages and standalone backend/admin React domain packages are `backend-admin`; PC `pc-core`, app auth runtime, app packages, and PC user console packages must keep exporting and consuming app SDK/appbase app SDK wrappers instead.
 - The generated SDK language must match the selected architecture: TypeScript for React packages and mini program packages, Dart/Flutter for Flutter packages, Kotlin/Java for Android native packages, Swift for iOS native packages, ArkTS/TypeScript adapted for Harmony native packages, and Rust SDKs or Rust service clients for Rust/native runtime code.
 - When a UI/service package consumes a protected open-api SDK, it `MUST` receive an injected open-api SDK client and approved API key credential provider through runtime/bootstrap. It `MUST NOT` place that SDK in app/backend token-manager client lists or assemble `X-API-Key` headers directly.
 
@@ -121,7 +126,8 @@ Every touched UI package `MUST` prove the selected architecture boundary.
 - [ ] Architecture-specific generated SDK language and appbase IAM boundary follow `APP_SDK_INTEGRATION_SPEC.md`.
 - [ ] Domain ownership follows `DOMAIN_SPEC.md`.
 - [ ] App UI uses app-api/app SDK only for user-facing workflows.
-- [ ] Backend/admin UI uses backend-api/backend SDK only for operator workflows.
+- [ ] PC user console UI uses app-api/app SDK or approved appbase app wrappers only, including user-visible IAM directory/contact resources.
+- [ ] `backend-admin` UI uses backend-api/backend SDK only for `backend-admin` operator workflows.
 - [ ] Backend/admin business UI is split by `@sdkwork/react-backend-<domain>`.
 - [ ] No catch-all business package was introduced.
 - [ ] No raw HTTP, manual auth/API key header, DTO fork, open-api token-manager misuse, or generated SDK edit was introduced.

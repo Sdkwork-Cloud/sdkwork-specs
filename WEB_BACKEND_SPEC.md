@@ -31,7 +31,7 @@ Rules:
 - Java controller mappings and Rust route manifests are implementation inputs that must match the authority OpenAPI.
 - Runtime route definitions `MUST NOT` be the only place where path, method, operationId, auth, owner, or SDK family semantics are declared.
 - Backend code `MUST` preserve the same operationId, path, schema, security, problem-detail error, tenant, and authorization semantics across Java SaaS, Rust local/private, and other supported runtime modes.
-- UI packages, frontend services, backend/admin UI packages, and generated SDK consumers `MUST NOT` import route crates, controller classes, path constants, or handler internals.
+- UI packages, frontend services, `backend-admin` UI packages, and generated SDK consumers `MUST NOT` import route crates, controller classes, path constants, or handler internals.
 
 ## 2. Implementation Layers
 
@@ -235,6 +235,9 @@ Rules:
 
 - Backend implementations `MUST` generate SDKs only from owner-only API authorities.
 - Dependency-owned APIs such as appbase, Drive, provider, or shared platform modules `MUST` remain dependency SDKs or approved composed wrappers.
+- Dependency-owned APIs are not exported from a product backend SDK by default. Any product backend
+  facade that intentionally exposes dependency capability must declare `dependencyApiExports` and
+  implement the export in authored composition code outside generated transport ownership.
 - Generated SDKs call the API. Route crates and controllers implement the API. A route crate/controller `MUST NOT` depend on the generated SDK for the same authority.
 - Service facades for UI/backend-admin consumers use generated SDK clients according to `SDK_SPEC.md` and `FRONTEND_SPEC.md`; they do not use route constants.
 - Backend-to-backend integration may use generated backend SDKs, generated RPC clients, or explicit provider adapters. It must not use hidden raw HTTP to bypass a missing contract.
@@ -253,6 +256,17 @@ Rules:
   `dependencyApiSurfaces`, including dependency workspace, surface, prefix, Rust route contract
   source, executable router export, mount mode, and coverage evidence. A backend runtime that lacks
   this declaration must be treated as not serving the dependency API for SDK base URL defaults.
+- Split/server runtimes `MUST` declare dependency surfaces as `external-service` and provide
+  dependency-specific upstream/base URL configuration. An upstream id such as
+  `sdkwork-appbase-app-api` is valid only when it resolves before the proxy/router starts.
+- Embedded or same-process runtimes `MUST` import the dependency-owned executable router,
+  controller, handler adapter, or service builder through a public component export. Starting the
+  product server, Tauri dev command, or local workspace command does not prove dependency API
+  availability unless that executable dependency export is mounted and covered.
+- Backend startup or preflight checks `MUST` fail before serving traffic when a configured
+  dependency API export requires a same-origin dependency surface but the executable mount or
+  external dependency base URL is missing. User requests must not be used as the first detector of
+  missing dependency runtime composition.
 - If the dependency exports route metadata but no executable router export, the consuming backend
   must configure that dependency SDK as an external service or add an approved handler adapter before
   same-origin dependency SDK calls are allowed.
@@ -277,6 +291,12 @@ Every web backend change should verify the relevant subset:
 - Dependency API surface tests compare `sdkDependencies` with `dependencyApiSurfaces`, fail when a
   same-origin dependency has no verified executable router/controller coverage, and fail when an
   external dependency SDK can silently fall back to product-owned app/backend base URLs.
+- Dependency API export tests compare `dependencyApiExports` with public backend/component exports
+  and fail when a backend facade re-exports dependency capability without an approved composed
+  wrapper, service port, or dependency SDK injection path.
+- Startup/preflight tests fail when a dependency route would return a proxy configuration error,
+  `502`, or `404` because the dependency upstream is missing, the executable router/controller is
+  not mounted, or coverage is only route metadata.
 - Observability tests or smoke checks verify request id propagation, structured logs, metrics, traces, and audit events for protected or high-risk operations.
 
 ## 11. Acceptance Checklist
@@ -290,5 +310,10 @@ Every web backend change should verify the relevant subset:
 - [ ] Services own business rules, authorization, transaction boundaries, idempotency, events, and cache invalidation.
 - [ ] Repositories are tenant/data-scope safe for tenant-owned data.
 - [ ] Dependency-owned appbase, Drive, provider, or shared-module routes are consumed through dependencies, not copied into the product authority.
+- [ ] Dependency API exports are explicit in `dependencyApiExports`; generated product SDKs remain
+  owner-only.
+- [ ] Same-origin dependency API routes are backed by executable dependency router/controller/service
+  exports with verified coverage; split/server dependency routes have explicit upstream/base URL
+  config.
 - [ ] Errors map to problem-detail responses and do not leak sensitive internals.
 - [ ] Tests cover contract generation, security, service behavior, repository isolation, and static boundary scans.

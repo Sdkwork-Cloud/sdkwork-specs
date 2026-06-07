@@ -318,7 +318,7 @@ Standard packages:
 Rules:
 
 - Frontend upload services must use the generated Drive app SDK for upload sessions, completion, node metadata, and download grants.
-- Backend/admin consoles must use the generated Drive backend SDK for provider, policy, quota, and diagnostic workflows.
+- `backend-admin` consoles must use the generated Drive backend SDK for provider, policy, quota, and diagnostic workflows.
 - Business SDKs such as IM, commerce, user profile, or app manifest SDKs should receive Drive references or `MediaResource` payloads. They must not duplicate Drive upload operations.
 - Consumers must not patch missing Drive SDK methods with raw HTTP, manual auth headers, direct provider SDK calls, or local generated-client forks. Fix Drive OpenAPI/proto and regenerate.
 
@@ -374,7 +374,7 @@ All SDKWork application uploads enter Drive through one of these modes:
 | Client upload from browser, desktop renderer, tablet, H5/Capacitor, Flutter, mini-program, iOS, Android, or HarmonyOS | `sdkwork-drive-app-sdk` high-level `client.uploader.*` | file picker integration, transient preview/progress, local resumable state, SDK calls | app-local presign code, raw Drive App API HTTP, provider SDK calls, object-key generation |
 | Server-side Rust upload for generated/imported/transformed bytes | `sdkwork_drive_product::application::uploader_service::DriveUploaderService` or approved `sdkwork_drive_product::uploader` facade | server byte source, actor/resource attribution, retention/profile choice, product-service call | calling `/app/v3/api/drive/uploader/*` over HTTP inside the same Rust backend, direct S3/OSS/MinIO/local file lifecycle |
 | Business API command that associates a file with a domain aggregate | product app/backend SDK command accepting Drive reference, Drive-backed `MediaResource`, or relation id | domain relation, business validation, authorization | duplicate `/upload`, `/presign`, `/complete`, upload-session, or file-part endpoints |
-| Backend/admin provider, quota, policy, and diagnostic work | Drive backend/admin SDK or Drive backend service | provider/policy/quota/admin lifecycle | using app upload flow for operator storage management |
+| `backend-admin` provider, quota, policy, and diagnostic work | Drive backend SDK or Drive backend service | provider/policy/quota/admin lifecycle | using app upload flow for operator storage management |
 
 Every application product that uses upload must define canonical values for `appId`, `appResourceType`, `appResourceId`, `scene`, `source`, and allowed `uploadProfileCode` values in its local component spec, architecture spec, or runbook. These names must be stable enough for tenant, user, app, resource, and profile usage reports.
 

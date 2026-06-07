@@ -18,12 +18,17 @@ There are three different SDKWork path families that must not be mixed:
 | `<generated-sdk-output>/.sdkwork/sdkwork-generator-*.json` | `sdkgen` | Generated SDK control-plane reports and manifests | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md` |
 | `~/.sdkwork/<app>` or `%USERPROFILE%\.sdkwork\<app>` | runtime user/process | User-private runtime config, data, cache, logs, secrets, temp files | `RUNTIME_DIRECTORY_SPEC.md` |
 
+In addition, SDKWork source dependency paths declared in `pnpm-workspace.yaml`, root `Cargo.toml`, and root `pubspec.yaml` are workspace-root owned. Sibling SDKWork repositories are consumed through these native build-tool mechanisms; the workspace root is the single source of truth for those paths, and member packages consume them by protocol (`workspace:*`, `{ workspace = true }`, package name).
+
 Rules:
 
 - Root/application `.sdkwork/` is source workspace metadata. It is not runtime state.
 - Generated SDK output `.sdkwork/` directories are generator-owned. Do not add repository skills, plugins, or hand-authored workspace manifests there.
 - Runtime `~/.sdkwork/<app>` directories are user-private. Do not commit them, mirror them into source, or use them as source standards.
 - Local/private source workspace state may exist only under ignored paths such as `.sdkwork/local/`, `.sdkwork/tmp/`, `.sdkwork/cache/`, or `.sdkwork/secrets/`.
+- Multi-repository SDKWork workspaces `MUST` declare sibling SDKWork source paths in native build-tool workspace roots (`pnpm-workspace.yaml packages:`, `Cargo.toml [workspace.dependencies]`, or root `pubspec.yaml dependency_overrides`), not in `.sdkwork/`.
+- A member package `MUST NOT` redeclare a sibling SDKWork source path; it consumes the workspace root entry by native protocol.
+- A SDKWork workspace root `SHOULD` be co-located with the SDKWork application root or git repository root. A workspace root that is not a git repository root is allowed only when explicitly documented.
 
 ## 2. Required Workspace Shape
 
@@ -159,6 +164,32 @@ Rules:
 - `canonicalSpecs` should include the repository/application relative path to the root standards entrypoint, such as `../sdkwork-specs/README.md`, when the workspace follows central SDKWork standards.
 - `skillsDir` and `pluginsDir` `MUST` point to the required local directories.
 - Optional manifests must not become a second source of truth for API, SDK, database, security, runtime, or component contracts.
+- Optional manifests `MUST NOT` redeclare SDKWork source dependency paths. Those paths remain owned by `pnpm-workspace.yaml`, root `Cargo.toml`, and root `pubspec.yaml` as defined in `DEPENDENCY_MANAGEMENT_SPEC.md`.
+
+## 5.1 Multi-Repository Workspace Layout
+
+When a SDKWork application consumes multiple SDKWork git repositories as siblings, the consuming repository's build-tool workspace root is the canonical place to declare those paths.
+
+Recommended multi-repository layout:
+
+```text
+<sdkwork-workspace-root>/
+  sdkwork-app/                       # application root = workspace root
+    pnpm-workspace.yaml              # packages + catalog (SDKWork source)
+    Cargo.toml                       # [workspace.dependencies] (SDKWork source)
+    package.json
+  sdkwork-appbase/                   # sibling SDKWork repository
+  sdkwork-core/                      # sibling SDKWork repository
+  sdkwork-ui/                        # sibling SDKWork repository
+  sdkwork-rtc/                       # sibling SDKWork repository
+```
+
+Rules:
+
+- The consuming application root `MUST` own a single `pnpm-workspace.yaml` and/or a single root `Cargo.toml`. The pnpm workspace and the Cargo workspace are aligned by relative path; do not create separate pnpm workspaces that overlap.
+- Each sibling SDKWork source path `MUST` be declared exactly once at the consuming workspace root.
+- Local development resolves these paths from sibling checkouts. Release/CI resolves them from the framework checkout (see `DEPENDENCY_MANAGEMENT_SPEC.md` §5) without changing consumer `package.json` / `Cargo.toml` files.
+- The layout `SHOULD` be documented in the application root `README.md` and `sdkwork.app.config.json` when present, listing the expected sibling SDKWork repositories.
 
 ## 6. Source Control And Security
 
@@ -205,6 +236,8 @@ Repository/application workspace verification `MUST` check:
 - `.sdkwork/` does not contain obvious secret-bearing files, runtime database files, generated SDK transport outputs, or `sdkgen` generated control-plane reports outside generated SDK output.
 - Generated SDK output `.sdkwork/sdkwork-generator-*.json` remains under generated SDK output and is not treated as a repository/application workspace.
 - Runtime `~/.sdkwork/<app>` directories are not copied into source.
+- Multi-repository SDKWork source dependency paths are declared only in `pnpm-workspace.yaml packages:`, root `Cargo.toml [workspace.dependencies]`, or root `pubspec.yaml dependency_overrides`; member packages do not redeclare sibling source paths.
+- `.sdkwork/manifests/*.json` does not contain SDKWork source dependency paths when native build-tool workspace roots are the declared source of truth.
 
 ## 9. Acceptance Checklist
 

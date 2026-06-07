@@ -93,6 +93,8 @@ export interface SdkworkRuntimeConfig {
   appApiBaseUrl: string;
   backendApiBaseUrl?: string;
   sdkBaseUrls?: SdkworkSdkBaseUrlConfig;
+  dependencyApiSurfaces?: SdkworkDependencyApiSurfaceConfig[];
+  dependencyApiExports?: SdkworkDependencyApiExportConfig[];
   auth?: SdkworkAuthRuntimeConfig;
   i18n?: SdkworkI18nRuntimeConfig;
   publicRuntime?: SdkworkPublicRuntimeConfig;
@@ -111,6 +113,7 @@ export interface SdkworkRuntimeConfig {
 }
 
 export interface SdkworkSdkBaseUrlConfig {
+  sdkBaseUrl?: string;
   defaultApiBaseUrl?: string;
   openApiBaseUrl?: string;
   appApiBaseUrl: string;
@@ -122,6 +125,37 @@ export interface SdkworkDependencySdkBaseUrls {
   openApiBaseUrl?: string;
   appApiBaseUrl?: string;
   backendApiBaseUrl?: string;
+}
+
+export interface SdkworkDependencyApiSurfaceConfig {
+  workspace: string;
+  sdkFamily: string;
+  apiAuthority: string;
+  surface: "open-api" | "app-api" | "backend-api";
+  apiPrefix: string | null;
+  runtimeMode: "same-origin" | "external-service" | "not-mounted";
+  sameOriginAllowed: boolean;
+  executableExport?: string;
+  mountPath?: string;
+  routeContract?: string;
+  coverage: "verified" | "partial" | "missing";
+  requiredBaseUrlKey?: string;
+}
+
+export interface SdkworkDependencyApiExportConfig {
+  workspace: string;
+  sdkFamily: string;
+  apiAuthority: string;
+  surface: "open-api" | "app-api" | "backend-api";
+  apiPrefix: string | null;
+  exportMode: "none" | "dependency-sdk" | "composed-wrapper" | "service-port" | "documentation-only";
+  visibility: "internal" | "app" | "backend-admin" | "public" | string;
+  methods?: string[];
+  methodSelector?: string;
+  packageExport?: string;
+  servicePort?: string;
+  documentationRef?: string;
+  runtimeRequired?: boolean;
 }
 
 export interface SdkworkAuthRuntimeConfig {
@@ -142,6 +176,7 @@ export interface SdkworkI18nRuntimeConfig {
 }
 
 export interface SdkworkPublicRuntimeConfig {
+  sdkBaseUrl?: string;
   apiBaseUrl?: string;
   openApiBaseUrl?: string;
   appApiBaseUrl?: string;
@@ -249,10 +284,19 @@ Rules:
 - `buildMode` describes the bundler/build tool mode. It is useful for Vite or native package scripts, but it is not the lifecycle authority for runtime behavior.
 - `deploymentMode` describes deployment topology or packaging shape.
 - `runtimeTarget` describes where this config is consumed: browser renderer, desktop host, tablet host, Capacitor host, Flutter host, mini program runtime, server process, container process, or test runner.
-- `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` are selected before SDK clients are created.
+- `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` are resolved before SDK clients are created, but backend SDK clients may be constructed only after the SDK inventory classifies the runtime as `backend-admin`.
 - `openApiBaseUrl` is optional because not every application consumes an open-api SDK. When present for a SDKWork-owned business open-api, it `MUST` use that domain's approved non-app/non-backend prefix from `API_SPEC.md`, for example `/im/v3/api`. It does not require a literal `/open` path segment. `/v1` is valid only for explicitly documented compatibility APIs such as OpenAI-compatible AI API.
-- `sdkBaseUrls` is the canonical per-SDK-surface base URL map for bootstrap. Top-level `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` remain convenience aliases and must resolve to the same effective values.
-- `sdkBaseUrls.dependencySdkBaseUrls` owns base URLs for dependency SDK families such as appbase, Drive, IM, or another product app. It must be keyed by stable SDK family id, not by ad hoc host names.
+- `sdkBaseUrls` is the canonical SDK base URL map for bootstrap. It `SHOULD` start from one common `sdkBaseUrl` when one public SDK gateway, reverse proxy, or app edge serves all consumed SDK surfaces. `openApiBaseUrl`, `appApiBaseUrl`, `backendApiBaseUrl`, and dependency-specific entries are overrides, not a requirement to configure every SDK separately.
+- A common `sdkBaseUrl` is a root, origin, or deployment path prefix. Bootstrap derives surface URLs by appending the standard API prefixes, for example `/v1`, `/app/v3/api`, and `/backend/v3/api`. It `MUST NOT` treat a surface URL such as `/v1` as the common SDK root for other surfaces.
+- Per-surface and per-SDK overrides win over the common `sdkBaseUrl`. This keeps the simple one-base-url deployment path while still allowing split services, private dependency hosts, and tenant-specific SDK routing.
+- `sdkBaseUrls.dependencySdkBaseUrls` owns override base URLs for dependency SDK families such as appbase, Drive, IM, or another product app. It must be keyed by stable SDK family id, not by ad hoc host names.
+- `dependencyApiSurfaces` records which dependency-owned HTTP API surfaces are available through
+  the current runtime, which are external services, and which are intentionally not mounted. It
+  `MUST` match component/runtime manifests and the dependency surface rules in `SDK_SPEC.md`.
+- `dependencyApiExports` records which dependency-owned API capabilities this application or
+  component intentionally exposes through authored public integration surfaces. It `MUST` default to
+  `[]`; dependency APIs are not exported by a consuming app merely because dependency SDK clients
+  are configured.
 - `auth` config describes how the runtime obtains and stores credentials. It must not contain actual `authToken`, `accessToken`, `refreshToken`, API key values, or session DTOs.
 - `i18n` config describes locale selection, supported locale list, fallback locale, and catalog loading strategy only. It must not contain translated message content, product copy, validation copy, or generated catalog bundles.
 - `tenantId` and `organizationId` in config are defaults only; token context is authoritative after authentication.
@@ -310,8 +354,9 @@ const appClient = createAppClient({
 });
 
 const backendApiBaseUrl = config.sdkBaseUrls?.backendApiBaseUrl ?? config.backendApiBaseUrl;
+const isBackendAdminRuntime = classifyRuntimeSurface(config) === "backend-admin";
 
-const backendClient = backendApiBaseUrl
+const backendClient = isBackendAdminRuntime && backendApiBaseUrl
   ? createBackendClient({
       baseUrl: backendApiBaseUrl,
       tokenManager,
@@ -324,25 +369,42 @@ Rules:
 - SDK client constructors may differ by generated SDK package.
 - Service modules receive constructed clients, not constructor details.
 - Runtime config selects SDK base URLs, dependency surfaces, and credential modes. It `MUST NOT` contain live tokens, raw API keys, or per-user session credential values.
-- Bootstrap `MUST` classify every SDK before constructing feature services: authenticated app-api, authenticated backend-api, protected open-api API-key, public open-api, local/native, or test fake.
+- Runtime config `SHOULD` allow one browser-visible public SDK root, for example `PORTAL_PUBLIC_SDK_BASE_URL`, and derive standard open-api, app-api, and backend-api public runtime URLs from it. Applications `MAY` also expose per-surface or per-SDK public override keys such as `PORTAL_PUBLIC_OPEN_API_BASE_URL`, `PORTAL_PUBLIC_APP_API_BASE_URL`, `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, or dependency-specific keys.
+- Bootstrap `MUST` classify every SDK before constructing feature services: authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, public open-api, local/native, or test fake. The presence of `backendApiBaseUrl` alone is not permission to construct a backend SDK client.
 - Token providers for app-api and backend-api SDKs `MUST` support both `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>`.
-- In an authenticated application session context, every app-api and backend-api SDK client `MUST` receive credentials from the same global `TokenManager`. This includes appbase app/backend SDKs, product app/backend SDKs, dependency app/backend SDKs, and approved composed wrappers backed by those SDKs.
+- In an authenticated application session context, every app-api SDK client and every explicit `backend-admin` backend-api SDK client `MUST` receive credentials from the same global `TokenManager`. This includes appbase app SDKs, product/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, product/dependency backend SDKs, and approved composed wrappers backed by those SDKs.
 - Server service-context runtimes that do not represent a user login session `MUST` use one request/service credential provider per service context. They must not create per-domain or per-SDK credential providers for calls that share the same context.
 - App-api and backend-api SDK clients `MUST NOT` receive `authToken`, `accessToken`, or `refreshToken` through environment variables, public runtime config, feature flags, app manifests, or per-call manual headers.
 - `Access-Token` is the canonical access isolation header. Generated SDKs, runtime adapters, server guards, and tests must not introduce aliases such as `X-Access-Token`, `access_token` query parameters, or product-specific access headers.
 - Bootstrap may expose `getAuthHeaders()` only for approved runtime bridges, local service calls, or tests. UI components and feature service facades must call SDK methods instead of assembling headers.
 - API key providers for protected open-api SDKs `MUST` be separate from the app login token manager. Raw API key values `MUST NOT` be stored in browser runtime env, app manifests, generated SDK docs, frontend bundles, logs, screenshots, or telemetry. Browser-facing open-api usage must be public, session-mediated, or backed by an approved short-lived credential flow.
-- Dependency SDK base URLs `MUST` be configured explicitly when they do not inherit the product app's same-origin defaults. Dependency-owned SDKs must not be regenerated or hard-coded into product SDK base URLs.
-- Dependency SDK base URLs may inherit a product same-origin app/backend default only when the
+- Dependency SDK base URLs `MUST` be configured explicitly when they do not inherit the application common SDK root or a product app's verified same-origin defaults. Dependency-owned SDKs must not be regenerated or hard-coded into product SDK base URLs.
+- Dependency SDK base URLs may inherit the common `sdkBaseUrl` when that base URL is documented as a gateway/root that serves the dependency surface, or they may inherit a product same-origin app/backend default only when the
   application runtime declares `dependencyApiSurfaces` mount coverage for that dependency SDK
   family, surface, and prefix. A route contract or `sdkDependencies` entry alone is not enough.
+- `dependencyApiSurfaces` entries with `runtimeMode: "same-origin"` `MUST` set
+  `sameOriginAllowed: true`, name the executable router/controller/service export or equivalent
+  runtime adapter, and record `coverage: "verified"` before SDK clients may inherit the product
+  same-origin `appApiBaseUrl` or `backendApiBaseUrl`.
+- `dependencyApiSurfaces` entries with `runtimeMode: "external-service"` `MUST` set
+  `sameOriginAllowed: false` and provide `requiredBaseUrlKey` or another deterministic pointer to
+  `sdkBaseUrls.dependencySdkBaseUrls[<sdkFamily>]`.
+- `dependencyApiSurfaces` entries with `runtimeMode: "not-mounted"` `MUST` set
+  `sameOriginAllowed: false`; bootstrap must not construct a dependency SDK client for that surface
+  unless a feature/config path explicitly changes the runtime mode.
 - If `dependencyApiSurfaces` marks a dependency SDK surface as external-service, not-mounted, or
   unverified, SDK client bootstrap `MUST` require the dependency-specific base URL from
-  `sdkBaseUrls.dependencySdkBaseUrls` or an equivalent env/runtime config key and must fail fast
-  before constructing a client with the product-owned base URL.
-- Backend/admin dependency SDKs `MUST` not inherit a browser-visible product backend base URL unless
-  the backend/admin UI is allowed to call that surface and runtime mount coverage proves every
-  dependency-owned method/path is served at that same origin.
+  `sdkBaseUrls.dependencySdkBaseUrls`, a common `sdkBaseUrl` that explicitly represents a gateway
+  serving that dependency surface, or an equivalent env/runtime config key and must fail fast before
+  constructing a client with the product-owned base URL.
+- Runtime bootstrap `MUST` compare `dependencyApiExports` with `dependencyApiSurfaces`. Any export
+  with `runtimeRequired: true` must have either verified same-origin coverage or a configured
+  dependency-specific base URL before feature services are constructed.
+- `backend-admin` dependency SDKs `MUST` not inherit a browser-visible product backend base URL unless
+  the `backend-admin` UI is allowed to call that surface and runtime mount coverage proves every
+  dependency-owned method/path is served at that same origin. They `MAY` use a common SDK root only
+  when that root is explicitly configured as a gateway serving the dependency backend surface, not
+  merely because the product backend SDK has a default `/backend/v3/api` URL.
 - Token refresh behavior `MUST` be centralized so modules do not implement competing refresh flows.
 - Test mode may use fake SDK clients or mock servers with the same resource surface.
 
@@ -488,13 +550,18 @@ Rules:
 - [ ] Browser public runtime config, desktop user config, H5/Capacitor config, Flutter config, mini program config, native Android config, native iOS config, native Harmony config, server config, container config, and Tauri platform config are separated.
 - [ ] Database env parsing maps `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE` to typed config and rejects `DATABASE_PROVIDER`/`DATABASE_SSLMODE`.
 - [ ] Apps with PostgreSQL development support provide `.env.postgres.example` and ignore `.env.postgres`.
-- [ ] SDK clients are constructed in bootstrap with separate open-api, app-api, and backend-api base URLs where those surfaces are consumed.
-- [ ] SDK inventory classifies every consumed SDK as authenticated app-api, authenticated backend-api, protected open-api API-key, public open-api, local/native, or test fake before services are constructed.
-- [ ] Appbase app/backend SDKs, product app/backend SDKs, dependency app/backend SDKs, and approved composed wrappers in the same authenticated application session receive the same global `TokenManager`; server service-context runtimes use one request/service credential provider per service context.
+- [ ] SDK clients are constructed in bootstrap from one common SDK base URL plus per-surface/per-SDK overrides, with separate effective open-api, app-api, and `backend-admin` backend-api URLs where those surfaces are consumed.
+- [ ] SDK inventory classifies every consumed SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, public open-api, local/native, or test fake before services are constructed.
+- [ ] Appbase app SDKs, product/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, product/dependency backend SDKs, and approved composed wrappers in the same authenticated application session receive the same global `TokenManager`; server service-context runtimes use one request/service credential provider per service context.
 - [ ] Protected open-api SDKs receive API key credentials through a separate provider and are not placed in login TokenManager client lists.
 - [ ] Runtime config contains SDK base URL values and token-manager behavior, but does not contain actual auth/access/refresh tokens or raw API keys.
 - [ ] Runtime config contains only i18n locale strategy and catalog manifest references, not translated message content or monolithic locale bundles.
 - [ ] Dependency SDK base URLs are keyed by SDK family id and are injected during bootstrap instead of hard-coded in services.
+- [ ] `dependencyApiExports` is explicit and defaults to `[]`; dependency API exports with
+  `runtimeRequired: true` have verified same-origin `dependencyApiSurfaces` coverage or explicit
+  dependency SDK base URL config before feature services are constructed.
+- [ ] Same-origin dependency API surfaces name an executable router/controller/service export and
+  have verified coverage before dependency SDK clients inherit product app/backend base URLs.
 - [ ] Deployment mode and environment are explicit.
 - [ ] Desktop installed config defaults to user-private SQLite, while desktop-started backend service config uses the server PostgreSQL dev profile unless an explicit SQLite profile is selected.
 - [ ] Test config isolates database/schema, Redis key prefix, logs, cache, and temp directories from development and production.

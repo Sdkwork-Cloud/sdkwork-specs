@@ -35,10 +35,11 @@ Application UI work must also pass the `UI_ARCHITECTURE_SPEC.md` selection gate 
 Rules:
 
 - App/user-facing packages consume app-api through app SDKs or approved appbase wrappers.
-- Backend/admin packages consume backend-api through backend SDKs or approved backend wrappers.
+- `backend-admin` packages consume backend-api through backend SDKs or approved backend wrappers.
+- Every package outside an explicit `backend-admin` boundary `MUST` consume SDKWork remote capabilities through generated app SDKs or approved app SDK wrappers. Non-admin packages `MUST NOT` import, export, construct, proxy, or route through backend SDK packages, appbase backend SDK clients, backend wrapper functions, backend generated SDK clients, or backend base URL resolvers.
 - Every SDKWork application root `MUST` have `.sdkwork/README.md`, `.sdkwork/skills/README.md`, and `.sdkwork/plugins/README.md`.
 - Independent application repositories under `apps/` that include Rust local/private services, Tauri hosts, or native Rust runtime crates `MUST` declare `sdkwork-appbase` as a foundation dependency.
-- Those Rust-enabled independent apps `MUST` integrate the relevant appbase Rust crates and generated appbase SDK families, including appbase app SDKs for user-facing app-api capabilities and appbase backend SDKs for backend/admin capabilities when those surfaces are used.
+- Those Rust-enabled independent apps `MUST` integrate the relevant appbase Rust crates and generated appbase SDK families, including appbase app SDKs for user-facing app-api capabilities and appbase backend SDKs for `backend-admin` capabilities when those surfaces are used.
 - Product applications `MUST NOT` copy, fork, or regenerate appbase-owned IAM, session, workspace, bootstrap, tenant, organization, user, verification, or backend management APIs into the product application repository. They consume appbase through dependencies and approved composed wrappers.
 - UI packages from different architecture families must not import each other's pages, components, routes, host adapters, or runtime globals.
 - PC application roots `MUST` follow `APP_PC_ARCHITECTURE_SPEC.md`. Packages without `pc-console` or `pc-admin` are app/user modules by default; `pc-console` modules are user-facing management console modules; `pc-admin` modules are company-internal admin modules.
@@ -48,7 +49,7 @@ Rules:
 - Native Android mobile roots `MUST` follow `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md` for package-local UI/service/state/route rules. Android packages use `sdkwork-<product>-android-mobile-*`; Kotlin namespaces must preserve the SDKWork package identity through legal Android identifiers.
 - Native iOS mobile roots `MUST` follow `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md` for package-local UI/service/state/route rules. iOS packages use `sdkwork-<product>-ios-mobile-*`; Swift targets/modules must preserve the SDKWork package identity through legal Swift identifiers.
 - Native HarmonyOS mobile roots `MUST` follow `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md` for package-local UI/service/state/route rules. Harmony packages use `sdkwork-<product>-harmony-mobile-*`; ohpm/ArkTS module identifiers must preserve the SDKWork package identity.
-- Backend/admin UI must be split by business domain and permission prefix. It must not be placed into one catch-all backend package.
+- `backend-admin` UI must be split by business domain and permission prefix. It must not be placed into one catch-all backend package.
 - Shared cross-architecture logic must be extracted into contract, service, i18n, token, or generated SDK packages that have no UI runtime dependency.
 
 ## 1. Architecture Principle
@@ -99,14 +100,14 @@ Different app architectures share capabilities through SDKs and service ports, n
 | Harmony native app | ArkTS/TypeScript app SDKs adapted for Harmony runtime and HarmonyOS host adapters | appbase Harmony wrapper or approved appbase ArkTS adapter with one global token-manager equivalent |
 | Desktop/Tauri renderer | TypeScript app SDKs injected by renderer bootstrap | appbase IAM runtime; native storage only through host adapters |
 | Rust local/private backend | Rust SDKs, route crates, service traits | appbase Rust context/auth/bootstrap crates and generated appbase SDKs when calling appbase APIs |
-| Backend/admin React | TypeScript backend SDKs | appbase backend SDK for IAM administration, no app login session creation |
+| Backend/admin React | TypeScript backend SDKs for `backend-admin` | appbase backend SDK for IAM administration, no app login session creation |
 
 Rules:
 
 - Architecture-specific UI packages `MUST` use the generated SDK language that matches the architecture.
 - A React package `MUST NOT` import Flutter, Android, iOS, or Harmony SDK/UI implementations; Flutter packages `MUST NOT` import TypeScript React wrappers; native Android/iOS/Harmony packages `MUST NOT` import another client architecture's UI/runtime wrappers.
 - Rust services `MUST NOT` embed frontend SDK wrappers. Rust code that calls HTTP APIs directly uses Rust SDKs or approved Rust service clients.
-- App-api/backend-api SDK clients `MUST` share the authenticated TokenManager created by the application runtime. Protected open-api SDK clients use their declared API key provider unless the contract explicitly declares a different mode.
+- App-api SDK clients and explicit `backend-admin` backend-api SDK clients `MUST` share the authenticated TokenManager created by the application runtime. Protected open-api SDK clients use their declared API key provider unless the contract explicitly declares a different mode.
 - Independent `apps/` repositories with Rust, Tauri, native runtime, or local/private backend capability `MUST` declare `sdkwork-appbase` before publishing product-owned SDK families.
 
 ### 1.1 Web Backend API Composition
@@ -145,7 +146,7 @@ Rules:
 - Route crates own route/path configuration for one capability and one API surface. They do not own SDK package names, generated SDK output, frontend service ports, or final OpenAPI authority names.
 - The application or backend shell owns route aggregation. It combines same-surface, same-owner route manifests into the project/domain authority such as `sdkwork-commerce-app-api` or `sdkwork-commerce-backend-api`.
 - Product applications consume generated SDK families such as `sdkwork-commerce-app-sdk` and `sdkwork-commerce-backend-sdk`. UI and service modules `MUST NOT` import route crates or build requests from route constants.
-- App-api is for application development and user-facing app clients through app SDKs. Backend-api is for backend/admin and operator clients through backend SDKs. Open-api is for external/public integration through open-api/domain SDKs.
+- App-api is for application development and user-facing app clients through app SDKs. Backend-api is for `backend-admin` and operator clients through backend SDKs. Open-api is for external/public integration through open-api/domain SDKs.
 - Route aggregation `MUST` subtract dependency-owned routes before SDK generation. Appbase, Drive, provider, and other dependency-owned routes remain dependency SDKs or approved composed wrappers.
 - Route crate capability names should be small business units such as product, cart, order, payment, catalog, shipment, wallet, tenant, report, or audit. Aggregated authorities use the broader project/domain such as commerce.
 

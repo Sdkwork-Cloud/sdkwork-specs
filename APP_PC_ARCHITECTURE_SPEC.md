@@ -245,16 +245,16 @@ PC package directory names `MUST` include the product code and the `pc` surface 
 | Console core | `sdkwork-<product>-pc-console-core` | user console runtime | console SDK providers, console permission hints, console session/runtime helpers | app shell, admin SDK resources, internal staff features |
 | Console shell | `sdkwork-<product>-pc-console-shell` | user console shell | user-facing management console layout, menus, console route composition | app pages, internal admin pages, backend-only operation center |
 | Console capability | `sdkwork-<product>-pc-console-<capability>` | user console | customer/tenant/app-owner management pages, console services, console route metadata | internal company admin behavior, backend-only moderation/ops workflows |
-| Admin core | `sdkwork-<product>-pc-admin-core` | internal admin runtime | backend SDK provider, admin permission/audit helpers, admin route guards, operator context | user login UI, app-api session creation, customer console workflows |
-| Admin shell | `sdkwork-<product>-pc-admin-shell` | internal admin shell | internal management layout, admin menus, admin route composition | app user navigation, user console navigation, business data transport |
-| Admin capability | `sdkwork-<product>-pc-admin-<capability>` | internal admin | internal staff operation pages, backend services, permissions, audit-facing workflows | app-api user workflows, user console workflows, raw HTTP bypasses |
+| Admin core | `sdkwork-<product>-pc-admin-core` | `backend-admin` runtime | backend SDK provider, admin permission/audit helpers, admin route guards, operator context | user login UI, app-api session creation, customer console workflows |
+| Admin shell | `sdkwork-<product>-pc-admin-shell` | `backend-admin` shell | internal management layout, admin menus, admin route composition | app user navigation, user console navigation, business data transport |
+| Admin capability | `sdkwork-<product>-pc-admin-<capability>` | `backend-admin` | internal staff operation pages, backend services, permissions, audit-facing workflows | app-api user workflows, user console workflows, raw HTTP bypasses |
 | Native host | `sdkwork-<product>-pc-desktop` | desktop and tablet native host | Tauri config, native commands, permissions, capabilities, icons, desktop bundles, iPadOS IPA workflow, Android tablet APK/AAB workflow | business authorization, app/domain services, generated SDK edits |
 
 Rules:
 
 - A package named `sdkwork-<product>-pc-<capability>` without `pc-console` or `pc-admin` is an app/user package by default.
 - `console` means user-facing management console for customers, tenants, app owners, or product users who manage their own resources.
-- `admin` means company-internal staff management backend for operations, moderation, platform administration, support, audit, and internal control.
+- `admin` means the PC package maps to the `backend-admin` surface: company-internal staff management backend for operations, moderation, platform administration, support, audit, and internal control. `pc-console` packages are not `backend-admin`.
 - New PC packages `MUST NOT` use `sdkwork-<product>-console-*` or `sdkwork-<product>-admin-*` without the `pc` segment.
 - Existing packages without the `pc` segment are migration references only. New work should either create the normalized `sdkwork-<product>-pc-console-*` or `sdkwork-<product>-pc-admin-*` package, or record a migration exception.
 - `core`, `commons`, and `shell` package names are reserved for infrastructure. They `MUST NOT` own business pages or business services.
@@ -382,6 +382,8 @@ Rules:
 - App capability packages may depend on `pc-core`, `pc-commons`, appbase wrappers, generated app SDK ports, and approved shared contracts.
 - Console packages may depend on `pc-console-core`, `pc-console-shell` public exports, `pc-core`, `pc-commons`, appbase wrappers, generated app SDK ports, and approved shared contracts. They `MUST NOT` depend on admin packages.
 - Admin packages may depend on `pc-admin-core`, `pc-admin-shell` public exports, `pc-core`, `pc-commons`, generated backend SDK ports, and approved shared contracts. They `MUST NOT` depend on app or console packages for business behavior.
+- `pc-core` SDK exports `MUST` include product app SDK and dependency app SDK wrappers needed by the app renderer, including appbase app SDK wrappers for appbase IAM, current user, workspace, contacts, address book, and user-visible IAM directory read/list/tree resources. `pc-core` `MUST NOT` export product backend SDK wrappers, appbase backend SDK wrappers, backend base URL resolvers, or backend generated SDK clients.
+- `pc-admin-core` or an equivalent `backend-admin` SDK subpath owns backend SDK and appbase backend SDK wrapper exports. App and console packages may not import that `backend-admin` SDK subpath.
 - Shell packages compose routes and layout. They `MUST NOT` own business services or hidden SDK clients.
 - Native host packages may depend on renderer build outputs and host adapter contracts. They `MUST NOT` directly depend on app, console, or admin business packages for workflow logic.
 - Cyclic dependencies are forbidden.
@@ -394,12 +396,16 @@ PC applications are SDK composition applications.
 Rules:
 
 - App and console packages `MUST` use generated TypeScript app SDK clients or approved appbase app wrappers for `/app/v3/api`.
-- Admin packages `MUST` use generated TypeScript backend SDK clients or approved backend wrappers for `/backend/v3/api`.
+- Admin packages are `backend-admin` packages and `MUST` use generated TypeScript backend SDK clients or approved backend wrappers for `/backend/v3/api`.
+- Packages without `pc-admin` are non-admin for SDK selection. They `MUST` use generated app SDK clients or approved app SDK wrappers and `MUST NOT` import, export, construct, proxy, or route through backend SDK clients, appbase backend SDK clients, backend wrappers, backend generated SDK packages, or backend base URL resolvers.
+- App and console packages that implement contacts, address books, organization trees, department trees, memberships, assignments, positions, or role-binding read views `MUST` use appbase app SDK resources or an approved app SDK wrapper. They `MUST NOT` use appbase backend SDK or product backend SDK for those user-visible directory workflows.
+- Admin packages may use appbase backend SDK for `backend-admin` IAM management and product backend SDK for operator resources. That permission does not extend to `pc-core`, app packages, or user-facing console packages.
 - Protected open-api clients, when used from PC packages, `MUST` be injected with their approved API key credential provider. They `MUST NOT` be added to app/backend token-manager client lists.
-- Runtime/bootstrap `MUST` create one global TokenManager per authenticated session context and bind it to appbase and downstream authenticated app-api/backend-api SDK clients.
+- Runtime/bootstrap `MUST` create one global TokenManager per authenticated session context and bind it to appbase app SDK clients, downstream authenticated app-api SDK clients, and explicit `backend-admin` backend-api SDK clients.
 - Appbase IAM runtime owns login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user self-service. Verification-code delivery and verification are messaging-owned app-api capabilities and must be injected through the generated messaging app SDK surface when auth flows need them.
 - Product packages `MUST NOT` copy appbase IAM APIs, regenerate appbase-owned contracts, or create local auth/session SDK ports when the appbase resource exists.
-- Admin IAM management uses appbase backend SDK resources where applicable. Backend SDKs `MUST NOT` expose or consume user-facing `auth.sessions.create`, registration, refresh, or login-session creation resources.
+- `backend-admin` IAM management uses appbase backend SDK resources where applicable. Backend SDKs `MUST NOT` expose or consume user-facing `auth.sessions.create`, registration, refresh, or login-session creation resources.
+- App auth runtime for the user-facing PC renderer `MUST` construct appbase app SDK and downstream app SDK clients only. It `MUST NOT` construct backend SDK clients just because admin packages are present in the same PC root.
 - Services receive SDK clients or narrow SDK ports through dependency injection. UI components call services or hooks, not SDK clients directly, when reusable behavior exists.
 
 ## 8. Web, Desktop, And Tablet Native Runtime
@@ -533,7 +539,8 @@ Required verification for PC application architecture changes:
 | Root layout | Static check proves `.sdkwork/`, `src/`, `packages/`, `sdks/`, `scripts/`, and required metadata exist for application roots. |
 | Package naming | Static check proves new packages use `sdkwork-<product>-pc-*`, `sdkwork-<product>-pc-console-*`, or `sdkwork-<product>-pc-admin-*`. |
 | Surface split | Static scan proves app, console, and admin packages do not deep import each other or share hidden route/service internals. |
-| SDK boundary | Static scan proves app/console use app SDKs, admin uses backend SDKs, protected open-api uses API key provider, and no raw HTTP/manual auth headers were introduced. |
+| SDK boundary | Static scan proves app/console use app SDKs, `backend-admin` packages use backend SDKs, protected open-api uses API key provider, and no raw HTTP/manual auth headers were introduced. |
+| SDK export boundary | Static scan proves `pc-core` exports app SDK/appbase app SDK wrappers and no backend SDK wrappers, while backend SDK/appbase backend SDK wrappers are exported only from `pc-admin-core` or another `backend-admin` boundary. |
 | IAM boundary | Tests prove appbase IAM runtime, global TokenManager, logout clearing, session restore, and route guards behave across app, console, and admin surfaces. |
 | Config profile boundary | Static and runtime tests prove `development/test/staging/production`, profile aliases, deployment mode, build mode, and runtime target are separated; browser, desktop, server, container, and Tauri platform config files do not leak into each other. |
 | Environment file hygiene | Static scan proves checked-in files are safe examples only and ignored host-local files include `.env.local`, `.env.<profile>.local`, `.env.postgres`, `.env.release.local`, and `config/*.local.toml`. |
@@ -547,8 +554,10 @@ Acceptance checklist:
 - [ ] New package names include the `pc` segment.
 - [ ] Packages without `pc-console` or `pc-admin` are treated as user-facing app packages.
 - [ ] Console packages are user-facing management console packages, not internal admin packages.
-- [ ] Admin packages are internal company/staff backend packages, not user app packages.
+- [ ] Admin packages are `backend-admin` internal company/staff backend packages, not user app packages.
 - [ ] App/console/admin routes, SDK clients, permissions, i18n, and tests are separated.
+- [ ] `pc-core` exports product app SDK and appbase app SDK wrappers needed by the frontend app, and does not export backend SDK wrappers.
+- [ ] Backend SDK and appbase backend SDK wrappers are available only from `pc-admin-core` or an equivalent `backend-admin` boundary.
 - [ ] Root `src/` remains thin.
 - [ ] Browser public runtime config, desktop user config, server config, container config, and Tauri platform config are separated and validated for dev/test/staging/prod.
 - [ ] Test profile isolates database/schema, Redis key prefix, logs, cache, runtime, and temp directories.

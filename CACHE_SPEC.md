@@ -26,7 +26,7 @@ This standard defines the framework-level cache contract for SDKWork application
 | Cache key | Caller-supplied identifier within a namespace. Runtime code constructs the physical key from instance prefix, namespace, and key. |
 | Local cache | In-process bounded cache for desktop and test usage. It is not shared across processes. |
 | Redis cache | Shared service cache for server/container/SaaS/private service deployments. |
-| Admin cache management | Backend/admin API and UI surface for operator cache diagnostics and safe invalidation. |
+| Admin cache management | `backend-admin` API and UI surface for operator cache diagnostics and safe invalidation. |
 
 ## 3. Provider Kinds
 
@@ -179,7 +179,7 @@ Rules:
 
 ## 9. Admin Management API
 
-Admin cache management must be exposed through backend/admin SDK contracts, not raw frontend URLs.
+Admin cache management must be exposed through `backend-admin` SDK contracts, not raw frontend URLs.
 
 Minimum endpoints:
 

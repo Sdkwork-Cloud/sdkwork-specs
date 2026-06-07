@@ -31,7 +31,7 @@ Rules:
 - UI components must not construct SDK clients.
 - UI components must not manually assemble raw HTTP requests or auth headers.
 - User-facing UI uses app SDK surfaces.
-- Backend/admin UI uses backend SDK surfaces.
+- `backend-admin` UI uses backend SDK surfaces.
 - Frontend services normalize loading, empty, permission-denied, validation, and problem-detail error states.
 
 ## 3. Component Organization
@@ -66,8 +66,8 @@ Rules:
 
 Rules:
 
-- Backend/admin UI should optimize for dense operational workflows: tables, filters, drawers, dialogs, tabs, and repeated actions.
-- App UI should match the selected product architecture and not import backend/admin UI packages.
+- `backend-admin` UI should optimize for dense operational workflows: tables, filters, drawers, dialogs, tabs, and repeated actions.
+- App UI should match the selected product architecture and not import `backend-admin` UI packages.
 - Buttons, inputs, tabs, menus, toggles, sliders, and dialogs should use the design system or established local primitives.
 - Loading, empty, error, permission-denied, and validation states must be explicit.
 - Interactive elements need accessible names and keyboard behavior where applicable.

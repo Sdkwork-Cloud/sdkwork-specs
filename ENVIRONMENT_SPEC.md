@@ -21,7 +21,7 @@ Environment configuration must satisfy these goals:
 - Desktop/Tauri development commands that start backend services use the server PostgreSQL development profile by default; SQLite is used only by explicit local-data profiles or installed desktop runtime config.
 - Every database setting can be specified in a runtime config file and overridden by environment variables for emergency operations.
 - Browser-visible values are separated from private process values.
-- Generated SDK clients receive per-surface base URLs, not one ambiguous global URL.
+- SDK bootstrap starts from one common SDK root by default, derives explicit open-api, app-api, and backend-api base URLs from that root, and supports per-surface or per-SDK overrides for split deployments.
 - Secrets are never committed, never served through browser runtime config, and never logged in plaintext.
 
 ## 2. Terms
@@ -108,8 +108,8 @@ Rules:
 - Use uppercase snake case.
 - Use one product prefix per product family.
 - Use capability names that match `DOMAIN_SPEC.md` and `SDK_SPEC.md`.
-- Do not use generic names such as `GATEWAY_API_BASE_URL` when the consuming SDK surface is more specific. Prefer `OPEN_API_BASE_URL`, `APP_API_BASE_URL`, or `BACKEND_API_BASE_URL`.
-- Dependency SDK base URL variables must include a stable dependency SDK family or dependency app code segment, for example `SDKWORK_<APP>_APPBASE_APP_API_BASE_URL`, `SDKWORK_<APP>_DRIVE_APP_API_BASE_URL`, or `PORTAL_PUBLIC_IM_OPEN_API_BASE_URL`.
+- Use `SDK_BASE_URL` only for the common SDK root that can derive multiple SDK surfaces. Do not use generic names such as `GATEWAY_API_BASE_URL` when the consuming SDK surface is more specific. Prefer `OPEN_API_BASE_URL`, `APP_API_BASE_URL`, or `BACKEND_API_BASE_URL` for resolved surface overrides.
+- Dependency SDK base URL override variables must include a stable dependency SDK family or dependency app code segment, for example `SDKWORK_<APP>_APPBASE_APP_API_BASE_URL`, `SDKWORK_<APP>_DRIVE_APP_API_BASE_URL`, or `PORTAL_PUBLIC_IM_OPEN_API_BASE_URL`.
 - Do not put secrets in names prefixed with `PORTAL_PUBLIC_`, `VITE_`, `PUBLIC_`, `NEXT_PUBLIC_`, or any variable that is exposed to browser code.
 - Do not define env variables that carry live session credentials, such as `SDKWORK_<APP>_AUTH_TOKEN`, `SDKWORK_<APP>_ACCESS_TOKEN`, `SDKWORK_<APP>_REFRESH_TOKEN`, `PORTAL_PUBLIC_ACCESS_TOKEN`, or `VITE_*_TOKEN`. Tokens are runtime session state owned by appbase IAM and the global TokenManager.
 - Boolean variables must accept only `true`, `false`, `1`, or `0` after normalization.
@@ -129,6 +129,7 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_<APP>_CONFIG_FILE` | private | MAY | Explicit runtime config file path. |
 | `SDKWORK_<APP>_SERVER_CONFIG_FILE` | private | MAY | Explicit server process config file path when a PC/desktop root also owns server profiles. Defaults to `CONFIG_FILE` when absent. |
 | `SDKWORK_<APP>_DESKTOP_CONFIG_FILE` | private | MAY | Explicit desktop/tablet user config file path. Defaults to the user-private SDKWork config path when absent. |
+| `SDKWORK_<APP>_SDK_BASE_URL` | private | SHOULD when multiple SDK surfaces share one gateway | Common SDK root used to derive SDKWork open-api, app-api, backend-api, and documented dependency SDK base URLs. It must be a deployment root, not a resolved surface URL such as `/v1` or `/backend/v3/api`. |
 | `SDKWORK_<APP>_API_BASE_URL` | private | MAY | Generic same-origin or service-side default API base URL. Prefer surface-specific variables for SDK client construction. |
 | `SDKWORK_<APP>_OPEN_API_BASE_URL` | private | MAY | Server/runtime SDKWork open-api or documented compatibility API base URL. Business open-api paths need not include `/open`; they are any approved non-app/non-backend prefix. |
 | `SDKWORK_<APP>_APP_API_BASE_URL` | private | SHOULD when app SDK is consumed | Server/runtime app-api SDK base URL, normally ending in `/app/v3/api` for SDKWork v3 app-api. |
@@ -307,30 +308,31 @@ Rules:
 
 ## 6. SDK Base URL Standard
 
-Generated SDK clients must receive independent base URLs per SDK surface.
+Generated SDK bootstrap should require one common SDK root by default, then resolve explicit base URLs for each SDK surface before constructing generated clients. Per-surface and per-SDK variables are overrides, not mandatory boilerplate for ordinary same-gateway deployments.
 
 | SDK surface | Private server/runtime env | Public browser runtime env | Vite/dev-server public env | Default |
 | --- | --- | --- | --- | --- |
+| Common SDK root | `SDKWORK_<APP>_SDK_BASE_URL` | `PORTAL_PUBLIC_SDK_BASE_URL` | `VITE_<APP_CODE>_SDK_BASE_URL` | Same-origin deployment root, for example `/` or a gateway origin. |
 | Public API reference / generic OpenAPI display | `SDKWORK_<APP>_API_BASE_URL` | `PORTAL_PUBLIC_API_BASE_URL` | `VITE_API_BASE_URL` | Same-origin API path, app-specific. |
-| SDKWork open-api SDK or documented OpenAI-compatible API | `SDKWORK_<APP>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_OPEN_API_BASE_URL` | Defaults to the API reference base URL when documented. |
-| App/user SDK | `SDKWORK_<APP>_APP_API_BASE_URL` | `PORTAL_PUBLIC_APP_API_BASE_URL` | `VITE_<APP_CODE>_APP_API_BASE_URL` | Same-origin `/app/v3/api` for SDKWork v3 app-api. |
-| Backend/admin SDK | `SDKWORK_<APP>_BACKEND_API_BASE_URL` | `PORTAL_PUBLIC_BACKEND_API_BASE_URL` | `VITE_<APP_CODE>_BACKEND_API_BASE_URL` | Same-origin `/backend/v3/api` for SDKWork v3 backend-api. |
-| Dependency open-api SDK | `SDKWORK_<APP>_<DEPENDENCY>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | Inherit dependency deployment default only when documented. |
-| Dependency app-api SDK | `SDKWORK_<APP>_<DEPENDENCY>_APP_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_APP_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_APP_API_BASE_URL` | Same-origin dependency app-api path when hosted by the same edge. |
-| Dependency backend-api SDK | `SDKWORK_<APP>_<DEPENDENCY>_BACKEND_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_BACKEND_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_BACKEND_API_BASE_URL` | Private/admin only unless the UI surface explicitly owns backend/admin mode. |
+| SDKWork open-api SDK or documented OpenAI-compatible API | `SDKWORK_<APP>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_OPEN_API_BASE_URL` | Derived from the common SDK root plus the approved open-api prefix, or from the API reference base URL when documented. |
+| App/user SDK | `SDKWORK_<APP>_APP_API_BASE_URL` | `PORTAL_PUBLIC_APP_API_BASE_URL` | `VITE_<APP_CODE>_APP_API_BASE_URL` | Derived from the common SDK root plus `/app/v3/api` for SDKWork v3 app-api. |
+| `backend-admin` SDK | `SDKWORK_<APP>_BACKEND_API_BASE_URL` | `PORTAL_PUBLIC_BACKEND_API_BASE_URL` | `VITE_<APP_CODE>_BACKEND_API_BASE_URL` | Derived from the common SDK root plus `/backend/v3/api` for SDKWork v3 backend-api. |
+| Dependency open-api SDK | `SDKWORK_<APP>_<DEPENDENCY>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | Derived from the common SDK root only when the dependency surface is documented as served by that gateway; otherwise configure this override. |
+| Dependency app-api SDK | `SDKWORK_<APP>_<DEPENDENCY>_APP_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_APP_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_APP_API_BASE_URL` | Derived from the common SDK root plus the dependency app-api prefix only when hosted by the same edge; otherwise configure this override. |
+| Dependency backend-api SDK | `SDKWORK_<APP>_<DEPENDENCY>_BACKEND_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_BACKEND_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_BACKEND_API_BASE_URL` | Derived from the common SDK root only when verified dependency backend mount coverage exists; otherwise configure this override. |
 
 Rules:
 
 - SDKWork open-api SDK and documented compatibility API configuration must use `OPEN_API_BASE_URL` terminology. For SDKWork business open-api SDKs, the value `MUST` be that domain's approved non-app/non-backend prefix from `API_SPEC.md`, for example `/im/v3/api`; it does not imply a literal `/open` path segment. For explicitly documented OpenAI-compatible APIs, `/v1` remains valid as a protocol-compatibility prefix and must not be used as the default for new SDKWork-owned business open-api domains. `gateway` can remain an internal system id when the generated schema or UI already uses it, but environment names should describe the SDK surface.
-- App SDK and backend/admin SDK base URLs must remain independent because they may terminate at different hosts in private deployments.
-- Appbase, Drive, IM, payment, media, or other dependency SDK base URLs must be keyed by dependency SDK family/app code. Do not hide dependency base URLs behind a product-local `API_BASE_URL` when the dependency can be deployed independently.
-- Browser public runtime config may expose SDK base URLs only when the browser is allowed to call that SDK surface directly. Backend/admin base URLs must not be exposed to user-facing app UI unless that route surface explicitly includes console/admin mode.
+- The common SDK root must not itself be a resolved surface URL such as `/v1`, `/app/v3/api`, or `/backend/v3/api`. A surface URL may be configured only through the matching surface or SDK-specific override.
+- App SDK and `backend-admin` SDK clients must receive explicit resolved base URLs after config resolution because they may terminate at different hosts in private deployments.
+- Appbase, Drive, IM, payment, media, or other dependency SDK override variables must be keyed by dependency SDK family/app code. Do not hide dependency base URLs behind a product-local `API_BASE_URL` when the dependency can be deployed independently.
+- Browser public runtime config may expose SDK base URLs only when the browser is allowed to call that SDK surface directly. `backend-admin` base URLs must not be exposed to user-facing app UI or PC user console UI unless that route surface is explicitly `backend-admin`.
 - Defaults should be same-origin paths in browser deployments so remote browsers are not given loopback addresses, but dependency SDK same-origin defaults are allowed only when `dependencyApiSurfaces` records verified mount coverage for that dependency surface.
-- Dependency backend-api SDK variables such as
+- Dependency backend-api SDK override variables such as
   `SDKWORK_<APP>_APPBASE_BACKEND_API_BASE_URL`,
   `PORTAL_PUBLIC_APPBASE_BACKEND_API_BASE_URL`, and
-  `VITE_SDKWORK_APPBASE_BACKEND_API_BASE_URL` `MUST` remain independent from product backend variables such as `SDKWORK_<APP>_BACKEND_API_BASE_URL`,
-  `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, and `VITE_<APP_CODE>_BACKEND_API_BASE_URL` unless verified dependency backend mount coverage allows same-origin inheritance.
+  `VITE_SDKWORK_APPBASE_BACKEND_API_BASE_URL` are optional when `SDK_BASE_URL` points to a verified gateway that serves the dependency backend routes. They `MUST` be configured explicitly when the dependency backend is deployed elsewhere or when mount coverage is not documented.
 - A checked-in example may leave a required external dependency backend base URL empty to force deployment configuration, but it `MUST NOT` set that dependency URL to `/backend/v3/api` or another product-owned default without matching `dependencyApiSurfaces` coverage evidence.
 - Absolute HTTP/HTTPS origins must be added to the production Content Security Policy `connect-src`.
 - Generated SDK examples must not hard-code tenant-specific hosts.
@@ -675,7 +677,7 @@ Required behavior:
 
 - Load `/runtime-env.js` or equivalent before the hashed application bundle.
 - Use only browser-visible runtime variables for SDK client base URLs.
-- Keep app/backend/open SDK base URLs independent.
+- Prefer `PORTAL_PUBLIC_SDK_BASE_URL` as the common public SDK root and derive open/app/backend public base URLs from it. Use `PORTAL_PUBLIC_OPEN_API_BASE_URL`, `PORTAL_PUBLIC_APP_API_BASE_URL`, `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, or dependency-specific overrides only for split deployments or nonstandard mounts.
 - Reject invalid public URLs at startup or build-time preflight.
 - Treat Vite mode as build-time input only. Runtime environment, deployment mode, and runtime target must come from validated public runtime config.
 - Browser public runtime config must declare `environment`, `deploymentMode`, and `runtimeTarget = "browser"` or their JSON/language equivalents.
@@ -686,6 +688,7 @@ Recommended variables:
 # /v1 is valid here only for an explicitly documented OpenAI-compatible API.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
+PORTAL_PUBLIC_SDK_BASE_URL=/
 PORTAL_PUBLIC_OPEN_API_BASE_URL=/v1
 PORTAL_PUBLIC_APP_API_BASE_URL=/app/v3/api
 PORTAL_PUBLIC_BACKEND_API_BASE_URL=/backend/v3/api
@@ -705,20 +708,22 @@ Recommended public runtime config:
 }
 ```
 
-### 10.2 Backend/Admin Web Application
+### 10.2 Backend-Admin Web Application
 
-Use when an operator console consumes backend/admin APIs.
+Use when an operator console consumes `backend-admin` APIs.
 
 Required behavior:
 
-- Consume generated backend/admin SDKs through approved wrappers.
-- Configure backend/admin base URL independently from app/user APIs.
+- Consume generated `backend-admin` SDKs through approved wrappers.
+- Configure `backend-admin` through the common SDK root by default. Use `PORTAL_PUBLIC_BACKEND_API_BASE_URL` only when the admin backend is split from the common gateway or needs a nonstandard mount.
 - Never expose backend service-to-service secrets to browser code.
 
 Recommended public runtime variable:
 
 ```text
-PORTAL_PUBLIC_BACKEND_API_BASE_URL=/backend/v3/api
+PORTAL_PUBLIC_SDK_BASE_URL=/
+# Optional override when backend-admin is split from the common SDK root:
+# PORTAL_PUBLIC_BACKEND_API_BASE_URL=/backend/v3/api
 ```
 
 ### 10.3 App/User Web Application
@@ -728,14 +733,16 @@ Use when user-facing UI consumes app APIs.
 Required behavior:
 
 - Consume generated app SDKs through approved wrappers.
-- Configure app API base URL independently from backend/admin APIs.
+- Configure app API through the common SDK root by default. Use `PORTAL_PUBLIC_APP_API_BASE_URL` only when app-api is split from the common gateway or needs a nonstandard mount.
 - Store tokens only through the platform-approved auth/session adapter.
-- User-facing app UI must not read backend/admin SDK base URLs unless the route surface explicitly includes a console/admin mode.
+- User-facing app UI and PC user console UI must not read `backend-admin` SDK base URLs.
 
 Recommended public runtime variable:
 
 ```text
-PORTAL_PUBLIC_APP_API_BASE_URL=/app/v3/api
+PORTAL_PUBLIC_SDK_BASE_URL=/
+# Optional override when app-api is split from the common SDK root:
+# PORTAL_PUBLIC_APP_API_BASE_URL=/app/v3/api
 ```
 
 ### 10.4 Desktop Application
@@ -1079,7 +1086,7 @@ keep Redis optional and disabled by default.
 
 ### 11.6 Private Split-Service Deployment
 
-Use when the portal edge service forwards to separate internal gateway, app API, and backend/admin API services.
+Use when the portal edge service forwards to separate internal gateway, app API, and `backend-admin` API services.
 
 ```text
 SDKWORK_CLAW_EDGE_GATEWAY_BASE_URL=http://gateway.internal:18080
@@ -1169,7 +1176,7 @@ Acceptance checklist:
 - [ ] `SDKWORK_<APP>_ENVIRONMENT`, `SDKWORK_<APP>_CONFIG_PROFILE`, `SDKWORK_<APP>_DEPLOYMENT_MODE`, and `SDKWORK_<APP>_RUNTIME_TARGET` are normalized and validated separately.
 - [ ] Dev/test/staging/prod example files exist where applicable and local overrides are ignored.
 - [ ] Public values are separated from private and secret values.
-- [ ] Generated SDK base URLs are independent per surface.
+- [ ] Generated SDK base URLs resolve from one common SDK root plus optional per-surface or per-SDK overrides; effective open-api, app-api, and backend-api URLs are explicit after resolution.
 - [ ] Locale env/public runtime values contain only default/supported/fallback locale strategy and catalog manifest references; translated messages remain in `I18N_SPEC.md` catalog fragments.
 - [ ] Server release defaults require PostgreSQL.
 - [ ] PostgreSQL development templates use `.env.postgres.example` with `SDKWORK_<APP>_DATABASE_ENGINE=postgresql`, `SDKWORK_<APP>_DATABASE_SSL_MODE`, and matching `DATABASE_ADMIN_*` split fields when admin initialization is needed.

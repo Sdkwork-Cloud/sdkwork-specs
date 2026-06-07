@@ -126,7 +126,7 @@ Rules:
 
 Rules:
 
-- Mini program admin packages require explicit approval and backend SDK boundary verification.
+- Mini program admin packages require explicit approval, `backend-admin` surface classification, and backend SDK boundary verification.
 - Capability packages should map to platform subpackages by default when they contain more than trivial pages.
 - Shared components remain domain-neutral. Domain components live in the owning capability package.
 - Packages must be small enough to be understood and tested independently.
@@ -233,7 +233,7 @@ Rules:
 Rules:
 
 - User-facing mini program packages `MUST` use generated TypeScript app SDK clients or approved appbase/mini-program wrappers for `/app/v3/api`.
-- Mini program admin packages, when approved, `MUST` use backend SDK clients or approved backend wrappers for `/backend/v3/api`.
+- Mini program admin packages, when approved as `backend-admin` surfaces, `MUST` use backend SDK clients or approved backend wrappers for `/backend/v3/api`.
 - The root runtime `MUST` create one global TokenManager or approved mini program equivalent for authenticated session context.
 - Appbase login/session behavior should use appbase app SDK resources or an approved mini program IAM adapter. Product packages must not create local auth/session endpoints.
 - Mini program platform login codes, phone-number grants, profile prompts, and provider-specific auth facts are platform inputs. They must be exchanged through approved app-api/appbase flows, not through feature-local raw HTTP.

@@ -189,7 +189,7 @@ Examples:
 
 ## 6. Dependency Checkout
 
-Dependency relationship policy, local source materialization, cross-platform source path rules, stale dependency cleanup, and dependency-owned SDK/API ownership are governed by `DEPENDENCY_MANAGEMENT_SPEC.md`. This section defines how the GitHub workflow framework executes that policy in release and CI jobs.
+Dependency relationship policy, native build-tool dependency management, cross-platform source path rules, stale dependency cleanup, release dependency refs, and dependency-owned SDK/API ownership are governed by `DEPENDENCY_MANAGEMENT_SPEC.md`. This section defines how the GitHub workflow framework executes release and CI dependency checkout policy.
 
 Rules:
 
@@ -199,7 +199,7 @@ Rules:
 - The v1 framework supports `SDKWORK_RELEASE_TOKEN` as the dependency checkout token. Other per-dependency token secret names are not valid unless a future framework version adds a documented token map.
 - Checkout implementations `MUST NOT` put tokens in clone URLs. Use Git credential headers or first-party checkout actions so tokens are masked and not persisted in remote URLs.
 - Workflow inputs such as `dependency_refs_json` `MUST NOT` be interpolated directly into shell commands. Pass them through environment variables or files before invoking planner commands.
-- When `dependencies[].path` is omitted, the framework `MUST` checkout the dependency under `.sdkwork/dependencies/<id>` so repository-root applications can use `app.sourcePath: "."` without placing dependencies in source-owned directories.
+- When `dependencies[].path` is omitted, the framework `MUST` choose a safe workflow-local checkout directory. That default is an implementation detail and `MUST NOT` be documented as a source dependency path for local development.
 - Composite actions that execute shell commands `MUST` read action inputs from environment variables or structured argument arrays rather than embedding `${{ inputs.* }}` expressions directly inside shell script bodies.
 - GitHub expression contexts such as `env:`, `with:`, `if:`, `name:`, `environment:`, and `concurrency:` may reference workflow inputs when GitHub evaluates them before shell execution. The unsafe boundary is the shell script body itself.
 - Dependency checkout paths `MUST` be safe relative paths and must not overlap or overwrite the application source path or framework checkout path.
