@@ -177,14 +177,17 @@ SDKWork protected app-api and backend-api operations use a dual-token model. Pro
 
 | Token | Transport | Purpose |
 | --- | --- | --- |
-| `authToken` | `Authorization: Bearer <auth_token>` | principal identity, session identity, auth strength, expiry |
-| `accessToken` | `Access-Token: <access_token>` | tenant, organization, app, environment, deployment mode, data scope, permission scope |
+| `authToken` | `Authorization: Bearer <auth_token>` | principal identity, session identity, tenant, organization, login scope, auth strength, expiry |
+| `accessToken` | `Access-Token: <access_token>` | principal identity, session identity, tenant, organization, login scope, app, environment, deployment mode, data scope, permission scope |
 | `refreshToken` | app-auth refresh operation only | refresh/rotation; never used for normal business APIs |
 
 Rules:
 
 - Session storage `MUST` be centralized in a core/session module.
 - Applications `MUST` create exactly one global token manager per authenticated session context.
+- Login/session-creation requests `MUST NOT` send existing `Authorization`, `Access-Token`, `X-Sdkwork-Tenant-Id`, `X-Sdkwork-Organization-Id`, or `X-Sdkwork-User-Id` headers to select tenant or organization. Login starts anonymous and receives tenant/organization context only from the appbase login response.
+- `authToken` and `accessToken` returned by appbase login/session APIs `MUST` both carry `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims. Client-side code may decode token claims for diagnostics only; authorization and routing decisions `MUST` rely on appbase session validation and returned `AppContext`.
+- Runtime session normalization `MUST` reject complete-looking sessions whose `authToken`, `accessToken`, and returned `AppContext` disagree on tenant, organization, user, session, app, environment, deployment mode, or login scope.
 - `@sdkwork/appbase-app-sdk`, product/dependency app SDKs, explicit `backend-admin` `@sdkwork/appbase-backend-sdk`, explicit `backend-admin` product/dependency backend SDKs, and approved composed wrappers backed by those SDKs `MUST` receive the same global token manager through generated SDK config, `setTokenManager`, credential provider, constructor injection, or approved adapter.
 - In the TypeScript appbase IAM runtime, the standard downstream client list is `clients.sdkClients`. Older or app-local names such as `appBackendSdkClients` may exist only as compatibility aliases that are normalized into `clients.sdkClients` before calling `createIamRuntime`.
 - Login, registration, OAuth session creation, current-session retrieval/update, refresh, and session restoration `MUST` update the global token manager, centralized session store, and AppContext/context store together before the API call is reported as completed to UI/runtime code.
@@ -213,6 +216,33 @@ appbaseAppClient.auth.sessions.current.delete()
   -> clear native secure session state when used
   -> navigate to /auth/login or configured login entry
 ```
+
+### 5.1 Login Organization Selection Protocol
+
+The standard login endpoint may complete immediately or return a continuation state when the verified user belongs to multiple organizations in the resolved tenant.
+
+Flow:
+
+```text
+anonymous login request
+  -> appbase validates credentials
+  -> appbase resolves real user_id and tenant_id from IAM data
+  -> appbase reads active iam_organization_membership rows
+  -> zero organizations: return TENANT-scoped dual-token session
+  -> one organization: return ORGANIZATION-scoped dual-token session
+  -> multiple organizations: return organization-selection challenge
+  -> app UI shows organization selection modal
+  -> user selects organization
+  -> appbase validates membership and returns final dual-token session
+```
+
+Rules:
+
+- Product apps `MUST` treat an organization-selection challenge as an authenticated-login continuation, not as a normal authenticated session. They `MUST NOT` update the global token manager, protected SDK clients, or route guard as authenticated until appbase returns the final dual-token session.
+- The organization-selection UI may be a modal, route, or equivalent focused surface, but it `MUST` display only the safe organization choices returned by appbase and `MUST` submit the selected organization through the generated appbase app SDK continuation method.
+- Organization-selection continuation credentials `MUST NOT` be used as `authToken` or `accessToken` for product/dependency APIs. They are short-lived, single-purpose credentials for the continuation endpoint only.
+- Product apps `MUST NOT` choose the first organization client-side, cache an organization choice across users, or derive organization id from route/query/local storage without appbase validation.
+- Switching organization after login is a session update flow. It `MUST` use appbase session/current-session resources or an approved appbase organization-switch resource, then replace token/context state atomically.
 
 ## 6. Rust Protected API Standard
 
@@ -337,6 +367,8 @@ Required checks for IAM login integration:
 | Route guard | Tests or smoke checks prove protected routes redirect to login and authenticated auth routes redirect home/target. |
 | Logout | Tests or smoke checks prove persisted session, global token manager, AppContext, realtime clients, caches, and native storage are cleared even when remote logout fails. |
 | Session persistence | Tests prove login/refresh/current-session calls do not resolve before `commitSession` finishes, token persistence failure does not update the global token manager, new sessions do not inherit old refresh tokens, refresh/current-session continuation passes the already-merged committed session to `commitSession`, context propagation failure rolls back token/context stores, and sessions without AppContext clear stale AppContext. |
+| Login protocol | Tests prove login requests do not send or trust inbound auth/context headers, appbase returns tenant/organization/login-scope context in both tokens, and multi-organization login returns a continuation challenge instead of a normal session. |
+| Organization selection | Tests prove organization-selection continuation credentials cannot authenticate product APIs, client code does not auto-select the first organization, and final token issuance validates membership before committing session state. |
 | API boundary | Contract scan proves product IM/backend/Rust services do not expose appbase-owned `/app/v3/api/auth/*` routes. |
 | Current user boundary | Static scan shows current-user profile/self-service calls use `appbaseApp.iam.users.current.*` and do not inject legacy `user.*` clients. |
 | Rust guard | Tests prove protected Rust routes require dual tokens plus valid AppContext or signed context projection. |
@@ -363,6 +395,9 @@ rg -n "/app/v3/api/auth|/api/.*/auth|user-center/session" services crates
 - [ ] Generated appbase app SDK or strict IAM adapter over the standard appbase SDK resource surface owns all auth/session transport.
 - [ ] Logout clears local session, global token manager, AppContext, realtime connections, sensitive cache, and native storage when present, including remote logout failure cases.
 - [ ] Login/refresh/current-session restoration waits for session persistence and context propagation before returning to UI/runtime code, replaces refresh tokens for new sessions, preserves current refresh tokens only for continuation flows, rolls back on context propagation failure, and clears stale AppContext when the committed session has no context.
+- [ ] Login requests are anonymous; tenant and organization context are returned only by appbase after credential validation and real IAM tenant/organization membership lookup.
+- [ ] Multi-organization login uses the appbase organization-selection continuation protocol and does not commit normal session state until final dual tokens are returned.
+- [ ] Both tokens and persisted AppContext agree on tenant, organization, login scope, user, session, app, environment, and deployment mode.
 - [ ] Reusable auth packages use `commitSession(session, options?)`, never `persistSession`, and controller logout clears local authenticated state in a `finally` path.
 - [ ] Runtime/bootstrap builds an SDK inventory and passes every downstream authenticated product/dependency app-api/backend-api client and approved composed wrapper through `clients.sdkClients` or the language-equivalent token-manager-aware SDK list.
 - [ ] Current user profile reads use `appbaseApp.iam.users.current.retrieve()` and missing self-service methods are fixed in appbase app-api/OpenAPI/generator inputs instead of product-local fallbacks.

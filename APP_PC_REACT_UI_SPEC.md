@@ -159,7 +159,7 @@ Rules:
 - Icon-only controls `MUST` have accessible names and tooltips when the icon is not universally obvious.
 - App PC UI `MUST` use the app design system and tokens instead of redefining global themes per package.
 - Tablet-enabled PC UI `MUST` handle safe areas, orientation changes, virtual keyboard overlap, touch/stylus input, pointer input, hardware keyboard shortcuts, split view or multi-window where supported, and platform back/close affordances.
-- Tablet-enabled PC UI `MUST NOT` replace the large-screen workflow with phone-first navigation. Phone-first H5 belongs to `H5_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_MOBILE_REACT_UI_SPEC.md`.
+- Tablet-enabled PC UI `MUST NOT` replace the large-screen workflow with phone-first navigation. Phone-first H5 belongs to `APP_H5_ARCHITECTURE_SPEC.md` and `APP_MOBILE_REACT_UI_SPEC.md`.
 
 ## 6. Auth And Security
 

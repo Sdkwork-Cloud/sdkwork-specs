@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: top-level SDK architecture, canonical SDK naming vocabulary, generated HTTP and RPC SDK package semantics, frontend service integration, Java/Rust parity clients
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MODULE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `TEST_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MODULE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `TEST_SPEC.md`
 
 Generated SDKs are the contract boundary between applications and APIs. They must be predictable, semantic, modular, and replace handwritten transport logic. HTTP SDKs are generated from OpenAPI. RPC SDKs are generated from proto contracts defined by `RPC_SPEC.md`.
 
@@ -254,6 +254,12 @@ Rules:
   not an executable router. A same-process runtime may use those artifacts for coverage checks, but
   it still needs an executable router, controller, service adapter, or approved handler export before
   a dependency API is treated as mounted.
+- Executable mount coverage counts only when the mounted router/controller/service is
+  production-capable for that surface: it must read/write through the dependency's real
+  store/service/upstream or an approved product adapter backed by real tables/services. Demo,
+  sample, local-only, fixture, mock, hard-coded tenant/user/organization/API-key data, or seeded fake
+  responses `MUST NOT` satisfy `dependencyApiSurfaces` same-origin coverage in development, test,
+  staging, or production.
 - Dependency SDK base URLs may use a configured common SDK base URL when that root is documented as
   a gateway serving the dependency surface. They may use a product application's same-origin
   app/backend default only
@@ -269,6 +275,15 @@ Rules:
   running backend returns 404 for dependency-owned management routes. They `MAY` use a common SDK
   base URL only when that root is explicitly configured as a gateway that serves the dependency
   backend API surface.
+- Appbase backend-admin IAM dependency rule: integrating `sdkwork-appbase-app-sdk` or
+  `@sdkwork/appbase-app-sdk` satisfies only app-api login, session, current-user, workspace, and
+  user-visible directory behavior. It does not make `@sdkwork/appbase-backend-sdk` IAM management
+  operations available. An application that constructs `@sdkwork/appbase-backend-sdk` for
+  `backend-admin` IAM must either mount a production-capable appbase-owned backend
+  router/controller/service adapter, or an approved product adapter backed by real appbase IAM
+  tables/services, with verified `dependencyApiSurfaces` coverage for `/backend/v3/api/iam/*`; or it
+  must configure an explicit appbase backend base URL or common SDK gateway that serves those routes.
+  A demo/local router that returns hard-coded appbase IAM rows is not backend IAM mount coverage.
 - A consuming SDK family may document dependency package names for composed wrappers and bootstrap,
   but generated transport `MUST NOT` import or re-export dependency SDKs. Runtime composition owns
   dependency SDK client construction; generated transport remains owner-only.

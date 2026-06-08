@@ -202,6 +202,9 @@ Rules:
 - Protected app-api and backend-api handlers `MUST` consume the standard dual-token context.
 - Protected open-api handlers `MUST` consume the standard API key context unless a documented compatibility contract declares another mode.
 - Handlers and services `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission scopes, or request IDs from raw headers.
+- The typed request context for authenticated user flows `MUST` carry tenant id, organization id, login scope, user id, session id, app id, environment, deployment mode, auth level, data scope, and permission scope resolved from verified tokens or server-side session lookup.
+- Backend implementations `MUST NOT` fill authenticated request context with demo tenants, hard-coded tenants, mock users, email-normalized user ids, default organization ids, or request payload/header values when token/session context is missing.
+- When request path/body/query tenant or organization values are present, service/use-case code `MUST` compare them with typed context or explicit cross-tenant authorization before repository access.
 - Business authorization `MUST` be enforced in the service/use-case layer or a shared policy service, not only in router middleware and not only in UI.
 - Tenant and data-scope filters `MUST` be applied before repository queries return data.
 - Server-owned request identity follows `API_SPEC.md` and `OBSERVABILITY_SPEC.md`; clients do not supply request correlation IDs for app/backend SDK calls.
@@ -252,6 +255,11 @@ Rules:
   authority, or route contract crate can describe expected routes, but the runtime may treat a
   dependency API as same-origin mounted only when an executable router, controller, or handler
   adapter is imported through a public dependency export and covered by tests.
+- Executable dependency handler coverage must be backed by real runtime state: production tables,
+  repositories, service ports, or configured upstream services. Demo/sample routers, mock stores,
+  fixture-only data, hard-coded IAM tenants/users/organizations/API keys, or synthetic success
+  responses must not be mounted as the implementation for application development, test, staging, or
+  production runtimes.
 - Application shells that compose dependency APIs in-process `MUST` declare the result in
   `dependencyApiSurfaces`, including dependency workspace, surface, prefix, Rust route contract
   source, executable router export, mount mode, and coverage evidence. A backend runtime that lacks
@@ -270,6 +278,12 @@ Rules:
 - If the dependency exports route metadata but no executable router export, the consuming backend
   must configure that dependency SDK as an external service or add an approved handler adapter before
   same-origin dependency SDK calls are allowed.
+- A backend runtime that serves admin UI modules using `@sdkwork/appbase-backend-sdk` for appbase
+  backend IAM `MUST` either mount a production-capable appbase backend router/controller/service
+  adapter for `/backend/v3/api/iam/*` and declare verified `dependencyApiSurfaces` evidence, or
+  route those SDK calls to an explicit appbase backend service/gateway. Mounting only appbase
+  app-api routes, importing appbase route metadata, or mounting a local/demo IAM router is not
+  sufficient handler coverage.
 - Runtime composition `MUST` be environment-aware through `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`, not hard-coded per handler.
 - SaaS/private/local parity follows `DEPLOYMENT_SPEC.md`: shared APIs preserve paths, operationIds, schemas, auth semantics, and problem-detail behavior across runtime modes.
 - Rust local/private implementations that expose or validate appbase capabilities `MUST` use appbase Rust runtime crates for context, auth, bootstrap, and protected route behavior, plus generated appbase SDKs when Rust code calls appbase HTTP APIs directly.
@@ -291,6 +305,9 @@ Every web backend change should verify the relevant subset:
 - Dependency API surface tests compare `sdkDependencies` with `dependencyApiSurfaces`, fail when a
   same-origin dependency has no verified executable router/controller coverage, and fail when an
   external dependency SDK can silently fall back to product-owned app/backend base URLs.
+- Dependency API surface tests fail when verified same-origin coverage is backed by demo/mock/fake
+  rows, hard-coded IAM tenants/users/organizations/API keys, fixture stores, or synthetic command
+  success instead of real stores/services/upstreams.
 - Dependency API export tests compare `dependencyApiExports` with public backend/component exports
   and fail when a backend facade re-exports dependency capability without an approved composed
   wrapper, service port, or dependency SDK injection path.
@@ -307,6 +324,7 @@ Every web backend change should verify the relevant subset:
 - [ ] Route/controller changes materialize into the owner-only API authority and derived SDK input.
 - [ ] SDK generation uses the canonical SDKWork generator and generated output remains untouched.
 - [ ] Handlers consume typed request context and do not parse raw credentials, request IDs, tenant IDs, or user IDs.
+- [ ] Authenticated typed context includes tenant, organization, login scope, user, session, app, environment, deployment mode, auth level, data scope, and permission scope from verified token/session context, with no demo/default/mock fallback.
 - [ ] Services own business rules, authorization, transaction boundaries, idempotency, events, and cache invalidation.
 - [ ] Repositories are tenant/data-scope safe for tenant-owned data.
 - [ ] Dependency-owned appbase, Drive, provider, or shared-module routes are consumed through dependencies, not copied into the product authority.

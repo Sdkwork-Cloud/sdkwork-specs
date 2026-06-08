@@ -32,7 +32,7 @@ No standard is complete until it is executable.
 | Dependency API surface | Validate dependency SDK runtime composition: every `sdkDependencies` HTTP entry has a `dependencyApiSurfaces` runtime declaration, same-origin dependency SDK defaults have verified executable mount coverage, route metadata is not treated as an executable router, external dependency SDKs fail fast without explicit base URLs, and missing mounts/upstreams fail before `502` or `404` user requests |
 | Client architecture alignment | Validate `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`: package taxonomy, dependency direction, route identity, host adapter boundary, SDK/IAM/runtime composition, and cross-client workflow alignment |
 | PC application architecture | Validate `APP_PC_ARCHITECTURE_SPEC.md`: application root layout, normalized `sdkwork-<product>-pc-*` package names, app/console/admin separation, shared renderer, desktop/tablet host placement, SDK/IAM boundaries |
-| H5 app mobile architecture | Validate `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`: `sdkwork-<product>-h5-mobile-*` package names, shared H5/Capacitor renderer, typed host adapters, SDK/IAM boundaries, mobile config, and release metadata |
+| H5 application architecture | Validate `APP_H5_ARCHITECTURE_SPEC.md`: `sdkwork-<product>-h5-*` package names, shared H5/Capacitor renderer, typed host adapters, SDK/IAM boundaries, mobile config, and release metadata |
 | Flutter app mobile architecture | Validate `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`: Dart package naming, thin root `lib/`, generated Dart SDK boundary, platform adapters, route identity, and Flutter release metadata |
 | Mini program architecture | Validate `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`: SDKWork source package taxonomy, page/subpackage projection, platform host adapters, generated TypeScript app SDK boundary, and platform package config |
 | Mini program UI | Validate `APP_MINI_PROGRAM_UI_SPEC.md`: package-local pages/components/services/state/i18n/routes, route projection inputs, host adapter contracts, app SDK boundary, UI states, and package-size checks |
@@ -79,6 +79,17 @@ Rules:
   runtime mount coverage evidence. External-service dependency SDK tests `MUST` prove SDK bootstrap
   uses dependency-specific base URL config and does not fall back to product same-origin app/backend
   base URLs.
+- Same-origin dependency SDK tests `MUST` fail when the mounted implementation is a demo/sample
+  router, mock server, fixture store, seeded fake response, hard-coded IAM tenant/user/organization
+  or API key, or synthetic success handler. Verified mount coverage must exercise real
+  stores/services/upstreams or explicitly prove that unimplemented commands fail closed.
+- Appbase backend IAM dependency tests `MUST` prove that backend-admin consumers of
+  `@sdkwork/appbase-backend-sdk` either receive an explicit appbase backend/gateway base URL that
+  serves `/backend/v3/api/iam/*` or inherit the product backend base URL only after a
+  production-capable appbase backend IAM router/controller/service adapter is verified in
+  `dependencyApiSurfaces`. The tests must also prove appbase app SDK integration alone is not
+  treated as backend IAM route coverage and that demo rows such as hard-coded tenants,
+  organizations, users, or API keys are not returned by admin user or organization routes.
 - Runtime dependency preflight tests `MUST` fail before serving traffic when a dependency API export
   or dependency SDK client would otherwise produce a proxy configuration error, `502`, or `404`
   because the dependency upstream is missing, the executable router/controller/service is not
@@ -296,14 +307,14 @@ Rules:
 - Host adapter tests `MUST` prove feature packages depend on adapter contracts instead of platform globals or native plugin APIs.
 - SDK/IAM tests `MUST` prove bootstrap/core constructs SDK clients, binds the authenticated token manager, and injects SDK/service ports into feature packages.
 
-## 2.4.2 H5 App Mobile Architecture Tests
+## 2.4.2 H5 Application Architecture Tests
 
-H5 app mobile architecture tests make `H5_APP_MOBILE_ARCHITECTURE_SPEC.md` executable.
+H5 application architecture tests make `APP_H5_ARCHITECTURE_SPEC.md` executable.
 
 Rules:
 
 - H5 mobile root tests `MUST` verify `.sdkwork/`, `config/browser`, `config/host`, `src/bootstrap`, `packages/`, `sdks/`, `scripts/`, and tests exist.
-- Package naming tests `MUST` prove packages use `sdkwork-<product>-h5-mobile-*`, including reserved `core`, `commons`, `shell`, `console-*`, `admin-*`, and `capacitor` package roles.
+- Package naming tests `MUST` prove packages use `sdkwork-<product>-h5-*`, including reserved `core`, `commons`, `shell`, `console-*`, `admin-*`, and `capacitor` package roles.
 - Renderer sharing tests `MUST` prove H5, Capacitor iOS, and Capacitor Android targets reuse the same renderer build, route contributions, SDK clients, appbase IAM runtime, and global TokenManager.
 - Capacitor boundary tests `MUST` fail when feature packages import Capacitor plugins or platform globals directly.
 - Mobile host adapter tests `MUST` cover unsupported, permission-denied, unavailable, cancelled, and invalid-state errors for native capabilities used by features.
@@ -440,9 +451,14 @@ Rules:
 
 Rules:
 
-- Protected app-api and backend-api operations `MUST` test missing auth token, missing access token, invalid token, expired token, wrong tenant, and insufficient permission.
+- Protected app-api and backend-api operations `MUST` test missing auth token, missing access token, invalid token, expired token, wrong tenant, wrong tenant signing key, conflicting auth/access token tenant, invalid login scope, and insufficient permission.
 - Protected open-api operations `MUST` test missing API key, invalid API key, expired/revoked API key, wrong tenant/app binding, insufficient permission scope, and the absence of app login token fallback.
-- IAM login integration `MUST` test the checks required by `IAM_LOGIN_INTEGRATION_SPEC.md`: appbase boundary, SDK token wiring, route guard, logout clearing, forbidden product-local auth routes, Rust dual-token guard, and AppContext safety.
+- IAM login integration `MUST` test the checks required by `IAM_LOGIN_INTEGRATION_SPEC.md`: appbase boundary, SDK token wiring, route guard, logout clearing, forbidden product-local auth routes, Rust dual-token guard, AppContext safety, anonymous login request behavior, tenant resolution from real IAM data, and organization-selection continuation behavior.
+- IAM login tests `MUST` prove login requests do not trust inbound `Authorization`, `Access-Token`, `X-Sdkwork-Tenant-Id`, `X-Sdkwork-Organization-Id`, or `X-Sdkwork-User-Id` headers as tenant/user/organization context.
+- IAM token tests `MUST` prove `authToken` and `accessToken` both include matching tenant, organization, login scope, user, and session claims, and reject contradictory claims.
+- IAM tenant signing tests `MUST` prove different tenants use different signing keys or key references, `kid` resolves to the expected tenant key, and a token signed with another tenant's key fails validation.
+- IAM organization login tests `MUST` cover zero organization membership as tenant-level login, one active organization membership as automatic organization login, multiple active memberships as an organization-selection challenge, and final selection membership validation before token issuance.
+- Static or contract tests `MUST` fail when authenticated backend code fills request context from demo tenants, hard-coded tenants, mock users, email-normalized user ids, or raw request context headers instead of verified token/session context.
 - App SDK composition tests `MUST` prove the application bootstrap declares or derives an SDK inventory and classifies every consumed SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, public open-api, local/native, or test fake before feature services are constructed.
 - App SDK composition tests `MUST` prove appbase app SDK, product/dependency app SDKs, explicit `backend-admin` appbase backend/product backend/dependency backend SDKs, and approved composed wrappers backed by those SDKs share one TokenManager through `setTokenManager`, constructor injection, or the language-equivalent credential hook.
 - App SDK composition tests `MUST` prove Drive app SDK clients and other dependency SDK clients are declared as dependency SDKs for consuming applications, share the authenticated global TokenManager when required, and are not regenerated into product SDK families.

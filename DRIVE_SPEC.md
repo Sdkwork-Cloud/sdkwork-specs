@@ -61,7 +61,8 @@ Drive standard space types:
 | `team` | Organization/team shared files. | organization or team subject |
 | `knowledge_base` | Files managed for knowledge ingestion, indexing, and retrieval. | knowledge-base aggregate |
 | `ai_generated` | AI-generated artifacts, model outputs, edited media, and generated documents. | AI task, workspace, or generation scope |
-| `app_upload` | Application-owned uploads such as chat attachments, product media, profile avatars, approval documents, and app manifests. | app id plus app resource type/id |
+| `app_upload` | Application-owned uploads such as product media, profile avatars, approval documents, app manifests, and other non-IM app files. | app id plus app resource type/id |
+| `im` | Instant-messaging files such as chat images, voice messages, videos, documents, and conversation attachments uploaded with `scene = im`. | IM conversation/resource attribution plus actor subject |
 
 Specialized spaces must be represented by a Drive space profile table or equivalent Drive-owned metadata. Application modules must not create a separate storage root to bypass these profiles.
 
@@ -472,13 +473,14 @@ Temporary retention must include TTL and cleanup behavior such as soft delete, h
 
 ### 9.4 Upload Space Ownership
 
-Drive Uploader uses the business display name `Upload`; the persisted Drive space type remains `app_upload`.
+Drive Uploader uses the business display name `Upload`; the persisted Drive space type remains `app_upload` for generic application uploads. When the normalized upload `scene` is `im`, Drive Uploader must use the business display name `IM` and persisted Drive space type `im`.
 
 Default space ownership:
 
 - Anonymous uploads use an app-owned Upload space with owner subject similar to `app:{appId}:anonymous`.
 - Logged-in user uploads use the user's Upload space.
 - System uploads use an app-owned system Upload space with owner subject similar to `app:{appId}:system`.
+- IM uploads use `scene = im`, source labels such as `chat_message`, and an `im` space. The same actor ownership rules apply: logged-in user IM uploads are user-owned, anonymous IM uploads are app-owned anonymous spaces, and system IM uploads are app-owned system spaces.
 - Organization attribution is stored on uploader metadata and reporting facts. It does not require every user upload to be placed in an organization-owned space.
 
 Explicit target-space uploads are allowed only when Drive validates the active target space and writer/owner permission for the caller. Anonymous or external explicit target uploads require an active writer share-link token accepted only by the prepare request; raw share tokens must not be stored or returned.
@@ -552,7 +554,11 @@ Generated images, audio, video, documents, model artifacts, and edited media use
 
 ### 11.3 App Upload
 
-Application uploads use `app_upload` spaces bound by `app_id`, `app_resource_type`, and `app_resource_id`. Examples include IM conversation attachments, product catalog media, user avatars, approval documents, app manifest screenshots, and exported reports.
+Application uploads use `app_upload` spaces bound by `app_id`, `app_resource_type`, and `app_resource_id`. Examples include product catalog media, user avatars, approval documents, app manifest screenshots, and exported reports.
+
+### 11.4 IM
+
+Instant-messaging uploads use `im` spaces when the Drive Uploader request has `scene = im`. IM business modules must still use Drive Uploader and persist only Drive references or Drive-backed `MediaResource` snapshots; they must not create IM-owned upload-session, object-blob, presign, bucket, or object-key storage.
 
 ## 12. Security And Privacy
 
@@ -616,7 +622,7 @@ New SDKWork applications and unpublished modules must adopt Drive directly with 
 When removing a legacy app-local storage implementation:
 
 1. Delete app-local storage provider, upload session, media asset, and presign lifecycle ownership.
-2. Create or reuse a Drive `app_upload`, `knowledge_base`, or `ai_generated` space.
+2. Create or reuse a Drive `app_upload`, `im`, `knowledge_base`, or `ai_generated` space.
 3. Upload/import files into Drive and resolve `drive_space_id`, `drive_node_id`, and `drive_uri`.
 4. Store only business relation rows and optional `MediaResource` snapshots in the business domain.
 5. Update API/RPC/SDK/frontend contracts to use Drive references and `MediaResource`.

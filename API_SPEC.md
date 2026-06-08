@@ -584,6 +584,7 @@ Rules:
 - `Access-Token` is the canonical SDKWork access isolation header for v3 contracts.
 - Do not define duplicate security scheme names for the same token.
 - API key mode and dual-token mode `MUST` be mutually exclusive for one request.
+- App-api login/session creation operations are public session-creation operations. They `MUST` declare the correct public or challenge-specific security contract and `MUST NOT` use inbound `AuthToken`, `AccessToken`, or context headers to choose tenant or organization.
 
 Protected app/backend operation example:
 
@@ -612,16 +613,20 @@ The dual-token model separates authentication from access isolation.
 
 | Token | Header | Purpose |
 | --- | --- | --- |
-| `auth_token` | `Authorization: Bearer` | Principal identity, session identity, authentication strength, token expiry |
-| `access_token` | `Access-Token` | Tenant, organization, app, environment, data scope, permission scope, deployment mode |
+| `auth_token` | `Authorization: Bearer` | Principal identity, session identity, tenant, organization, login scope, authentication strength, token expiry |
+| `access_token` | `Access-Token` | Principal identity, session identity, tenant, organization, login scope, app, environment, data scope, permission scope, deployment mode |
 
 Rules:
 
 - Tenant isolation data `MUST` be resolvable from verified token claims or a server-side token lookup.
+- `auth_token` and `access_token` `MUST` both carry matching `tenant_id`, `organization_id`, `login_scope`, `user_id`/`sub`, and `session_id`/`sid` claims.
+- `login_scope` `MUST` be `TENANT` when `organization_id` is absent or `0`, and `ORGANIZATION` when `organization_id` is present and non-zero. Contradictory token claims are invalid.
 - Business requests `MUST NOT` trust tenant, organization, role, or user IDs supplied only by body/query parameters when they conflict with token context.
 - If a request path contains `tenantId` or `organizationId`, the server `MUST` verify it matches or is authorized by token claims.
 - A token claim that affects authorization `MUST` be signed or server-validated.
-- Auth/session endpoints in app-api may be public but must return standard token objects and context metadata.
+- Auth/session creation endpoints in app-api are anonymous credential verification flows. They may be public but must return standard token objects and context metadata only after resolving the real IAM user, tenant, and organization context server-side.
+- Multi-organization login `MUST` be represented as a documented continuation response, not as a normal authenticated session. The continuation credential is not valid for protected business operations.
+- Production token validation `MUST` use tenant-bound signing keys or a server-side session lookup that proves tenant binding. A global shared tenant signing secret is forbidden for production and production-like profiles.
 - Local Rust deployment `MUST` enforce the same logical token and tenant checks even if tokens are issued locally.
 
 Recommended token claims:
@@ -632,6 +637,8 @@ Recommended token claims:
   "sid": "session_01",
   "tenant_id": "10001",
   "organization_id": "20001",
+  "login_scope": "ORGANIZATION",
+  "token_type": "access",
   "app_id": "sdkwork_router",
   "environment": "prod",
   "scope": ["iam.users.read", "iam.roles.write"],
@@ -660,6 +667,7 @@ AppRequestContext =
 AppRequestPrincipal =
   tenant_id
   organization_id
+  login_scope
   user_id
   session_id
   app_id
@@ -685,10 +693,11 @@ Rules:
 - `AppRequestContext` `MUST` be resolved once at the framework boundary and injected as a typed request extension or equivalent runtime context.
 - Business handlers `MUST` consume the typed context. They `MUST NOT` reparse auth tokens, access tokens, API keys, or tenant/user fields from raw headers.
 - `AuthTokenParser`, `AccessTokenParser`, `ApiKeyParser`, `ApiKeyLookupService`, and `AppRequestContextResolver` are standard extension points.
-- The default parser may support local/private development claim formats, but production parsers `MUST` validate signature, expiry, issuer, audience, revocation, tenant binding, organization binding, app binding, and permission scope.
+- The default parser may support local/private development claim formats, but production parsers `MUST` validate signature, tenant-bound signing key or key id, token type, expiry, issuer, audience, revocation, tenant binding, organization binding, login-scope consistency, app binding, and permission scope.
 - API key lookup `MUST` be abstracted behind a service/interface. Implementations may use `iam_api_key`, tenant-local API key tables, encrypted secret stores, caches, or remote IAM services.
 - API key records `MUST` provide the principal user id, tenant id, organization id when applicable, app id, data scope, permission scope, key id, and revocation/expiry state.
 - Dual-token resolution `MUST` reject conflicting tenant, organization, user, session, or app claims when both tokens carry the same field.
+- Dual-token resolution `MUST` reject missing or conflicting `login_scope` claims and any `TENANT`/`ORGANIZATION` claim mismatch with `organization_id`.
 - Context values from request body, query, path, or frontend state `MUST NOT` override the resolved context.
 
 ### 10.2 API Call Chain And Interceptor Standard
@@ -1022,6 +1031,7 @@ Rules:
 Rules:
 
 - Tenant and organization context `MUST` come from token context or validated route context.
+- Login-created token context `MUST` come from real IAM user tenant binding and organization membership lookup. API implementations `MUST NOT` use demo tenants, mock users, email-normalized ids, request headers, or request payload tenant fields as authenticated context.
 - Authorization `MUST` be checked in service/business logic, not only in UI.
 - Frontend permission checks are user experience hints, not security boundaries.
 - RBAC is the baseline: users, roles, permissions, role-permissions, user-roles.
@@ -1199,6 +1209,10 @@ An API is standard only when this checklist passes:
 - [ ] Public operations explicitly set `security: []`.
 - [ ] Protected app-api and backend-api operations require both `AuthToken` and `AccessToken`.
 - [ ] Protected open-api operations require `ApiKey`.
+- [ ] Auth/session creation operations do not use inbound tokens or context headers to choose tenant, organization, or user.
+- [ ] Dual-token protected operations validate matching tenant, organization, login scope, user, session, app, and token type claims.
+- [ ] Token validation uses tenant-bound signing keys or an equivalent server-side tenant-bound token lookup.
+- [ ] Multi-organization login uses a documented continuation response instead of returning normal business tokens before organization selection.
 - [ ] Runtime routers resolve `AppRequestContext` through the standard parser/resolver framework before protected handlers run.
 - [ ] Runtime routers run the standard API call chain or a stricter documented superset.
 - [ ] Backend API has no login/session creation/refresh/logout endpoint.

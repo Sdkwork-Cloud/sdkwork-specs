@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: cross-client application architecture alignment for SDKWork PC, H5/mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, backend/admin UI, and future client roots
-- Related: `APPLICATION_SPEC.md`, `NAMING_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `I18N_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `NAMING_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `I18N_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the common client architecture contract that keeps SDKWork application roots readable, composable, and aligned across PC, H5/Capacitor, Flutter, mini program, native Android, native iOS, native HarmonyOS, and future client surfaces.
 
@@ -39,7 +39,7 @@ SDKWork client roots use stable architecture identifiers.
 | Client architecture | Application root | Package segment | Root standard |
 | --- | --- | --- | --- |
 | PC browser/desktop/large-screen tablet | `apps/<product>-pc` | `pc` | `APP_PC_ARCHITECTURE_SPEC.md` |
-| H5 mobile plus Capacitor iOS/Android | `apps/<product>-h5-mobile` | `h5-mobile` | `H5_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| H5 mobile plus Capacitor iOS/Android | `apps/<product>-h5` | `h5` | `APP_H5_ARCHITECTURE_SPEC.md` |
 | Flutter mobile app | `apps/<product>-flutter-mobile` | `flutter-mobile` root segment; `flutter_mobile` Dart package segment | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` |
 | Mini program | `apps/<product>-mini-program` | `mp` unless a platform-specific profile is approved | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` |
 | Native Android mobile app | `apps/<product>-android-mobile` | `android-mobile` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` |
@@ -108,7 +108,7 @@ apps/<product>-<client-arch>/
 
 Rules:
 
-- `config/browser/` owns browser-visible public runtime config. H5 mobile roots use this because H5 is a browser runtime.
+- `config/browser/` owns browser-visible public runtime config. H5 application roots use this because H5 is a browser runtime.
 - `config/app/` is allowed for non-browser app runtime public templates where the architecture standard defines it, such as Flutter, native Android, native iOS, and native HarmonyOS.
 - `config/host/` owns native, platform, or container-host packaging metadata and permission references. It is not a business runtime config store.
 - `src/bootstrap/` or `lib/bootstrap/` is the concrete composition boundary.

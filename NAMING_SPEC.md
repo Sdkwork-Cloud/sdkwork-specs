@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: domains, capabilities, repositories, applications, components, packages, SDK families, API authorities, route crates, database identifiers, files, and test names
-- Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CODE_STYLE_SPEC.md`
+- Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CODE_STYLE_SPEC.md`
 
 This standard is the naming entrypoint for SDKWork. It indexes naming rules that are also governed by more specific specs. If this file conflicts with a more specific root spec, the more specific spec wins and this file must be updated.
 
@@ -24,8 +24,8 @@ Rules:
 | PC app package | `sdkwork-<product>-pc-<capability>` | `sdkwork-commerce-pc-product` |
 | PC user console package | `sdkwork-<product>-pc-console-<capability>` | `sdkwork-commerce-pc-console-order` |
 | PC internal admin package | `sdkwork-<product>-pc-admin-<capability>` | `sdkwork-commerce-pc-admin-audit` |
-| H5 mobile app package | `sdkwork-<product>-h5-mobile-<capability>` | `sdkwork-commerce-h5-mobile-order` |
-| H5 mobile Capacitor host package | `sdkwork-<product>-h5-mobile-capacitor` | `sdkwork-commerce-h5-mobile-capacitor` |
+| H5 mobile app package | `sdkwork-<product>-h5-<capability>` | `sdkwork-commerce-h5-order` |
+| H5 mobile Capacitor host package | `sdkwork-<product>-h5-capacitor` | `sdkwork-commerce-h5-capacitor` |
 | Flutter mobile Dart package | `sdkwork_<product>_flutter_mobile_<capability>` | `sdkwork_commerce_flutter_mobile_order` |
 | Mini program source package | `sdkwork-<product>-mp-<capability>` | `sdkwork-commerce-mp-order` |
 | Mini program host package | `sdkwork-<product>-mp-host` | `sdkwork-commerce-mp-host` |
@@ -126,7 +126,7 @@ Rules:
 - Client application root packages `MUST` include the architecture segment required by `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` and the matching root architecture standard.
 - PC packages use kebab-case names under `sdkwork-<product>-pc-*`, with `pc-console` reserved for user-facing console surfaces and `pc-admin` reserved for `backend-admin` company-internal admin surfaces.
 - `backend-admin` is the canonical surface term for admin-only backend UI, backend SDK, and backend API consumption by internal staff, operators, support, auditors, platform administrators, or trusted backend services acting for those workflows. `pc-admin-*` packages map to `backend-admin`; `pc-console-*`, app packages, app auth runtime packages, and shared frontend core packages do not.
-- H5/Capacitor packages use kebab-case names under `sdkwork-<product>-h5-mobile-*`; the Capacitor host package is exactly `sdkwork-<product>-h5-mobile-capacitor`.
+- H5/Capacitor packages use kebab-case names under `sdkwork-<product>-h5-*`; the Capacitor host package is exactly `sdkwork-<product>-h5-capacitor`.
 - Flutter mobile packages use Dart lower snake case names under `sdkwork_<product>_flutter_mobile_*`; do not publish Flutter app-root packages with hyphenated Dart package names.
 - Mini program source packages use kebab-case names under `sdkwork-<product>-mp-*`; shared mini program packages use `sdkwork-<capability>-mini-program`; platform subpackages, pages, and platform config files must not replace SDKWork source package naming.
 - Android native packages use kebab-case names under `sdkwork-<product>-android-mobile-*`; shared Android native packages use `sdkwork-<capability>-android-native`.

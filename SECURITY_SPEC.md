@@ -16,7 +16,10 @@ Rules:
 - Public endpoints `MUST` explicitly declare `security: []`.
 - Tokens `MUST` be signed or resolved through a trusted server-side session store.
 - Token expiry, revocation, rotation, and audience checks are mandatory for production.
+- SDKWork login/session creation starts anonymous. Login requests `MUST NOT` use inbound `Authorization`, `Access-Token`, `X-Sdkwork-Tenant-Id`, `X-Sdkwork-Organization-Id`, or `X-Sdkwork-User-Id` headers as authenticated context or tenant/organization selectors.
 - Login success, registration success, OAuth/session-bridge completion, QR completion, refresh, and current-session bootstrap `MUST NOT` be mocked or synthesized from user/profile data, cached users, user ids, emails, usernames, QR keys, bridge hints, or legacy session identifiers. SDKWork app/backend authenticated state requires a validated appbase IAM session with non-empty `authToken` and `accessToken`; incomplete or user-only results fail closed.
+- Login success `MUST` resolve tenant and organization context from real IAM data: the authenticated user tenant binding and active organization memberships. It `MUST NOT` use demo tenants, hard-coded tenants, email-normalized ids, request payload tenant fields, or context headers as substitutes.
+- Multi-organization login `MUST` return a short-lived organization-selection continuation state and `MUST NOT` issue normal business tokens until the selected organization membership is validated.
 - Current-session bootstrap `MUST` validate stored dual-token state through the appbase current-session SDK resource when available. A failed or incomplete current-session validation clears local session/token/context state and remains anonymous; cached tokens or profiles are not sufficient to report authenticated state.
 - Registration and password-reset services `MUST NOT` synthesize a missing confirmation by copying the password into `confirmPassword`; they `MUST` reject explicitly mismatched password confirmation values before calling SDK resources, and backend handlers `MUST` enforce the same rule.
 - Development verification-code values may prefill UI fields only. They `MUST NOT` bypass SDK verification, challenge creation, session creation, registration creation, or password reset completion.
@@ -24,6 +27,20 @@ Rules:
 - Protected open-api requests `MUST` resolve API keys through a server-side API key lookup service. The API key record, not the raw submitted key alone, supplies tenant, organization, user, app, data scope, and permission scope.
 - API key lookup implementations `MUST` support different storage backends through an interface or service boundary. The standard may use IAM tables, tenant-local API key tables, encrypted secret stores, caches, or remote IAM services.
 - Web backend handlers, controller methods, services, repositories, and provider adapters `MUST` follow `WEB_BACKEND_SPEC.md`: they consume typed request context and must not reparse raw credential headers after framework context resolution.
+
+## 1.1 Tenant-Bound Token Signing
+
+Tenant isolation requires tenant-bound signing or an equivalent server-side validation model.
+
+Rules:
+
+- Production and production-like deployments `MUST NOT` sign all tenant tokens with one shared global secret.
+- Every token signing key or secret `MUST` belong to exactly one tenant. Token validation `MUST` prove that the key used for verification belongs to the same `tenant_id` carried by the verified claims.
+- JWT headers `SHOULD` carry `kid`. Key lookup by `kid` `MUST` resolve to tenant-bound signing metadata before claim authorization decisions are made.
+- If a token's verified `tenant_id`, key tenant binding, session tenant binding, or request context tenant disagree, the request `MUST` fail closed.
+- Both `authToken` and `accessToken` `MUST` include `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims or resolve those values through a trusted server-side token/session lookup.
+- `login_scope` and `organization_id` `MUST` be internally consistent: tenant-level sessions have no organization or `organization_id = 0`; organization-level sessions have a non-zero organization id.
+- Tenant signing material `MUST` be encrypted or managed by an approved secret manager/KMS, rotated, revocable, and excluded from logs, generated SDK output, public runtime config, and frontend bundles.
 
 ## 2. Authorization
 
@@ -127,6 +144,9 @@ Rules:
 - [ ] OpenAPI security declarations are explicit.
 - [ ] RPC metadata auth declarations are explicit for every service method.
 - [ ] Dual-token validation is enforced server-side.
+- [ ] Login requests do not trust inbound token or context headers and resolve tenant/organization context from real IAM data.
+- [ ] Tenant-bound token signing or equivalent server-side validation prevents cross-tenant token reuse.
+- [ ] Multi-organization login uses a continuation challenge and validates selected membership before issuing business tokens.
 - [ ] API key open-api validation resolves a server-side API key record before context injection.
 - [ ] Protected appbase routers run the standard interceptor chain or a stricter documented superset.
 - [ ] Web backend handlers/services consume typed request context and do not reparse raw credential, tenant, user, permission, or request-id headers.

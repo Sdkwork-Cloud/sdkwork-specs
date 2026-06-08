@@ -46,7 +46,7 @@ affected_surfaces:
   - sdk
   - backend
   - pc
-  - h5-mobile
+  - h5
   - flutter-mobile
   - mini-program
   - android-native

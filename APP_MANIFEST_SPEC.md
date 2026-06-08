@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: app registration, app manifest, release metadata, install packages, media assets, PlusApp projection
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `CONFIG_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `CONFIG_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 SDKWork App Manifest Standard v3 defines the canonical app configuration used by new applications under `apps/`. The standard is intentionally strict: new apps do not carry legacy compatibility branches, and every field is designed to map cleanly into `PlusApp` while retaining enough metadata for professional multi-platform release operations.
 
@@ -136,7 +136,7 @@ Client roots must keep manifest runtime metadata aligned with their root archite
 | Root architecture | Runtime family | Runtime framework examples | Publish platform examples |
 | --- | --- | --- | --- |
 | PC browser/desktop/tablet root | `web` or `desktop` | `react`, `react-tauri` | `WEB`, `DESKTOP_WINDOWS`, `DESKTOP_MACOS`, `DESKTOP_LINUX` |
-| H5/Capacitor mobile root | `mobile` | `react-h5`, `react-capacitor` | `H5`, `H5_WEIXIN`, `APP_IOS`, `APP_ANDROID` |
+| H5/Capacitor application root | `mobile` | `react-h5`, `react-capacitor` | `H5`, `H5_WEIXIN`, `APP_IOS`, `APP_ANDROID` |
 | Flutter mobile root | `mobile` | `flutter` | `APP_IOS`, `APP_ANDROID`, `APP_HARMONY` when supported |
 | Mini program root | `mini-program` | `weixin-mini-program`, `alipay-mini-program`, `multi-mini-program` | `MP_WEIXIN`, `MP_ALIPAY`, `MP_DINGTALK`, `MP_LARK` |
 | Native Android mobile root | `mobile` | `android-native` | `APP_ANDROID` |

@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: app SDK integration across PC React, H5 mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, desktop/native, Rust-enabled apps, Drive Uploader, app dependency composition, appbase IAM runtime, and global token-manager wiring
-- Related: `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork applications integrate generated SDKs and reusable appbase capabilities without copying APIs, forking clients, or creating local auth behavior. Applications are composition roots. Product apps compose dependency SDKs, shared modules, appbase IAM runtime, Rust route/service crates, and architecture-specific UI packages through explicit boundaries. The application root owns one SDK credential topology for every runtime target; feature packages only receive injected clients, services, or ports.
 
@@ -135,7 +135,7 @@ Each application architecture uses the SDK family and IAM wrapper that match its
 | Architecture | SDK language | Required SDK boundary | IAM/appbase boundary |
 | --- | --- | --- | --- |
 | App PC React | TypeScript | generated TypeScript app SDKs plus service ports | `@sdkwork/iam-runtime`, `@sdkwork/iam-react`, `@sdkwork/auth-pc-react`, `@sdkwork/appbase-app-sdk` |
-| H5 app mobile React | TypeScript | generated TypeScript app SDKs plus typed H5/Capacitor host adapters | appbase mobile wrapper when available, otherwise the same generated appbase app SDK through an approved mobile runtime adapter |
+| H5 mobile React | TypeScript | generated TypeScript app SDKs plus typed H5/Capacitor host adapters | appbase mobile wrapper when available, otherwise the same generated appbase app SDK through an approved mobile runtime adapter |
 | App Flutter | Dart/Flutter | generated Dart/Flutter app SDKs plus platform adapters | generated Dart/Flutter appbase app SDK or approved appbase Flutter wrapper |
 | Mini program app | TypeScript | generated TypeScript app SDKs adapted for mini program runtime plus typed mini program host adapters | appbase mini program wrapper when available, otherwise the same generated appbase app SDK through an approved mini program runtime adapter |
 | Android native app | Kotlin/Java | generated Kotlin/Java app SDKs plus typed Android host adapters | generated Kotlin/Java appbase app SDK or approved appbase Android wrapper |
@@ -273,6 +273,10 @@ Rules:
 - Application roots that mount dependency APIs through the same origin `MUST` record the mount in
   `dependencyApiSurfaces` with `sameOriginAllowed: true`, an executable router export, and coverage
   evidence comparing dependency route contracts or OpenAPI paths against the runtime router.
+- Same-origin dependency mounts `MUST` be production-capable. A router/controller/service export
+  backed only by demo rows, sample/local state, fixture data, mocks, or hard-coded tenants, users,
+  organizations, API keys, roles, or permissions is a test/demo artifact and `MUST NOT` be recorded
+  as verified `dependencyApiSurfaces` coverage for any lifecycle environment.
 - The executable dependency router/controller/service export `MUST` be a public integration
   entrypoint declared by the dependency component. Surface-specific Rust entrypoints should follow
   the pattern `sdkwork_<component>_open_api`, `sdkwork_<component>_app_api`, and
@@ -293,6 +297,31 @@ Rules:
   it may use the common SDK root only when that root is an explicit gateway for appbase backend IAM.
   It must not fall back to a product backend route prefix unless appbase backend IAM executable
   routes are mounted and verified in the product runtime.
+
+### 5.2 Appbase Backend IAM Runtime Rule
+
+Appbase app SDK integration and appbase backend IAM integration are separate runtime obligations.
+
+Rules:
+
+- Integrating `sdkwork-appbase-app-sdk` or `@sdkwork/appbase-app-sdk` satisfies app-api IAM
+  responsibilities such as login, session, current-user, workspace, contacts, and user-visible
+  directory reads. It does not satisfy backend-admin IAM management route availability.
+- `backend-admin` packages that call `@sdkwork/appbase-backend-sdk` for users, organizations,
+  departments, roles, permissions, policies, tenants, API keys, audit events, or security events
+  `MUST` receive an appbase backend API base URL that serves `/backend/v3/api/iam/*`.
+- A consuming application may satisfy that base URL through a common SDK gateway only when the
+  gateway is declared to serve the appbase backend surface, or through the product same-origin
+  backend only when a production-capable appbase backend router/controller/service adapter is
+  mounted and verified in `dependencyApiSurfaces`. The adapter may be appbase-owned or an approved
+  product adapter, but it must be backed by real appbase IAM tables/services or a real upstream.
+- A demo/local appbase backend IAM router, hard-coded seed response, or fake success handler is not
+  appbase backend IAM integration. If a command route has no real command store yet, it must fail
+  explicitly instead of returning synthetic success or synthetic rows.
+- If neither a verified same-origin mount nor an explicit appbase backend service/gateway is
+  configured, runtime bootstrap must fail before constructing the appbase backend SDK client. It
+  must not wait for admin organization or user pages to discover missing IAM routes through 404
+  responses.
 
 ## 6. Frontend Service And Component Rules
 

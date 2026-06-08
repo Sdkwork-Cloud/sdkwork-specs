@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: environment config, SDK client initialization, secrets, feature flags, typed runtime config, dev/test/staging/prod profiles, desktop/server/container/web/H5/Flutter/mini-program/native Android/native iOS/native Harmony switching
-- Related: `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`
+- Related: `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`
 
 This standard defines how applications select environment, deployment mode, base URLs, SDK clients, token storage, and feature flags without leaking those decisions into reusable modules.
 
@@ -386,6 +386,10 @@ Rules:
   `sameOriginAllowed: true`, name the executable router/controller/service export or equivalent
   runtime adapter, and record `coverage: "verified"` before SDK clients may inherit the product
   same-origin `appApiBaseUrl` or `backendApiBaseUrl`.
+- Same-origin dependency surface config `MUST` name only production-capable routers, controllers,
+  service adapters, or upstreams as verified coverage. Demo routers, mock servers, fixture stores,
+  hard-coded IAM tenants/users/organizations/API keys, or seed-only responses are valid only in
+  explicitly marked tests and must not enable product same-origin SDK base URL inheritance.
 - `dependencyApiSurfaces` entries with `runtimeMode: "external-service"` `MUST` set
   `sameOriginAllowed: false` and provide `requiredBaseUrlKey` or another deterministic pointer to
   `sdkBaseUrls.dependencySdkBaseUrls[<sdkFamily>]`.
@@ -405,6 +409,14 @@ Rules:
   dependency-owned method/path is served at that same origin. They `MAY` use a common SDK root only
   when that root is explicitly configured as a gateway serving the dependency backend surface, not
   merely because the product backend SDK has a default `/backend/v3/api` URL.
+- For appbase backend-admin IAM, `PORTAL_PUBLIC_SDK_BASE_URL` may derive
+  `PORTAL_PUBLIC_APPBASE_BACKEND_API_BASE_URL` only when it is a gateway that serves
+  `/backend/v3/api/iam/*`. A product backend default such as
+  `PORTAL_PUBLIC_BACKEND_API_BASE_URL` or `VITE_CLAWROUTER_BACKEND_API_BASE_URL` may be used for
+  `@sdkwork/appbase-backend-sdk` only when `dependencyApiSurfaces` records verified same-origin
+  mount coverage for a production-capable appbase backend IAM router/controller/service adapter.
+  Appbase app SDK configuration, route metadata, local/demo routers, and fake response handlers are
+  not evidence for appbase backend IAM availability.
 - Token refresh behavior `MUST` be centralized so modules do not implement competing refresh flows.
 - Test mode may use fake SDK clients or mock servers with the same resource surface.
 

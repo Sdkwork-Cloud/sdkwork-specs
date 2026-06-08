@@ -59,8 +59,10 @@ Rules:
 | Entity | Table | API resource |
 | --- | --- | --- |
 | Tenant | `iam_tenant` | `/iam/tenants` |
+| Tenant member | `iam_tenant_member` | `/iam/tenants/{tenantId}/members` |
+| Tenant signing key | `iam_tenant_signing_key` | backend management only |
 | Organization | `iam_organization` | `/iam/organizations` |
-| Organization member | `iam_organization_member` | `/iam/organizations/{organizationId}/members` |
+| Organization membership | `iam_organization_membership` | `/iam/organizations/{organizationId}/memberships` |
 | User | `iam_user` | `/iam/users` |
 | User identity | `iam_user_identity` | `/iam/users/{userId}/identities` |
 | Credential | `iam_credential` | credential management only |
@@ -71,7 +73,7 @@ Rules:
 | Permission | `iam_permission` | `/iam/permissions` |
 | Policy | `iam_policy` | `/iam/policies` |
 | Role permission | `iam_role_permission` | `/iam/roles/{roleId}/permissions` |
-| User role | `iam_user_role` | `/iam/users/{userId}/roles` |
+| Role binding | `iam_role_binding` | `/iam/role_bindings` |
 | API key | `iam_api_key` | `/iam/api_keys` |
 | Security event | `iam_security_event` | `/iam/security_events` |
 | Audit event | `iam_audit_event` | `/iam/audit_events` |
@@ -80,8 +82,10 @@ Minimum shared IAM persistence contract:
 
 ```text
 iam_tenant
+iam_tenant_member
+iam_tenant_signing_key
 iam_organization
-iam_organization_member
+iam_organization_membership
 iam_user
 iam_user_identity
 iam_credential
@@ -92,7 +96,7 @@ iam_role
 iam_permission
 iam_policy
 iam_role_permission
-iam_user_role
+iam_role_binding
 iam_api_key
 iam_security_event
 iam_audit_event
@@ -103,7 +107,10 @@ Rules:
 - All IAM tables `MUST` use the `iam_` prefix and follow `DATABASE_SPEC.md`.
 - Java SaaS schema and Rust local/private schema `MUST` preserve the same logical table names, IDs, isolation fields, token hash fields, status semantics, and audit fields.
 - Rust may choose SQLite/PostgreSQL-compatible column types, but API-visible semantics and migration intent `MUST` match Java.
+- `iam_user` or the canonical tenant membership relation `MUST` provide the user's tenant binding used by login. Login implementations `MUST NOT` invent tenant ids from usernames, emails, request bodies, headers, or local default values.
+- `iam_organization_membership` `MUST` provide the organization memberships used by login organization selection and authorization. A missing organization membership means tenant-level login only; it does not authorize organization-scoped data.
 - `iam_session` `MUST` store token hashes, context fields, sharding fields, data scope, permission scope, expiry, revocation, and audit timestamps.
+- Tenant token signing material `MUST` be tenant-bound. Implementations may store encrypted HMAC secrets, tenant key references, or asymmetric key metadata in `iam_tenant_signing_key`, but every active signing key `MUST` resolve to exactly one tenant and key id (`kid`).
 
 ## 4. AppContext And ShardingContext
 
@@ -138,15 +145,60 @@ Rules:
 
 - Protected APIs `MUST` require both tokens unless a documented machine/API-key mode is explicitly selected.
 - `Access-Token` is the canonical SDKWork access isolation header for v3 contracts.
-- `auth_token` parsers `MUST` validate principal identity, session identity, auth strength, expiry, issuer, and revocation.
-- `access_token` parsers `MUST` validate tenant, organization, app, environment, deployment mode, data scope, permission scope, expiry, issuer, audience, and revocation.
+- `auth_token` parsers `MUST` validate principal identity, session identity, tenant identity, organization identity, login scope, auth strength, expiry, issuer, and revocation.
+- `access_token` parsers `MUST` validate principal identity, session identity, tenant identity, organization identity, login scope, app, environment, deployment mode, data scope, permission scope, expiry, issuer, audience, and revocation.
 - If both tokens include the same tenant, organization, user, session, or app claim, the values `MUST` match.
 - App API session creation returns `authToken`, `accessToken`, optional `refreshToken`, session metadata, user summary, and AppContext.
 - Refresh token handling `MUST` be server-controlled, revocable, rotated where possible, and unavailable to normal business operation handlers.
 - Passwords, verification codes, recovery secrets, private tokens, API key raw values, and MFA secrets `MUST` be write-only and never appear in response schemas.
 - MFA, OAuth, SSO, passkeys, and device authorization extend sessions; they are not separate unrelated domains.
 
-## 5.1 API Key Context Resolution
+### 5.1 Login Context Resolution
+
+User-facing login creates the first authenticated IAM session for an anonymous request. The login request itself is not a tenant-context authority.
+
+Rules:
+
+- Login/session-creation requests `MUST NOT` require or trust inbound `Authorization`, `Access-Token`, `X-Sdkwork-Tenant-Id`, `X-Sdkwork-Organization-Id`, or `X-Sdkwork-User-Id` headers to choose tenant, organization, user, data scope, or permission scope. Implementations `SHOULD` reject credential/context headers on login creation endpoints unless an explicit reauthentication or continuation endpoint documents them.
+- Login credential verification `MUST` resolve a real `iam_user` and a real active tenant binding before token issuance. The tenant id used for token claims comes from persisted IAM user/tenant data, not from the login request payload.
+- If one credential can resolve to more than one active tenant, the login flow `MUST` return a tenant-selection challenge or fail closed. It `MUST NOT` silently choose a default tenant.
+- After resolving `tenant_id` and `user_id`, login `MUST` query active `iam_organization_membership` rows for that tenant and user.
+- If no active organization membership exists, login issues a tenant-level session with `organization_id = 0` or no organization claim and `login_scope = "TENANT"`.
+- If exactly one active organization membership exists, login issues an organization-level session for that organization with `login_scope = "ORGANIZATION"`.
+- If more than one active organization membership exists, login `MUST` return an organization-selection challenge containing safe organization choices and a short-lived continuation credential. It `MUST NOT` issue normal business `authToken`/`accessToken` until the user selects an organization.
+- Organization-selection continuation credentials are not business API credentials. They may call only the documented organization-selection continuation endpoint, must expire quickly, and must bind to the verified user, tenant, login attempt, and allowed organization ids.
+- The final organization-selection request `MUST` verify the selected organization belongs to the verified tenant/user membership set before issuing dual tokens.
+- Login, registration, OAuth, QR, session-bridge, and refresh flows `MUST NOT` synthesize tenant, organization, user, chat id, display name, or relationship state from the submitted account string, email normalization, demo defaults, or mock profile objects.
+
+### 5.2 Token Claims And Tenant Signing Keys
+
+Both SDKWork tokens carry the current security context. The tokens have different purposes, but tenant isolation and session consistency are common to both.
+
+Required common claims:
+
+| Claim | Requirement |
+| --- | --- |
+| `token_type` | `auth` or `access`; parsers `MUST` reject the wrong token type for the header. |
+| `sub` or `user_id` | Authenticated IAM user id. |
+| `sid` or `session_id` | IAM session id. |
+| `tenant_id` | Active tenant id resolved by login or validated session continuation. |
+| `organization_id` | Active organization id, or `0`/absent for tenant-level sessions. |
+| `login_scope` | `TENANT` when organization id is `0`/absent; `ORGANIZATION` when organization id is present and non-zero. |
+| `app_id` | Application audience. |
+| `environment` and `deployment_mode` | Runtime audience and deployment context. |
+| `iat`, `exp`, `iss`, `aud` | Standard issuance, expiry, issuer, and audience controls. |
+
+Rules:
+
+- `auth_token` and `access_token` `MUST` both include `tenant_id`, `organization_id`, `login_scope`, `user_id`/`sub`, and `session_id`/`sid`.
+- `login_scope = "ORGANIZATION"` requires a non-zero `organization_id`. `login_scope = "TENANT"` requires `organization_id` to be absent or `0`. Contradictory claims `MUST` be rejected.
+- `access_token` additionally owns access-specific claims such as `data_scope`, `permission_scope`, and sharding hints.
+- Token signatures `MUST` use a tenant-bound signing key. A global shared signing secret for all tenants is forbidden for production and production-like profiles.
+- Token headers `SHOULD` include a `kid` that maps to one tenant signing key. Validation `MUST` prove that the key used to verify the token belongs to the same `tenant_id` carried by the verified claims.
+- Tenant signing keys `MUST` support rotation with overlapping validation windows. Revoked or expired keys `MUST NOT` sign new tokens.
+- Signing material `MUST` be stored encrypted or in an approved secret manager/KMS. It `MUST NOT` be logged, returned by APIs, embedded in public runtime config, or stored in generated SDK output.
+
+## 5.3 API Key Context Resolution
 
 Open-api and machine-to-machine flows use API keys only when the API contract declares API key mode. API key mode is a context-resolution mode, not a bypass around IAM.
 
@@ -193,10 +245,11 @@ Minimum backend-api resources:
 | --- | --- |
 | `iam.tenants` | `tenants.list` |
 | `iam.tenants.members` | `tenants.members.list` |
+| `iam.tenants.signingKeys` | `tenants.signingKeys.list`, `tenants.signingKeys.rotate`, `tenants.signingKeys.revoke` |
 | `iam.organizations` | `organizations.list` |
-| `iam.organizations.members` | `organizations.members.list`, `organizations.members.create` |
+| `iam.organizations.memberships` | `organizations.memberships.list`, `organizations.memberships.create` |
 | `iam.users` | `users.list`, `users.retrieve` |
-| `iam.users.roles` | `users.roles.list`, `users.roles.create`, `users.roles.delete` |
+| `iam.roleBindings` | `roleBindings.list`, `roleBindings.create`, `roleBindings.delete` |
 | `iam.roles` | `roles.list` |
 | `iam.roles.permissions` | `roles.permissions.list`, `roles.permissions.create`, `roles.permissions.delete` |
 | `iam.permissions` | `permissions.list` |
@@ -210,7 +263,7 @@ Minimum backend-api resources:
 Baseline model:
 
 ```text
-user -> iam_user_role -> role -> iam_role_permission -> permission
+user/group/organization -> iam_role_binding -> role -> iam_role_permission -> permission
 policy -> condition -> resource/data scope
 ```
 
@@ -242,6 +295,10 @@ Rules:
 - [ ] Backend SDK clients expose `iam.*` resources and no `auth.*` namespace.
 - [ ] OperationIds are resource-style and SDK-friendly.
 - [ ] Protected operations use `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>`.
+- [ ] Login/session creation does not trust inbound auth/context headers and derives tenant from real IAM user/tenant data.
+- [ ] Multi-organization login returns an organization-selection challenge instead of choosing a default organization.
+- [ ] Both `authToken` and `accessToken` include matching `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims.
+- [ ] Token signing and validation use tenant-bound signing keys with key id and tenant binding checks.
 - [ ] API key operations resolve a server-side API key record and never trust raw key claims alone in production.
 - [ ] AppContext and ShardingContext are derived from verified token context.
 - [ ] Appbase HTTP handlers consume typed `AppRequestContext`/`AppContext` and do not reparse credentials.

@@ -2,21 +2,21 @@
 
 - Version: 1.0
 - Scope: app/user-facing React mobile packages, H5 mobile web screens, Capacitor mobile renderer packages, app SDK integration
-- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side mobile React UI is packaged and integrated. In application roots it is applied after `H5_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed mobile React package standard. Mobile React UI is user-facing and must consume app-api through generated TypeScript app SDK clients or approved appbase mobile wrappers. It must not depend on `backend-admin` UI packages. Cross-architecture SDK composition and appbase IAM token wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
+This standard defines how SDKWork app-side mobile React UI is packaged and integrated. In application roots it is applied after `APP_H5_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed mobile React package standard. Mobile React UI is user-facing and must consume app-api through generated TypeScript app SDK clients or approved appbase mobile wrappers. It must not depend on `backend-admin` UI packages. Cross-architecture SDK composition and appbase IAM token wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
 
 This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing H5/mobile React packages.
 
 Canonical app-root H5 mobile package shape:
 
 ```text
-apps/<product>-h5-mobile/
+apps/<product>-h5/
   packages/
-    sdkwork-<product>-h5-mobile-core/
-    sdkwork-<product>-h5-mobile-commons/
-    sdkwork-<product>-h5-mobile-shell/
-    sdkwork-<product>-h5-mobile-<capability>/
+    sdkwork-<product>-h5-core/
+    sdkwork-<product>-h5-commons/
+    sdkwork-<product>-h5-shell/
+    sdkwork-<product>-h5-<capability>/
 ```
 
 Shared mobile React package shape:
@@ -38,7 +38,7 @@ apps/sdkwork-appbase/
 
 Rules:
 
-- Mobile React app UI `MUST` live in normalized H5 application packages such as `apps/<product>-h5-mobile/packages/sdkwork-<product>-h5-mobile-<capability>` or shared mobile React package families such as `packages/mobile-react/<domain>/<package>`.
+- Mobile React app UI `MUST` live in normalized H5 application packages such as `apps/<product>-h5/packages/sdkwork-<product>-h5-<capability>` or shared mobile React package families such as `packages/mobile-react/<domain>/<package>`.
 - Mobile React app UI `MUST` consume `/app/v3/api` through the generated app SDK or approved appbase wrappers.
 - Mobile React app UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, or `@sdkwork/react-backend-*` packages.
 - `backend-admin` UI and operator-only workflows are forbidden in mobile React app packages unless the product is explicitly an admin mobile app with its own approved `backend-admin` package family.
@@ -48,10 +48,10 @@ Rules:
 
 | Package type | Naming | Owns | Must not own |
 | --- | --- | --- | --- |
-| mobile shell/runtime | `sdkwork-<product>-h5-mobile-shell` or app-specific mobile shell | navigation container, safe-area provider, SDK bootstrap, token storage adapter, host adapters | reusable domain services and pages |
-| mobile foundation | `sdkwork-<product>-h5-mobile-commons` or `sdkwork-<foundation>-mobile-react` | appbase, router, command, search, workspace primitives for mobile | business-domain shortcuts |
-| mobile domain package | `sdkwork-<product>-h5-mobile-<capability>` or `sdkwork-<capability>-mobile-react` | screens, components, hooks, services, i18n, navigation metadata | concrete SDK construction, backend admin logic |
-| host adapter package | `sdkwork-<product>-h5-mobile-capacitor` or `sdkwork-<host>-mobile-react` when needed | native bridge abstraction and permissions | API business logic |
+| mobile shell/runtime | `sdkwork-<product>-h5-shell` or app-specific mobile shell | navigation container, safe-area provider, SDK bootstrap, token storage adapter, host adapters | reusable domain services and pages |
+| mobile foundation | `sdkwork-<product>-h5-commons` or `sdkwork-<foundation>-mobile-react` | appbase, router, command, search, workspace primitives for mobile | business-domain shortcuts |
+| mobile domain package | `sdkwork-<product>-h5-<capability>` or `sdkwork-<capability>-mobile-react` | screens, components, hooks, services, i18n, navigation metadata | concrete SDK construction, backend admin logic |
+| host adapter package | `sdkwork-<product>-h5-capacitor` or `sdkwork-<host>-mobile-react` when needed | native bridge abstraction and permissions | API business logic |
 
 Rules:
 
@@ -65,7 +65,7 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/<product>-h5-mobile/packages/sdkwork-<product>-h5-mobile-<capability>/
+apps/<product>-h5/packages/sdkwork-<product>-h5-<capability>/
   package.json
   src/
     index.ts
