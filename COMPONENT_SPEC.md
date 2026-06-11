@@ -119,6 +119,10 @@ Rules:
 - `contracts.dependencyApiSurfaces` lists dependency-owned HTTP API surfaces that this runtime
   component serves, proxies, or requires as an external service. It is required for app shells,
   web-backend services, and Rust/native runtimes that declare HTTP `sdkDependencies`.
+- Runtime gateway components may add native integration evidence to each dependency surface, such as
+  `cargoFeature`, `cargoDependency`, and `embeddedExecutableExport`, when a Rust Cargo workspace
+  owns the executable mount. These fields supplement native build-tool metadata; they must not
+  duplicate into a standalone gateway catalog.
 - Runtime SDK injection and credential wiring `MUST` follow `CONFIG_SPEC.md`, `SDK_SPEC.md`, and `IAM_LOGIN_INTEGRATION_SPEC.md`: app-api/backend-api SDKs receive the global token manager, while protected open-api SDKs receive API key credentials through a separate provider when their contract declares API key mode.
 - `verification.commands` must include at least one command that validates the component or the component specs inventory.
 
@@ -128,7 +132,7 @@ Rules:
 | --- | --- | --- |
 | `react-app`, `react-tauri-app`, `pc-app`, `h5-app`, `flutter-app`, `mini-program-app`, `android-native-app`, `ios-native-app`, `harmony-native-app`, `app` | Product app or app shell | `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` for client roots, matching root architecture spec, architecture UI spec when applicable, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md` |
 | `react-package`, `react-tauri-package`, `flutter-package`, `dart-package`, `android-native-package`, `ios-native-package`, `harmony-native-package`, `node-package` | Frontend or reusable UI/service package | `MODULE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, architecture UI spec when UI is present, `SDK_SPEC.md`, `I18N_SPEC.md` when user-facing |
-| `rust-route-crate` | Rust HTTP route/path source package named `sdkwork-routes-<capability>-<surface>` | `API_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `SDK_SPEC.md`, `DOMAIN_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md` |
+| `rust-route-crate` | Rust HTTP route/path source package named `sdkwork-router-<capability>-<surface>` | `API_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `SDK_SPEC.md`, `DOMAIN_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md` |
 | `web-backend-service` | Java/Rust HTTP backend service, controller module, handler/service/repository package, or runtime API composition unit | `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `DOMAIN_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md` when persistent, `SDK_SPEC.md`, `TEST_SPEC.md` |
 | `rust-crate`, `tauri-host`, `go-module`, `java-module`, `python-package`, `csharp-project`, `swift-package` | Language-native runtime, service, SDK, or host unit | `MODULE_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md` |
 | `sdk-family` | Multi-language generated SDK family rooted by an SDK assembly manifest | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md` |
@@ -192,10 +196,10 @@ Rules:
 - App UI component manifests `MUST` reference app-side package roots and must not declare backend SDK clients for user-facing workflows.
 - A UI component manifest `MUST NOT` list more than one architecture-specific UI spec unless it is an explicit multi-package SDK family root with no UI implementation.
 - A `rust-route-crate` component `MUST` use a component name and Cargo package name that follow
-  `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or
-  `sdkwork-routes-<capability>-backend-api`.
+  `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or
+  `sdkwork-router-<capability>-backend-api`.
 - A `rust-route-crate` component root `SHOULD` follow
-  `packages/native-rust/routes/<surface>/sdkwork-routes-<capability>-<surface>/`.
+  `packages/sdkwork-router-<capability>-<surface>/`.
 - A `rust-route-crate` component `MUST` declare `contracts.routeManifest` and must not declare
   generated SDK clients in `contracts.sdkClients`.
 - A `rust-route-crate` component manifest `MUST` include `API_SPEC.md`,
@@ -211,6 +215,42 @@ Rules:
   `MUST` declare `contracts.dependencyApiSurfaces` with dependency workspace, SDK family, API
   authority, surface, `apiPrefix`, runtime mode, executable public export, and coverage evidence.
   A dependency route manifest alone does not satisfy this runtime contract.
+- A shared API gateway component that integrates foundation APIs for multiple applications `MUST`
+  make its executable integration discoverable from the native build-tool manifest, such as Cargo
+  workspace dependencies and Cargo features, and align that evidence with `component.spec.json`.
+  It `MUST NOT` maintain a separate gateway catalog file when native build metadata and existing
+  SDKWork specs already carry the dependency facts.
+- A shared API gateway component with overlapping dependency API prefixes `MUST` document route
+  precedence in `component.spec.json`, either on the affected `apiSurfaces` entries or in a
+  `routeRegistry.rules` section. Fixed routes and more specific dependency prefixes must be listed
+  before broad fallback prefixes, including appbase IAM, Drive, Notary, RTC, Agent/Kernel, AIoT,
+  Memory, Knowledgebase, News, Notes, Music, Generations, Community, Search, Voice, Image, Comments,
+  Course, and Messaging ahead of broad app/backend fallback surfaces. Split-only upstream surfaces
+  must not declare `cargoFeature`,
+  `cargoDependency`, or `embeddedExecutableExport` until a compatible executable integration exists.
+- A shared API gateway component `MUST` add a split-only dependency surface only from existing
+  SDKWork semantic evidence: SDK assembly or component/runtime manifest metadata plus materialized
+  OpenAPI paths, derived SDK generation inputs, or normalized route manifests that prove a stable
+  route prefix. Empty SDK assemblies and generic-only API roots are inventory candidates and must
+  not become required gateway startup upstreams.
+- If one dependency SDK family owns multiple stable route prefixes, the gateway component `MUST`
+  list each prefix under `apiSurfaces` while keeping the same dependency service id and upstream
+  base URL key. Component specs may summarize those prefixes on the service dependency entry with
+  an `apiPrefixes` array, but must not invent prefix-specific service ids that do not correspond to
+  a real upstream service boundary.
+- Product application component specs that consume shared foundation APIs through a gateway `MUST`
+  identify the gateway application, target mode, common SDK root env key, gateway base URL or bind
+  env keys when applicable, and any legacy compatibility product-local aggregation components.
+  Local launch scripts must be covered by tests that prove the default dependency upstream points to
+  the shared gateway root or a managed gateway process; direct dependency module URLs are split-mode
+  overrides, not the product integration standard.
+- Product application component specs `MUST` distinguish product-owned API roots from dependency
+  SDK roots. A `foundationApiGateway` declaration must not imply that product app-api, backend-api,
+  or open-api surfaces are served by the gateway unless the product exposes them as declared gateway
+  dependency surfaces.
+- Legacy product-local foundation adapters in component specs `MUST` be marked as explicit
+  compatibility only and must not be declared as default same-origin dependency surface coverage
+  when the shared gateway is the target runtime.
 
 ## 5. Discovery Rules
 
@@ -290,6 +330,8 @@ Rules:
 - [ ] Runtime dependency API mounting or external-service requirements are declared through
   `contracts.dependencyApiSurfaces` when the component serves, proxies, or depends on dependency
   HTTP APIs.
+- [ ] Gateway components align dependency surfaces with native build-tool evidence such as Cargo
+  features/dependencies and do not require a parallel gateway catalog.
 - [ ] Rust/runtime components expose executable surface-specific integration entrypoints when they
   claim same-origin dependency API coverage.
 - [ ] Generated SDK language outputs are represented at the SDK family root.

@@ -144,6 +144,10 @@ Rules:
 - `core`, `commons`, and `shell` package names are reserved for infrastructure and must not own business pages or business services.
 - Console and admin package families are optional. They should be created only when the product has that surface.
 - Mobile admin packages require explicit product approval and `backend-admin` surface classification because they expose internal operator behavior on portable devices.
+- Packages without a `console` or `admin` role segment are the default app/user-facing package family for that architecture.
+- Console packages are the user-facing management console family. They reuse the default app package shape, service layering, route contribution model, host adapter boundary, i18n structure, and app-api SDK boundary, then insert the `console` role before the concrete capability name.
+- Admin packages are the internal operator backend family. They reuse the same package shape and host/runtime boundaries, insert the `admin` role before the concrete capability name, and map to the `backend-admin` API/SDK boundary.
+- The `<capability>` token, sometimes written as `xxx` in package templates, `MUST` be a concrete business or technical module such as `order`, `audit`, `workspace`, or `billing`. It `MUST NOT` be a surface placeholder such as `console`, `admin`, `backend`, `manager`, `common`, or `misc`.
 
 ## 5. Dependency Direction
 

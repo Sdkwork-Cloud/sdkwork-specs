@@ -127,6 +127,10 @@ Rules:
 Rules:
 
 - Mini program admin packages require explicit approval, `backend-admin` surface classification, and backend SDK boundary verification.
+- Packages without `mp-console` or `mp-admin` are default mini program app/user packages.
+- `sdkwork-<product>-mp-console-<capability>` packages are the user-facing mini program management console family. They follow the same package-internal shape as default mini program capability packages and consume app-api through generated TypeScript app SDK clients or approved appbase/mini-program wrappers.
+- `sdkwork-<product>-mp-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated backend SDK clients or approved backend wrappers.
+- The `<capability>` segment is the concrete business module token. It `MUST` use lower kebab-case and `MUST NOT` be a placeholder such as `console`, `admin`, `manager`, `backend`, `common`, or `misc`.
 - Capability packages should map to platform subpackages by default when they contain more than trivial pages.
 - Shared components remain domain-neutral. Domain components live in the owning capability package.
 - Packages must be small enough to be understood and tested independently.

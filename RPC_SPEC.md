@@ -3,7 +3,7 @@
 - Version: 1.0
 - Baseline: gRPC over HTTP/2, Protocol Buffers proto3, SDKWork v3 operation semantics
 - Scope: cross-language RPC contracts, Rust local/private services, Java SaaS parity services, generated RPC clients, service-to-service calls, private deployment APIs, local desktop host RPC
-- Related: `API_SPEC.md`, `DATABASE_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SDK_SPEC.md`, `DOMAIN_SPEC.md`, `IAM_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `RUST_RPC_SPEC.md`
+- Related: `API_SPEC.md`, `DATABASE_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SDK_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `DOMAIN_SPEC.md`, `IAM_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `RUST_RPC_SPEC.md`
 - Canonical location: `specs/RPC_SPEC.md`
 
 This document defines the language-neutral RPC standard for SDKWork. It adds a gRPC/protobuf contract layer for direct use by Rust, Java, Go, Python, TypeScript, Dart, C#, and other language runtimes without replacing the existing HTTP/OpenAPI app API and backend API standards.
@@ -55,6 +55,17 @@ Rules:
 - A gRPC method `MUST` map to exactly one SDKWork operation id unless it is a documented composition method. Composition methods must list all child operationIds.
 - A service implementation `MUST` call the same runtime/service/port boundary used by HTTP or Tauri adapters.
 - RPC adapters `MUST NOT` call SQLx repositories, database pools, HTTP routers, or Tauri commands directly.
+
+## 3.1 RPC SDK Generation Boundary
+
+RPC SDK package layout, RPC SDK family naming, proto generation workspace, language output placement, SDKWork RPC generation manifests, and `sdkgen --protocol rpc` verification are governed by `RPC_SDK_WORKSPACE_SPEC.md`.
+
+Rules:
+
+- RPC SDKs `MUST` be generated from proto contracts and the SDKWork RPC manifest.
+- RPC SDK generation `MUST NOT` hand-edit generated protobuf output.
+- RPC SDK generation is additive to existing OpenAPI HTTP SDK generation. Existing `sdkgen generate` commands without an explicit RPC protocol remain HTTP/OpenAPI generation.
+- Missing RPC client capability `MUST` be fixed by updating proto contracts and the RPC manifest, then regenerating.
 
 ## 4. Protocol Profile
 
@@ -313,18 +324,16 @@ SDKWork RPC metadata keys use lowercase ASCII. The following metadata keys are s
 | `access-token` | SDKWork app/backend token calls | Canonical SDKWork access token. |
 | `x-request-id` | All non-trivial calls | Caller or gateway request id. |
 | `traceparent` | Distributed tracing | W3C trace context. |
-| `x-sdkwork-app-id` | App-host calls | Application id. |
-| `x-sdkwork-tenant-id` | Trusted internal/backend calls | Explicit tenant scope when not resolved from token. |
 | `idempotency-key` | Write commands | Retry-safe write identity. |
 | `x-request-hash` | Idempotent writes | Stable hash of canonical request payload. |
 | `x-sdkwork-client-version` | Generated client calls | SDK package/client version. |
 
 Rules:
 
-- Application clients SHOULD authenticate with `authorization` and `access-token`; they SHOULD NOT send raw tenant/user context that conflicts with token claims.
-- Backend/internal callers MAY pass explicit tenant scope only when the service identity is trusted and authorized.
+- Application clients authenticate with `authorization` and `access-token`; they MUST NOT send raw tenant/user context metadata.
+- Backend/internal callers that require tenant context MUST use service tokens, API key lookup, or an internal typed context object, not caller-supplied tenant metadata.
 - Metadata keys `MUST` be validated before request body handling.
-- Servers MUST reject conflicting token context and explicit metadata context.
+- Servers MUST reject any context metadata that attempts to override token-derived or server-resolved context.
 
 ## 13. Auth And Authorization
 
@@ -420,7 +429,7 @@ Standard target packages:
 | --- | --- |
 | Rust generated proto | `sdkwork_<domain>_rpc_proto` |
 | Rust typed client facade | `sdkwork_<domain>_rpc_client` or inside `sdkwork_<domain>_rpc` |
-| TypeScript | `@sdkwork/<domain>-rpc-sdk` |
+| TypeScript | `@sdkwork/<sdk-family-stem>-rpc-sdk` |
 | Java/Kotlin | `com.sdkwork.<domain>.rpc` |
 | Go | `github.com/sdkwork/<domain>-rpc-go` or repo-approved module |
 | Python | `sdkwork_<domain>_rpc` |
@@ -433,6 +442,9 @@ Rules:
 - Missing client capability MUST be fixed by updating proto and regenerating.
 - SDK README examples MUST show metadata/auth setup and at least one unary call.
 - Generated clients SHOULD expose deadlines, cancellation, metadata injection, and typed errors.
+- The SDK family stem MUST match sibling HTTP SDK families for the same capability line. For example,
+  `sdkwork-im-sdk`, `sdkwork-im-app-sdk`, and `sdkwork-im-backend-sdk` imply
+  `sdkwork-im-rpc-sdk`, even when proto packages use `sdkwork.communication.*`.
 
 ## 19. Standard Proto Repository Layout
 

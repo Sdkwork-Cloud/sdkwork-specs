@@ -39,6 +39,11 @@ The same `<app-root>` `MUST` contain the source-controlled `.sdkwork/` workspace
 - Production release artifacts require immutable URLs or digests, checksums, signing metadata, and SBOM/provenance references.
 - The manifest must never contain passwords, access tokens, API keys, private keys, or credentials.
 - Source/build dependency checkout roots are governed by `DEPENDENCY_MANAGEMENT_SPEC.md` and `sdkwork.workflow.json`; app manifests must not carry machine-specific dependency source paths.
+- App manifests must not become gateway catalogs. When an application or gateway manifest records
+  dependency SDK/runtime references, those entries must point to existing SDKWork dependency
+  declarations, component specs, SDK assembly metadata, and native build-tool evidence such as Cargo
+  features or workspace dependencies. They must not duplicate a standalone list of gateway-served
+  APIs as a second source of truth.
 
 ## 3. Top-Level Contract
 

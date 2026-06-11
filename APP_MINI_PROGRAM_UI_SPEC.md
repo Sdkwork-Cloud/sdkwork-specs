@@ -1,10 +1,10 @@
 # App Mini Program UI Standard
 
 - Version: 1.0
-- Scope: app/user-facing mini program UI packages, source pages/components, route projection inputs, generated app SDK integration, mini program host adapters, and package-size-aware interaction rules
+- Scope: app/user-facing and mini program user-console UI packages, source pages/components, route projection inputs, generated app SDK integration, mini program host adapters, and package-size-aware interaction rules
 - Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side mini program UI is packaged and integrated. In application roots it is applied after `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed mini program package standard. Mini program UI packages are user-facing and consume app-api through generated TypeScript app SDK clients or approved appbase mini program wrappers. They must not consume `backend-admin` UI packages or backend SDKs for user-facing workflows.
+This standard defines how SDKWork app-side and mini program user-console UI is packaged and integrated. In application roots it is applied after `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed mini program package standard. Mini program UI packages are user-facing or user-console packages and consume app-api through generated TypeScript app SDK clients or approved appbase mini program wrappers. They must not consume `backend-admin` UI packages or backend SDKs for user-facing workflows.
 
 SDKWork source packages and platform pages/subpackages remain separate. This file owns the package-local UI/service/state/i18n/route rules. `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` owns the root app layout, platform pages/subpackages projection, host/platform config, and release boundary.
 
@@ -17,6 +17,7 @@ apps/<product>-mini-program/
     sdkwork-<product>-mp-commons/
     sdkwork-<product>-mp-shell/
     sdkwork-<product>-mp-<capability>/
+    sdkwork-<product>-mp-console-<capability>/
 ```
 
 Optional shared mini program package shape:
@@ -38,8 +39,9 @@ packages/
 Rules:
 
 - Mini program app UI `MUST` live in normalized mini program application packages such as `apps/<product>-mini-program/packages/sdkwork-<product>-mp-<capability>` or approved shared mini program package families such as `packages/mini-program/<domain>/<package>`.
-- Mini program app UI `MUST` consume `/app/v3/api` through generated TypeScript app SDK clients or approved appbase mini program wrappers.
-- Mini program app UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, or backend UI service facades for user-facing workflows.
+- Mini program user-console UI `MUST` live in `apps/<product>-mini-program/packages/sdkwork-<product>-mp-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Mini program app and user-console UI `MUST` consume `/app/v3/api` through generated TypeScript app SDK clients or approved appbase mini program wrappers.
+- Mini program app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, or backend UI service facades for user-facing workflows.
 - Operator/admin screens require separately approved mini program admin package families classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
 - Platform APIs such as `wx.*`, `my.*`, `dd.*`, `tt.*`, or equivalent `MUST` go through typed host adapters.
 - Platform `pages` and `subpackages` are runtime projections. They must not become the source dependency boundary.
@@ -51,11 +53,13 @@ Rules:
 | mini program shell/runtime | `sdkwork-<product>-mp-shell` or app-specific mini program shell | app shell, tab/page composition, route projection inputs, AuthGate integration | reusable domain pages and services |
 | mini program foundation | `sdkwork-<product>-mp-commons` or `sdkwork-<foundation>-mini-program` | domain-neutral components, form/list/error primitives, design tokens, i18n helpers | business-domain shortcuts |
 | mini program domain package | `sdkwork-<product>-mp-<capability>` or `sdkwork-<capability>-mini-program` | source pages, components, services, state, i18n, route metadata, view models | concrete SDK construction, unrelated capabilities |
+| mini program user console package | `sdkwork-<product>-mp-console-<capability>` | user-facing management console source pages, components, services, state, i18n, route metadata, view models | company-internal admin workflows, backend-only operation center behavior |
 | platform host package | `sdkwork-<product>-mp-host` or `sdkwork-<host>-mini-program` when needed | platform API adapters, permissions, login bridge, storage, media/file picker, share, scene/deep-link handling | business API transport, business authorization |
 
 Rules:
 
 - Mini program packages `MUST` be split by domain/capability.
+- Mini program console packages `MUST` be split by concrete management capability and must not become one large console package.
 - A single mini program package `MUST NOT` accumulate unrelated product workflows.
 - Shared components remain domain-neutral unless they live inside the owning capability package.
 - Domain packages may share route ids, i18n keys, design tokens, SDK port contracts, and service contracts with PC/H5/Flutter packages, but must not import their UI implementations.

@@ -159,7 +159,7 @@ User-facing login creates the first authenticated IAM session for an anonymous r
 
 Rules:
 
-- Login/session-creation requests `MUST NOT` require or trust inbound `Authorization`, `Access-Token`, `X-Sdkwork-Tenant-Id`, `X-Sdkwork-Organization-Id`, or `X-Sdkwork-User-Id` headers to choose tenant, organization, user, data scope, or permission scope. Implementations `SHOULD` reject credential/context headers on login creation endpoints unless an explicit reauthentication or continuation endpoint documents them.
+- Login/session-creation requests `MUST NOT` require or trust inbound credentials or SDKWork context-projection headers to choose tenant, organization, user, data scope, or permission scope. Implementations `SHOULD` reject credential/context headers on login creation endpoints unless an explicit reauthentication or continuation endpoint documents them.
 - Login credential verification `MUST` resolve a real `iam_user` and a real active tenant binding before token issuance. The tenant id used for token claims comes from persisted IAM user/tenant data, not from the login request payload.
 - If one credential can resolve to more than one active tenant, the login flow `MUST` return a tenant-selection challenge or fail closed. It `MUST NOT` silently choose a default tenant.
 - After resolving `tenant_id` and `user_id`, login `MUST` query active `iam_organization_membership` rows for that tenant and user.

@@ -254,6 +254,10 @@ Rules:
 - Shared UI primitives belong in `h5-commons`. Shared runtime/session/SDK behavior belongs in `h5-core`.
 - `core`, `commons`, and `shell` package names are reserved for infrastructure. They `MUST NOT` own business screens or business services.
 - Capability names `MUST` be lower kebab-case and align with canonical domains or approved business capabilities.
+- Packages without `h5-console` or `h5-admin` are default mobile app/user packages.
+- `h5-console-<capability>` packages are the user-facing mobile management console family. They follow the same package-internal shape as `h5-<capability>` packages, but their routes, i18n, services, and state are scoped to customer, tenant, app-owner, or product-user management workflows.
+- `h5-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must not be used for user-facing management console workflows.
+- The `<capability>` segment is the concrete business module token. It `MUST NOT` be a placeholder such as `console`, `admin`, `manager`, `backend`, `common`, or `misc`.
 
 Examples:
 

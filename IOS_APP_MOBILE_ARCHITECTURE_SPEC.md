@@ -129,6 +129,10 @@ Rules:
 Rules:
 
 - New iOS packages `MUST` be split by domain/capability and must not become catch-all mobile business modules.
+- Packages without `ios-mobile-console` or `ios-mobile-admin` are default iOS app/user packages.
+- `sdkwork-<product>-ios-mobile-console-<capability>` packages are the user-facing iOS management console family. They follow the same package-internal shape as default iOS capability packages and consume app-api through generated Swift app SDK clients or approved iOS appbase wrappers.
+- `sdkwork-<product>-ios-mobile-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated Swift backend SDK clients or approved backend wrappers.
+- The `<capability>` segment is the concrete business module token. It `MUST` use lower kebab-case in SDKWork package directories, derive legal Swift target/module names, and `MUST NOT` be a placeholder such as `console`, `admin`, `manager`, `backend`, `common`, or `misc`.
 - Console and admin package families are optional. Mobile admin packages require explicit product approval, `backend-admin` surface classification, and backend SDK boundary verification.
 - Shared UI primitives remain domain-neutral unless they live inside the owning capability package.
 - iOS packages may share route ids, i18n keys, design tokens, SDK port contracts, and service contracts with other client roots, but must not import another architecture's UI/runtime implementation.

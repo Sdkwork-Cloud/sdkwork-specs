@@ -56,7 +56,7 @@ Rust HTTP route crates follow `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, and `SDK_WOR
 Required route crate shape:
 
 ```text
-packages/native-rust/routes/<surface>/sdkwork-routes-<capability>-<surface>/
+packages/sdkwork-router-<capability>-<surface>/
   Cargo.toml
   src/
     lib.rs
@@ -106,7 +106,7 @@ Rules:
 
 Rules:
 
-- Cargo package names use lowercase kebab-case, for example `sdkwork-routes-product-app-api`.
+- Cargo package names use lowercase kebab-case, for example `sdkwork-router-product-app-api`.
 - Rust import names use snake_case, for example `sdkwork_routes_product_app_api`.
 - Modules use snake_case.
 - Types and traits use PascalCase.

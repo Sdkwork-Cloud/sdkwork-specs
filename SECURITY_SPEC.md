@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: authentication, authorization, token use, API/RPC security, frontend handling, logging, secrets
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RPC_SPEC.md`, `DRIVE_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
 
 Security is a cross-cutting requirement. It must be enforced by backend services and reflected in OpenAPI contracts, SDK behavior, frontend service boundaries, and tests.
 
@@ -13,10 +13,10 @@ Rules:
 - Protected HTTP APIs `MUST` use the authentication mode declared by their API surface. Protected app-api and backend-api operations require both `AuthToken` and `AccessToken`; protected open-api operations require API key mode unless an explicitly documented compatibility contract defines a different scheme.
 - Protected RPC methods `MUST` require the equivalent `authorization` and `access-token` metadata unless the method is explicitly public or internal mTLS-only.
 - Product app login/session integration, AuthGate behavior, generated SDK token wiring, logout clearing, and Rust AppContext validation `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`.
-- Public endpoints `MUST` explicitly declare `security: []`.
+- Public endpoints `MUST` explicitly declare `security: []`. Public endpoints generated into SDKs that must not receive stored user credentials `MUST` also declare `x-sdkwork-auth-mode: anonymous`, and generated SDKs `MUST` skip automatic credential injection for those operations.
 - Tokens `MUST` be signed or resolved through a trusted server-side session store.
 - Token expiry, revocation, rotation, and audience checks are mandatory for production.
-- SDKWork login/session creation starts anonymous. Login requests `MUST NOT` use inbound `Authorization`, `Access-Token`, `X-Sdkwork-Tenant-Id`, `X-Sdkwork-Organization-Id`, or `X-Sdkwork-User-Id` headers as authenticated context or tenant/organization selectors.
+- SDKWork login/session creation starts anonymous. Login requests `MUST NOT` use inbound credentials or SDKWork context-projection headers as authenticated context or tenant/organization selectors. Login, registration, OAuth session creation, QR auth credential-entry, and password reset commands `MUST` declare `x-sdkwork-forbid-credential-headers: true` and reject those headers with a standard error.
 - Login success, registration success, OAuth/session-bridge completion, QR completion, refresh, and current-session bootstrap `MUST NOT` be mocked or synthesized from user/profile data, cached users, user ids, emails, usernames, QR keys, bridge hints, or legacy session identifiers. SDKWork app/backend authenticated state requires a validated appbase IAM session with non-empty `authToken` and `accessToken`; incomplete or user-only results fail closed.
 - Login success `MUST` resolve tenant and organization context from real IAM data: the authenticated user tenant binding and active organization memberships. It `MUST NOT` use demo tenants, hard-coded tenants, email-normalized ids, request payload tenant fields, or context headers as substitutes.
 - Multi-organization login `MUST` return a short-lived organization-selection continuation state and `MUST NOT` issue normal business tokens until the selected organization membership is validated.
@@ -27,6 +27,19 @@ Rules:
 - Protected open-api requests `MUST` resolve API keys through a server-side API key lookup service. The API key record, not the raw submitted key alone, supplies tenant, organization, user, app, data scope, and permission scope.
 - API key lookup implementations `MUST` support different storage backends through an interface or service boundary. The standard may use IAM tables, tenant-local API key tables, encrypted secret stores, caches, or remote IAM services.
 - Web backend handlers, controller methods, services, repositories, and provider adapters `MUST` follow `WEB_BACKEND_SPEC.md`: they consume typed request context and must not reparse raw credential headers after framework context resolution.
+
+## 1.0.1 RPC SDK Metadata Security
+
+Generated RPC SDK security follows `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, and
+`SDK_SPEC.md`.
+
+Rules:
+
+- Generated RPC SDK clients MUST support SDKWork metadata providers for `authorization`, `access-token`, `traceparent`, `idempotency-key`, and `x-request-hash`.
+- Application and backend code MUST inject metadata providers through SDK/bootstrap infrastructure instead of assembling raw RPC metadata in business modules.
+- RPC SDK examples for protected methods MUST show metadata provider setup, not hard-coded tokens.
+- Public reflection, health, and gRPC-Web endpoints MUST be protected by deployment policy; production reflection requires access control or an explicit governance exception.
+- mTLS requirements MUST be documented in the RPC SDK README and enforced by runtime/bootstrap configuration when the deployment policy requires client certificates.
 
 ## 1.1 Tenant-Bound Token Signing
 
@@ -145,10 +158,14 @@ Rules:
 - [ ] RPC metadata auth declarations are explicit for every service method.
 - [ ] Dual-token validation is enforced server-side.
 - [ ] Login requests do not trust inbound token or context headers and resolve tenant/organization context from real IAM data.
+- [ ] Anonymous SDK-generated operations skip credential injection, and credential-entry operations reject inbound credential/context headers when marked by contract.
 - [ ] Tenant-bound token signing or equivalent server-side validation prevents cross-tenant token reuse.
 - [ ] Multi-organization login uses a continuation challenge and validates selected membership before issuing business tokens.
 - [ ] API key open-api validation resolves a server-side API key record before context injection.
 - [ ] Protected appbase routers run the standard interceptor chain or a stricter documented superset.
+- [ ] Generated RPC SDK clients support metadata providers for auth, access token, trace, idempotency, and request hash metadata.
+- [ ] RPC SDK examples use metadata providers and do not hard-code live tokens.
+- [ ] RPC reflection and mTLS exposure are controlled by deployment policy.
 - [ ] Web backend handlers/services consume typed request context and do not reparse raw credential, tenant, user, permission, or request-id headers.
 - [ ] Tenant/object authorization is tested.
 - [ ] Drive upload/download grants are short-lived, authorized, and do not leak provider credentials or signed URL material into logs.

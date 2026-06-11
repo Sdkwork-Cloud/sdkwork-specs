@@ -4,7 +4,7 @@
 - Scope: architecture-neutral UI-service-SDK layering, reusable UI modules, service facades, state, routing, accessibility, frontend tests
 - Related: `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines the shared frontend rules for SDKWork modules. It is architecture-neutral and applies to app PC React, PC user console React, PC internal admin React, H5 mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, and standalone backend/admin React packages. Platform-specific package placement, host adapters, tablet/desktop/mobile packaging, route projection, and interaction rules live in the architecture-specific standards. Client application roots follow `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` plus their matching root architecture standard. Cross-architecture SDK composition, app dependency relationships, appbase IAM runtime, and global TokenManager wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
+This standard defines the shared frontend rules for SDKWork modules. It is architecture-neutral and applies to app PC React, user console React, internal admin React, H5 mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, and standalone backend/admin React packages. Platform-specific package placement, host adapters, tablet/desktop/mobile packaging, route projection, and interaction rules live in the architecture-specific standards. Client application roots follow `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` plus their matching root architecture standard. Cross-architecture SDK composition, app dependency relationships, appbase IAM runtime, and global TokenManager wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
 
 `UI_ARCHITECTURE_SPEC.md` is the required selection gate. Architecture-specific UI standards extend this common standard:
 
@@ -14,11 +14,23 @@ This standard defines the shared frontend rules for SDKWork modules. It is archi
 | PC user console React | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` | `/app/v3/api` or approved console-facing app SDK surface; supports web, desktop, and large-screen tablet renderer targets |
 | PC internal admin React | `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` | `backend-admin` surface; `/backend/v3/api` through generated backend SDK; supports web, desktop, and large-screen tablet renderer targets when enabled |
 | H5 mobile React | `APP_H5_ARCHITECTURE_SPEC.md`, then `APP_MOBILE_REACT_UI_SPEC.md` | `/app/v3/api` through generated app SDK and H5/Capacitor host adapters |
+| H5 user console React | `APP_H5_ARCHITECTURE_SPEC.md`, then `APP_MOBILE_REACT_UI_SPEC.md` | `/app/v3/api` or approved console-facing app SDK surface through generated app SDK and H5/Capacitor host adapters |
+| H5 internal admin React | `APP_H5_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` | `backend-admin` surface; `/backend/v3/api` through generated backend SDK |
 | App Flutter | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_FLUTTER_UI_SPEC.md` | `/app/v3/api` through generated Dart/Flutter app SDK and platform adapters |
+| Flutter user console | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_FLUTTER_UI_SPEC.md` | `/app/v3/api` or approved console-facing app SDK surface through generated Dart/Flutter app SDK and platform adapters |
+| Flutter internal admin | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` | `backend-admin` surface; `/backend/v3/api` through generated Dart/Flutter backend SDK |
 | Mini program app | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md` | `/app/v3/api` through generated TypeScript app SDK or approved mini program wrapper and host adapters |
+| Mini program user console | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md` | `/app/v3/api` or approved console-facing app SDK surface through generated TypeScript app SDK or approved mini program wrapper and host adapters |
+| Mini program internal admin | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` | `backend-admin` surface; `/backend/v3/api` through generated backend SDK |
 | Android native app | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md` | `/app/v3/api` through generated Kotlin/Java app SDK or approved Android wrapper and host adapters |
+| Android native user console | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md` | `/app/v3/api` or approved console-facing app SDK surface through generated Kotlin/Java app SDK or approved Android wrapper and host adapters |
+| Android native internal admin | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` | `backend-admin` surface; `/backend/v3/api` through generated Kotlin/Java backend SDK |
 | iOS native app | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md` | `/app/v3/api` through generated Swift app SDK or approved iOS wrapper and host adapters |
+| iOS native user console | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md` | `/app/v3/api` or approved console-facing app SDK surface through generated Swift app SDK or approved iOS wrapper and host adapters |
+| iOS native internal admin | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` | `backend-admin` surface; `/backend/v3/api` through generated Swift backend SDK |
 | Harmony native app | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md` | `/app/v3/api` through generated ArkTS/TypeScript app SDK adapted for Harmony runtime or approved Harmony wrapper and host adapters |
+| Harmony native user console | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md` | `/app/v3/api` or approved console-facing app SDK surface through generated ArkTS/TypeScript app SDK adapted for Harmony runtime or approved Harmony wrapper and host adapters |
+| Harmony native internal admin | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` | `backend-admin` surface; `/backend/v3/api` through generated Harmony-compatible backend SDK |
 | Standalone backend/admin React | `BACKEND_UI_SPEC.md` | `backend-admin` surface; `/backend/v3/api` through generated backend SDK |
 
 ## 1. Layering
@@ -47,10 +59,10 @@ Rules:
 - App shell code `MUST` stay thin: router, layout, providers, environment selection, host integration.
 - Frontend work `MUST` select exactly one primary UI architecture through `UI_ARCHITECTURE_SPEC.md` before package placement.
 - App/user-facing UI `MUST NOT` import `backend-admin` UI packages or call backend-api for user workflows.
-- App/user-facing UI and PC user console UI `MUST` consume generated app SDK clients or approved appbase app wrappers for user-facing workflows, including contacts, address books, workspace navigation, and user-visible IAM directory read/list/tree resources. They `MUST NOT` import backend SDK packages, backend SDK wrapper functions, backend base URL resolvers, or appbase backend SDK clients.
-- Every frontend package outside an explicit `backend-admin` boundary `MUST` use generated app SDK clients or approved app SDK wrappers for SDKWork remote capabilities. User-facing app packages, PC user console packages, shared frontend core packages, app auth runtime packages, and mobile/native/desktop renderer packages `MUST NOT` import, export, construct, proxy, or route through backend SDK clients.
-- PC user console UI `MUST` stay in `sdkwork-<product>-pc-console-*` packages and must not import PC internal admin business internals.
-- PC internal admin UI is `backend-admin`. It `MUST` stay in `sdkwork-<product>-pc-admin-*` packages and must follow backend-domain split rules from `BACKEND_UI_SPEC.md`.
+- App/user-facing UI and user console UI `MUST` consume generated app SDK clients or approved appbase app wrappers for user-facing workflows, including contacts, address books, workspace navigation, and user-visible IAM directory read/list/tree resources. They `MUST NOT` import backend SDK packages, backend SDK wrapper functions, backend base URL resolvers, or appbase backend SDK clients.
+- Every frontend package outside an explicit `backend-admin` boundary `MUST` use generated app SDK clients or approved app SDK wrappers for SDKWork remote capabilities. User-facing app packages, user console packages, shared frontend core packages, app auth runtime packages, and mobile/native/desktop renderer packages `MUST NOT` import, export, construct, proxy, or route through backend SDK clients.
+- User console UI `MUST` stay in architecture-specific `console-<capability>` packages and must not import internal admin business internals.
+- Internal admin UI is `backend-admin`. It `MUST` stay in architecture-specific `admin-<capability>` packages or standalone backend/admin packages and must follow backend-domain split rules from `BACKEND_UI_SPEC.md`.
 - Standalone backend/admin UI `MUST NOT` be mixed into app UI packages and must follow business-domain backend package split rules from `BACKEND_UI_SPEC.md`.
 
 ## 1.1 UI Architecture Selection
@@ -60,12 +72,18 @@ Rules:
 - PC React app UI uses `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md`.
 - PC user console UI uses `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md`.
 - PC internal admin UI uses `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md`.
-- H5 mobile React app UI uses `APP_H5_ARCHITECTURE_SPEC.md`, then `APP_MOBILE_REACT_UI_SPEC.md`.
-- Flutter app UI uses `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_FLUTTER_UI_SPEC.md`.
-- Mini program app UI uses `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md`.
-- Android native app UI uses `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md`.
-- iOS native app UI uses `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md`.
-- Harmony native app UI uses `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md`.
+- H5 mobile React app and user console UI use `APP_H5_ARCHITECTURE_SPEC.md`, then `APP_MOBILE_REACT_UI_SPEC.md`.
+- H5 internal admin UI uses `APP_H5_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md`.
+- Flutter app and user console UI use `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_FLUTTER_UI_SPEC.md`.
+- Flutter internal admin UI uses `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md`.
+- Mini program app and user console UI use `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md`.
+- Mini program internal admin UI uses `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md`.
+- Android native app and user console UI use `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md`.
+- Android native internal admin UI uses `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md`.
+- iOS native app and user console UI use `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md`.
+- iOS native internal admin UI uses `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md`.
+- Harmony native app and user console UI use `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md`.
+- Harmony native internal admin UI uses `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md`.
 - Standalone backend/admin React UI uses `BACKEND_UI_SPEC.md`.
 - A package cannot implement more than one of these architecture families. Shared logic belongs in non-UI contracts or services.
 - Shared common rules remain in this file; package naming, route ownership, host/platform adapters, and SDK surface selection come from the architecture-specific spec.
@@ -94,6 +112,26 @@ PC application packages:
 apps/<product>-pc/packages/sdkwork-<product>-pc-<capability>/
 apps/<product>-pc/packages/sdkwork-<product>-pc-console-<capability>/
 apps/<product>-pc/packages/sdkwork-<product>-pc-admin-<capability>/
+
+Client app-root package roles:
+apps/<product>-h5/packages/sdkwork-<product>-h5-<capability>/
+apps/<product>-h5/packages/sdkwork-<product>-h5-console-<capability>/
+apps/<product>-h5/packages/sdkwork-<product>-h5-admin-<capability>/
+apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>/
+apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_console_<capability>/
+apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_admin_<capability>/
+apps/<product>-mini-program/packages/sdkwork-<product>-mp-<capability>/
+apps/<product>-mini-program/packages/sdkwork-<product>-mp-console-<capability>/
+apps/<product>-mini-program/packages/sdkwork-<product>-mp-admin-<capability>/
+apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>/
+apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-console-<capability>/
+apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-admin-<capability>/
+apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>/
+apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-console-<capability>/
+apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-admin-<capability>/
+apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>/
+apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-console-<capability>/
+apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-admin-<capability>/
 
 Standalone backend/admin packages:
 apps/sdkwork-backend-react-web/packages/sdkwork-react-backend-<domain>/
@@ -130,11 +168,23 @@ The selected `architecture` must be one of:
 - `pc-console-react`
 - `pc-admin-react`
 - `mobile-react`
+- `mobile-console-react`
+- `mobile-admin-react`
 - `mobile-flutter`
+- `mobile-console-flutter`
+- `mobile-admin-flutter`
 - `mini-program`
+- `mini-program-console`
+- `mini-program-admin`
 - `android-native`
+- `android-native-console`
+- `android-native-admin`
 - `ios-native`
+- `ios-native-console`
+- `ios-native-admin`
 - `harmony-native`
+- `harmony-native-console`
+- `harmony-native-admin`
 - `backend-admin-react`
 
 ## 3. SDK Client Injection

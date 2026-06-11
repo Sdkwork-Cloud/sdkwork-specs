@@ -121,6 +121,10 @@ Rules:
 Rules:
 
 - New Flutter packages `MUST` be split by domain/capability and must not become catch-all mobile business packages.
+- Packages without `_console_` or `_admin_` are default Flutter app/user packages.
+- `sdkwork_<product>_flutter_mobile_console_<capability>` packages are the user-facing mobile management console family. They follow the same package-internal shape as default Flutter capability packages and consume app-api through generated Dart/Flutter app SDK clients or approved appbase wrappers.
+- `sdkwork_<product>_flutter_mobile_admin_<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated Dart/Flutter backend SDK clients or approved backend wrappers.
+- The `<capability>` segment is the concrete business module token. It `MUST` use lower snake case and `MUST NOT` be a placeholder such as `console`, `admin`, `manager`, `backend`, `common`, or `misc`.
 - Shared widgets remain domain-neutral unless they live inside the owning capability package.
 - A Flutter app root should choose one primary presentation-state pattern for new packages, such as `controllers`, `blocs`, or `notifiers`, and document it in the root component spec.
 - Mobile admin packages require product approval, an explicit `backend-admin` surface classification, and backend SDK boundary verification.

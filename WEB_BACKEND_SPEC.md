@@ -59,7 +59,7 @@ HTTP route path definitions have one implementation owner per surface/capability
 Rust route crate path ownership:
 
 ```text
-packages/native-rust/routes/<surface>/sdkwork-routes-<capability>-<surface>/
+packages/sdkwork-router-<capability>-<surface>/
   src/paths.rs
   src/routes.rs
   src/handlers.rs
@@ -75,7 +75,7 @@ src/main/java/<package>/<domain>/<capability>/controller/
 
 Rules:
 
-- Rust route crates `MUST` be named `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`.
+- Rust route crates `MUST` be named `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
 - Rust route manifests `MUST` follow `API_SPEC.md` and materialize through `SDK_WORKSPACE_GENERATION_SPEC.md`.
 - Java app-api controller class-level mappings `MUST` start with `/app/v3/api`.
 - Java backend-api controller class-level mappings `MUST` start with `/backend/v3/api`.
@@ -90,13 +90,13 @@ Backends use names that expose domain intent without leaking transport details i
 
 | Concept | Standard name shape | Example |
 | --- | --- | --- |
-| Rust route crate | `sdkwork-routes-<capability>-<surface>` | `sdkwork-routes-product-app-api` |
+| Rust route crate | `sdkwork-router-<capability>-<surface>` | `sdkwork-router-product-app-api` |
 | Java controller | `<Capability><Surface>Controller` | `ProductAppApiController` |
 | Handler function | `<verb>_<resource>` or `<action>_<resource>` | `list_products`, `submit_order` |
 | Service/use-case | `<Capability>Service` or `<UseCase>Service` | `ProductService`, `SubmitOrderService` |
 | Repository | `<Aggregate>Repository` | `ProductRepository` |
 | Provider adapter | `<Provider><Capability>Adapter` | `StripePaymentAdapter` |
-| Route manifest | `<packageName>.route-manifest.json` | `sdkwork-routes-product-app-api.route-manifest.json` |
+| Route manifest | `<packageName>.route-manifest.json` | `sdkwork-router-product-app-api.route-manifest.json` |
 | API authority | `sdkwork-<domain>-<surface>` | `sdkwork-commerce-app-api` |
 | SDK family | `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-sdk`, `sdkwork-<domain>-backend-sdk` | `sdkwork-commerce-app-sdk` |
 
@@ -151,20 +151,19 @@ Rust HTTP backends separate route/path crates from service/runtime crates. Route
 Recommended package shape:
 
 ```text
-packages/native-rust/
-  routes/<surface>/sdkwork-routes-<capability>-<surface>/
-    Cargo.toml
-    src/lib.rs
-    src/paths.rs
-    src/routes.rs
-    src/handlers.rs
-    src/manifest.rs
-  services/<domain>/<capability>/
-    Cargo.toml
-    src/lib.rs
-    src/service.rs
-    src/repository.rs
-    src/errors.rs
+packages/sdkwork-router-<capability>-<surface>/
+  Cargo.toml
+  src/lib.rs
+  src/paths.rs
+  src/routes.rs
+  src/handlers.rs
+  src/manifest.rs
+crates/sdkwork-<domain>-<capability>-rust/
+  Cargo.toml
+  src/lib.rs
+  src/service.rs
+  src/repository.rs
+  src/errors.rs
 ```
 
 Rules:
@@ -320,7 +319,7 @@ Every web backend change should verify the relevant subset:
 
 - [ ] API contract exists or is updated before implementation.
 - [ ] Java controller or Rust route crate path definitions match the approved surface prefix.
-- [ ] Rust route crates follow `sdkwork-routes-<capability>-<surface>` and emit or feed `sdkwork.route.manifest`.
+- [ ] Rust route crates follow `sdkwork-router-<capability>-<surface>` and emit or feed `sdkwork.route.manifest`.
 - [ ] Route/controller changes materialize into the owner-only API authority and derived SDK input.
 - [ ] SDK generation uses the canonical SDKWork generator and generated output remains untouched.
 - [ ] Handlers consume typed request context and do not parse raw credentials, request IDs, tenant IDs, or user IDs.

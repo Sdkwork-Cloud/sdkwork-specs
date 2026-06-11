@@ -137,6 +137,10 @@ Rules:
 Rules:
 
 - New Android packages `MUST` be split by domain/capability and must not become catch-all mobile business modules.
+- Packages without `android-mobile-console` or `android-mobile-admin` are default Android app/user packages.
+- `sdkwork-<product>-android-mobile-console-<capability>` packages are the user-facing Android management console family. They follow the same package-internal shape as default Android capability packages and consume app-api through generated Kotlin/Java app SDK clients or approved Android appbase wrappers.
+- `sdkwork-<product>-android-mobile-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated Kotlin/Java backend SDK clients or approved backend wrappers.
+- The `<capability>` segment is the concrete business module token. It `MUST` use lower kebab-case in SDKWork package directories, normalize to legal Android identifiers for Kotlin namespaces, and `MUST NOT` be a placeholder such as `console`, `admin`, `manager`, `backend`, `common`, or `misc`.
 - Console and admin package families are optional. Mobile admin packages require explicit product approval, `backend-admin` surface classification, and backend SDK boundary verification.
 - Shared UI primitives remain domain-neutral unless they live inside the owning capability package.
 - Android packages may share route ids, i18n keys, design tokens, SDK port contracts, and service contracts with other client roots, but must not import another architecture's UI/runtime implementation.

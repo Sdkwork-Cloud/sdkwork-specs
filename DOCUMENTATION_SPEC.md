@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: module README, requirements, architecture decisions, API examples, runbooks, changelogs, release notes, migration plans, quality evidence, supply-chain evidence, spec references
-- Related: all specs, including `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `CODE_REVIEW_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `CODE_STYLE_SPEC.md`, and `NAMING_SPEC.md`
+- Related: all specs, including `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `CODE_REVIEW_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, and `SDK_SPEC.md`
 
 This standard defines the documentation required for reusable SDKWork capabilities. Documentation must make a module installable and operable by another application without reading its internals.
 
@@ -89,6 +89,16 @@ Rules:
 - Auth examples `MUST` show both `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>` for protected APIs.
 - Backend API docs `MUST NOT` show login/session creation endpoints.
 
+## 3.1 RPC SDK Documentation
+
+RPC SDK documentation follows `RPC_SDK_WORKSPACE_SPEC.md`.
+
+Rules:
+
+- RPC SDK READMEs MUST identify proto packages, service catalog, generated languages, endpoint configuration, TLS/mTLS configuration, metadata auth, deadline and cancellation behavior, idempotent write example, error/status mapping, and verification commands.
+- RPC SDK examples for protected methods MUST use metadata provider setup instead of hard-coded tokens or manually assembled business-module metadata.
+- RPC SDK docs MUST state that `sdkgen` orchestrates SDKWork package layout and Buf/protoc-compatible generation configuration; it does not replace Protocol Buffers, Buf, protoc, or language-specific gRPC plugins.
+
 ## 4. Requirements Documentation
 
 Rules:
@@ -160,6 +170,7 @@ Rules:
 - [ ] Architecture decisions link to `ARCHITECTURE_DECISION_SPEC.md` and record supersession when decisions change.
 - [ ] Module README includes public API, SDK surface, config, security, and verification.
 - [ ] API examples match OpenAPI and generated SDK.
+- [ ] RPC SDK READMEs include proto packages, service catalog, endpoint/TLS/mTLS, metadata auth, deadline, idempotency, status mapping, and verification commands when RPC SDKs are touched.
 - [ ] Review and quality gate evidence link to `CODE_REVIEW_SPEC.md` and `QUALITY_GATE_SPEC.md` when work is reviewed or gated.
 - [ ] Release notes, migration plans, and supply-chain evidence link to `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, and `SUPPLY_CHAIN_SECURITY_SPEC.md` when applicable.
 - [ ] Operationally critical modules include runbooks.

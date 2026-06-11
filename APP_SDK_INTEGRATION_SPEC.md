@@ -128,6 +128,44 @@ Rules:
 - Server-side Rust application services that upload generated/imported bytes `MUST` call `DriveUploaderService`, `PrepareUploaderUploadCommand`, or an approved Drive product uploader facade. They must not call Drive App API over HTTP from the same trusted backend just to reuse client routes.
 - Product SDK generation `MUST NOT` include Drive uploader App API operations in the product authority. Drive uploader operations stay in the Drive SDK family and are declared as dependencies when composed.
 
+### 2.3 Shared Gateway Foundation Composition
+
+Foundation APIs that are reused by multiple independent applications should be composed through the
+shared SDKWork API gateway instead of being re-integrated by each product application server.
+
+Rules:
+
+- A product application server `MUST NOT` directly mount appbase, Drive, messaging, IM, RTC,
+  commerce, AIoT, or other foundation API runtime crates when an approved shared gateway already
+  serves the required dependency surface.
+- The preferred production shape is split/server composition: the product application uses one
+  common SDK root that points at the shared gateway, and the gateway proxies or serves the required
+  dependency surfaces.
+- Product dev runners, server launchers, and local all-in-one commands that need shared foundation
+  APIs `MUST` start a managed `sdkwork-api-gateway` process by default or fail fast with an explicit
+  configured gateway root. They must not silently fall back to product-local foundation API mounts.
+- A Rust product application may embed `sdkwork-api-gateway-runtime` only through its public router
+  builders. It must not copy gateway route registry code, dependency handlers, or foundation module
+  internals into the product server.
+- Gateway executable integration evidence comes from native build-tool metadata, such as Cargo
+  workspace dependencies and Cargo features. SDKWork semantic evidence remains in
+  `sdkwork.app.config.json`, `specs/component.spec.json`, SDK assembly metadata, and runtime config.
+  A separate gateway catalog file must not be introduced just to repeat those facts.
+- Application frontends and SDK bootstrap should prefer one gateway-backed common SDK root for
+  dependency SDKs. Per-surface or per-SDK base URL overrides remain available for migration,
+  private dependency hosts, split services, and tenant-specific routing. Product launchers must not
+  materialize per-module foundation upstream defaults beside the gateway root; those variables are
+  explicit split overrides only.
+- Product-owned APIs remain independent SDKWork API systems. They keep their own API authority, SDK
+  family, generated SDKs, component specs, and owner-only SDK generation. When a product-owned API
+  becomes reusable by other applications, it can be integrated into the shared gateway as another
+  dependency surface through the same Cargo/workspace and component-spec rules. Pointing dependency
+  SDKs at the shared gateway does not redirect product app-api, backend-api, or open-api base URLs;
+  product-owned SDK roots remain product-owned unless a separate gateway integration is declared.
+- During migration, legacy product-local gateway code may exist only as a compatibility layer with a
+  documented removal path. Legacy embedded/product-local foundation adapters may remain only behind
+  explicit compatibility config or tests; they must not be the default runtime for new launches.
+
 ## 3. Architecture-Specific SDK Families
 
 Each application architecture uses the SDK family and IAM wrapper that match its language and runtime.
@@ -238,7 +276,7 @@ Rules:
 Rust backends participate in composition through route crates, service crates, dependency SDKs, and appbase runtime crates.
 
 ```text
-packages/native-rust/routes/app-api/sdkwork-routes-product-app-api
+packages/sdkwork-router-product-app-api
   -> route manifest
   -> sdkwork-commerce-app-api
   -> sdkwork-commerce-app-sdk
@@ -247,11 +285,11 @@ packages/native-rust/routes/app-api/sdkwork-routes-product-app-api
 
 Rules:
 
-- Rust route crates `MUST` follow `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`.
+- Rust route crates `MUST` follow `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
 - Rust route crates own route/path configuration, handler binding, and route manifests for one capability and one surface. They do not become frontend path libraries.
 - Application shells aggregate route manifests into project/domain API authorities such as `sdkwork-commerce-app-api`, then generate owner-only SDK families.
 - Rust local/private implementations that expose or validate appbase IAM/session/context behavior `MUST` depend on appbase Rust crates. Product Rust services must not fork appbase auth guards, context extraction, token validation, or bootstrap behavior.
-- Protected Rust business routes `MUST` validate dual tokens plus typed `AppContext` or a signed trusted context projection according to `IAM_LOGIN_INTEGRATION_SPEC.md`.
+- Protected Rust business routes `MUST` validate dual tokens and inject typed `AppRequestContext`/`AppContext` according to `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - Rust services that call dependency-owned APIs directly `MUST` use generated dependency SDKs or approved service traits. They must not copy OpenAPI routes into the product authority.
 - Tauri/native commands may start or bridge local Rust runtimes, but they `MUST NOT` own business authentication or become hidden app-api/backend-api surfaces.
 
@@ -287,6 +325,10 @@ Rules:
   dependency SDK base URL for each dependency surface. Embedded mode
   `MUST` mount the dependency-owned executable router/controller/service export and record verified
   coverage in `dependencyApiSurfaces`.
+- When a common SDK root is a gateway that serves multiple dependency surfaces with overlapping API
+  prefixes, the gateway contract `MUST` declare route precedence and the application `MUST` rely on
+  that contract instead of mounting the same foundation APIs locally. More specific dependency
+  routes and fixed IAM/provider routes resolve before broad fallback surfaces.
 - `pnpm tauri:dev`, a local server launcher, or any host command starting a backend process does not
   by itself prove that dependency APIs are served. The launched runtime must either configure the
   dependency surface as an external service or mount the executable dependency integration entrypoint.
@@ -364,7 +406,7 @@ Suggested scan categories:
 rg -n "fetch\\(|axios\\.|Authorization|Access-Token|X-API-Key" apps/<product>
 rg -n "/drive/uploader|/drive/upload_sessions|client\\.uploader|DriveUploaderService|sdkwork_drive_product::uploader" apps/<product>
 rg -n "auth\\.sessions|auth\\.registrations|iam\\.users\\.current|openPlatform\\.qrAuth" apps/<product>
-rg -n "sdkwork-routes-.*-(app-api|backend-api|open-api)" apps/<product>/packages
+rg -n "sdkwork-router-.*-(app-api|backend-api|open-api)" apps/<product>/packages
 rg -n "createSdkworkAppbase.*AuthRuntime|setTokenManager|tokenManager|createIamRuntime|createTokenManager|commitSession" apps/<product> apps/sdkwork-appbase
 rg -n "@sdkwork/iam-sdk-adapter|createIamAppSdkAdapter|createIamBackendSdkAdapter" apps/<product>
 rg -n "createTokenManager\\(|new .*TokenManager|setAuthToken|setAccessToken" apps/<product>
@@ -386,6 +428,9 @@ rg -n "createTokenManager\\(|new .*TokenManager|setAuthToken|setAccessToken" app
 - [ ] The selected UI architecture uses the matching generated SDK language and surface.
 - [ ] Runtime/bootstrap declares or derives an SDK inventory and classifies each SDK credential mode before services are constructed.
 - [ ] Runtime/bootstrap supports one common SDK base URL as the default and supports per-surface or per-SDK overrides for split and external dependency services.
+- [ ] Product application servers consume shared foundation APIs through the SDKWork API gateway
+  common SDK root or gateway runtime embedding, instead of directly composing foundation runtime
+  crates in each application.
 - [ ] Runtime/bootstrap uses the approved high-level appbase auth runtime/factory for the architecture and does not locally wire low-level IAM SDK adapters in product code.
 - [ ] Runtime/bootstrap creates exactly one global `TokenManager` per authenticated session context.
 - [ ] Appbase app SDK, every product/dependency app SDK, explicit `backend-admin` appbase backend/product backend/dependency backend SDKs, and every approved composed wrapper backed by those SDKs share that same `TokenManager`.

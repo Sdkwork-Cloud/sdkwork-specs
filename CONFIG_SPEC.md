@@ -136,6 +136,8 @@ export interface SdkworkDependencyApiSurfaceConfig {
   runtimeMode: "same-origin" | "external-service" | "not-mounted";
   sameOriginAllowed: boolean;
   executableExport?: string;
+  cargoFeature?: string;
+  cargoDependency?: string;
   mountPath?: string;
   routeContract?: string;
   coverage: "verified" | "partial" | "missing";
@@ -293,6 +295,14 @@ Rules:
 - `dependencyApiSurfaces` records which dependency-owned HTTP API surfaces are available through
   the current runtime, which are external services, and which are intentionally not mounted. It
   `MUST` match component/runtime manifests and the dependency surface rules in `SDK_SPEC.md`.
+- Rust gateway runtimes may record `cargoFeature` and `cargoDependency` on dependency API surface
+  entries. These values are pointers into native Cargo metadata, not a replacement catalog; tooling
+  must verify them with `cargo metadata`, `[workspace.dependencies]`, and the runtime crate's
+  feature table.
+- Rust gateway dependency surfaces that are split upstream proxies `MUST` use `runtimeMode:
+  "external-service"` or the gateway's equivalent split runtime mode plus `requiredBaseUrlKey` or
+  dependency SDK base URL config. They `MUST NOT` set `cargoFeature` or `cargoDependency` unless an
+  embedded executable dependency is actually compiled into the gateway.
 - `dependencyApiExports` records which dependency-owned API capabilities this application or
   component intentionally exposes through authored public integration surfaces. It `MUST` default to
   `[]`; dependency APIs are not exported by a consuming app merely because dependency SDK clients
@@ -386,6 +396,46 @@ Rules:
   `sameOriginAllowed: true`, name the executable router/controller/service export or equivalent
   runtime adapter, and record `coverage: "verified"` before SDK clients may inherit the product
   same-origin `appApiBaseUrl` or `backendApiBaseUrl`.
+- When a shared Rust gateway provides the same-origin or embedded dependency surface,
+  `dependencyApiSurfaces` `SHOULD` also name the Cargo feature and Cargo dependency that activate
+  that executable integration. The feature/dependency evidence must resolve through Cargo metadata;
+  a separate gateway catalog file is not accepted as the source of these facts.
+- When a shared Rust gateway only proxies a split upstream dependency service, the dependency
+  surface names the upstream/base-url config instead of Cargo feature/dependency evidence. Split
+  proxy coverage proves gateway routing and upstream configuration; it does not prove same-process
+  embedded router availability.
+- A shared gateway split proxy surface `MUST NOT` be created from SDK family name alone. The
+  existing SDK assembly, component spec, or runtime manifest must also prove a materialized route
+  path set with a stable route prefix. Acceptable materialized evidence includes authority OpenAPI
+  `paths`, derived `*.sdkgen.*` OpenAPI inputs, or normalized route manifests under
+  `sdks/_route-manifests/<surface>/`. Generic-only roots and SDK assemblies with no paths are
+  tracked as future integration candidates, not required runtime upstreams.
+- A dependency SDK family may expose multiple stable route prefixes, for example a comments SDK
+  owning both `/app/v3/api/comments` and `/app/v3/api/engagement`. Runtime config `MUST` declare
+  each prefix as a separate dependency API surface while sharing the same service id and
+  `requiredBaseUrlKey`, so route matching stays precise without broad fallback ownership.
+- Product application runtime config that consumes a shared foundation gateway `SHOULD` use one
+  common gateway root as the default dependency base URL source. Product-local server env such as a
+  web gateway upstream must default to that common gateway root for foundation surfaces; direct
+  dependency module URLs are per-surface overrides for explicit split deployments and must not be
+  hidden as the default.
+- A common dependency gateway root does not collapse product-owned SDK roots. Product
+  `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` may remain same-origin or otherwise
+  product-owned while dependency SDK base URLs derive from the shared gateway root.
+- Product-local runtime env `MUST NOT` materialize per-module foundation upstream defaults beside a
+  configured shared gateway root. Appbase, Drive, commerce, search, voice, image, comments, course,
+  messaging, or other foundation module URLs are explicit split overrides only.
+- Launch/config tests for products that consume a shared foundation gateway `MUST` prove dependency
+  SDK defaults derive from the gateway root while product-owned app/backend/open SDK base URLs remain
+  product-owned.
+- When dependency API surfaces overlap by prefix, runtime config or the component spec `MUST`
+  describe the route precedence that the gateway enforces. Specific dependency patterns and fixed
+  IAM/provider routes resolve before broad fallback prefixes. Foundation prefixes such as Drive,
+  Notary, RTC, Agent/Kernel, AIoT, Memory, Knowledgebase, News, Notes, Music, Generations,
+  Community, Search, Voice, Image, Comments, Course, and Messaging must resolve before broad
+  app/backend fallback surfaces. Broad split upstream surfaces
+  may inherit a common SDK root only when tests prove they do not shadow more specific dependency
+  surfaces.
 - Same-origin dependency surface config `MUST` name only production-capable routers, controllers,
   service adapters, or upstreams as verified coverage. Demo routers, mock servers, fixture stores,
   hard-coded IAM tenants/users/organizations/API keys, or seed-only responses are valid only in
@@ -574,6 +624,10 @@ Rules:
   dependency SDK base URL config before feature services are constructed.
 - [ ] Same-origin dependency API surfaces name an executable router/controller/service export and
   have verified coverage before dependency SDK clients inherit product app/backend base URLs.
+- [ ] Rust gateway dependency API surfaces, when used, name Cargo feature/dependency evidence that
+  resolves through Cargo metadata instead of a separate gateway catalog.
+- [ ] Product runtime defaults route shared foundation API upstreams through the declared gateway
+  common SDK root or managed gateway process; direct dependency module URLs are explicit overrides.
 - [ ] Deployment mode and environment are explicit.
 - [ ] Desktop installed config defaults to user-private SQLite, while desktop-started backend service config uses the server PostgreSQL dev profile unless an explicit SQLite profile is selected.
 - [ ] Test config isolates database/schema, Redis key prefix, logs, cache, and temp directories from development and production.

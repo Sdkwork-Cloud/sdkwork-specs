@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: definition of ready, definition of done, merge gates, release gates, evidence bundles, exceptions
-- Related: `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `CODE_REVIEW_SPEC.md`, `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `PERFORMANCE_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
+- Related: `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `CODE_REVIEW_SPEC.md`, `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `PERFORMANCE_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
 This standard defines when SDKWork work is allowed to start, merge, and release.
 
@@ -95,6 +95,12 @@ Rules:
 | Critical | governance approval, migration/release plan, security/privacy review, production evidence |
 
 Risk is high or critical when work touches authentication, authorization, tenant isolation, generated SDK ownership, database migrations, public APIs, release artifacts, root standards, or cross-repository behavior.
+
+Additional RPC SDK risk mapping:
+
+- Public RPC SDK generation changes are High risk.
+- Streaming RPC, auth metadata changes, package naming changes, or generator-owned output boundary changes are Critical risk.
+- RPC SDK generator changes must include HTTP/OpenAPI SDK non-regression evidence before merge.
 
 ## 7. Acceptance Checklist
 

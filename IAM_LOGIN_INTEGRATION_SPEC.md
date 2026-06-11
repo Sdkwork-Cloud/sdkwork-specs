@@ -185,7 +185,8 @@ Rules:
 
 - Session storage `MUST` be centralized in a core/session module.
 - Applications `MUST` create exactly one global token manager per authenticated session context.
-- Login/session-creation requests `MUST NOT` send existing `Authorization`, `Access-Token`, `X-Sdkwork-Tenant-Id`, `X-Sdkwork-Organization-Id`, or `X-Sdkwork-User-Id` headers to select tenant or organization. Login starts anonymous and receives tenant/organization context only from the appbase login response.
+- Login/session-creation requests `MUST NOT` send existing credentials or SDKWork context-projection headers to select tenant or organization. Login starts anonymous and receives tenant/organization context only from the appbase login response.
+- Appbase login, registration, OAuth session creation, QR auth session creation, QR auth password completion, password reset request, and password reset completion OpenAPI operations `MUST` declare `security: []`, `x-sdkwork-auth-mode: anonymous`, and `x-sdkwork-forbid-credential-headers: true`. Generated appbase SDKs `MUST` skip automatic TokenManager credential injection for these operations, and appbase servers `MUST` reject inbound credential or SDKWork context headers for them.
 - `authToken` and `accessToken` returned by appbase login/session APIs `MUST` both carry `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims. Client-side code may decode token claims for diagnostics only; authorization and routing decisions `MUST` rely on appbase session validation and returned `AppContext`.
 - Runtime session normalization `MUST` reject complete-looking sessions whose `authToken`, `accessToken`, and returned `AppContext` disagree on tenant, organization, user, session, app, environment, deployment mode, or login scope.
 - `@sdkwork/appbase-app-sdk`, product/dependency app SDKs, explicit `backend-admin` `@sdkwork/appbase-backend-sdk`, explicit `backend-admin` product/dependency backend SDKs, and approved composed wrappers backed by those SDKs `MUST` receive the same global token manager through generated SDK config, `setTokenManager`, credential provider, constructor injection, or approved adapter.
@@ -255,16 +256,17 @@ request
   -> allow explicitly public routes only
   -> require Authorization: Bearer <auth_token>
   -> require Access-Token: <access_token>
-  -> verify tokens directly or accept a signed AppContext projection from a trusted gateway
-  -> insert typed AppContext into request extensions
-  -> handlers consume AppContext, not raw headers
+  -> verify dual-token claims or resolve them through a trusted server-side session lookup
+  -> build AppRequestContext and typed AppContext at the framework boundary
+  -> insert typed context into request extensions
+  -> handlers consume typed context, not raw headers
 ```
 
 Rules:
 
-- Rust business routes `MUST` reject authorization-only requests that lack SDKWork AppContext or valid token-derived context.
+- Rust business routes `MUST` reject requests that lack a valid dual-token-derived context.
 - Public routes `MUST` be explicitly listed, for example health, readiness, OpenAPI, static public metadata, or documented public bootstrap routes.
-- Rust handlers `MUST` consume a typed `AppContext` extractor or extension.
+- Rust handlers `MUST` consume a typed `AppRequestContext` or `AppContext` extractor/extension injected by middleware.
 - Rust handlers `MUST NOT` parse tokens, tenant IDs, user IDs, or permission scopes directly.
 - Request body, path, and query values `MUST NOT` override verified AppContext tenant, organization, user, actor, permission, or data scope.
 - Error responses `MUST` use the standard problem-detail shape and stable auth/context error codes.
@@ -283,34 +285,21 @@ services/<service>/
   tests/auth_guard_test.rs
 ```
 
-## 7. AppContext Projection
+## 7. Forbidden AppContext Header Projection
 
-When a Rust service receives a trusted context projection, the canonical SDKWork headers are:
-
-| Header | Required | Meaning |
-| --- | --- | --- |
-| `x-sdkwork-tenant-id` | yes | tenant isolation |
-| `x-sdkwork-user-id` | yes | authenticated user |
-| `x-sdkwork-organization-id` | no | organization scope |
-| `x-sdkwork-session-id` | no | IAM session identity |
-| `x-sdkwork-app-id` | no | application identity |
-| `x-sdkwork-environment` | no | environment name |
-| `x-sdkwork-deployment-mode` | no | `saas`, `private`, `local`, `desktop`, or equivalent |
-| `x-sdkwork-auth-level` | no | password, MFA, OAuth, passkey, device, or service level |
-| `x-sdkwork-data-scope` | no | data isolation scope list |
-| `x-sdkwork-permission-scope` | no | permission scope list |
-| `x-sdkwork-actor-id` | no | acting principal; defaults to user |
-| `x-sdkwork-actor-kind` | no | actor kind; defaults to `user` |
-| `x-sdkwork-device-id` | no | device identity |
-| `x-sdkwork-context-signature` | required when using forwarded projection in untrusted networks | HMAC or equivalent signature over context headers |
+SDKWork v3 request context is token-derived. A runtime, SDK, gateway, test helper, smoke script,
+or document `MUST NOT` define, send, forward, sign, or generate AppContext projection headers for
+tenant, organization, user, actor, session, app, device, data scope, permission scope, or equivalent
+identity fields.
 
 Rules:
 
-- A public Rust service `MUST` either verify `authToken` and `accessToken` itself or require a signed AppContext projection from a trusted gateway.
-- Unsigned AppContext projection is allowed only in local tests, trusted in-process adapters, or explicitly documented development profiles.
-- The context signature `MUST` cover every context header that influences tenant, user, session, actor, scope, device, environment, or deployment mode.
-- Permission checks use `x-sdkwork-permission-scope` or server-side permission lookup. Legacy headers such as `x-scope` or `x-scopes` `MUST NOT` grant permissions.
-- Context projection headers are transport metadata, not public API request fields.
+- Public Rust services `MUST` verify `authToken` and `accessToken` directly or resolve them through a trusted server-side token/session lookup before protected handlers run.
+- Appbase HTTP routers `MUST` use the shared request-context resolver to build `AppRequestContext` and insert it into request extensions for route handlers.
+- SDKs and app runtimes `MUST` use the global TokenManager or equivalent credential hook to send only the standard dual-token credentials for protected app-api/backend-api calls.
+- AppContext header builders, context-projection signing helpers, and tests that assert context header forwarding are forbidden technical debt.
+- Permission checks use token claims, server-side permission lookup, or a typed policy service. Legacy scope headers `MUST NOT` grant permissions.
+- Context values in request body, path, query, mutable frontend state, or custom metadata are hints only and never override token-derived context.
 
 ## 8. Rust Local/Private IAM Authority
 
@@ -371,7 +360,7 @@ Required checks for IAM login integration:
 | Organization selection | Tests prove organization-selection continuation credentials cannot authenticate product APIs, client code does not auto-select the first organization, and final token issuance validates membership before committing session state. |
 | API boundary | Contract scan proves product IM/backend/Rust services do not expose appbase-owned `/app/v3/api/auth/*` routes. |
 | Current user boundary | Static scan shows current-user profile/self-service calls use `appbaseApp.iam.users.current.*` and do not inject legacy `user.*` clients. |
-| Rust guard | Tests prove protected Rust routes require dual tokens plus valid AppContext or signed context projection. |
+| Rust guard | Tests prove protected Rust routes require valid dual tokens and typed AppRequestContext/AppContext injection. |
 | Context safety | Tests prove body/query/path tenant or user fields cannot override AppContext. |
 | Error shape | Unauthorized/context failures return problem-detail errors with stable codes. |
 
@@ -396,12 +385,13 @@ rg -n "/app/v3/api/auth|/api/.*/auth|user-center/session" services crates
 - [ ] Logout clears local session, global token manager, AppContext, realtime connections, sensitive cache, and native storage when present, including remote logout failure cases.
 - [ ] Login/refresh/current-session restoration waits for session persistence and context propagation before returning to UI/runtime code, replaces refresh tokens for new sessions, preserves current refresh tokens only for continuation flows, rolls back on context propagation failure, and clears stale AppContext when the committed session has no context.
 - [ ] Login requests are anonymous; tenant and organization context are returned only by appbase after credential validation and real IAM tenant/organization membership lookup.
+- [ ] Login-like appbase OpenAPI operations are marked `x-sdkwork-auth-mode: anonymous` and `x-sdkwork-forbid-credential-headers: true`, generated SDKs skip auth injection, and appbase backends reject inbound credential/context headers.
 - [ ] Multi-organization login uses the appbase organization-selection continuation protocol and does not commit normal session state until final dual tokens are returned.
 - [ ] Both tokens and persisted AppContext agree on tenant, organization, login scope, user, session, app, environment, and deployment mode.
 - [ ] Reusable auth packages use `commitSession(session, options?)`, never `persistSession`, and controller logout clears local authenticated state in a `finally` path.
 - [ ] Runtime/bootstrap builds an SDK inventory and passes every downstream authenticated product/dependency app-api/backend-api client and approved composed wrapper through `clients.sdkClients` or the language-equivalent token-manager-aware SDK list.
 - [ ] Current user profile reads use `appbaseApp.iam.users.current.retrieve()` and missing self-service methods are fixed in appbase app-api/OpenAPI/generator inputs instead of product-local fallbacks.
-- [ ] Rust protected APIs require dual tokens and typed AppContext or a signed trusted projection.
+- [ ] Rust protected APIs require dual tokens and typed AppRequestContext/AppContext injection.
 - [ ] Rust product services do not expose login/session creation routes unless they are the IAM authority implementation.
 - [ ] Permission and tenant decisions come from verified AppContext, not request body/query/path hints.
 - [ ] Tests cover route guard, logout, SDK boundary, Rust auth guard, and forbidden route namespace checks.

@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: API migration, database migration, SDK migration, config migration, package migration, route migration, compatibility windows, rollback
-- Related: `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `GOVERNANCE_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `GOVERNANCE_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 This standard defines how SDKWork changes existing contracts without breaking consumers unexpectedly.
 
@@ -12,7 +12,7 @@ Rules:
 
 - API compatibility follows `API_SPEC.md`.
 - RPC compatibility follows `RPC_SPEC.md`.
-- SDK compatibility follows `SDK_SPEC.md` and `SDK_WORKSPACE_GENERATION_SPEC.md`.
+- SDK compatibility follows `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, and `RPC_SDK_WORKSPACE_SPEC.md` when RPC SDKs are touched.
 - Database compatibility follows `DATABASE_SPEC.md`.
 - Runtime config compatibility follows `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`.
 - Package/component ownership follows `APPLICATION_SPEC.md`, `MODULE_SPEC.md`, and `COMPONENT_SPEC.md`.
@@ -75,6 +75,7 @@ Rules:
 Rules:
 
 - Deprecated API/RPC operations must be marked by the owning contract and documented for generated SDKs.
+- RPC SDK migrations MUST name proto package, service, method, message, field, generated language package versions, affected consumers, compatibility window, and rollback or forward-fix plan.
 - SDK aliases or compatibility facades must be marked deprecated and tied to removal criteria.
 - Generated SDK output must not be edited by hand to create compatibility.
 - Route ids and i18n keys should remain stable across client migrations unless a route migration plan exists.

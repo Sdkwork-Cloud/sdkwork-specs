@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: source-controlled `.sdkwork/` workspace metadata at every git repository root and every SDKWork application root
-- Related: `README.md`, `SOUL.md`, `AGENTS_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `README.md`, `SOUL.md`, `AGENTS_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the repository/application `.sdkwork/` directory. It is the local knowledge and extension workspace for SDKWork development. It stores reusable skills, repository-local plugins, and optional machine-readable workspace manifests that help agents, developers, and CI use the same standards.
 
@@ -15,7 +15,7 @@ There are three different SDKWork path families that must not be mixed:
 | Path family | Owner | Purpose | Governing spec |
 | --- | --- | --- | --- |
 | `<repo-or-application-root>/.sdkwork/` | repository/application maintainers | Source-controlled workspace metadata, common skills, local plugins, optional manifests | this file |
-| `<generated-sdk-output>/.sdkwork/sdkwork-generator-*.json` | `sdkgen` | Generated SDK control-plane reports and manifests | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md` |
+| `<generated-sdk-output>/.sdkwork/sdkwork-generator-*.json` | `sdkgen` | Generated SDK control-plane reports and manifests; required for HTTP/OpenAPI output and optional for RPC release, CI, audit, or migration evidence | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md` |
 | `~/.sdkwork/<app>` or `%USERPROFILE%\.sdkwork\<app>` | runtime user/process | User-private runtime config, data, cache, logs, secrets, temp files | `RUNTIME_DIRECTORY_SPEC.md` |
 
 In addition, SDKWork source dependency paths declared in `pnpm-workspace.yaml`, root `Cargo.toml`, and root `pubspec.yaml` are workspace-root owned. Sibling SDKWork repositories are consumed through these native build-tool mechanisms; the workspace root is the single source of truth for those paths, and member packages consume them by protocol (`workspace:*`, `{ workspace = true }`, package name).

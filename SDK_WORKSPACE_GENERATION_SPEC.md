@@ -1,12 +1,12 @@
 # SDK Workspace And OpenAPI Generation Detail Standard
 
 - Version: 1.0
-- Scope: project-level `sdks/` workspace layout, SDK family directory placement, OpenAPI 3.x authority documents, derived generator inputs, generated output boundaries, backend API SDK generation workflow
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_SPEC.md`, `COMPONENT_SPEC.md`, `DOMAIN_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `BACKEND_UI_SPEC.md`, `FRONTEND_SPEC.md`, `CONFIG_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
+- Scope: project-level HTTP/OpenAPI `sdks/` workspace layout, SDK family directory placement, OpenAPI 3.x authority documents, derived generator inputs, generated output boundaries, backend API SDK generation workflow
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `COMPONENT_SPEC.md`, `DOMAIN_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `BACKEND_UI_SPEC.md`, `FRONTEND_SPEC.md`, `CONFIG_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
-This detail standard implements the SDK workspace and OpenAPI generation parts of `SDK_SPEC.md`. It defines how an application keeps SDK generation work in the `sdks/` directory under its application root while preserving one common SDKWork architecture. The application root may live in any repository or product directory; this standard does not assume any fixed parent directory structure. It is intentionally independent of Craw Chat, IM, Java, Rust, React, Flutter, Tauri, SaaS, private, or local deployment choices.
+This detail standard implements the HTTP/OpenAPI SDK workspace and OpenAPI generation parts of `SDK_SPEC.md`. It defines how an application keeps HTTP SDK generation work in the `sdks/` directory under its application root while preserving one common SDKWork architecture. RPC SDK family layout, proto inputs, RPC manifests, and generated RPC output placement are governed by `RPC_SDK_WORKSPACE_SPEC.md`. The application root may live in any repository or product directory; this standard does not assume any fixed parent directory structure. It is intentionally independent of Craw Chat, IM, Java, Rust, React, Flutter, Tauri, SaaS, private, or local deployment choices.
 
-`SDK_SPEC.md` is the primary SDK standard and owns the SDK system model, canonical naming vocabulary, package semantics, generated client surface, auth handling, service facade boundary, integration rules, and generated client quality rules. This file is subordinate to `SDK_SPEC.md`; it owns only the physical application-root `sdks/` structure, SDK family directory placement, OpenAPI authority document materialization, derived generator inputs, generated output placement, and backend API SDK generation workflow.
+`SDK_SPEC.md` is the primary SDK standard and owns the SDK system model, canonical naming vocabulary, package semantics, generated client surface, auth handling, service facade boundary, integration rules, and generated client quality rules. This file is subordinate to `SDK_SPEC.md`; it owns only the physical application-root HTTP/OpenAPI `sdks/` structure, SDK family directory placement, OpenAPI authority document materialization, derived generator inputs, generated output placement, and backend API SDK generation workflow.
 
 The canonical SDK generator is defined by `SDK_SPEC.md`: workspace sibling repository `../sdkwork-sdk-generator`, package `@sdkwork/sdk-generator`, CLI `sdkgen`, and executable `../sdkwork-sdk-generator/bin/sdkgen.js`. Repository-local generation scripts are allowed only as thin wrappers that derive input OpenAPI, pass standardized generator arguments, and route output into the application `sdks/` workspace. They must not substitute another generator, use copied generator source, call ad hoc OpenAPI client tools, present `sdkwork-code-generator` as a separate standard, or silently fall back to local stubs for committed SDK output. `sdkwork-code-generator` is only an alias/wrapper name when a repository explicitly documents that it executes this canonical `sdkgen.js` entrypoint; it is not an independent SDKWork HTTP SDK generator.
 
@@ -24,6 +24,7 @@ Rules:
 - The `sdks/` directory `MUST` be organized by SDK family directories. API authority documents live inside the owning SDK family; API authority names are not top-level SDK family directories.
 - OpenAPI 3.x documents are the authority for HTTP SDK generation.
 - HTTP SDK generation `MUST` call `../sdkwork-sdk-generator/bin/sdkgen.js` or the equivalent package-managed `sdkgen` executable.
+- RPC SDK generation is separate and `MUST` follow `RPC_SDK_WORKSPACE_SPEC.md`. Existing HTTP SDK generation commands MUST NOT require proto roots, RPC manifests, Buf, protoc, or RPC-specific flags.
 - Generated SDK output `MUST NOT` be hand-edited. Fix the runtime API, OpenAPI authority, generator profile, or composed facade, then regenerate.
 - Generated HTTP SDK output `MUST` retain the `sdkgen` control plane: `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and the regeneration-safe `custom/` root.
 - Generated output `.sdkwork/` directories are generator-owned. They `MUST NOT` contain repository/application skills, plugins, root workspace manifests, local caches, runtime databases, logs, or secrets.
@@ -59,23 +60,23 @@ Recommended application-root shape:
     native-rust/
       routes/
         open-api/
-          sdkwork-routes-product-open-api/
-          sdkwork-routes-catalog-open-api/
+          sdkwork-router-product-open-api/
+          sdkwork-router-catalog-open-api/
         app-api/
-          sdkwork-routes-product-app-api/
-          sdkwork-routes-cart-app-api/
-          sdkwork-routes-order-app-api/
+          sdkwork-router-product-app-api/
+          sdkwork-router-cart-app-api/
+          sdkwork-router-order-app-api/
         backend-api/
-          sdkwork-routes-product-backend-api/
-          sdkwork-routes-order-backend-api/
+          sdkwork-router-product-backend-api/
+          sdkwork-router-order-backend-api/
   sdks/
     README.md
     materialize-<domain>-v<major>-openapi-boundaries.mjs
     workspace-*.mjs
     _route-manifests/
       app-api/
-        sdkwork-routes-product-app-api.route-manifest.json
-        sdkwork-routes-cart-app-api.route-manifest.json
+        sdkwork-router-product-app-api.route-manifest.json
+        sdkwork-router-cart-app-api.route-manifest.json
       backend-api/
       open-api/
     _shared/
@@ -111,6 +112,10 @@ Recommended application-root shape:
         sdkwork-<domain>-backend-api.openapi.yaml
         sdkwork-<domain>-backend-api.sdkgen.yaml
       ...
+    sdkwork-<sdk-family-stem>-rpc-sdk/
+      rpc/
+        sdkwork-<sdk-family-stem>-rpc.manifest.json
+      ...                       # governed by RPC_SDK_WORKSPACE_SPEC.md
 ```
 
 Rules:
@@ -118,17 +123,19 @@ Rules:
 - Rust HTTP route crates that define SDKWork HTTP API paths, route constants, route manifests,
   router mount points, or handler bindings belong under the application root's Rust workspace, not
   under `sdks/`. The recommended path is
-  `packages/native-rust/routes/<surface>/sdkwork-routes-<capability>-<surface>/`.
+  `packages/sdkwork-router-<capability>-<surface>/`.
 - Application-root `.sdkwork/` is validated by `SDKWORK_WORKSPACE_SPEC.md`; it is not an SDK family,
   not an OpenAPI authority, and not a generated transport output.
 - `<surface>` in Rust route crate placement `MUST` be exactly `open-api`, `app-api`, or
   `backend-api`.
 - Rust route crate package names `MUST` follow `API_SPEC.md`:
-  `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or
-  `sdkwork-routes-<capability>-backend-api`.
+  `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or
+  `sdkwork-router-<capability>-backend-api`.
 - `sdkwork-<domain>-sdk` is the public/open domain SDK family.
 - `sdkwork-<domain>-app-sdk` is the app/client SDK family for app-api contracts.
 - `sdkwork-<domain>-backend-sdk` is the `backend-admin` SDK family for backend-api contracts.
+- `sdkwork-<sdk-family-stem>-rpc-sdk` is the RPC SDK family for proto/gRPC contracts and is governed
+  by `RPC_SDK_WORKSPACE_SPEC.md`.
 - `<domain>` is the application domain model, in kebab-case. It should match `DOMAIN_SPEC.md` unless the product has an approved local domain alias.
 - Non-OpenAPI SDKs are allowed only when they are declared as provider/runtime SDKs, for example `sdkwork-rtc-sdk`. They `MUST` document that they are not route-generated HTTP SDKs.
 - Support directories such as `_shared/` and `test/` may exist under `sdks/` when they serve multiple SDK families.
@@ -152,6 +159,7 @@ The following table repeats the canonical SDK/API naming model from `SDK_SPEC.md
 | `sdkwork-<domain>-sdk` | `sdkwork-<domain>-open-api` | Domain-defined, commonly `/im/v3/api` for IM | Public/domain integrations |
 | `sdkwork-<domain>-app-sdk` | `sdkwork-<domain>-app-api` | `/app/v3/api` | App, desktop, mobile, H5, and user-facing clients |
 | `sdkwork-<domain>-backend-sdk` | `sdkwork-<domain>-backend-api` | `/backend/v3/api` | `backend-admin` console, operators, control plane, admin integrations |
+| `sdkwork-<sdk-family-stem>-rpc-sdk` | `sdkwork.rpc.manifest` plus proto packages | gRPC endpoint policy | Distributed backend, native host, private/local, and service-to-service integrations |
 
 Rules:
 
@@ -160,6 +168,8 @@ Rules:
 - SDK family names and API authority names `MUST NOT` be conflated. `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, and `sdkwork-<domain>-backend-api` are API authority names only; they are forbidden as directories directly below `sdks/`, as generated language workspace prefixes, as generated package names, as `sdkMetadata.name`, as `sdk-manifest.json.sdkName`, as assembly `workspace`, as generator `SDK_NAME`, and as generator `--sdk-name`.
 - The SDK family generated from an `open-api` authority is always `sdkwork-<domain>-sdk`, not `sdkwork-<domain>-open-api` and not `sdkwork-<domain>-open-sdk`.
 - Generated language workspaces `MUST` inherit the SDK family name exactly: `sdkwork-<domain>-sdk-{language}`, `sdkwork-<domain>-app-sdk-{language}`, and `sdkwork-<domain>-backend-sdk-{language}`.
+- RPC generated language workspaces inherit the RPC SDK family name exactly, for example
+  `sdkwork-im-rpc-sdk-typescript` and `sdkwork-im-rpc-sdk-rust`.
 - Generated package names `MUST` trace to the SDK family, not the API authority: `sdkwork-<domain>-sdk-generated-{language}`, `sdkwork-<domain>-app-sdk-generated-{language}`, and `sdkwork-<domain>-backend-sdk-generated-{language}` unless a documented public package alias is declared in the family manifest.
 - Public package names may be shorter than workspace names, for example `@sdkwork/im-sdk`, but the package must trace back to the SDK family and authority OpenAPI.
 - App SDKs may depend on public/domain SDKs or provider SDKs only through public package entrypoints. They `MUST NOT` import generated transport internals from another family.
@@ -169,9 +179,9 @@ Example mapping:
 
 | Route crate | Aggregated API authority | SDK family | Prefix |
 | --- | --- | --- | --- |
-| `sdkwork-routes-conversation-open-api` | `sdkwork-im-open-api` | `sdkwork-im-sdk` | `/im/v3/api` |
-| `sdkwork-routes-product-app-api` | `sdkwork-commerce-app-api` | `sdkwork-commerce-app-sdk` | `/app/v3/api` |
-| `sdkwork-routes-order-backend-api` | `sdkwork-commerce-backend-api` | `sdkwork-commerce-backend-sdk` | `/backend/v3/api` |
+| `sdkwork-router-conversation-open-api` | `sdkwork-im-open-api` | `sdkwork-im-sdk` | `/im/v3/api` |
+| `sdkwork-router-product-app-api` | `sdkwork-commerce-app-api` | `sdkwork-commerce-app-sdk` | `/app/v3/api` |
+| `sdkwork-router-order-backend-api` | `sdkwork-commerce-backend-api` | `sdkwork-commerce-backend-sdk` | `/backend/v3/api` |
 
 ### 3.1 Rust Route Crate Placement
 
@@ -180,7 +190,7 @@ Rust HTTP route crates are capability-level source packages. They configure path
 Recommended source shape:
 
 ```text
-packages/native-rust/routes/app-api/sdkwork-routes-product-app-api/
+packages/sdkwork-router-product-app-api/
   Cargo.toml
   src/lib.rs
   src/paths.rs
@@ -188,7 +198,7 @@ packages/native-rust/routes/app-api/sdkwork-routes-product-app-api/
   src/handlers.rs
   src/manifest.rs
 
-packages/native-rust/routes/backend-api/sdkwork-routes-order-backend-api/
+packages/sdkwork-router-order-backend-api/
   Cargo.toml
   src/lib.rs
   src/paths.rs
@@ -206,7 +216,7 @@ Rules:
   exporting a framework-neutral manifest structure, a build script emitting JSON, or a checked-in
   `sdkwork.route.manifest.json` file. The normalized artifact consumed by SDK workspace tooling
   `MUST` follow `API_SPEC.md` `kind: sdkwork.route.manifest`.
-- Route crates `MUST` validate their surface prefix locally. `sdkwork-routes-product-app-api` cannot mount `/backend/v3/api` or any open-api domain prefix such as `/im/v3/api`.
+- Route crates `MUST` validate their surface prefix locally. `sdkwork-router-product-app-api` cannot mount `/backend/v3/api` or any open-api domain prefix such as `/im/v3/api`.
 - Route crates `MUST` not generate SDK code, vendor generated SDK packages, or define final SDK package names.
 - Route crates may depend on runtime/service traits and appbase context helpers, but they `MUST NOT` depend on generated app/backend SDKs for the same application authority. Generated SDKs call the API; route crates implement the API.
 - Route crate names should use the business capability, for example product, cart, order, payment, catalog, shipment, wallet, tenant, report, or audit. The aggregated authority uses the project/domain, for example commerce.
@@ -220,13 +230,13 @@ Recommended normalized output:
 ```text
 <application-root>/sdks/_route-manifests/
   app-api/
-    sdkwork-routes-product-app-api.route-manifest.json
-    sdkwork-routes-cart-app-api.route-manifest.json
-    sdkwork-routes-order-app-api.route-manifest.json
+    sdkwork-router-product-app-api.route-manifest.json
+    sdkwork-router-cart-app-api.route-manifest.json
+    sdkwork-router-order-app-api.route-manifest.json
   backend-api/
-    sdkwork-routes-order-backend-api.route-manifest.json
+    sdkwork-router-order-backend-api.route-manifest.json
   open-api/
-    sdkwork-routes-conversation-open-api.route-manifest.json
+    sdkwork-router-conversation-open-api.route-manifest.json
 ```
 
 Rules:
@@ -259,18 +269,18 @@ Rules:
 - Authority OpenAPI documents `MUST` use the OpenAPI 3.x profile in `API_SPEC.md`.
 - Authority OpenAPI documents may be materialized from multiple route crate manifests for the same
   owner, domain, and API surface. For example, `sdkwork-commerce-app-api` may aggregate
-  `sdkwork-routes-product-app-api`, `sdkwork-routes-cart-app-api`, `sdkwork-routes-order-app-api`,
-  and `sdkwork-routes-payment-app-api`.
+  `sdkwork-router-product-app-api`, `sdkwork-router-cart-app-api`, `sdkwork-router-order-app-api`,
+  and `sdkwork-router-payment-app-api`.
 - Route crate manifests `MUST` be aggregated by surface. An `app-api` authority may consume only
-  `sdkwork-routes-*-app-api` manifests; a `backend-api` authority may consume only
-  `sdkwork-routes-*-backend-api` manifests; an `open-api` authority may consume only
-  `sdkwork-routes-*-open-api` manifests.
+  `sdkwork-router-*-app-api` manifests; a `backend-api` authority may consume only
+  `sdkwork-router-*-backend-api` manifests; an `open-api` authority may consume only
+  `sdkwork-router-*-open-api` manifests.
 - Route crate manifests `MUST` also be aggregated by owner, domain, API authority, SDK family, and
   prefix. A materializer `MUST` fail instead of guessing when two candidate manifests disagree on
   any of those fields.
 - The aggregated authority name `MUST` follow `SDK_SPEC.md`: `sdkwork-<domain>-open-api`,
   `sdkwork-<domain>-app-api`, or `sdkwork-<domain>-backend-api`. The route crate name
-  `sdkwork-routes-<capability>-<surface>` `MUST NOT` be used as an authority filename except as an
+  `sdkwork-router-<capability>-<surface>` `MUST NOT` be used as an authority filename except as an
   internal route manifest input.
 - Authority OpenAPI documents materialized from route manifests `MUST` copy operation ownership and
   source traceability into `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`, and
@@ -579,12 +589,12 @@ Every SDK family change should verify the relevant subset:
 - No official SDK generation command, manifest, README, or CI job uses copied generator code, local stubs, generic OpenAPI generators, product-local aliases, or an independent `sdkwork-code-generator`. `sdkwork-code-generator` is only an alias/wrapper name for the canonical `..\sdkwork-sdk-generator\bin\sdkgen.js` entrypoint.
 - The application root has no forbidden SDK family directories matching `sdks/sdkwork-<domain>-open-api`, `sdks/sdkwork-<domain>-app-api`, `sdks/sdkwork-<domain>-backend-api`, `sdks/<domain>-open-sdk`, `sdks/<domain>-app-sdk`, or `sdks/<domain>-backend-sdk`.
 - Rust route crates, when present, follow
-  `packages/native-rust/routes/<surface>/sdkwork-routes-<capability>-<surface>/` and are not placed
+  `packages/sdkwork-router-<capability>-<surface>/` and are not placed
   under `sdks/`.
-- Route crate package names start with `sdkwork-routes-` and end with exactly one of `open-api`,
+- Route crate package names start with `sdkwork-router-` and end with exactly one of `open-api`,
   `app-api`, or `backend-api`.
 - Generated language workspace directories, generated package names, `sdkMetadata.name`, `sdk-manifest.json.sdkName`, assembly `workspace`, generator `SDK_NAME`, and generator `--sdk-name` all use the SDK family name, not the API authority name.
-- Generated output retains `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and `custom/`.
+- Generated HTTP/OpenAPI output retains `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and `custom/`.
 - Generated `sdkwork-sdk.json`, generated `package.json`, generated `sdk-manifest.json` when present, and generated source files remain generator-owned and do not carry ownership/dependency standard fields or `sdkwork` ownership metadata blocks.
 - Materialization script produces deterministic authority-to-derived output.
 - Materialization script produces deterministic route-manifest-to-authority output when Rust route
@@ -634,11 +644,11 @@ node .\sdks\sdkwork-<domain>-backend-sdk\bin\verify-sdk.mjs
 - [ ] `<application-root>/.sdkwork/skills/` and `<application-root>/.sdkwork/plugins/` exist and follow `SDKWORK_WORKSPACE_SPEC.md`.
 - [ ] HTTP SDK generation uses the canonical `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`.
 - [ ] Generation manifest or README records generator package, canonical path or resolved package location, generator version or commit, command, input, output, language, SDK type, package name, SDK family name, and standard profile.
-- [ ] Generated output retains `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and `custom/`.
+- [ ] Generated HTTP/OpenAPI output retains `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and `custom/`.
 - [ ] Generated control-plane and source metadata stays canonical: `sdkwork-sdk.json`, generated package manifests, generated `sdk-manifest.json` when present, and generated source files do not contain owner/dependency overlay fields.
 - [ ] SDK families use `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-sdk`, and `sdkwork-<domain>-backend-sdk` where those surfaces exist.
-- [ ] Rust route crates, when present, use `sdkwork-routes-<capability>-open-api`,
-  `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api` and live
+- [ ] Rust route crates, when present, use `sdkwork-router-<capability>-open-api`,
+  `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api` and live
   outside `sdks/`.
 - [ ] Route manifest artifacts, when present, use `kind: sdkwork.route.manifest`, normalize to
   `sdks/_route-manifests/<surface>/<packageName>.route-manifest.json`, and pass package name,

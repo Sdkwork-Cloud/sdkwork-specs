@@ -16,7 +16,7 @@ This is the primary SDK standard. It owns the SDK system model, canonical naming
 
 Use `APP_SDK_INTEGRATION_SPEC.md` for architecture-specific SDK consumption, cross-application dependency composition, appbase IAM runtime wiring, and global TokenManager sharing across generated SDK clients.
 
-Use `SDK_WORKSPACE_GENERATION_SPEC.md` as the subordinate project-structure and generation-workspace detail standard for the application root's `sdks/` layout, SDK family directory placement, OpenAPI authority documents, derived generator inputs, backend API SDK generation workflow, and generated-output placement. That document operationalizes this standard for repositories and build tooling; it must not redefine SDK consumption semantics or conflict with this file.
+Use `SDK_WORKSPACE_GENERATION_SPEC.md` as the subordinate project-structure and generation-workspace detail standard for the application root's HTTP/OpenAPI `sdks/` layout, SDK family directory placement, OpenAPI authority documents, derived generator inputs, backend API SDK generation workflow, and generated-output placement. Use `RPC_SDK_WORKSPACE_SPEC.md` as the subordinate detail standard for RPC SDK family layout, proto inputs, RPC manifests, `sdkgen --protocol rpc`, generated RPC output placement, and RPC SDK verification. These documents operationalize this standard for repositories and build tooling; they must not redefine SDK consumption semantics or conflict with this file.
 
 Use `SDKWORK_WORKSPACE_SPEC.md` for repository/application root `.sdkwork/` skills and plugins. That root workspace is different from generated SDK output `.sdkwork/` directories written by `sdkgen`; repository skills, plugins, and local workspace manifests `MUST NOT` be placed inside generated SDK output.
 
@@ -25,7 +25,8 @@ Use `SDKWORK_WORKSPACE_SPEC.md` for repository/application root `.sdkwork/` skil
 Rules:
 
 - `SDK_SPEC.md` is the entrypoint and highest-level SDK standard.
-- `SDK_WORKSPACE_GENERATION_SPEC.md` refines only project structure, generated workspace layout, OpenAPI authority materialization, and generation workflow under `sdks/`.
+- `SDK_WORKSPACE_GENERATION_SPEC.md` refines only HTTP/OpenAPI project structure, generated workspace layout, OpenAPI authority materialization, and generation workflow under `sdks/`.
+- `RPC_SDK_WORKSPACE_SPEC.md` refines only RPC SDK family structure, proto source placement, RPC manifest shape, RPC generation workflow, and generated RPC output boundaries under `sdks/`.
 - If the two documents appear to conflict, follow `SDK_SPEC.md` for SDK semantics, package semantics, auth behavior, service integration, and generated client quality. Follow `SDK_WORKSPACE_GENERATION_SPEC.md` for physical workspace layout and generation artifacts only when it is consistent with this file.
 - Repeated rules across the two documents are intentional only when `SDK_WORKSPACE_GENERATION_SPEC.md` turns an `SDK_SPEC.md` principle into a repository or CI check. Do not maintain competing wording for the same SDK semantic rule.
 - Product-local SDK standards may add examples and local verification commands, but they must cite this document as the primary authority and must not weaken either this document or `SDK_WORKSPACE_GENERATION_SPEC.md`.
@@ -41,8 +42,19 @@ Rules:
 - SDK generation manifests, READMEs, CI jobs, and release notes `MUST` identify the generator as `@sdkwork/sdk-generator` / `sdkgen`, record the canonical generator path or resolved package location, and capture input spec path, output path, language, SDK type, `--sdk-name`, package name, standard profile, and generator version or commit.
 - Generated SDK code, SDK workspace metadata, and consumer docs `MUST NOT` present `sdkwork-code-generator` or other ambiguous code-generator names as the source of SDKWork HTTP SDK output. If a repository uses the wording `sdkwork-code-generator`, it `MUST` state that `sdkwork-code-generator` is only an alias/wrapper name for `..\sdkwork-sdk-generator\bin\sdkgen.js` and that generated output is produced by `@sdkwork/sdk-generator` / `sdkgen`.
 - RPC SDKs `MUST` be generated from proto documents that follow `RPC_SPEC.md`.
+- RPC SDK family layout, RPC manifest shape, generated RPC output placement, and `sdkgen --protocol rpc` rules `MUST` follow `RPC_SDK_WORKSPACE_SPEC.md`.
+- Public, app, backend, and RPC SDK families for the same capability line `MUST` share one SDK
+  family stem: `sdkwork-<sdk-family-stem>-sdk`,
+  `sdkwork-<sdk-family-stem>-app-sdk`, `sdkwork-<sdk-family-stem>-backend-sdk`, and
+  `sdkwork-<sdk-family-stem>-rpc-sdk`.
 - Generated SDK output `MUST NOT` be hand-edited.
 - Generated HTTP SDK output `MUST` retain the generator control plane written by `sdkgen`: `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and `custom/` for handwritten extensions.
+- Generated RPC SDK source workspaces use convention-first evidence. They `MUST` retain the RPC SDK family root, `rpc/*.manifest.json`, proto source references, generated language package manifests, and generated client source; they `MUST NOT` require committed `.sdkwork/sdkwork-generator-*` files for normal source-control use.
+- RPC release, CI, audit, or migration workflows `MAY` request generated SDK control-plane evidence with `sdkgen --protocol rpc --emit-control-plane`. When emitted, the standard file names are `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, and `.sdkwork/sdkwork-generator-report.json`, and SDK metadata `MUST` declare `protocol: "rpc"`.
+- Optional RPC control-plane paths are derived from the language workspace root and the standard `sdkgen` file names. RPC SDK family metadata, such as `.sdkwork-assembly.json` and `specs/component.spec.json`, `MUST NOT` duplicate per-language `manifest`, `changes`, or `report` paths for the optional control plane; if it records optional control-plane policy, it `MUST` do so once at the SDK family or component contract level.
+- Product RPC SDK family READMEs, component READMEs, and family metadata `MUST` describe optional RPC generator evidence as convention-derived. They `MUST NOT` list derived `.sdkwork/sdkwork-generator-*` paths as normal source-control evidence or repeat those paths per language workspace. Generator/tooling standards may name the standard files only to define emitted release, CI, audit, or migration evidence.
+- `sdkgen inspect` is the standard generated SDK evidence inspection entrypoint. For HTTP/OpenAPI SDKs it reads the persisted generated SDK control plane. `sdkgen inspect --protocol rpc` `MUST` accept convention evidence for normal RPC SDK source workspaces and `MUST` validate emitted control-plane metadata only when `.sdkwork/sdkwork-generator-*` files are present. Generator CLI help, generated READMEs, and product README examples `MUST NOT` imply that normal RPC inspection requires persisted generated SDK control-plane files.
+- HTTP/OpenAPI SDK output and RPC SDK output `MUST` use separate SDK family/language workspace directories. Protocol identity is carried by SDK metadata, not by alternate control-plane file names.
 - Generated HTTP SDK output `.sdkwork/` is generator-owned and `MUST NOT` be used for repository/application skills, plugins, local workspace manifests, runtime files, or user-private data.
 - SDK ownership standard metadata `MUST NOT` be injected into generator-owned files under `generated/server-openapi`, including `sdkwork-sdk.json`, `package.json`, `sdk-manifest.json` when a legacy or product wrapper created one there, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, or generated source files such as `src/index.ts`.
 - Generated source files `MUST NOT` be post-processed with `sdkMetadata` fields such as `sdkOwner`, `apiAuthority`, `sdkFamily`, `generationInputSpec`, `sdkDependencies`, `dependencyApiExports`, `dependencyApiSurfaces`, `ownerOnlyOperationCount`, `standardProfile`, or `standardVersion`. If a product needs runtime operation maps or family metadata, place that code in an approved `composed/` wrapper outside `generated/server-openapi`.
@@ -51,9 +63,11 @@ Rules:
 - Missing HTTP SDK capability `MUST` be fixed by updating OpenAPI and the generator, then regenerating.
 - Missing RPC SDK capability `MUST` be fixed by updating proto contracts and the generator, then regenerating.
 - SDK generator strict mode `MUST` be enabled for new SDKWork v3 contracts: `--standard-profile sdkwork-v3`.
-- Generated SDKs `MUST` be reproducible from source OpenAPI, generator version, and generation manifest.
+- Generated HTTP SDKs `MUST` be reproducible from source OpenAPI, generator version, and generation manifest.
+- Generated RPC SDKs `MUST` be reproducible from proto source, RPC manifest, package manifest, generator version, and, for release, CI, audit, or migration workflows, emitted generation evidence.
 - Generated or composed SDKs are the only transport boundary for appbase modules. Consumers `MUST NOT` replace missing SDK methods with raw HTTP, manual auth headers, local DTO forks, or app-local generated-output edits.
 - SDKWork-owned file upload, download, object-storage provider, and storage lifecycle operations `MUST` use generated Drive SDKs from contracts governed by `DRIVE_SPEC.md`. Business SDKs consume Drive references and `MediaResource`; they `MUST NOT` grow duplicate upload clients.
+- Generated SDKs `MUST` honor OpenAPI `x-sdkwork-auth-mode: anonymous` and `x-sdkwork-auth-mode: refresh-token` by suppressing normal automatic user credential injection for that operation, including global TokenManager auth tokens, access tokens, app context headers, and generated transport compatibility aliases. Refresh-token operations may carry a refresh token only through the operation's declared request body or a dedicated refresh-token credential channel; they must not inherit stale auth/access token headers. The generated operation call site must pass a language-specific `skipAuth` or equivalent option into the shared transport layer, and that transport layer must enforce the skip.
 - Every OpenAPI-generated SDK family `MUST` declare `sdkOwner` and `apiAuthority` in its `.sdkwork-assembly.json`.
 - Any SDK family directory that contains `openapi/*.sdkgen.json`, `openapi/*.sdkgen.yaml`, or
   `openapi/*.sdkgen.yml` `MUST` have a sibling `.sdkwork-assembly.json`. Missing assembly metadata
@@ -182,6 +196,11 @@ Definitions:
   derives open-api, app-api, backend-api, and dependency SDK surface URLs by appending each surface's
   standard prefix. It is the recommended default for simple deployments, while per-surface and
   per-SDK base URL overrides remain available for split services and dependency services.
+- A gateway-backed common SDK base URL is valid only when the gateway runtime contract proves that
+  it serves the dependency surface. For Rust gateways, executable integration evidence starts from
+  Cargo workspace dependencies, Cargo features, and public router/controller/service exports; SDKWork
+  manifest, component spec, and SDK assembly metadata provide the API authority, SDK family, prefix,
+  surface, runtime mode, and coverage semantics.
 - backend-admin package boundaries are the only frontend/admin package boundaries that may import,
   construct, or expose product backend SDK clients or appbase backend SDK clients. Route paths,
   menu labels, and feature names are not SDK surface authority.
@@ -245,7 +264,9 @@ Rules:
   `dependencyApiSurfaces` manifest or equivalent component/runtime manifest entry for each
   `sdkDependencies` item. The declaration records dependency workspace, consuming SDK family,
   surface, `apiPrefix`, runtime mode, required base URL config, Rust route contract crate when
-  present, executable router export when present, and mount coverage evidence.
+  present, executable router export when present, native gateway integration evidence such as
+  `cargoFeature` and `cargoDependency` when a Rust gateway owns the mount, and mount coverage
+  evidence.
 - Dependency API authorities remain separate exports by surface: open-api, app-api, and backend-api
   are distinct even when they share an origin or a versioned path prefix. Importing
   `sdkwork-appbase-app-sdk` never implies backend IAM management APIs, and importing
@@ -265,6 +286,20 @@ Rules:
   app/backend default only
   when `dependencyApiSurfaces` declares `same-origin` runtime mode and mount coverage has verified
   every dependency-owned method/path the SDK can call on that surface.
+- A Rust SDKWork API gateway `MUST NOT` introduce a standalone gateway catalog as the primary
+  source of dependency surface facts. Validators must reconstruct gateway executable integration
+  from `cargo metadata`, root `[workspace.dependencies]`, runtime Cargo features, and public
+  executable exports, then compare those facts with `sdkwork.app.config.json`,
+  `specs/component.spec.json`, and SDK assembly metadata.
+- Rust gateway surfaces that proxy split upstream services are dependency surface facts, not
+  executable Cargo facts. They must be validated through their `requiredBaseUrlKey`, upstream
+  config, API authority, SDK family, prefix, and runtime mode, and must not carry fake
+  `cargoFeature` or `cargoDependency` values.
+- Rust gateway surfaces with overlapping prefixes `MUST` declare route precedence and test runtime
+  resolution. Fixed IAM/provider routes and more specific dependency prefixes resolve before broad
+  fallback dependency prefixes. A broad fallback surface does not prove that every dependency-owned
+  operation at the shared root is served unless route coverage verifies the owning authority,
+  normalized path template, and method.
 - When mount coverage is not verified, dependency SDK clients `MUST` use an explicit dependency SDK
   base URL keyed by SDK family or dependency app code, or a configured common SDK base URL that is
   declared to serve that dependency surface, and `MUST` fail fast when neither is available.
@@ -292,6 +327,14 @@ Rules:
   coverage evidence, or when an external-service declaration still falls back to a product-owned
   base URL. A configured common SDK base URL counts only when the runtime contract states that the
   common root serves that dependency surface.
+- Standards checks for Rust gateways `MUST` compare `dependencyApiSurfaces[].cargoFeature` and
+  `dependencyApiSurfaces[].cargoDependency` or their manifest equivalents against `cargo metadata`.
+  A dependency surface is not embedded-capable when the Cargo feature is missing, the dependency
+  crate is absent from workspace dependencies, or the declared executable export is not public.
+- Standards checks must treat split upstream gateway surfaces separately: `requiredBaseUrlKey` or an
+  equivalent dependency SDK base URL proves upstream configuration, while absence of
+  `cargoFeature`/`cargoDependency` is expected until an embedded router/controller/service is
+  actually available.
 - Standards checks `MUST` compare `dependencyApiExports` against `sdkDependencies` and
   `dependencyApiSurfaces`. They must fail when an exported dependency capability is not declared as
   a dependency SDK, when its `exportMode` is not one of the allowed values, when a
@@ -307,20 +350,20 @@ The following table is the canonical SDKWork SDK/API naming model. `SDK_WORKSPAC
 
 | Rust route crate pattern | Aggregated API authority | SDK family directory | Typical prefix |
 | --- | --- | --- | --- |
-| `sdkwork-routes-<capability>-open-api` | `sdkwork-<domain>-open-api` | `sdkwork-<domain>-sdk` | Approved non-app/non-backend versioned domain prefix, for example `/im/v3/api` |
-| `sdkwork-routes-<capability>-app-api` | `sdkwork-<domain>-app-api` | `sdkwork-<domain>-app-sdk` | `/app/v3/api` |
-| `sdkwork-routes-<capability>-backend-api` | `sdkwork-<domain>-backend-api` | `sdkwork-<domain>-backend-sdk` | `/backend/v3/api` |
+| `sdkwork-router-<capability>-open-api` | `sdkwork-<domain>-open-api` | `sdkwork-<domain>-sdk` | Approved non-app/non-backend versioned domain prefix, for example `/im/v3/api` |
+| `sdkwork-router-<capability>-app-api` | `sdkwork-<domain>-app-api` | `sdkwork-<domain>-app-sdk` | `/app/v3/api` |
+| `sdkwork-router-<capability>-backend-api` | `sdkwork-<domain>-backend-api` | `sdkwork-<domain>-backend-sdk` | `/backend/v3/api` |
 
 These names have different meanings:
 
 - Rust route crate names identify Rust source packages that define route/path constants, route metadata, router mount points, and handler binding for one business capability and one API surface.
-- Rust route crate names `MUST` start with `sdkwork-routes-` and `MUST NOT` be used as SDK family names, generated package names, OpenAPI authority names, generator `--sdk-name` values, or frontend service package names.
+- Rust route crate names `MUST` start with `sdkwork-router-` and `MUST NOT` be used as SDK family names, generated package names, OpenAPI authority names, generator `--sdk-name` values, or frontend service package names.
 - SDK family names identify generated client SDK workspaces and generated package lineage.
 - API authority names identify runtime API products and OpenAPI authority contracts.
 - `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, and `sdkwork-<domain>-backend-api` are never SDK family names.
 - The SDK family generated from an `open-api` authority is `sdkwork-<domain>-sdk`, not `sdkwork-<domain>-open-api` and not `sdkwork-<domain>-open-sdk`.
-- `sdkwork-routes-product-app-api` means product-related app-api route/path configuration. It does not mean the product SDK, and it does not mean the final app-api authority for the whole project.
-- `sdkwork-commerce-app-api` means the aggregated commerce app-api authority. It may aggregate multiple commerce-owned route crates such as `sdkwork-routes-product-app-api`, `sdkwork-routes-cart-app-api`, and `sdkwork-routes-order-app-api`.
+- `sdkwork-router-product-app-api` means product-related app-api route/path configuration. It does not mean the product SDK, and it does not mean the final app-api authority for the whole project.
+- `sdkwork-commerce-app-api` means the aggregated commerce app-api authority. It may aggregate multiple commerce-owned route crates such as `sdkwork-router-product-app-api`, `sdkwork-router-cart-app-api`, and `sdkwork-router-order-app-api`.
 - `sdkwork-commerce-app-sdk` means the generated SDK family produced from `sdkwork-commerce-app-api`.
 
 | Surface | Package pattern |
@@ -328,8 +371,7 @@ These names have different meanings:
 | Open API | `@sdkwork/<domain>-sdk` |
 | App API | `@sdkwork/<app>-app-sdk` |
 | Backend API | `@sdkwork/<app>-backend-sdk` |
-| App RPC | `@sdkwork/<domain>-app-rpc-sdk` or approved language-specific equivalent |
-| Backend RPC | `@sdkwork/<domain>-backend-rpc-sdk` or approved language-specific equivalent |
+| RPC SDK | `@sdkwork/<sdk-family-stem>-rpc-sdk` or approved language-specific equivalent |
 | Common RPC contracts | `@sdkwork/<domain>-rpc-contracts` or approved language-specific equivalent |
 | Common generated contracts | `@sdkwork/<app>-contracts` |
 | Shared composed facade | `@sdkwork/<capability>-service` or appbase package |
@@ -345,10 +387,15 @@ Rules:
 
 - App and backend SDK packages may differ, but equivalent resources must keep identical operationId semantics.
 - HTTP SDK and RPC SDK packages may differ, but shared operations must keep identical operationId semantics through the RPC manifest.
+- RPC SDKs are a sibling SDK family to public/open, app, and backend HTTP SDKs. They are not named
+  separately as app-rpc-sdk or backend-rpc-sdk unless a governance exception approves a split family.
+- A single RPC SDK family MAY contain app, backend, and internal proto packages when the manifest
+  separates `surface: "app"`, `surface: "backend"`, and `surface: "internal"` and the generated
+  client exposes those surfaces without crossing auth boundaries.
 - Package version `MUST` be traceable to OpenAPI version and generator version.
 - Application-root `sdks/` SDK family names and API authority names `MUST` follow this document's canonical SDK/API naming model. Their physical `sdks/` layout, OpenAPI authority file placement, derived generator inputs, and generated-output placement `MUST` follow `SDK_WORKSPACE_GENERATION_SPEC.md`.
 - Generated package names, generated metadata names, manifests, and generator `--sdk-name` values `MUST` use SDK family names, not API authority names.
-- Rust route crate names `MUST` follow `API_SPEC.md`: `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`.
+- Rust route crate names `MUST` follow `API_SPEC.md`: `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
 - Route crate names, API authority names, and SDK family names `MUST` remain mechanically distinguishable. A standards checker must be able to identify whether a name is a route crate, API authority, or SDK family from the name alone.
 - Generated clients must expose typed request/response models.
 - SaaS Java and Rust local/private implementations may use different runtime clients, but shared API SDK surfaces must remain semantically identical.
@@ -410,6 +457,7 @@ Rules:
 - Frontend service modules `MUST` set tokens or API keys through SDK credential APIs, not manual headers.
 - IAM login/session token wiring `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`: the appbase auth runtime, `@sdkwork/appbase-app-sdk`, and one global token manager own token injection, route guards, refresh, logout, and session clearing.
 - Appbase login, registration, session validation, current-session retrieval/update/delete, refresh, OAuth, QR auth, password reset, verification-code operations, runtime metadata, and current-user self-service `MUST` use `@sdkwork/appbase-app-sdk` generated from `sdkwork-appbase-app-api`.
+- Appbase login, registration, OAuth session creation, QR auth session creation, QR auth password completion, password reset request, and password reset completion operations `MUST` be generated from `security: []` plus `x-sdkwork-auth-mode: anonymous`; generated clients must not send stale global TokenManager credentials to those operations. Operations marked `x-sdkwork-forbid-credential-headers: true` must also be enforced by the server or gateway.
 - Appbase app-side IAM directory resources that are visible to authenticated application users `MUST` remain app SDK capabilities. This includes organization, department, membership, assignment, position, role-binding, and tree read/list resources used for contacts, address books, workspace selection, and customer-owned management views. They `MUST` be exported through `@sdkwork/appbase-app-sdk` or an approved app SDK wrapper when the frontend app needs them; they `MUST NOT` be removed from the app SDK merely because appbase backend SDK also owns administrator IAM management resources.
 - Appbase `backend-admin` IAM management operations `MUST` use `@sdkwork/appbase-backend-sdk` generated from `sdkwork-appbase-backend-api`; backend SDKs `MUST NOT` expose or own user-facing login/session creation.
 - Backend SDKs and appbase backend SDK wrappers are `backend-admin` surfaces. `backend-admin` means admin-only backend/API/SDK use for internal staff, operators, support, auditors, platform administrators, or trusted backend services acting for those admin workflows. They `MUST` be exported only from `backend-admin` package boundaries such as backend service modules, backend-core packages, standalone backend/admin UI core packages, or PC `pc-admin-core` SDK subpaths. App packages, user-facing console packages, frontend app core packages, and app auth runtime public exports `MUST NOT` expose backend SDK wrapper functions, backend SDK generated packages, backend base URL resolvers, or appbase backend SDK clients.
@@ -552,7 +600,11 @@ Every SDK generation flow `MUST` verify:
 - [ ] OpenAPI validates.
 - [ ] HTTP SDK generation uses `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`. `sdkwork-code-generator` is only an alias/wrapper name for that canonical `sdkgen.js` entrypoint; copied generator code, local stubs, ad hoc OpenAPI client tools, and independent `sdkwork-code-generator` implementations are forbidden.
 - [ ] Generation manifest or README records generator package, canonical path or resolved package location, generator version or commit, command, input, output, language, SDK type, `--sdk-name`, package name, and standard profile.
-- [ ] Generated output retains `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and the regeneration-safe `custom/` root.
+- [ ] Generated HTTP output retains `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and the regeneration-safe `custom/` root.
+- [ ] Generated RPC output, when present, follows the convention-first RPC SDK family layout: family root, `rpc/*.manifest.json`, proto source reference, generated language workspace name, and native language package manifest.
+- [ ] `sdkgen inspect --protocol rpc` succeeds for generated RPC output through convention evidence. If `.sdkwork/sdkwork-generator-*` files are emitted for release, CI, audit, or migration evidence, they declare SDK metadata `protocol: "rpc"`.
+- [ ] RPC SDK family/component metadata records optional control-plane policy at most once and does not duplicate derived `manifest`, `changes`, or `report` paths per language workspace.
+- [ ] RPC SDK family/component READMEs describe optional generator evidence as convention-derived and do not enumerate derived `.sdkwork/sdkwork-generator-*` paths as day-to-day source evidence.
 - [ ] Generated `sdkwork-sdk.json`, generated `package.json`, generated `sdk-manifest.json` when present, and generated source files remain canonical generator output and do not carry `sdkOwner`, `apiAuthority`, `sdkFamily`, `generationInputSpec`, `sdkDependencies`, `dependencyApiExports`, `dependencyApiSurfaces`, `ownerOnlyOperationCount`, `standardProfile`, `standardVersion`, or `sdkwork` ownership metadata blocks.
 - [ ] Every directory with `openapi/*.sdkgen.{json,yaml,yml}` has `.sdkwork-assembly.json`; the global ownership checker reports no `SDK_ASSEMBLY_MISSING` failures.
 - [ ] Every SDK family with `generated/server-openapi` output has `.sdkwork-assembly.json`; the global ownership checker reports no `SDK_GENERATED_OUTPUT_ASSEMBLY_MISSING` failures.
@@ -575,24 +627,27 @@ Every SDK generation flow `MUST` verify:
   enabled; dependency capabilities appear only in the dependency SDK or approved authored facade.
 - [ ] Runtime-required dependency API exports have matching `dependencyApiSurfaces` evidence or an
   explicit dependency SDK base URL requirement so missing mounts fail before runtime `502` or `404`.
+- [ ] Rust gateway dependency surfaces, when present, declare native integration evidence such as
+  `cargoFeature`, `cargoDependency`, and executable export metadata that resolves through
+  `cargo metadata` and does not require a separate gateway catalog.
 - [ ] Generated transport output, generated documentation, generated manifests, and generated package/build metadata do not reference package names declared in `sdkDependencies[].packageByLanguage`.
 - [ ] SDK family names, API authority names, generated package names, generated metadata, and generator `--sdk-name` values follow this document's canonical SDK/API naming model.
-- [ ] Rust route crate names, when present, follow `sdkwork-routes-<capability>-open-api`,
-  `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`; route crate
+- [ ] Rust route crate names, when present, follow `sdkwork-router-<capability>-open-api`,
+  `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`; route crate
   names are not used as SDK family names, OpenAPI authority names, generated package names, or
   generator `--sdk-name` values.
 - [ ] Route manifest artifacts, when present, use `kind: sdkwork.route.manifest`, validate package
   name, capability, surface, API authority, SDK family, prefix, auth mode, ownership, and duplicate
   route rules, and materialize source traceability into OpenAPI extensions.
 - [ ] The route crate -> aggregated API authority -> generated SDK family mapping is explicit, for
-  example `sdkwork-routes-product-app-api` -> `sdkwork-commerce-app-api` ->
+  example `sdkwork-router-product-app-api` -> `sdkwork-commerce-app-api` ->
   `sdkwork-commerce-app-sdk`.
 - [ ] Application-root `sdks/` family layout, OpenAPI authority file placement, derived generator inputs, and generated-output placement follow `SDK_WORKSPACE_GENERATION_SPEC.md`.
 - [ ] Strict SDKWork v3 profile passes for new contracts.
 - [ ] Generated TypeScript compiles.
 - [ ] Generated README examples use intended resource-style calls.
 - [ ] Generated method surface includes nested resources from dotted operationIds.
-- [ ] Auth headers are generated correctly.
+- [ ] Auth headers are generated correctly, and `x-sdkwork-auth-mode: anonymous` operations generate credential-suppression behavior.
 - [ ] App-api SDK examples and explicit `backend-admin` backend-api SDK examples use the single application `TokenManager` shared by appbase, product, and dependency SDK clients, while protected open-api SDK examples use API key credential providers and do not reuse app login tokens.
 - [ ] Problem-detail errors map to SDK error metadata.
 - [ ] No raw HTTP fallback is introduced in consumers.
@@ -600,10 +655,18 @@ Every SDK generation flow `MUST` verify:
 
 ## 9. RPC SDK Generation
 
-RPC SDK generation follows `RPC_SPEC.md`.
+RPC SDK generation follows `RPC_SPEC.md` for contract semantics and `RPC_SDK_WORKSPACE_SPEC.md` for workspace layout, generation inputs, and generated-output boundaries.
 
 Rules:
 
+- RPC SDKs are first-class SDKWork SDK families. They are generated from proto contracts governed by `RPC_SPEC.md` and workspace rules governed by `RPC_SDK_WORKSPACE_SPEC.md`.
+- RPC SDK generation MAY be orchestrated by `@sdkwork/sdk-generator` / `sdkgen`, but protobuf compilation MUST use standard Buf/protoc-compatible tooling.
+- RPC SDK generation is additive to OpenAPI HTTP SDK generation. Existing `sdkgen generate` commands without `--protocol rpc` MUST continue to generate HTTP/OpenAPI SDKs with the existing control-plane files.
+- RPC SDK generation defaults to convention-first source output and MUST NOT require committed `.sdkwork/sdkwork-generator-*` files in generated language workspaces.
+- RPC SDK generation MAY emit standard generated SDK control-plane files with `--emit-control-plane` for release, CI, audit, or migration evidence. Emitted file names MUST be `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, and `.sdkwork/sdkwork-generator-report.json`, with SDK metadata declaring `protocol: "rpc"`.
+- RPC SDK family/component metadata MUST treat optional control-plane file paths as convention-derived from the language workspace root. It MUST NOT repeat derived `manifest`, `changes`, or `report` paths inside each generated language workspace entry.
+- RPC SDK family and component READMEs MUST keep day-to-day regeneration evidence convention-first. They may mention `--emit-control-plane` for release, CI, audit, or migration workflows, but they MUST NOT enumerate derived `.sdkwork/sdkwork-generator-*` paths as normal generated workspace content.
+- `sdkgen inspect --protocol rpc --output <workspace> --json` MUST accept convention evidence for generated RPC SDK source workspaces and report a healthy RPC workspace. When emitted control-plane files are present, inspect MUST validate their `protocol: "rpc"` metadata. `sdkgen inspect` without `--protocol rpc` remains the HTTP/OpenAPI inspection entrypoint and reads persisted generated SDK control-plane evidence.
 - Proto-generated clients `MUST` expose typed request and response messages.
 - Generated RPC clients `MUST` support metadata injection for `authorization`, `access-token`, `traceparent`, `idempotency-key`, and `x-request-hash`; request correlation ids remain server-owned and must not be client-injected as `x-request-id`.
 - Generated RPC clients `SHOULD` expose deadlines, cancellation, retry policy, and typed status/error details.
@@ -615,7 +678,9 @@ Rules:
 RPC verification checklist:
 
 - [ ] Proto contracts compile for the target language.
+- [ ] `sdkgen inspect --protocol rpc` succeeds through convention evidence, or through emitted `.sdkwork/sdkwork-generator-*` evidence that reports `protocol: "rpc"`.
 - [ ] Generated client package compiles.
+- [ ] RPC SDK family/component READMEs mention optional generator evidence as convention-derived and do not enumerate derived `.sdkwork/sdkwork-generator-*` paths as normal workspace content.
 - [ ] Generated README examples include endpoint, TLS/mTLS where required, metadata auth, deadline, and one unary call.
 - [ ] Shared methods map back to the expected SDKWork operationIds.
 - [ ] Status/error details map to the language SDK error type.

@@ -10,24 +10,24 @@ Use `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` for cross-client package taxonom
 
 Every application root `MUST` contain the source-controlled `.sdkwork/` workspace required by `SDKWORK_WORKSPACE_SPEC.md`, including `.sdkwork/skills/` and `.sdkwork/plugins/`. This directory stores local development knowledge and repository/application extensions; it is separate from generated SDK output `.sdkwork/` control-plane files and user-private runtime `~/.sdkwork/<app>` directories.
 
-Application UI work must also pass the `UI_ARCHITECTURE_SPEC.md` selection gate before files are created. PC browser/desktop applications first apply `APP_PC_ARCHITECTURE_SPEC.md`, then select the detailed UI package standard for app, console, or admin packages:
+Application UI work must also pass the `UI_ARCHITECTURE_SPEC.md` selection gate before files are created. Each client application root first applies its root architecture standard, then selects the detailed UI package standard for app, console, or admin packages:
 
 | UI architecture | Required standard | Package family |
 | --- | --- | --- |
 | PC browser/desktop app root | `APP_PC_ARCHITECTURE_SPEC.md` | `apps/<product>-pc/packages/sdkwork-<product>-pc-*`, `sdkwork-<product>-pc-console-*`, `sdkwork-<product>-pc-admin-*` |
 | App PC React packages | `APP_PC_REACT_UI_SPEC.md` | `packages/pc-react/<domain>/sdkwork-<capability>-pc-react` or the normalized app-root packages defined by `APP_PC_ARCHITECTURE_SPEC.md` |
 | PC user console React | `APP_PC_ARCHITECTURE_SPEC.md` and `APP_PC_REACT_UI_SPEC.md` | `apps/<product>-pc/packages/sdkwork-<product>-pc-console-<capability>` |
-| H5 React application root | `APP_H5_ARCHITECTURE_SPEC.md` and `APP_MOBILE_REACT_UI_SPEC.md` | `apps/<product>-h5/packages/sdkwork-<product>-h5-*` |
+| H5 React application root | `APP_H5_ARCHITECTURE_SPEC.md` and `APP_MOBILE_REACT_UI_SPEC.md`; H5 admin packages also apply `BACKEND_UI_SPEC.md` | `apps/<product>-h5/packages/sdkwork-<product>-h5-*`, `sdkwork-<product>-h5-console-*`, `sdkwork-<product>-h5-admin-*` |
 | Shared app mobile React packages | `APP_MOBILE_REACT_UI_SPEC.md` | `packages/mobile-react/<domain>/sdkwork-<capability>-mobile-react` |
-| Flutter mobile app root | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_FLUTTER_UI_SPEC.md` | `apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_*` |
+| Flutter mobile app root | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_FLUTTER_UI_SPEC.md`; Flutter admin packages also apply `BACKEND_UI_SPEC.md` | `apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_*`, `sdkwork_<product>_flutter_mobile_console_*`, `sdkwork_<product>_flutter_mobile_admin_*` |
 | Shared app Flutter packages | `APP_FLUTTER_UI_SPEC.md` | `packages/mobile-flutter/<domain>/sdkwork_<capability>_flutter` |
-| Mini program app root | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` and `APP_MINI_PROGRAM_UI_SPEC.md` | `apps/<product>-mini-program/packages/sdkwork-<product>-mp-*` |
+| Mini program app root | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` and `APP_MINI_PROGRAM_UI_SPEC.md`; mini program admin packages also apply `BACKEND_UI_SPEC.md` | `apps/<product>-mini-program/packages/sdkwork-<product>-mp-*`, `sdkwork-<product>-mp-console-*`, `sdkwork-<product>-mp-admin-*` |
 | Shared app mini program packages | `APP_MINI_PROGRAM_UI_SPEC.md` | `packages/mini-program/<domain>/sdkwork-<capability>-mini-program` |
-| Android native mobile app root | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_ANDROID_NATIVE_UI_SPEC.md` | `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-*` |
+| Android native mobile app root | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_ANDROID_NATIVE_UI_SPEC.md`; Android admin packages also apply `BACKEND_UI_SPEC.md` | `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-*`, `sdkwork-<product>-android-mobile-console-*`, `sdkwork-<product>-android-mobile-admin-*` |
 | Shared app Android native packages | `APP_ANDROID_NATIVE_UI_SPEC.md` | `packages/android-native/<domain>/sdkwork-<capability>-android-native` |
-| iOS native mobile app root | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_IOS_NATIVE_UI_SPEC.md` | `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-*` |
+| iOS native mobile app root | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_IOS_NATIVE_UI_SPEC.md`; iOS admin packages also apply `BACKEND_UI_SPEC.md` | `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-*`, `sdkwork-<product>-ios-mobile-console-*`, `sdkwork-<product>-ios-mobile-admin-*` |
 | Shared app iOS native packages | `APP_IOS_NATIVE_UI_SPEC.md` | `packages/ios-native/<domain>/sdkwork-<capability>-ios-native` |
-| Harmony native mobile app root | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_HARMONY_NATIVE_UI_SPEC.md` | `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-*` |
+| Harmony native mobile app root | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_HARMONY_NATIVE_UI_SPEC.md`; Harmony admin packages also apply `BACKEND_UI_SPEC.md` | `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-*`, `sdkwork-<product>-harmony-mobile-console-*`, `sdkwork-<product>-harmony-mobile-admin-*` |
 | Shared app Harmony native packages | `APP_HARMONY_NATIVE_UI_SPEC.md` | `packages/harmony-native/<domain>/sdkwork-<capability>-harmony-native` |
 | PC internal admin React | `APP_PC_ARCHITECTURE_SPEC.md` and `BACKEND_UI_SPEC.md` | `apps/<product>-pc/packages/sdkwork-<product>-pc-admin-<capability>` |
 | Standalone backend/admin React | `BACKEND_UI_SPEC.md` | `apps/sdkwork-backend-react-web/packages/sdkwork-react-backend-<domain>` |
@@ -37,18 +37,19 @@ Rules:
 - App/user-facing packages consume app-api through app SDKs or approved appbase wrappers.
 - `backend-admin` packages consume backend-api through backend SDKs or approved backend wrappers.
 - Every package outside an explicit `backend-admin` boundary `MUST` consume SDKWork remote capabilities through generated app SDKs or approved app SDK wrappers. Non-admin packages `MUST NOT` import, export, construct, proxy, or route through backend SDK packages, appbase backend SDK clients, backend wrapper functions, backend generated SDK clients, or backend base URL resolvers.
+- Packages without a `console` or `admin` role segment are default app/user packages. `console` packages are user-facing management console modules built on the same app-side architecture and app-api/app SDK boundary. `admin` packages are internal operator modules mapped to `backend-admin` and backend-api/backend SDK boundaries.
 - Every SDKWork application root `MUST` have `.sdkwork/README.md`, `.sdkwork/skills/README.md`, and `.sdkwork/plugins/README.md`.
 - Independent application repositories under `apps/` that include Rust local/private services, Tauri hosts, or native Rust runtime crates `MUST` declare `sdkwork-appbase` as a foundation dependency.
 - Those Rust-enabled independent apps `MUST` integrate the relevant appbase Rust crates and generated appbase SDK families, including appbase app SDKs for user-facing app-api capabilities and appbase backend SDKs for `backend-admin` capabilities when those surfaces are used.
 - Product applications `MUST NOT` copy, fork, or regenerate appbase-owned IAM, session, workspace, bootstrap, tenant, organization, user, verification, or backend management APIs into the product application repository. They consume appbase through dependencies and approved composed wrappers.
 - UI packages from different architecture families must not import each other's pages, components, routes, host adapters, or runtime globals.
 - PC application roots `MUST` follow `APP_PC_ARCHITECTURE_SPEC.md`. Packages without `pc-console` or `pc-admin` are app/user modules by default; `pc-console` modules are user-facing management console modules; `pc-admin` modules are company-internal admin modules.
-- H5/Capacitor application roots `MUST` follow `APP_H5_ARCHITECTURE_SPEC.md`. H5 packages use `sdkwork-<product>-h5-*`, and Capacitor host behavior belongs in `sdkwork-<product>-h5-capacitor`.
-- Flutter mobile roots `MUST` follow `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`. Flutter mobile packages use lower snake case names such as `sdkwork_<product>_flutter_mobile_<capability>`.
-- Mini program roots `MUST` follow `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md` for package-local UI/service/state/route rules. SDKWork packages define source/dependency boundaries; platform `pages` and `subpackages` are runtime projections.
-- Native Android mobile roots `MUST` follow `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md` for package-local UI/service/state/route rules. Android packages use `sdkwork-<product>-android-mobile-*`; Kotlin namespaces must preserve the SDKWork package identity through legal Android identifiers.
-- Native iOS mobile roots `MUST` follow `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md` for package-local UI/service/state/route rules. iOS packages use `sdkwork-<product>-ios-mobile-*`; Swift targets/modules must preserve the SDKWork package identity through legal Swift identifiers.
-- Native HarmonyOS mobile roots `MUST` follow `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md` for package-local UI/service/state/route rules. Harmony packages use `sdkwork-<product>-harmony-mobile-*`; ohpm/ArkTS module identifiers must preserve the SDKWork package identity.
+- H5/Capacitor application roots `MUST` follow `APP_H5_ARCHITECTURE_SPEC.md`. H5 packages use `sdkwork-<product>-h5-*`, `sdkwork-<product>-h5-console-*`, or `sdkwork-<product>-h5-admin-*`, and Capacitor host behavior belongs in `sdkwork-<product>-h5-capacitor`.
+- Flutter mobile roots `MUST` follow `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`. Flutter mobile packages use lower snake case names such as `sdkwork_<product>_flutter_mobile_<capability>`, `sdkwork_<product>_flutter_mobile_console_<capability>`, or `sdkwork_<product>_flutter_mobile_admin_<capability>`.
+- Mini program roots `MUST` follow `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md` for package-local UI/service/state/route rules. SDKWork packages define source/dependency boundaries through `sdkwork-<product>-mp-*`, `sdkwork-<product>-mp-console-*`, and `sdkwork-<product>-mp-admin-*`; platform `pages` and `subpackages` are runtime projections.
+- Native Android mobile roots `MUST` follow `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md` for package-local UI/service/state/route rules. Android packages use `sdkwork-<product>-android-mobile-*`, `sdkwork-<product>-android-mobile-console-*`, or `sdkwork-<product>-android-mobile-admin-*`; Kotlin namespaces must preserve the SDKWork package identity through legal Android identifiers.
+- Native iOS mobile roots `MUST` follow `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md` for package-local UI/service/state/route rules. iOS packages use `sdkwork-<product>-ios-mobile-*`, `sdkwork-<product>-ios-mobile-console-*`, or `sdkwork-<product>-ios-mobile-admin-*`; Swift targets/modules must preserve the SDKWork package identity through legal Swift identifiers.
+- Native HarmonyOS mobile roots `MUST` follow `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md` for package-local UI/service/state/route rules. Harmony packages use `sdkwork-<product>-harmony-mobile-*`, `sdkwork-<product>-harmony-mobile-console-*`, or `sdkwork-<product>-harmony-mobile-admin-*`; ohpm/ArkTS module identifiers must preserve the SDKWork package identity.
 - `backend-admin` UI must be split by business domain and permission prefix. It must not be placed into one catch-all backend package.
 - Shared cross-architecture logic must be extracted into contract, service, i18n, token, or generated SDK packages that have no UI runtime dependency.
 
@@ -124,24 +125,24 @@ Rust route crate or Java controller module
 Rust route crate examples:
 
 ```text
-sdkwork-routes-product-app-api
-sdkwork-routes-cart-app-api
-sdkwork-routes-order-backend-api
+sdkwork-router-product-app-api
+sdkwork-router-cart-app-api
+sdkwork-router-order-backend-api
 ```
 
 Aggregated authority and SDK examples:
 
 ```text
-sdkwork-routes-product-app-api
-sdkwork-routes-cart-app-api
-sdkwork-routes-order-app-api
+sdkwork-router-product-app-api
+sdkwork-router-cart-app-api
+sdkwork-router-order-app-api
   -> sdkwork-commerce-app-api
   -> sdkwork-commerce-app-sdk
 ```
 
 Rules:
 
-- Rust route crates that define SDKWork HTTP routes `MUST` follow `API_SPEC.md` and be named `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`.
+- Rust route crates that define SDKWork HTTP routes `MUST` follow `API_SPEC.md` and be named `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
 - Web backend implementation layers, including controller/router, handler, service/use-case, repository, provider adapter, request context, and route materialization boundaries, `MUST` follow `WEB_BACKEND_SPEC.md`.
 - Route crates own route/path configuration for one capability and one API surface. They do not own SDK package names, generated SDK output, frontend service ports, or final OpenAPI authority names.
 - The application or backend shell owns route aggregation. It combines same-surface, same-owner route manifests into the project/domain authority such as `sdkwork-commerce-app-api` or `sdkwork-commerce-backend-api`.

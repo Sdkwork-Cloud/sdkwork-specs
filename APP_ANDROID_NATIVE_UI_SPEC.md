@@ -1,12 +1,12 @@
 # App Android Native UI Standard
 
 - Version: 1.0
-- Scope: app/user-facing Android native packages, Jetpack Compose or Android View UI, generated Kotlin/Java app SDK integration, Android host adapters, mobile interaction, and package-local state
+- Scope: app/user-facing and Android user-console native packages, Jetpack Compose or Android View UI, generated Kotlin/Java app SDK integration, Android host adapters, mobile interaction, and package-local state
 - Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side Android native UI is packaged and integrated. In application roots it is applied after `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed Android native package standard. Android UI packages are app/user-facing and consume app-api through generated Kotlin/Java app SDK clients or approved appbase Android wrappers. They must not consume `backend-admin` UI packages or backend SDKs for user-facing workflows.
+This standard defines how SDKWork app-side and Android user-console native UI is packaged and integrated. In application roots it is applied after `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed Android native package standard. Android UI packages are app/user-facing or user-console packages and consume app-api through generated Kotlin/Java app SDK clients or approved appbase Android wrappers. They must not consume `backend-admin` UI packages or backend SDKs for user-facing workflows.
 
-This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing Android native packages.
+This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing and user-console Android native packages. Android admin packages are `backend-admin` packages and must also follow `BACKEND_UI_SPEC.md`.
 
 Canonical app-root Android package shape:
 
@@ -17,6 +17,7 @@ apps/<product>-android-mobile/
     sdkwork-<product>-android-mobile-commons/
     sdkwork-<product>-android-mobile-shell/
     sdkwork-<product>-android-mobile-<capability>/
+    sdkwork-<product>-android-mobile-console-<capability>/
 ```
 
 Optional shared Android package shape:
@@ -37,8 +38,9 @@ packages/android-native/
 Rules:
 
 - Android app UI `MUST` live in normalized Android application packages such as `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>` or approved shared Android package families such as `packages/android-native/<domain>/<package>`.
-- Android app UI `MUST` consume `/app/v3/api` through generated Kotlin/Java app SDK clients or approved wrappers.
-- Android app UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, Flutter packages, iOS packages, or Harmony packages for user-facing workflows.
+- Android user-console UI `MUST` live in `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Android app and user-console UI `MUST` consume `/app/v3/api` through generated Kotlin/Java app SDK clients or approved wrappers.
+- Android app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, Flutter packages, iOS packages, or Harmony packages for user-facing workflows.
 - Operator/admin screens require a separately approved Android admin package family classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
 - Android framework and platform APIs such as camera, biometric, secure storage, push, intents, app links, files, and lifecycle `MUST` go through typed host adapters.
 
@@ -49,11 +51,13 @@ Rules:
 | Android app shell | `sdkwork-<product>-android-mobile-shell` or app-specific Android shell | navigation graph, providers, AuthGate, route composition | reusable domain features |
 | Android foundation package | `sdkwork-<product>-android-mobile-commons` or `sdkwork-<foundation>-android-native` | domain-neutral UI primitives, theme adapters, form/list/error primitives, i18n helpers | business-domain shortcuts |
 | Android domain package | `sdkwork-<product>-android-mobile-<capability>` or `sdkwork-<capability>-android-native` | screens, composables/views, view models/controllers, services, repositories, state, i18n/resources, route metadata | concrete SDK construction, backend admin logic |
+| Android user console package | `sdkwork-<product>-android-mobile-console-<capability>` | user-facing management console screens, composables/views, view models/controllers, services, repositories, state, i18n/resources, route metadata | company-internal admin workflows, backend-only operation center behavior |
 | Android host package | `sdkwork-<product>-android-mobile-host` or `sdkwork-<host>-android-native` when needed | Android platform API adapters, permissions, lifecycle, secure storage, camera/QR/share/push/deep links | API business logic |
 
 Rules:
 
 - Android packages `MUST` be split by domain/capability.
+- Android console packages `MUST` be split by concrete management capability and must not become one large mobile console package.
 - A single Android package `MUST NOT` accumulate unrelated backend-like business modules.
 - Shared UI primitives remain domain-neutral unless they live inside the owning domain package.
 - Android packages may share app SDK port contracts conceptually with other client packages, but must not depend on their UI/runtime code.

@@ -3,7 +3,7 @@
 - Version: 1.0
 - Baseline: Rust `tonic`/`prost` gRPC stack over SDKWork proto contracts
 - Scope: Rust local/private RPC server crates, generated proto crates, typed RPC clients, runtime adapters, bootstrap, tests, and packaging
-- Related: `RPC_SPEC.md`, `API_SPEC.md`, `DRIVE_SPEC.md`, `SDK_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `DATABASE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `DRIVE_SPEC.md`, `SDK_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `DATABASE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
 - Canonical location: `specs/RUST_RPC_SPEC.md`
 
 This document defines how SDKWork Rust services implement the language-neutral RPC standard. Rust RPC is an adapter layer. It exposes gRPC services and generated clients while preserving the existing SDKWork domain/runtime/storage boundaries.
@@ -118,6 +118,18 @@ Rules:
 - The proto crate MUST NOT contain business logic.
 - The proto crate MUST NOT depend on SQLx or domain runtime crates.
 - Build scripts MUST fail if required proto files are missing.
+
+### 3.2.1 Rust RPC SDK Generation
+
+Rust RPC proto/client crates generated through `sdkgen --protocol rpc` `MUST` follow
+`RPC_SDK_WORKSPACE_SPEC.md`.
+
+Rules:
+
+- Generated protobuf output MUST stay isolated from handwritten server adapters.
+- The proto/client crate owns generated messages, service clients, and descriptor inputs.
+- The RPC server crate owns context mapping, service binding, runtime dispatch, and error mapping only.
+- Generated Rust RPC SDK package metadata MUST identify proto source, RPC manifest, Buf/protoc strategy, and verification commands.
 
 ### 3.3 Domain RPC Server Crates
 
@@ -338,15 +350,15 @@ Standard interceptor responsibilities:
 
 1. Validate metadata key format.
 2. Extract `authorization` and `access-token`.
-3. Extract `x-request-id`, `traceparent`, `x-sdkwork-app-id`, `idempotency-key`, and `x-request-hash`.
-4. Resolve or validate tenant/user/session context.
+3. Extract `x-request-id`, `traceparent`, `idempotency-key`, and `x-request-hash`.
+4. Resolve or validate tenant/user/session context from dual tokens or a server-side session lookup.
 5. Apply deadline and cancellation behavior.
 6. Attach SDKWork context to request extensions.
 7. Start trace span and record service/method metadata.
 
 Rules:
 
-- Context mapping MUST reject token/context conflicts.
+- Context mapping MUST reject any metadata or payload value that attempts to override token-derived context.
 - IAM metadata, token, and AppContext validation MUST follow `IAM_LOGIN_INTEGRATION_SPEC.md`; RPC adapters validate context and dispatch to runtime services, but do not create product-local login/session flows.
 - Metadata parsing MUST be case-insensitive where gRPC metadata semantics require it, but SDKWork code should emit lowercase keys.
 - Interceptors MUST NOT perform business authorization alone; service/runtime authorization still applies.

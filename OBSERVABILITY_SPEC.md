@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: logs, metrics, traces, audit correlation, diagnostics, HTTP/RPC runtime observability
-- Related: `SECURITY_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RPC_SPEC.md`, `DRIVE_SPEC.md`, `EVENT_SPEC.md`, `TEST_SPEC.md`
+- Related: `SECURITY_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `EVENT_SPEC.md`, `TEST_SPEC.md`
 
 Production behavior must be observable without leaking sensitive data.
 
@@ -29,6 +29,17 @@ Rules:
 - API key logs may include key id, safe key prefix, source, and status only after server-side validation.
 - HTTP route values in logs `MUST` use the route template, for example `/app/v3/api/products/{productId}`, not raw paths containing user, tenant, file, object, token, or provider identifiers.
 - Handler, service, repository, and provider adapter logs `SHOULD` include operationId when the work is tied to an HTTP or RPC operation. Free-form controller or handler class names are not a substitute for operationId.
+
+## 2.1 Generated RPC SDK Observability
+
+Generated RPC SDK packages follow `RPC_SDK_WORKSPACE_SPEC.md`.
+
+Rules:
+
+- Generated RPC SDKs SHOULD expose deadline and trace metadata options.
+- RPC client wrappers SHOULD propagate `traceparent` and record package, service, method, operationId, status, deadline, and duration where the language runtime supports it.
+- RPC SDK instrumentation MUST NOT log raw tokens, access tokens, API keys, certificates, request payload secrets, or high-cardinality user data.
+- RPC SDK README examples SHOULD show trace/deadline option wiring when the generated language target supports it.
 
 ## 3. Metrics
 
@@ -186,5 +197,6 @@ Rules:
 - [ ] Dashboard metric snapshots are rebuildable projections, not billing or audit facts.
 - [ ] Sensitive operations emit audit events.
 - [ ] Trace context propagates through service calls.
+- [ ] Generated RPC SDKs expose deadline and trace metadata options when the language target supports them.
 - [ ] RPC services propagate `traceparent` and report package/service/method/status metrics when RPC is enabled.
 - [ ] Drive upload/download/provider metrics and traces are present without exposing signed URLs, object keys, or credentials.

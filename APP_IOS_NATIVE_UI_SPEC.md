@@ -1,12 +1,12 @@
 # App iOS Native UI Standard
 
 - Version: 1.0
-- Scope: app/user-facing iOS native packages, SwiftUI or UIKit UI, generated Swift app SDK integration, iOS host adapters, mobile interaction, and package-local state
+- Scope: app/user-facing and iOS user-console native packages, SwiftUI or UIKit UI, generated Swift app SDK integration, iOS host adapters, mobile interaction, and package-local state
 - Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side iOS native UI is packaged and integrated. In application roots it is applied after `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed iOS native package standard. iOS UI packages are app/user-facing and consume app-api through generated Swift app SDK clients or approved appbase iOS wrappers. They must not consume `backend-admin` UI packages or backend SDKs for user-facing workflows.
+This standard defines how SDKWork app-side and iOS user-console native UI is packaged and integrated. In application roots it is applied after `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed iOS native package standard. iOS UI packages are app/user-facing or user-console packages and consume app-api through generated Swift app SDK clients or approved appbase iOS wrappers. They must not consume `backend-admin` UI packages or backend SDKs for user-facing workflows.
 
-This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing iOS native packages.
+This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing and user-console iOS native packages. iOS admin packages are `backend-admin` packages and must also follow `BACKEND_UI_SPEC.md`.
 
 Canonical app-root iOS package shape:
 
@@ -17,6 +17,7 @@ apps/<product>-ios-mobile/
     sdkwork-<product>-ios-mobile-commons/
     sdkwork-<product>-ios-mobile-shell/
     sdkwork-<product>-ios-mobile-<capability>/
+    sdkwork-<product>-ios-mobile-console-<capability>/
 ```
 
 Optional shared iOS package shape:
@@ -37,8 +38,9 @@ packages/ios-native/
 Rules:
 
 - iOS app UI `MUST` live in normalized iOS application packages such as `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>` or approved shared iOS package families such as `packages/ios-native/<domain>/<package>`.
-- iOS app UI `MUST` consume `/app/v3/api` through generated Swift app SDK clients or approved wrappers.
-- iOS app UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, Flutter packages, Android packages, or Harmony packages for user-facing workflows.
+- iOS user-console UI `MUST` live in `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- iOS app and user-console UI `MUST` consume `/app/v3/api` through generated Swift app SDK clients or approved wrappers.
+- iOS app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, Flutter packages, Android packages, or Harmony packages for user-facing workflows.
 - Operator/admin screens require a separately approved iOS admin package family classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
 - iOS framework and platform APIs such as camera, biometric, keychain, push, universal links, files, and lifecycle `MUST` go through typed host adapters.
 
@@ -49,11 +51,13 @@ Rules:
 | iOS app shell | `sdkwork-<product>-ios-mobile-shell` or app-specific iOS shell | navigation stack/tab/sheet composition, providers, AuthGate, route composition | reusable domain features |
 | iOS foundation package | `sdkwork-<product>-ios-mobile-commons` or `sdkwork-<foundation>-ios-native` | domain-neutral UI primitives, theme adapters, form/list/error primitives, i18n helpers | business-domain shortcuts |
 | iOS domain package | `sdkwork-<product>-ios-mobile-<capability>` or `sdkwork-<capability>-ios-native` | screens, views, view models/controllers, services, repositories, state, localization, route metadata | concrete SDK construction, backend admin logic |
+| iOS user console package | `sdkwork-<product>-ios-mobile-console-<capability>` | user-facing management console screens, views, view models/controllers, services, repositories, state, localization, route metadata | company-internal admin workflows, backend-only operation center behavior |
 | iOS host package | `sdkwork-<product>-ios-mobile-host` or `sdkwork-<host>-ios-native` when needed | iOS platform API adapters, permissions, lifecycle, keychain, camera/QR/share/push/universal links | API business logic |
 
 Rules:
 
 - iOS packages `MUST` be split by domain/capability.
+- iOS console packages `MUST` be split by concrete management capability and must not become one large mobile console package.
 - A single iOS package `MUST NOT` accumulate unrelated backend-like business modules.
 - Shared UI primitives remain domain-neutral unless they live inside the owning domain package.
 - iOS packages may share app SDK port contracts conceptually with other client packages, but must not depend on their UI/runtime code.

@@ -1,12 +1,12 @@
 # App Flutter UI Standard
 
 - Version: 1.0
-- Scope: app/user-facing Flutter packages, Flutter mobile app packages, generated app SDK integration, platform adapters
+- Scope: app/user-facing and Flutter user-console packages, Flutter mobile app packages, generated app SDK integration, platform adapters
 - Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `CONFIG_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork app-side Flutter UI is packaged and integrated. In application roots it is applied after `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed Flutter package standard. Flutter UI packages are app/user-facing and consume app-api through generated Flutter/Dart app SDK clients or approved appbase Flutter wrappers. They must not consume `backend-admin` UI packages or backend SDKs for user-facing workflows. Cross-architecture SDK composition and appbase IAM token wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
+This standard defines how SDKWork app-side and Flutter user-console UI is packaged and integrated. In application roots it is applied after `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`; in shared package families it remains the detailed Flutter package standard. Flutter UI packages are app/user-facing or user-console packages and consume app-api through generated Flutter/Dart app SDK clients or approved appbase Flutter wrappers. They must not consume `backend-admin` UI packages or backend SDKs for user-facing workflows. Cross-architecture SDK composition and appbase IAM token wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
 
-This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing Flutter packages.
+This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing and user-console Flutter packages. Flutter admin packages are `backend-admin` packages and must also follow `BACKEND_UI_SPEC.md`.
 
 Canonical app-root Flutter mobile package shape:
 
@@ -17,6 +17,7 @@ apps/<product>-flutter-mobile/
     sdkwork_<product>_flutter_mobile_commons/
     sdkwork_<product>_flutter_mobile_shell/
     sdkwork_<product>_flutter_mobile_<capability>/
+    sdkwork_<product>_flutter_mobile_console_<capability>/
 ```
 
 Shared Flutter package shape:
@@ -39,8 +40,9 @@ apps/sdkwork-appbase/
 Rules:
 
 - Flutter app UI `MUST` live in normalized Flutter application packages such as `apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>` or shared Flutter package families such as `packages/mobile-flutter/<domain>/<package>`.
-- Flutter app UI `MUST` consume `/app/v3/api` through generated Dart/Flutter app SDK clients or approved wrappers.
-- Flutter app UI `MUST NOT` consume `/backend/v3/api`, backend SDKs, backend React packages, or backend UI service facades.
+- Flutter user-console UI `MUST` live in `apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_console_<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Flutter app and user-console UI `MUST` consume `/app/v3/api` through generated Dart/Flutter app SDK clients or approved wrappers.
+- Flutter app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDKs, backend React packages, or backend UI service facades.
 - App login, registration, OAuth, verification-code login, password reset, QR login, and current user flows belong to Flutter app UI when implemented in Flutter.
 - Operator/admin screens require a separately approved Flutter admin package family classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
 
@@ -51,11 +53,13 @@ Rules:
 | Flutter app shell | `sdkwork_<product>_flutter_mobile_shell` or app-specific Flutter shell | `MaterialApp`/router, providers, SDK bootstrap, token store, platform adapters | reusable domain features |
 | Flutter foundation package | `sdkwork_<product>_flutter_mobile_commons` or `sdkwork_<foundation>_flutter` | appbase, router, workspace, command/search primitives | business-domain shortcuts |
 | Flutter domain package | `sdkwork_<product>_flutter_mobile_<capability>` or `sdkwork_<capability>_flutter` | screens, widgets, controllers/blocs, repositories, services, i18n | concrete SDK construction, backend admin logic |
+| Flutter user console package | `sdkwork_<product>_flutter_mobile_console_<capability>` | user-facing management console screens, widgets, controllers/blocs, repositories, services, i18n | company-internal admin workflows, backend-only operation center behavior |
 | platform adapter package | `sdkwork_<product>_flutter_mobile_host` or `sdkwork_<host>_flutter` when needed | camera, QR scanner, secure storage, biometric, push, deep links | API business logic |
 
 Rules:
 
 - Flutter packages `MUST` be split by domain/capability.
+- Flutter console packages `MUST` be split by concrete management capability and must not become one large mobile console package.
 - A single Flutter package `MUST NOT` accumulate unrelated backend-like business modules.
 - Shared widgets must remain domain-neutral unless they live inside the domain package.
 - Flutter packages may share app SDK port contracts with React packages conceptually, but must not depend on React code.
