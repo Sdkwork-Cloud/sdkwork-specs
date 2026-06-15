@@ -2680,3 +2680,232 @@ CREATE INDEX idx_content_document_tenant_user_status_updated
 - 结构演进治理、自动化检查和评审清单保证标准可以长期执行，而不是停留在文档。
 
 只要不同应用架构遵循这些字段语义、类型映射、索引边界、权限隔离、结构演进流程和跨语言序列化规则，就能在技术栈变化、服务拆分、数据库替换和团队扩张时保持数据可读、可移植、可审计、可扩展。
+
+## 33. 数据库连接池管理规范
+
+### 33.1 概述
+
+所有 SDKWork 应用 MUST 使用统一的数据库连接池管理，禁止在业务代码中直接创建连接池。
+
+**核心要求：**
+- 所有数据库连接池 MUST 通过 `sdkwork-pool` 统一创建和管理
+- 禁止在业务代码中直接使用 `SqlitePoolOptions::new()` 或 `PgPoolOptions::new()`
+- 测试代码可以使用简化的内存数据库创建方式
+
+### 33.2 sdkwork-pool 架构
+
+`sdkwork-pool` 是 SDKWork 统一的连接池管理库，包含两个 crate：
+
+| Crate | 用途 |
+|-------|------|
+| `sdkwork-pool-config` | 配置类型定义，不依赖 sqlx |
+| `sdkwork-pool-sqlx` | sqlx 连接池实现，依赖 sdkwork-pool-config |
+
+### 33.3 配置标准
+
+#### 环境变量命名
+
+所有服务 MUST 使用统一的环境变量命名：
+
+```
+SDKWORK_{SERVICE}_DATABASE_URL           # 数据库连接 URL
+SDKWORK_{SERVICE}_DATABASE_ENGINE        # 数据库引擎 (sqlite/postgres)
+SDKWORK_{SERVICE}_DATABASE_MODE          # 部署模式 (standalone/integrated)
+SDKWORK_{SERVICE}_DATABASE_TABLE_PREFIX  # 表前缀（集成模式）
+SDKWORK_{SERVICE}_DATABASE_MAX_CONNECTIONS  # 最大连接数
+SDKWORK_{SERVICE}_DATABASE_MIN_CONNECTIONS  # 最小连接数
+SDKWORK_{SERVICE}_DATABASE_ACQUIRE_TIMEOUT  # 获取连接超时（秒）
+SDKWORK_{SERVICE}_DATABASE_IDLE_TIMEOUT     # 空闲超时（秒）
+SDKWORK_{SERVICE}_DATABASE_MAX_LIFETIME     # 连接最大生命周期（秒）
+```
+
+**向后兼容：** 优先使用 `SDKWORK_{SERVICE}_DATABASE_URL`，回退到 `DATABASE_URL`。
+
+#### 服务名称映射
+
+| 服务 | 环境变量前缀 | 默认表前缀 |
+|------|-------------|-----------|
+| sdkwork-forum | `SDKWORK_FORUM_` | `forum_` |
+| sdkwork-news | `SDKWORK_NEWS_` | `news_` |
+| sdkwork-appstore | `SDKWORK_APPSTORE_` | `appstore_` |
+| sdkwork-cms | `SDKWORK_CMS_` | `cms_` |
+| sdkwork-audio | `SDKWORK_AUDIO_` | `audio_` |
+| sdkwork-im | `SDKWORK_IM_` | `im_` |
+| sdkwork-commerce | `SDKWORK_COMMERCE_` | `commerce_` |
+| sdkwork-drive | `SDKWORK_DRIVE_` | `drive_` |
+| sdkwork-knowledgebase | `SDKWORK_KB_` | `kb_` |
+| sdkwork-claw-router | `SDKWORK_CLAW_` | `claw_` |
+| sdkwork-local-router | `SDKWORK_LR_` | `lr_` |
+| sdkwork-discovery | `SDKWORK_DISCOVERY_` | `discovery_` |
+| sdkwork-rtc | `SDKWORK_RTC_` | `rtc_` |
+
+### 33.4 部署模式
+
+#### Standalone 模式（默认）
+
+每个服务独立数据库文件/实例，适用于开发环境和微服务独立部署。
+
+```toml
+[database]
+mode = "standalone"
+engine = "sqlite"
+url = "sqlite:data/app.db"
+```
+
+#### Integrated 模式
+
+所有服务共享一个数据库，使用表前缀区分，适用于单体部署。
+
+```toml
+[database]
+mode = "integrated"
+engine = "postgresql"
+url = "postgres://user:pass@localhost/sdkwork"
+
+[database.integrated]
+table_prefix = "forum_"
+```
+
+### 33.5 SQLite 最佳实践
+
+所有 SQLite 连接池 MUST 应用以下配置：
+
+| 配置项 | 推荐值 | 说明 |
+|--------|--------|------|
+| journal_mode | WAL | 允许并发读写 |
+| busy_timeout | 5s | 避免 SQLITE_BUSY 错误 |
+| foreign_keys | true | 启用外键约束 |
+| synchronous | Normal | WAL 模式下的最佳平衡 |
+| cache_size | -64000 | 64MB 缓存 |
+| temp_store | memory | 临时表存储在内存中 |
+| mmap_size | 268435456 | 256MB 内存映射 |
+
+### 33.6 PostgreSQL 最佳实践
+
+所有 PostgreSQL 连接池 MUST 应用以下配置：
+
+| 配置项 | 推荐值 | 说明 |
+|--------|--------|------|
+| max_connections | 10-16 | 根据数据库 max_connections 调整 |
+| min_connections | 1-2 | 保持最小连接数 |
+| acquire_timeout | 10s | 等待连接的最大时间 |
+| idle_timeout | 300s | 空闲连接关闭时间 |
+| max_lifetime | 1800s | 连接最大生命周期 |
+| ssl_mode | prefer | SSL 连接模式 |
+| application_name | sdkwork-{service} | 便于识别连接来源 |
+
+### 33.7 使用示例
+
+#### 从环境变量创建连接池
+
+```rust
+use sdkwork_pool_sqlx::create_pool_from_env;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = create_pool_from_env("MY_SERVICE")
+        .await?
+        .expect("SDKWORK_MY_SERVICE_DATABASE_URL not set");
+    
+    // 使用连接池
+    let table_name = pool.table_name("users");
+    println!("Table name: {}", table_name);
+    
+    Ok(())
+}
+```
+
+#### 使用 Builder 模式
+
+```rust
+use std::time::Duration;
+use sdkwork_pool_config::DatabaseConfig;
+use sdkwork_pool_sqlx::PoolBuilder;
+
+let config = DatabaseConfig::from_env("MY_SERVICE")?;
+let pool = PoolBuilder::new(config)
+    .max_connections(32)
+    .acquire_timeout(Duration::from_secs(30))
+    .mode(DeploymentMode::Integrated)
+    .table_prefix("my_service_")
+    .build()
+    .await?;
+```
+
+### 33.8 禁止事项
+
+以下做法 MUST NOT 出现在生产代码中：
+
+```rust
+// ❌ 禁止：直接创建连接池
+let pool = SqlitePoolOptions::new()
+    .max_connections(16)
+    .connect(&database_url)
+    .await?;
+
+// ❌ 禁止：硬编码连接参数
+let pool = PgPool::connect("postgres://user:pass@localhost/db").await?;
+
+// ❌ 禁止：手动设置 PRAGMA
+sqlx::query("PRAGMA journal_mode=WAL").execute(&pool).await?;
+```
+
+### 33.9 测试代码例外
+
+测试代码可以使用简化的内存数据库创建方式：
+
+```rust
+#[tokio::test]
+async fn test_something() {
+    // ✅ 测试代码允许直接创建内存数据库
+    let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+    
+    // 或使用 sdkwork-pool
+    let pool = sdkwork_pool_sqlx::create_pool_from_config(DatabaseConfig {
+        engine: DatabaseEngine::Sqlite,
+        url: "sqlite::memory:".to_string(),
+        max_connections: 1,
+        ..Default::default()
+    }).await.unwrap();
+}
+```
+
+### 33.10 迁移指南
+
+对于已有项目，按以下步骤迁移：
+
+1. 添加依赖到 `Cargo.toml`：
+   ```toml
+   sdkwork-pool-config = { path = "../sdkwork-pool/crates/sdkwork-pool-config" }
+   sdkwork-pool-sqlx = { path = "../sdkwork-pool/crates/sdkwork-pool-sqlx" }
+   ```
+
+2. 替换连接池创建代码：
+   ```rust
+   // 之前
+   let pool = SqlitePoolOptions::new()
+       .max_connections(16)
+       .connect(&database_url)
+       .await?;
+   
+   // 之后
+   let pool = sdkwork_pool_sqlx::create_pool_from_env("MY_SERVICE")
+       .await?
+       .expect("SDKWORK_MY_SERVICE_DATABASE_URL not set");
+   ```
+
+3. 更新环境变量命名：
+   ```bash
+   # 之前
+   DATABASE_URL=sqlite:data.db
+   
+   # 之后
+   SDKWORK_MY_SERVICE_DATABASE_URL=sqlite:data.db
+   ```
+
+4. 验证配置：
+   ```bash
+   cargo build --workspace
+   cargo test --workspace
+   cargo clippy --workspace --tests -- -D warnings
+   ```
