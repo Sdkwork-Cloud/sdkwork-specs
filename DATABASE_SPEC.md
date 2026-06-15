@@ -2891,3 +2891,59 @@ async fn test_something() {
    cargo test --workspace
    cargo clippy --workspace --tests -- -D warnings
    ```
+
+
+## 34. Repository 框架规范
+
+### 34.1 概述
+
+sdkwork-database-repository 提供统一的 Repository 模式抽象，屏蔽 SQLite 和 PostgreSQL 的差异。
+
+**核心要求：**
+- 所有数据库 CRUD 操作 SHOULD 使用 Repository 模式
+- 复杂查询可以使用原生 SQL
+- Entity 和 Repository 通过宏自动生成
+
+### 34.2 Entity 定义
+
+`ust
+use sdkwork_database_repository::prelude::*;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct User {
+    id: i64,
+    name: String,
+    email: String,
+}
+
+impl_entity!(User, 'users', id, [id, name, email]);
+`
+
+### 34.3 Repository 定义
+
+`ust
+impl_repository!(User);
+// 自动生成 UserRepository
+`
+
+### 34.4 Query 查询构建器
+
+`ust
+use sdkwork_database_repository::prelude::*;
+use serde_json::Value;
+
+let query = Query::new()
+    .and_eq('status', Value::String('active'.to_string()))
+    .gt('age', Value::Number(18.into()))
+    .order_by('created_at', false)
+    .limit(10);
+`
+
+### 34.5 通用类型
+
+- Pagination - 分页参数
+- PaginatedResponse - 分页响应
+- SoftDelete - 软删除
+- Versioned - 乐观锁
+- AutoTimestamp - 自动时间戳
