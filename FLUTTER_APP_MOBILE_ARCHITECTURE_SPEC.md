@@ -192,7 +192,7 @@ Rules:
 - Flutter app packages `MUST` consume `/app/v3/api` through generated Dart/Flutter app SDK clients or approved appbase Flutter wrappers.
 - Flutter admin packages, when approved as `backend-admin` surfaces, `MUST` consume `/backend/v3/api` through generated Dart/Flutter backend SDK clients or approved backend wrappers.
 - Runtime/bootstrap `MUST` construct generated Dart SDK clients, appbase SDK clients or wrappers, a global token-manager equivalent, token/context stores, and platform adapters before feature services are initialized.
-- The global token-manager equivalent must be shared by appbase app SDK, every authenticated product/dependency app-api SDK client, and explicit `backend-admin` appbase backend/product backend/dependency backend SDK clients.
+- The global token-manager equivalent must be shared by appbase app SDK, every authenticated application/dependency app-api SDK client, and explicit `backend-admin` appbase backend/application backend/dependency backend SDK clients.
 - Missing Dart SDK methods must be fixed in OpenAPI/generator inputs and regenerated. Flutter packages must not fill gaps with raw `http`, manual headers, copied TypeScript wrappers, or local DTO forks.
 - Logout and refresh failure must clear secure platform storage, token manager, context store, sensitive Flutter state, and realtime/session bridges.
 

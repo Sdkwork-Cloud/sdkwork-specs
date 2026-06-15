@@ -70,7 +70,7 @@ Rules:
 - Generated SDK output must be produced from approved generator inputs and recorded generator versions.
 - Generated output must not be hand-edited outside approved custom extension points.
 - Generated artifact provenance should identify the source OpenAPI/proto, generator command, generator version/ref, and output package.
-- Consumers must not regenerate dependency-owned APIs into product-owned SDK families.
+- Consumers must not regenerate dependency-owned APIs into application-owned SDK families.
 
 ## 7. Review And Exceptions
 

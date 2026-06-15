@@ -130,7 +130,7 @@ Rules:
 - Flutter runtime/bootstrap `MUST` construct generated Dart/Flutter app SDK clients, generated Dart/Flutter appbase SDK clients or approved appbase Flutter wrappers, one global token-manager equivalent, token/context storage, and platform adapters.
 - Flutter IAM integration `MUST` use generated appbase app SDK resources or an approved appbase Flutter wrapper for login, registration, current session, refresh, logout, verification, OAuth, QR auth, password reset, runtime metadata, and current-user self-service.
 - If an appbase Flutter wrapper is missing a required resource, the missing capability `MUST` be added to appbase app-api/OpenAPI/generator inputs and regenerated. Flutter UI packages `MUST NOT` fill the gap with raw `http` calls, manual headers, or copied TypeScript wrapper logic.
-- The Flutter token-manager equivalent `MUST` be global for the authenticated session context and shared by appbase app SDK, every authenticated product app-api SDK client, and explicit `backend-admin` appbase backend/product backend SDK clients.
+- The Flutter token-manager equivalent `MUST` be global for the authenticated session context and shared by appbase app SDK, every authenticated application-owned app-api SDK client, and explicit `backend-admin` appbase backend/application backend SDK clients.
 - Widgets `MUST NOT` construct SDK clients, call raw HTTP, manually attach auth/API key headers, or read secrets.
 - Missing Flutter/Dart SDK methods `MUST` be fixed by updating app-api OpenAPI and generator inputs, then regenerating.
 - Platform capabilities must be behind interfaces so tests can use fake adapters.

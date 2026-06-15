@@ -98,11 +98,13 @@ SdkWork Claw Router release packages must support fast installation on Linux, Wi
 Server and container deployments default to PostgreSQL. Desktop deployments
 default to SQLite.
 
-Desktop packages must keep local user data on SQLite by default. The
-PostgreSQL development profile used by `pnpm dev`, `pnpm desktop:dev`,
-`pnpm tauri:dev`, or server integration tests belongs to the launched backend
-service runtime. It must not change the desktop package default or the desktop
-user data location.
+Desktop packages must keep local user data on SQLite by default. For SDKWork
+Claw Router, `pnpm dev`, `pnpm desktop:dev`, and `pnpm tauri:dev` are
+sdkwork-api-gateway-backed client commands and must not start the product
+backend service. The PostgreSQL development profile used by explicit product
+server commands such as `pnpm server:dev`, `pnpm server:dev:postgres`, or
+server integration tests belongs to the launched backend service runtime. It
+must not change the desktop package default or the desktop user data location.
 
 Redis is enabled and required by default for server and container deployments.
 Release packages must include the `[redis]` section and password-file paths, and

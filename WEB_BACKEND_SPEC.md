@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: Java Spring HTTP backends, Rust HTTP route crates, Rust local/private backends, SaaS/private/local web backend implementations, and backend API implementation boundaries
-- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `DOMAIN_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `COMPONENT_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md`
+- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `DOMAIN_SPEC.md`, `RUST_CODE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `COMPONENT_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork web backends are implemented after the HTTP contract has been designed. `API_SPEC.md` remains the contract source of truth. This file owns implementation layering, naming, handler/service/repository boundaries, route path placement, request context usage, and backend verification expectations.
 
@@ -59,7 +59,7 @@ HTTP route path definitions have one implementation owner per surface/capability
 Rust route crate path ownership:
 
 ```text
-packages/sdkwork-router-<capability>-<surface>/
+crates/sdkwork-router-<capability>-<surface>/
   src/paths.rs
   src/routes.rs
   src/handlers.rs
@@ -146,24 +146,69 @@ Rules:
 
 ## 4.2 Rust HTTP Backend Profile
 
-Rust HTTP backends separate route/path crates from service/runtime crates. Route crates describe HTTP shape; service crates own business behavior.
+Rust HTTP backends separate HTTP route adaptation, business services, database access, and runnable
+process composition into distinct crate responsibilities. `RUST_CODE_SPEC.md` owns the complete Rust
+crate taxonomy and directory layouts; this section defines the web-backend boundary.
 
-Recommended package shape:
+Required crate families for Rust HTTP backends:
+
+| Responsibility | Crate family | Web backend role |
+| --- | --- | --- |
+| HTTP route/API adapter | `sdkwork-router-<capability>-<surface>` | paths, routes, handlers, manifest, request/response mapping |
+| Business service/use case | `sdkwork-<domain>-<capability>-service` | business rules, authorization, transactions, idempotency, repository/provider ports |
+| SQL repository implementation | `sdkwork-<domain>-<capability>-repository-sqlx` | SQLx row mapping, SQL queries, tenant/data-scope-safe repository implementation |
+| HTTP API server process | `sdkwork-<app>-api-server` | config, state, dependency wiring, route mounting, listener, preflight |
+| In-process service host | `sdkwork-<app>-service-host` | service container for local/private/native usage, no HTTP route mounting |
+| Gateway/proxy | `sdkwork-<app>-gateway` | upstream routing, route precedence, dependency API surface proxying |
+
+Required route crate shape:
 
 ```text
-packages/sdkwork-router-<capability>-<surface>/
+crates/sdkwork-router-<capability>-<surface>/
   Cargo.toml
   src/lib.rs
   src/paths.rs
   src/routes.rs
   src/handlers.rs
   src/manifest.rs
-crates/sdkwork-<domain>-<capability>-rust/
+  src/error.rs
+  src/mapper/mod.rs
+```
+
+Required service crate shape:
+
+```text
+crates/sdkwork-<domain>-<capability>-service/
   Cargo.toml
   src/lib.rs
-  src/service.rs
-  src/repository.rs
-  src/errors.rs
+  src/domain/
+  src/ports/
+  src/service/
+  src/error.rs
+```
+
+Required SQL repository implementation crate shape:
+
+```text
+crates/sdkwork-<domain>-<capability>-repository-sqlx/
+  Cargo.toml
+  src/lib.rs
+  src/db/
+  src/mapper/
+  src/repository/
+  src/error.rs
+```
+
+Required API server process crate shape:
+
+```text
+crates/sdkwork-<app>-api-server/
+  Cargo.toml
+  src/main.rs
+  src/bootstrap/
+  src/server/
+  src/preflight/
+  src/health.rs
 ```
 
 Rules:
@@ -173,10 +218,21 @@ Rules:
 - Handler functions `MUST` use snake_case names and consume typed extractors/extensions for request context, request body, path parameters, query parameters, and app state.
 - Handler functions `MUST NOT` parse raw headers for credentials, tenant context, user context, organization context, permission scopes, or request identity.
 - Handler functions `MUST` call service traits or service structs. They must not run SQL directly except in explicitly infrastructure-only diagnostics routes.
-- Service crates may depend on repository traits, provider adapter traits, generated dependency SDKs, and appbase runtime context crates. They `MUST NOT` depend on generated SDKs for the same authority they implement.
+- Service crates define and depend on repository/provider/cache/event ports. They `MUST NOT`
+  depend on concrete SQLx repository crates or generated SDKs for the same authority they
+  implement.
+- SQL repository implementation crates implement service-defined repository ports and own SQLx
+  mapping. They `MUST NOT` own business policy or HTTP context parsing.
+- API server process crates construct DB pools, repositories, services, adapters, and route crates.
+  They `MUST NOT` own business rules, SQL query bodies, or OpenAPI authority.
 - Rust errors should map through a shared problem-detail conversion boundary. Handlers must not leak `Debug` output from database, provider, or framework errors.
 - Route crates `SHOULD` expose only package-root modules needed for router composition and manifest extraction. Generated SDK consumers and UI packages must not import them.
-- Local/private Rust implementations of appbase-owned behavior `MUST` reuse appbase Rust runtime crates. They must not fork appbase IAM/session/context behavior into product route crates.
+- Local/private Rust implementations of appbase-owned behavior `MUST` reuse appbase Rust runtime
+  crates. They must not fork appbase IAM/session/context behavior into application route crates.
+- Rust crates `MUST NOT` use generic `product`, `runtime`, `backend`, `core`, `common`, or
+  `manager` suffixes for application entrypoints, service aggregation, or backend implementation.
+  Use `api-server`, `service-host`, `native-host`, `worker`, or `gateway` according to
+  `RUST_CODE_SPEC.md`.
 
 ## 4.3 Backend Anti-Patterns
 
@@ -185,11 +241,11 @@ The following patterns are standards failures:
 - A controller or handler owns business rules that cannot be tested without an HTTP server.
 - A handler reparses `Authorization`, `Access-Token`, `X-API-Key`, tenant, organization, user, permission, or request id headers after framework context resolution.
 - A route crate, controller, or backend service depends on the generated SDK for the same API authority it implements.
-- A product backend copies appbase IAM/session/workspace/bootstrap routes into its own authority.
+- An application backend copies appbase IAM/session/workspace/bootstrap routes into its own authority.
 - A repository applies tenant isolation by reading global HTTP request state.
 - An SDK-generated operation returns an untyped map or local DTO that does not match OpenAPI.
 - A backend/admin UI or frontend service imports route constants instead of using generated SDK clients.
-- A materializer includes dependency-owned routes in a product-owned SDK generation input.
+- A materializer includes dependency-owned routes in an application-owned SDK generation input.
 
 ## 5. Request Context And Security
 
@@ -237,9 +293,10 @@ Rules:
 
 - Backend implementations `MUST` generate SDKs only from owner-only API authorities.
 - Dependency-owned APIs such as appbase, Drive, provider, or shared platform modules `MUST` remain dependency SDKs or approved composed wrappers.
-- Dependency-owned APIs are not exported from a product backend SDK by default. Any product backend
-  facade that intentionally exposes dependency capability must declare `dependencyApiExports` and
-  implement the export in authored composition code outside generated transport ownership.
+- Dependency-owned APIs are not exported from an application-owned backend SDK by default. Any
+  application backend facade that intentionally exposes dependency capability must declare
+  `dependencyApiExports` and implement the export in authored composition code outside generated
+  transport ownership.
 - Generated SDKs call the API. Route crates and controllers implement the API. A route crate/controller `MUST NOT` depend on the generated SDK for the same authority.
 - Service facades for UI/backend-admin consumers use generated SDK clients according to `SDK_SPEC.md` and `FRONTEND_SPEC.md`; they do not use route constants.
 - Backend-to-backend integration may use generated backend SDKs, generated RPC clients, or explicit provider adapters. It must not use hidden raw HTTP to bypass a missing contract.
@@ -249,7 +306,7 @@ Rules:
 Rules:
 
 - Application shells compose routers/controllers, middleware/interceptors, request context, dependency SDK clients, repositories, provider adapters, and service instances.
-- Rust-enabled application shells that participate in app composition `MUST` follow `APP_SDK_INTEGRATION_SPEC.md`: compose Rust route crates, appbase Rust context/auth/bootstrap crates, dependency SDK clients, product service crates, and generated product SDK families without copying dependency-owned API routes.
+- Rust-enabled application shells that participate in app composition `MUST` follow `APP_SDK_INTEGRATION_SPEC.md`: compose Rust route crates, appbase Rust context/auth/bootstrap crates, dependency SDK clients, application service crates, and generated application-owned SDK families without copying dependency-owned API routes.
 - Dependency route metadata is not handler coverage. A Rust route manifest, path list, OpenAPI
   authority, or route contract crate can describe expected routes, but the runtime may treat a
   dependency API as same-origin mounted only when an executable router, controller, or handler
@@ -268,7 +325,7 @@ Rules:
   `sdkwork-appbase-app-api` is valid only when it resolves before the proxy/router starts.
 - Embedded or same-process runtimes `MUST` import the dependency-owned executable router,
   controller, handler adapter, or service builder through a public component export. Starting the
-  product server, Tauri dev command, or local workspace command does not prove dependency API
+  application API server, Tauri dev command, or local workspace command does not prove dependency API
   availability unless that executable dependency export is mounted and covered.
 - Backend startup or preflight checks `MUST` fail before serving traffic when a configured
   dependency API export requires a same-origin dependency surface but the executable mount or
@@ -303,7 +360,7 @@ Every web backend change should verify the relevant subset:
 - Static scans fail on UI/service imports of route crates, generated SDK output edits, raw HTTP fallback, manual auth/API key headers, and handler-level credential reparsing.
 - Dependency API surface tests compare `sdkDependencies` with `dependencyApiSurfaces`, fail when a
   same-origin dependency has no verified executable router/controller coverage, and fail when an
-  external dependency SDK can silently fall back to product-owned app/backend base URLs.
+  external dependency SDK can silently fall back to application-owned app/backend base URLs.
 - Dependency API surface tests fail when verified same-origin coverage is backed by demo/mock/fake
   rows, hard-coded IAM tenants/users/organizations/API keys, fixture stores, or synthetic command
   success instead of real stores/services/upstreams.
@@ -326,8 +383,8 @@ Every web backend change should verify the relevant subset:
 - [ ] Authenticated typed context includes tenant, organization, login scope, user, session, app, environment, deployment mode, auth level, data scope, and permission scope from verified token/session context, with no demo/default/mock fallback.
 - [ ] Services own business rules, authorization, transaction boundaries, idempotency, events, and cache invalidation.
 - [ ] Repositories are tenant/data-scope safe for tenant-owned data.
-- [ ] Dependency-owned appbase, Drive, provider, or shared-module routes are consumed through dependencies, not copied into the product authority.
-- [ ] Dependency API exports are explicit in `dependencyApiExports`; generated product SDKs remain
+- [ ] Dependency-owned appbase, Drive, provider, or shared-module routes are consumed through dependencies, not copied into the application-owned API authority.
+- [ ] Dependency API exports are explicit in `dependencyApiExports`; generated application-owned SDKs remain
   owner-only.
 - [ ] Same-origin dependency API routes are backed by executable dependency router/controller/service
   exports with verified coverage; split/server dependency routes have explicit upstream/base URL

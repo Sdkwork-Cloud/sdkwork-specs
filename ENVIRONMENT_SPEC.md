@@ -326,14 +326,14 @@ Rules:
 - SDKWork open-api SDK and documented compatibility API configuration must use `OPEN_API_BASE_URL` terminology. For SDKWork business open-api SDKs, the value `MUST` be that domain's approved non-app/non-backend prefix from `API_SPEC.md`, for example `/im/v3/api`; it does not imply a literal `/open` path segment. For explicitly documented OpenAI-compatible APIs, `/v1` remains valid as a protocol-compatibility prefix and must not be used as the default for new SDKWork-owned business open-api domains. `gateway` can remain an internal system id when the generated schema or UI already uses it, but environment names should describe the SDK surface.
 - The common SDK root must not itself be a resolved surface URL such as `/v1`, `/app/v3/api`, or `/backend/v3/api`. A surface URL may be configured only through the matching surface or SDK-specific override.
 - App SDK and `backend-admin` SDK clients must receive explicit resolved base URLs after config resolution because they may terminate at different hosts in private deployments.
-- Appbase, Drive, IM, payment, media, or other dependency SDK override variables must be keyed by dependency SDK family/app code. Do not hide dependency base URLs behind a product-local `API_BASE_URL` when the dependency can be deployed independently.
+- Appbase, Drive, IM, payment, media, or other dependency SDK override variables must be keyed by dependency SDK family/app code. Do not hide dependency base URLs behind an application-local `API_BASE_URL` when the dependency can be deployed independently.
 - Browser public runtime config may expose SDK base URLs only when the browser is allowed to call that SDK surface directly. `backend-admin` base URLs must not be exposed to user-facing app UI or PC user console UI unless that route surface is explicitly `backend-admin`.
 - Defaults should be same-origin paths in browser deployments so remote browsers are not given loopback addresses, but dependency SDK same-origin defaults are allowed only when `dependencyApiSurfaces` records verified mount coverage for that dependency surface.
 - Dependency backend-api SDK override variables such as
   `SDKWORK_<APP>_APPBASE_BACKEND_API_BASE_URL`,
   `PORTAL_PUBLIC_APPBASE_BACKEND_API_BASE_URL`, and
   `VITE_SDKWORK_APPBASE_BACKEND_API_BASE_URL` are optional when `SDK_BASE_URL` points to a verified gateway that serves the dependency backend routes. They `MUST` be configured explicitly when the dependency backend is deployed elsewhere or when mount coverage is not documented.
-- A checked-in example may leave a required external dependency backend base URL empty to force deployment configuration, but it `MUST NOT` set that dependency URL to `/backend/v3/api` or another product-owned default without matching `dependencyApiSurfaces` coverage evidence.
+- A checked-in example may leave a required external dependency backend base URL empty to force deployment configuration, but it `MUST NOT` set that dependency URL to `/backend/v3/api` or another application-owned default without matching `dependencyApiSurfaces` coverage evidence.
 - Absolute HTTP/HTTPS origins must be added to the production Content Security Policy `connect-src`.
 - Generated SDK examples must not hard-code tenant-specific hosts.
 - Base URL values must not include query strings, fragments, embedded credentials, API keys, tokens, or tenant-specific secret material.
@@ -390,12 +390,19 @@ Rules:
   SQLite by default. They must create the SQLite file under the SDKWork user
   private data directory, not under server data directories and not in
   PostgreSQL, unless the user explicitly configures an external database.
-- `pnpm dev`, `pnpm desktop:dev`, and `pnpm tauri:dev` may use PostgreSQL for
-  backend service integration. This PostgreSQL profile belongs to the launched
-  service runtime and must not be treated as the desktop-local data store.
-- Explicit SQLite development commands, such as `pnpm dev:sqlite` or
-  `pnpm tauri:dev:sqlite`, must be named clearly and used only when validating
-  local SQLite behavior.
+- For SDKWork Claw Router, `pnpm dev`, `pnpm desktop:dev`, and
+  `pnpm tauri:dev` are sdkwork-api-gateway-backed client commands and must not
+  start the Claw Router application backend service. Explicit application server
+  development commands, such as `pnpm server:dev` and
+  `pnpm server:dev:postgres`, use PostgreSQL for backend service integration.
+  This PostgreSQL profile belongs to the launched service runtime and must not
+  be treated as the desktop-local data store.
+- Explicit application server SQLite development commands, such as
+  `pnpm server:dev:sqlite`, must be named clearly and used only when validating
+  local SQLite behavior for the application server runtime. Client aliases such as
+  `pnpm dev:sqlite` or `pnpm tauri:dev:sqlite` must remain gateway-backed
+  client commands when the application standard assigns default API serving to
+  sdkwork-api-gateway.
 - PostgreSQL secrets should use `password_file` or a platform secret; direct `password` is allowed only when the runtime config file is protected as a secret-bearing file.
 - Development PostgreSQL profiles must use a checked-in `.env.postgres.example`
   file with local-only placeholder values and an ignored `.env.postgres`

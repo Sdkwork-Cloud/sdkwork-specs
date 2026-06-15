@@ -28,20 +28,20 @@ app shell
 
 Rules:
 
-- Product apps `MUST` integrate IAM login through `sdkwork-appbase` packages or approved wrappers.
-- Product apps `MUST` perform login, registration, current-session validation, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user self-service through `@sdkwork/appbase-app-sdk`; verification-code delivery and verification `MUST` go through the generated messaging app SDK surface or an appbase wrapper that delegates to an injected messaging client. Product apps must not inject unrelated business SDK clients as login clients.
-- Product apps `MUST` provide one global token manager per authenticated session context and pass the same instance to `@sdkwork/appbase-app-sdk`, every product/dependency app SDK, explicit `backend-admin` `@sdkwork/appbase-backend-sdk`, explicit `backend-admin` product/dependency backend SDKs, and approved composed wrappers backed by those SDKs.
-- Product apps `MUST` use the approved high-level appbase auth runtime/factory for the selected architecture when available, for example `@sdkwork/auth-runtime-pc-react` `createSdkworkAppbasePcAuthRuntime(...)` for PC React. Product code supplies app identity, runtime config, SDK inventory clients, the global token manager, and session bridge hooks; appbase owns the low-level IAM adapter wiring.
-- Product apps `MUST NOT` import `@sdkwork/iam-sdk-adapter`, call `createIamAppSdkAdapter(...)`, call `createIamBackendSdkAdapter(...)`, or call `createIamRuntime(...)` directly for appbase login integration when a high-level appbase runtime/factory exists. Those calls belong in `sdkwork-appbase` packages or approved compatibility wrappers only.
-- Product apps `MUST NOT` create local `/auth/login`, `/auth/refresh`, `/auth/me`, `/app/v3/api/auth/*`, or user-center session endpoints when the capability is already owned by `sdkwork-appbase`, `sdkwork-appbase-app-api`, or `sdkwork-appbase-app-sdk`.
-- Login/session APIs `MUST` live in app-api only. Open-api domains such as Craw Chat IM (`/im/v3/api`), backend-api, Tauri commands, and product-local Rust routes may validate credentials or session projections when their contract requires it, but must not own user-facing login creation.
+- Applications `MUST` integrate IAM login through `sdkwork-appbase` packages or approved wrappers.
+- Applications `MUST` perform login, registration, current-session validation, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user self-service through `@sdkwork/appbase-app-sdk`; verification-code delivery and verification `MUST` go through the generated messaging app SDK surface or an appbase wrapper that delegates to an injected messaging client. Applications must not inject unrelated business SDK clients as login clients.
+- Applications `MUST` provide one global token manager per authenticated session context and pass the same instance to `@sdkwork/appbase-app-sdk`, every application/dependency app SDK, explicit `backend-admin` `@sdkwork/appbase-backend-sdk`, explicit `backend-admin` application/dependency backend SDKs, and approved composed wrappers backed by those SDKs.
+- Applications `MUST` use the approved high-level appbase auth runtime/factory for the selected architecture when available, for example `@sdkwork/auth-runtime-pc-react` `createSdkworkAppbasePcAuthRuntime(...)` for PC React. Application code supplies app identity, runtime config, SDK inventory clients, the global token manager, and session bridge hooks; appbase owns the low-level IAM adapter wiring.
+- Applications `MUST NOT` import `@sdkwork/iam-sdk-adapter`, call `createIamAppSdkAdapter(...)`, call `createIamBackendSdkAdapter(...)`, or call `createIamRuntime(...)` directly for appbase login integration when a high-level appbase runtime/factory exists. Those calls belong in `sdkwork-appbase` packages or approved appbase-owned wrappers only.
+- Applications `MUST NOT` create local `/auth/login`, `/auth/refresh`, `/auth/me`, `/app/v3/api/auth/*`, or user-center session endpoints when the capability is already owned by `sdkwork-appbase`, `sdkwork-appbase-app-api`, or `sdkwork-appbase-app-sdk`.
+- Login/session APIs `MUST` live in app-api only. Open-api domains such as Craw Chat IM (`/im/v3/api`), backend-api, Tauri commands, and application-local Rust routes may validate credentials or session projections when their contract requires it, but must not own user-facing login creation.
 - Auth services, controllers, reusable local adapters, canonical authority bridges, and runtime user-center bridges `MUST NOT` synthesize an authenticated SDKWork session from a user/profile object, user id, email, username, legacy user-center `sessionId`, cached user, QR key, bridge hint, or test helper. Every login, registration, OAuth, verification-code login, QR completion, session-bridge, refresh, current-session update, and bootstrap success path `MUST` receive and validate a real appbase IAM `SdkworkAuthSession` with non-empty `authToken` and `accessToken` before reporting authenticated state, writing session storage, or updating the global TokenManager. Unsupported modes, incomplete sessions, and user-only results `MUST` fail closed.
 - Current-session bootstrap `MUST` call `@sdkwork/appbase-app-sdk` `auth.sessions.current.retrieve()` when that SDK resource is available. If current-session validation fails, the runtime `MUST` clear centralized session storage, context storage, token manager state, and sensitive session bridges, then report anonymous state; it `MUST NOT` fall back to cached user/profile data or locally stored tokens.
 - Registration and password-reset services `MUST` preserve literal password values, `MUST NOT` synthesize a missing confirmation by copying the password into `confirmPassword`, and `MUST` reject an explicitly provided password confirmation that differs from the password before calling SDK resources. UI confirmation checks do not replace this service/runtime boundary check, and backend handlers must enforce the same rule.
 - Development verification-code configuration may prefill UI input fields only. It `MUST NOT` skip `messaging.verificationCodes.create`, `messaging.verificationCodes.verify`, password-reset request creation, registration creation, or session creation, and new configuration names should use `prefill` instead of `bypass`.
-- Product open-api SDKs that declare API key security `MUST` receive credentials through an API key credential provider or approved compatibility provider, not through the app login token manager.
+- Application-owned open-api SDKs that declare API key security `MUST` receive credentials through an API key credential provider or approved provider, not through the app login token manager.
 - UI components `MUST NOT` call raw HTTP, manually assemble `Authorization` or `Access-Token`, parse JWTs for authorization, or store duplicate token DTOs.
-- Product/dependency app SDKs and explicit `backend-admin` backend SDKs `MUST NOT` own login, parse tokens, refresh tokens independently, or persist second session state; they only consume the global token manager for request authentication.
+- Application/dependency app SDKs and explicit `backend-admin` backend SDKs `MUST NOT` own login, parse tokens, refresh tokens independently, or persist second session state; they only consume the global token manager for request authentication.
 - Protected business services `MUST` consume a verified session projection through typed context, not through body/query tenant or user fields.
 
 ## 2. Standard Packages
@@ -53,7 +53,7 @@ Use the smallest package set needed for the target UI architecture.
 | Appbase shell primitives | `@sdkwork/appbase-pc-react` or architecture equivalent | capability manifest, appbase layout/runtime utilities |
 | PC auth UI | `@sdkwork/auth-pc-react` | login/register/forgot-password/OAuth/QR auth routes and forms |
 | IAM runtime | `@sdkwork/iam-runtime` | `createIamRuntime`, token/context stores, `getAuthHeaders`, appbase SDK validation, global token-manager binding |
-| Architecture auth runtime | `@sdkwork/auth-runtime-pc-react` or architecture equivalent | approved high-level appbase runtime factory that product apps call instead of wiring low-level IAM SDK adapters |
+| Architecture auth runtime | `@sdkwork/auth-runtime-pc-react` or architecture equivalent | approved high-level appbase runtime factory that applications call instead of wiring low-level IAM SDK adapters |
 | PC IAM provider | `@sdkwork/iam-react` | `IamRuntimeProvider`, `IamProvider`, `useIamRuntime`, `useIamService` |
 | PC IAM core export | `@sdkwork/iam-core-pc-react` | PC React re-export boundary for IAM runtime, stores, adapters, ports, contracts, and services |
 | IAM contracts | `@sdkwork/iam-contracts` | token header names, IAM route constants, context contracts |
@@ -63,16 +63,16 @@ Use the smallest package set needed for the target UI architecture.
 | Appbase app SDK | `@sdkwork/appbase-app-sdk` | canonical login, session, runtime metadata, OAuth, QR auth, password reset, and current-user transport |
 | Messaging app SDK | generated `sdkwork-messaging-app-sdk` surface | verification-code delivery and verification through `messaging.verificationCodes.*` |
 | Appbase backend SDK | `@sdkwork/appbase-backend-sdk` | canonical `backend-admin` IAM management transport |
-| Product app/backend SDKs | generated app-api SDKs and explicit `backend-admin` backend-api SDKs | protected business operations that receive the global token manager only |
+| Application-owned app/backend SDKs | generated app-api SDKs and explicit `backend-admin` backend-api SDKs | protected business operations that receive the global token manager only |
 | Dependency app/backend SDKs | generated dependency app-api SDKs and explicit `backend-admin` backend-api SDKs | dependency-owned protected operations such as Drive, Messaging, IM, or other reusable app SDK capabilities that receive the same global token manager only |
-| Product open-api SDKs | generated open-api SDKs | protected public/domain operations that receive API key credentials when their contract declares API key mode |
+| Application-owned open-api SDKs | generated open-api SDKs | protected public/domain operations that receive API key credentials when their contract declares API key mode |
 | Rust AppContext crate | product-independent context helper crate | dual-token and SDKWork AppContext extraction/validation |
 
 Rules:
 
 - Appbase packages own reusable IAM UI and auth flow behavior.
-- Product core packages may adapt generated `@sdkwork/appbase-app-sdk` constructors, generated `@sdkwork/appbase-backend-sdk` constructors, token storage, and runtime config, but must not fork appbase auth UI, generated SDK output, or appbase login method names.
-- IAM SDK adapters `MUST` be strict adapters over the standard appbase SDK resource surface. They may unwrap SDK envelopes and normalize generated path-parameter call shapes, but they `MUST NOT` map legacy or product-local methods such as `auth.login`, `auth.refreshToken`, `auth.register`, `auth.getOauthUrl`, `auth.createSendSmsCode`, `user.getUserProfile`, or app-local user-center methods into appbase login/session ports. Product application packages do not depend on these adapters directly when an appbase high-level auth runtime/factory exists.
+- Application core packages may adapt generated `@sdkwork/appbase-app-sdk` constructors, generated `@sdkwork/appbase-backend-sdk` constructors, token storage, and runtime config, but must not fork appbase auth UI, generated SDK output, or appbase login method names.
+- IAM SDK adapters `MUST` be strict adapters over the standard appbase SDK resource surface. They may unwrap SDK envelopes and normalize generated path-parameter call shapes, but they `MUST NOT` map legacy or application-local methods such as `auth.login`, `auth.refreshToken`, `auth.register`, `auth.getOauthUrl`, `auth.createSendSmsCode`, `user.getUserProfile`, or app-local user-center methods into appbase login/session ports. Application packages do not depend on these adapters directly when an appbase high-level auth runtime/factory exists.
 - Generated SDK output `MUST NOT` be edited by app or desktop packages.
 - If an IAM SDK method is missing, fix `sdkwork-appbase-app-api` or `sdkwork-appbase-backend-api`, OpenAPI, and generator inputs before adding product integration.
 
@@ -84,7 +84,7 @@ Minimum app-side steps:
 2. Create one global token manager for the authenticated session context.
 3. Create one session module that reads, writes, normalizes, and clears `authToken`, `accessToken`, `refreshToken`, `sessionId`, `user`, and `context`.
 4. Create `@sdkwork/appbase-app-sdk` as `appbaseApp` in bootstrap/core code. Create `@sdkwork/appbase-backend-sdk` as `appbaseBackend` only when the runtime is an explicit `backend-admin` surface.
-5. Build an SDK inventory, then pass every authenticated product/dependency app-api SDK and every explicit `backend-admin` backend-api SDK through `clients.sdkClients` or the local equivalent so the same global token manager is injected.
+5. Build an SDK inventory, then pass every authenticated application/dependency app-api SDK and every explicit `backend-admin` backend-api SDK through `clients.sdkClients` or the local equivalent so the same global token manager is injected.
 6. Pass protected open-api SDK clients through a separate API key credential provider when their contract declares API key mode.
 7. Use appbase auth UI/runtime packages or an approved high-level appbase auth integration wrapper for login, registration, refresh, OAuth, QR auth, password reset, runtime metadata, and current-user self-service.
 8. Create only the product-specific runtime bridge needed for bootstrap/logout/current-session handoff, when appbase UI/runtime cannot consume those ports directly.
@@ -111,7 +111,7 @@ Rules:
 - `App.tsx` owns router composition only.
 - `AuthGate.tsx` owns route protection and rendering appbase auth routes.
 - `session.ts` owns persisted session normalization and clearing.
-- `appSdkClient.ts` owns SDK inventory classification, `@sdkwork/appbase-app-sdk`, optional `backend-admin` `@sdkwork/appbase-backend-sdk`, product/dependency SDK construction, and global TokenManager injection.
+- `appSdkClient.ts` owns SDK inventory classification, `@sdkwork/appbase-app-sdk`, optional `backend-admin` `@sdkwork/appbase-backend-sdk`, application/dependency SDK construction, and global TokenManager injection.
 - `appAuthService.ts` may expose only product-specific auth bridges such as current-session bootstrap and logout when needed. It `MUST NOT` re-map or reimplement appbase-owned login, registration, refresh, verification-code, OAuth, QR auth, password reset, runtime metadata, or current-user self-service operations.
 - `appAuthRuntime.ts` consumes an approved appbase high-level auth runtime/factory when available. Product code provides app identity, runtime config, injected SDK clients, the global TokenManager, and session bridge hooks instead of implementing appbase IAM adapter behavior locally.
 
@@ -142,7 +142,7 @@ Rules:
 
 - `createIamRuntime(...)` `MUST` create or receive the global `AuthTokenManager`.
 - `clients.appbaseApp` is required. `clients.appbaseBackend` is optional and only used when `backend-admin` IAM management is part of the runtime.
-- `clients.sdkClients` contains downstream authenticated product/dependency app-api SDK clients, explicit `backend-admin` backend-api SDK clients, plus approved composed wrappers backed by those SDKs. It does not contain protected open-api SDKs that use API key mode.
+- `clients.sdkClients` contains downstream authenticated application/dependency app-api SDK clients, explicit `backend-admin` backend-api SDK clients, plus approved composed wrappers backed by those SDKs. It does not contain protected open-api SDKs that use API key mode.
 - The runtime `MUST` bind the same token manager to every client with `setTokenManager(manager)`.
 - The runtime `MUST` hydrate the token manager from `tokenStore` when in-memory tokens are empty.
 - `contextStore` `MUST` persist returned `AppContext` and derive or expose `ShardingContext` when the platform provides that helper.
@@ -189,7 +189,7 @@ Rules:
 - Appbase login, registration, OAuth session creation, QR auth session creation, QR auth password completion, password reset request, and password reset completion OpenAPI operations `MUST` declare `security: []`, `x-sdkwork-auth-mode: anonymous`, and `x-sdkwork-forbid-credential-headers: true`. Generated appbase SDKs `MUST` skip automatic TokenManager credential injection for these operations, and appbase servers `MUST` reject inbound credential or SDKWork context headers for them.
 - `authToken` and `accessToken` returned by appbase login/session APIs `MUST` both carry `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims. Client-side code may decode token claims for diagnostics only; authorization and routing decisions `MUST` rely on appbase session validation and returned `AppContext`.
 - Runtime session normalization `MUST` reject complete-looking sessions whose `authToken`, `accessToken`, and returned `AppContext` disagree on tenant, organization, user, session, app, environment, deployment mode, or login scope.
-- `@sdkwork/appbase-app-sdk`, product/dependency app SDKs, explicit `backend-admin` `@sdkwork/appbase-backend-sdk`, explicit `backend-admin` product/dependency backend SDKs, and approved composed wrappers backed by those SDKs `MUST` receive the same global token manager through generated SDK config, `setTokenManager`, credential provider, constructor injection, or approved adapter.
+- `@sdkwork/appbase-app-sdk`, application/dependency app SDKs, explicit `backend-admin` `@sdkwork/appbase-backend-sdk`, explicit `backend-admin` application/dependency backend SDKs, and approved composed wrappers backed by those SDKs `MUST` receive the same global token manager through generated SDK config, `setTokenManager`, credential provider, constructor injection, or approved adapter.
 - In the TypeScript appbase IAM runtime, the standard downstream client list is `clients.sdkClients`. Older or app-local names such as `appBackendSdkClients` may exist only as compatibility aliases that are normalized into `clients.sdkClients` before calling `createIamRuntime`.
 - Login, registration, OAuth session creation, current-session retrieval/update, refresh, and session restoration `MUST` update the global token manager, centralized session store, and AppContext/context store together before the API call is reported as completed to UI/runtime code.
 - Session side effects `MUST` be ordered: first validate the appbase session payload, then persist normalized tokens in the centralized session store, then write the returned AppContext to the context store or clear stale AppContext when the session has no context, and only then sync the global token manager. A failed token persistence step `MUST NOT` leave a new in-memory token manager state behind. A failed context propagation step after token persistence `MUST` clear the token store, context store, and global token manager before the API call rejects.
@@ -241,7 +241,7 @@ Rules:
 
 - Product apps `MUST` treat an organization-selection challenge as an authenticated-login continuation, not as a normal authenticated session. They `MUST NOT` update the global token manager, protected SDK clients, or route guard as authenticated until appbase returns the final dual-token session.
 - The organization-selection UI may be a modal, route, or equivalent focused surface, but it `MUST` display only the safe organization choices returned by appbase and `MUST` submit the selected organization through the generated appbase app SDK continuation method.
-- Organization-selection continuation credentials `MUST NOT` be used as `authToken` or `accessToken` for product/dependency APIs. They are short-lived, single-purpose credentials for the continuation endpoint only.
+- Organization-selection continuation credentials `MUST NOT` be used as `authToken` or `accessToken` for application/dependency APIs. They are short-lived, single-purpose credentials for the continuation endpoint only.
 - Product apps `MUST NOT` choose the first organization client-side, cache an organization choice across users, or derive organization id from route/query/local storage without appbase validation.
 - Switching organization after login is a session update flow. It `MUST` use appbase session/current-session resources or an approved appbase organization-switch resource, then replace token/context state atomically.
 
@@ -313,9 +313,9 @@ Allowed Rust IAM authority responsibilities:
 - produce AppContext and ShardingContext compatible with Java SaaS mode;
 - pass appbase UI/runtime contract tests without app-specific forks.
 
-Forbidden for product Rust services:
+Forbidden for application Rust services:
 
-- adding product-local login or refresh routes;
+- adding application-local login or refresh routes;
 - exposing `/backend/v3/api/auth/*`;
 - using IM/device runtime session routes as IAM login sessions;
 - creating a separate user-center login namespace;
@@ -323,14 +323,14 @@ Forbidden for product Rust services:
 
 ## 9. Current User Self-Service
 
-Current user profile and self-service operations are appbase app-api resources, not product-local user clients.
+Current user profile and self-service operations are appbase app-api resources, not application-local user clients.
 
 Rules:
 
 - Current user reads `MUST` use `@sdkwork/appbase-app-sdk` `appbaseApp.iam.users.current.retrieve()`.
 - Current user updates and password changes `MUST` be defined as semantic appbase app-api current-user resources before use, for example `appbaseApp.iam.users.current.update(...)` and `appbaseApp.iam.users.current.password.update(...)`.
-- Product apps and UI packages `MUST NOT` inject clients exposing legacy `user.getUserProfile`, `user.updateUserProfile`, `user.changePassword`, or equivalent app-local user-center methods.
-- Missing current-user app SDK methods `MUST` be closed by updating `sdkwork-appbase-app-api`, OpenAPI, generator inputs, and all generated language SDKs. They `MUST NOT` be hidden by raw HTTP, fallback DTOs, or product-local SDK forks.
+- Applications and UI packages `MUST NOT` inject clients exposing legacy `user.getUserProfile`, `user.updateUserProfile`, `user.changePassword`, or equivalent app-local user-center methods.
+- Missing current-user app SDK methods `MUST` be closed by updating `sdkwork-appbase-app-api`, OpenAPI, generator inputs, and all generated language SDKs. They `MUST NOT` be hidden by raw HTTP, fallback DTOs, or application-local SDK forks.
 - User-center UI `MUST` expose edit/password capabilities only when the generated appbase app SDK resource exists. Default current-user profile UI is read-only until `iam.users.current.update` and password update resources are present.
 
 ## 10. Tauri And Desktop Rules
@@ -389,9 +389,9 @@ rg -n "/app/v3/api/auth|/api/.*/auth|user-center/session" services crates
 - [ ] Multi-organization login uses the appbase organization-selection continuation protocol and does not commit normal session state until final dual tokens are returned.
 - [ ] Both tokens and persisted AppContext agree on tenant, organization, login scope, user, session, app, environment, and deployment mode.
 - [ ] Reusable auth packages use `commitSession(session, options?)`, never `persistSession`, and controller logout clears local authenticated state in a `finally` path.
-- [ ] Runtime/bootstrap builds an SDK inventory and passes every downstream authenticated product/dependency app-api/backend-api client and approved composed wrapper through `clients.sdkClients` or the language-equivalent token-manager-aware SDK list.
-- [ ] Current user profile reads use `appbaseApp.iam.users.current.retrieve()` and missing self-service methods are fixed in appbase app-api/OpenAPI/generator inputs instead of product-local fallbacks.
+- [ ] Runtime/bootstrap builds an SDK inventory and passes every downstream authenticated application/dependency app-api/backend-api client and approved composed wrapper through `clients.sdkClients` or the language-equivalent token-manager-aware SDK list.
+- [ ] Current user profile reads use `appbaseApp.iam.users.current.retrieve()` and missing self-service methods are fixed in appbase app-api/OpenAPI/generator inputs instead of application-local fallbacks.
 - [ ] Rust protected APIs require dual tokens and typed AppRequestContext/AppContext injection.
-- [ ] Rust product services do not expose login/session creation routes unless they are the IAM authority implementation.
+- [ ] Rust application services do not expose login/session creation routes unless they are the IAM authority implementation.
 - [ ] Permission and tenant decisions come from verified AppContext, not request body/query/path hints.
 - [ ] Tests cover route guard, logout, SDK boundary, Rust auth guard, and forbidden route namespace checks.

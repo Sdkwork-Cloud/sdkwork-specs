@@ -504,7 +504,7 @@ Package: `sdkwork.iam.app.v3`
 | `VerificationService` | `CreateVerificationCode`, `VerifyVerificationCode` | `messaging.verificationCodes.create`, `messaging.verificationCodes.verify` |
 | `PasswordRecoveryService` | `CreatePasswordResetRequest`, `CreatePasswordReset` | `passwordResetRequests.create`, `passwordResets.create` |
 | `RegistrationService` | `CreateRegistration` | `registrations.create` |
-| `OAuthSessionService` | `RetrieveOAuthAuthorizationUrl`, `CreateOAuthSession` | `oauthAuthorizationUrls.retrieve`, `oauthSessions.create` |
+| `OAuthSessionService` | `CreateOAuthAuthorizationUrl`, `CreateOAuthSession` | `oauth.authorizationUrls.create`, `oauth.sessions.create` |
 | `QrAuthService` | `CreateQrAuthSession`, `RetrieveQrAuthSession`, `CreateQrAuthSessionScan`, `CreateQrAuthSessionPassword` | `qrAuth.sessions.create`, `qrAuth.sessions.retrieve`, `qrAuth.sessions.scans.create`, `qrAuth.sessions.passwords.create` |
 | `CurrentUserService` | `RetrieveCurrentUser` | `users.current.retrieve` |
 

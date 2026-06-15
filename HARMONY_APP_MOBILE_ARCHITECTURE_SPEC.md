@@ -216,7 +216,7 @@ Rules:
 - Harmony app packages `MUST` consume `/app/v3/api` through generated ArkTS/TypeScript app SDK clients adapted for Harmony runtime or approved Harmony appbase wrappers.
 - Harmony admin packages, when approved as `backend-admin` surfaces, `MUST` consume `/backend/v3/api` through generated ArkTS/TypeScript backend SDK clients or approved backend wrappers.
 - Runtime/bootstrap `MUST` construct generated SDK clients, appbase SDK clients or wrappers, a global token-manager equivalent, token/context stores, and HarmonyOS host adapters before feature services are initialized.
-- The global token-manager equivalent must be shared by appbase app SDK, every authenticated product/dependency app-api SDK client, and explicit `backend-admin` appbase backend/product backend/dependency backend SDK clients.
+- The global token-manager equivalent must be shared by appbase app SDK, every authenticated application/dependency app-api SDK client, and explicit `backend-admin` appbase backend/application backend/dependency backend SDK clients.
 - Missing Harmony SDK methods must be fixed in OpenAPI/generator inputs and regenerated. Harmony packages must not fill gaps with raw request APIs, manual headers, copied React/Flutter/Kotlin/Swift wrappers, or local DTO forks.
 - Logout and refresh failure must clear secure platform storage, token manager, context store, sensitive Harmony state, and realtime/session bridges.
 

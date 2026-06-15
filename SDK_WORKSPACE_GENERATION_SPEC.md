@@ -6,6 +6,8 @@
 
 This detail standard implements the HTTP/OpenAPI SDK workspace and OpenAPI generation parts of `SDK_SPEC.md`. It defines how an application keeps HTTP SDK generation work in the `sdks/` directory under its application root while preserving one common SDKWork architecture. RPC SDK family layout, proto inputs, RPC manifests, and generated RPC output placement are governed by `RPC_SDK_WORKSPACE_SPEC.md`. The application root may live in any repository or product directory; this standard does not assume any fixed parent directory structure. It is intentionally independent of Craw Chat, IM, Java, Rust, React, Flutter, Tauri, SaaS, private, or local deployment choices.
 
+The standard project-root `apis/` directory from `SDKWORK_WORKSPACE_SPEC.md` is the authoring location for API contract sources and API materialization inputs when a repository or application owns API contracts. This file governs what happens after those inputs are materialized into SDK family workspaces under `sdks/`. `apis/` and `sdks/` are different boundaries: `apis/` stores API source and review inputs; `sdks/` stores SDK families, authority OpenAPI files used for generation, derived `sdkgen` inputs, generated language workspaces, and SDK component metadata.
+
 `SDK_SPEC.md` is the primary SDK standard and owns the SDK system model, canonical naming vocabulary, package semantics, generated client surface, auth handling, service facade boundary, integration rules, and generated client quality rules. This file is subordinate to `SDK_SPEC.md`; it owns only the physical application-root HTTP/OpenAPI `sdks/` structure, SDK family directory placement, OpenAPI authority document materialization, derived generator inputs, generated output placement, and backend API SDK generation workflow.
 
 The canonical SDK generator is defined by `SDK_SPEC.md`: workspace sibling repository `../sdkwork-sdk-generator`, package `@sdkwork/sdk-generator`, CLI `sdkgen`, and executable `../sdkwork-sdk-generator/bin/sdkgen.js`. Repository-local generation scripts are allowed only as thin wrappers that derive input OpenAPI, pass standardized generator arguments, and route output into the application `sdks/` workspace. They must not substitute another generator, use copied generator source, call ad hoc OpenAPI client tools, present `sdkwork-code-generator` as a separate standard, or silently fall back to local stubs for committed SDK output. `sdkwork-code-generator` is only an alias/wrapper name when a repository explicitly documents that it executes this canonical `sdkgen.js` entrypoint; it is not an independent SDKWork HTTP SDK generator.
@@ -19,6 +21,7 @@ Repository/application root `.sdkwork/` skills and plugins are defined by `SDKWO
 Rules:
 
 - `SDK_SPEC.md` is the primary SDK standard. This file operationalizes its workspace and generation requirements for repositories and CI.
+- API contract authoring may start in the project-root `apis/` directory. SDK generation authority, derived generator inputs, and generated output still live in `sdks/`.
 - Every application that owns generated SDKs `MUST` create `sdks/` under the application root.
 - Every application root that owns generated SDKs also `MUST` satisfy `SDKWORK_WORKSPACE_SPEC.md` by providing root `.sdkwork/skills/` and `.sdkwork/plugins/`; those directories live beside `sdks/`, not inside generated SDK output.
 - The `sdks/` directory `MUST` be organized by SDK family directories. API authority documents live inside the owning SDK family; API authority names are not top-level SDK family directories.
@@ -43,6 +46,7 @@ Rules:
   `openapi/*.sdkgen.yml` `MUST` declare `.sdkwork-assembly.json` in the same family root. A
   generated SDK family without assembly metadata is not a valid SDKWork family and must fail global
   ownership checks.
+- `apis/` `MUST NOT` contain SDK family directories, generated language workspaces, `generated/server-openapi`, or generated SDK control-plane `.sdkwork/` files.
 
 ## 2. Standard Workspace Shape
 
@@ -56,19 +60,20 @@ Recommended application-root shape:
       README.md
     plugins/
       README.md
-  packages/
-    native-rust/
-      routes/
-        open-api/
-          sdkwork-router-product-open-api/
-          sdkwork-router-catalog-open-api/
-        app-api/
-          sdkwork-router-product-app-api/
-          sdkwork-router-cart-app-api/
-          sdkwork-router-order-app-api/
-        backend-api/
-          sdkwork-router-product-backend-api/
-          sdkwork-router-order-backend-api/
+  apis/
+    open-api/
+    app-api/
+    backend-api/
+    rpc/
+    async/
+  crates/
+    sdkwork-router-product-open-api/
+    sdkwork-router-catalog-open-api/
+    sdkwork-router-product-app-api/
+    sdkwork-router-cart-app-api/
+    sdkwork-router-order-app-api/
+    sdkwork-router-product-backend-api/
+    sdkwork-router-order-backend-api/
   sdks/
     README.md
     materialize-<domain>-v<major>-openapi-boundaries.mjs
@@ -120,10 +125,13 @@ Recommended application-root shape:
 
 Rules:
 
+- `apis/` is optional only when the application does not author API contracts. When present, it follows `API_SPEC.md`, `RPC_SPEC.md`, `EVENT_SPEC.md`, and the project-root directory rules in `SDKWORK_WORKSPACE_SPEC.md`.
+- API contracts authored under `apis/` may be copied, normalized, or materialized into the owning SDK family `openapi/` directory only through a deterministic materialization command.
+- Authority OpenAPI files below `sdks/sdkwork-<domain>-*/openapi/` remain the SDK generation source of truth. They must trace back to authored API contracts, route manifests, controller scans, or reviewed materialization inputs.
 - Rust HTTP route crates that define SDKWork HTTP API paths, route constants, route manifests,
   router mount points, or handler bindings belong under the application root's Rust workspace, not
-  under `sdks/`. The recommended path is
-  `packages/sdkwork-router-<capability>-<surface>/`.
+  under `sdks/`. The standard path is
+  `crates/sdkwork-router-<capability>-<surface>/`.
 - Application-root `.sdkwork/` is validated by `SDKWORK_WORKSPACE_SPEC.md`; it is not an SDK family,
   not an OpenAPI authority, and not a generated transport output.
 - `<surface>` in Rust route crate placement `MUST` be exactly `open-api`, `app-api`, or
@@ -190,7 +198,7 @@ Rust HTTP route crates are capability-level source packages. They configure path
 Recommended source shape:
 
 ```text
-packages/sdkwork-router-product-app-api/
+crates/sdkwork-router-product-app-api/
   Cargo.toml
   src/lib.rs
   src/paths.rs
@@ -198,7 +206,7 @@ packages/sdkwork-router-product-app-api/
   src/handlers.rs
   src/manifest.rs
 
-packages/sdkwork-router-order-backend-api/
+crates/sdkwork-router-order-backend-api/
   Cargo.toml
   src/lib.rs
   src/paths.rs
@@ -315,8 +323,9 @@ Rules:
 - Dependency SDKs are declared in the consuming SDK family's generation config, `.sdkwork-assembly.json`,
   and family-root `specs/component.spec.json` with matching `sdkDependencies` arrays.
 - Independent application roots under `apps/` that include Rust local/private services, Tauri hosts,
-  or native Rust runtime crates `MUST` declare `sdkwork-appbase` SDK dependencies before generating
-  product-owned SDKs. At minimum, app/user-facing app-api consumers declare
+  native/Tauri host crates, route crates, repository crates, service crates, or worker crates `MUST`
+  declare `sdkwork-appbase` SDK dependencies before generating application-owned SDKs. At minimum,
+  app/user-facing app-api consumers declare
   `sdkwork-appbase/sdks/sdkwork-appbase-app-sdk`; `backend-admin` consumers also declare
   `sdkwork-appbase/sdks/sdkwork-appbase-backend-sdk`.
 - Those Rust-enabled independent apps `MUST` include the Rust package mapping for each required
@@ -349,8 +358,8 @@ Rules:
 - If a dependency declaration includes `owner`, `apiOwner`, `apiAuthority`, `authoritySpec`, or
   `apiPrefix`, those values `MUST` match the referenced SDK family. `apiPrefix: null` is valid only
   when the referenced SDK family has no HTTP API prefix; it cannot be used to bypass app/backend/open
-  prefix matching. Historical authority aliases such as `sdkwork-appbase-app-api` and
-  `sdkwork-appbase.app` may normalize to the same authority, but app/backend/open authority
+  prefix matching. Historical authority aliases such as `sdkwork-appbase.app` and
+  `sdkwork-appbase-app-api` may normalize to the same authority, but app/backend/open authority
   mismatches are invalid.
 - Generated transport output `MUST NOT` import dependency SDK packages, vendor their generated
   transport code, re-export dependency SDK clients, or retain stale API/model/doc files for
@@ -375,8 +384,8 @@ Rules:
   records executable router/controller coverage for all dependency-owned method/path pairs consumed
   by that dependency SDK surface.
 - When coverage is absent or partial, SDK workspace verification `MUST` require explicit dependency
-  SDK base URL configuration and fail on product app/backend base URL fallbacks such as using the
-  product `/app/v3/api` or `/backend/v3/api` default for dependency-owned SDK clients.
+  SDK base URL configuration and fail on application app/backend base URL fallbacks such as using the
+  application `/app/v3/api` or `/backend/v3/api` default for dependency-owned SDK clients.
 
 ### 4.2 Dependency API Export Metadata
 
@@ -469,8 +478,8 @@ If `craw-chat` depends on `sdkwork-appbase`, then `craw-chat/sdks/sdkwork-im-app
 and consumes them at the composition layer.
 
 For an independent Rust-enabled app under `apps/`, the same dependency rule applies even when the
-local Rust runtime starts appbase-owned routes in the same process. The product app's `sdks/`
-workspace still generates only product-owned authorities, records appbase SDKs in
+local Rust runtime starts appbase-owned routes in the same process. The application's `sdks/`
+workspace still generates only application-owned authorities, records appbase SDKs in
 `sdkDependencies`, and wires appbase Rust crates through the Rust workspace rather than copying
 appbase OpenAPI, SDK output, request-context code, or IAM/session logic.
 
@@ -495,7 +504,7 @@ Rules:
 Standard workflow:
 
 ```text
-runtime API/controller/route crate manifest
+authored API contract in apis/ or runtime API/controller/route crate manifest
   -> normalized route manifest artifacts
   -> authority OpenAPI
   -> materialized sdkgen OpenAPI
@@ -509,6 +518,8 @@ Rules:
 
 - Add or change the runtime API route crate/controller manifest and authority OpenAPI in the same
   change set.
+- Add or change authored API contracts under `apis/` and the corresponding materialized SDK family
+  authority OpenAPI in the same change set when `apis/` is the source contract location.
 - Rust route crate manifest changes `MUST` be followed by authority materialization before SDK
   generation.
 - Materialization `MUST` load normalized route manifests from
@@ -573,7 +584,7 @@ Rules:
 - UI code calls services. Services call injected SDK clients. SDK clients own transport.
 - App-side PC React, H5 mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, desktop, and Tauri renderers use app SDKs for user-facing remote business capability.
 - `backend-admin` UI uses backend SDKs for operator capability and follows `BACKEND_UI_SPEC.md`.
-- IAM login/session integration follows `IAM_LOGIN_INTEGRATION_SPEC.md`; do not regenerate product-local login SDKs for appbase-owned auth flows.
+- IAM login/session integration follows `IAM_LOGIN_INTEGRATION_SPEC.md`; do not regenerate application-local login SDKs for appbase-owned auth flows.
 - Rust local/private implementations must expose the same OpenAPI paths, operationIds, schemas, errors, and security semantics as the Java SaaS contract for shared APIs.
 - Rust local/private appbase implementations must wrap protected routers with the standard appbase request context framework so generated app/backend SDK consumers observe the same auth, tenant, organization, user, request id, and problem-detail behavior.
 - Tauri commands should validate local/native capability and then call Rust services or injected SDK clients through approved boundaries. They must not become a hidden raw HTTP SDK replacement.
@@ -583,14 +594,17 @@ Rules:
 Every SDK family change should verify the relevant subset:
 
 - OpenAPI validates under `API_SPEC.md`.
+- When `apis/` is present, authored API contract sources trace to the materialized authority OpenAPI
+  under the owning SDK family in `sdks/`.
+- `apis/` contains no generated SDK transport output, SDK family directories, or generated SDK
+  control-plane `.sdkwork/` files.
 - Application-root `.sdkwork/skills/` and `.sdkwork/plugins/` validate under
   `SDKWORK_WORKSPACE_SPEC.md`.
 - HTTP SDK generation uses `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`.
-- No official SDK generation command, manifest, README, or CI job uses copied generator code, local stubs, generic OpenAPI generators, product-local aliases, or an independent `sdkwork-code-generator`. `sdkwork-code-generator` is only an alias/wrapper name for the canonical `..\sdkwork-sdk-generator\bin\sdkgen.js` entrypoint.
+- No official SDK generation command, manifest, README, or CI job uses copied generator code, local stubs, generic OpenAPI generators, application-local aliases, or an independent `sdkwork-code-generator`. `sdkwork-code-generator` is only an alias/wrapper name for the canonical `..\sdkwork-sdk-generator\bin\sdkgen.js` entrypoint.
 - The application root has no forbidden SDK family directories matching `sdks/sdkwork-<domain>-open-api`, `sdks/sdkwork-<domain>-app-api`, `sdks/sdkwork-<domain>-backend-api`, `sdks/<domain>-open-sdk`, `sdks/<domain>-app-sdk`, or `sdks/<domain>-backend-sdk`.
 - Rust route crates, when present, follow
-  `packages/sdkwork-router-<capability>-<surface>/` and are not placed
-  under `sdks/`.
+  `crates/sdkwork-router-<capability>-<surface>/` and are not placed under `sdks/`.
 - Route crate package names start with `sdkwork-router-` and end with exactly one of `open-api`,
   `app-api`, or `backend-api`.
 - Generated language workspace directories, generated package names, `sdkMetadata.name`, `sdk-manifest.json.sdkName`, assembly `workspace`, generator `SDK_NAME`, and generator `--sdk-name` all use the SDK family name, not the API authority name.
@@ -618,7 +632,7 @@ Every SDK family change should verify the relevant subset:
   authority, SDK family/name, generation input, and `sdkDependencies`.
 - Generated transport contains no dependency-owned routes, operationIds, DTOs, API classes,
   language package names, stale docs, stale dist bundles, or generated model indexes.
-- Enabling `dependencyApiExports` does not change generated product SDK methods, schemas,
+- Enabling `dependencyApiExports` does not change generated application-owned SDK methods, schemas,
   namespaces, generated docs, imports, package metadata, or generated model indexes.
 - Generated TypeScript compiles when TypeScript is supported.
 - Generated SDK exposes nested resource methods from `tag + dotted operationId`.
@@ -641,6 +655,8 @@ node .\sdks\sdkwork-<domain>-backend-sdk\bin\verify-sdk.mjs
 ## 10. Acceptance Checklist
 
 - [ ] `<application-root>/sdks/` exists.
+- [ ] `<application-root>/apis/` exists when the application authors API contracts, and its contents
+  trace to the materialized SDK family authority OpenAPI when SDK generation is required.
 - [ ] `<application-root>/.sdkwork/skills/` and `<application-root>/.sdkwork/plugins/` exist and follow `SDKWORK_WORKSPACE_SPEC.md`.
 - [ ] HTTP SDK generation uses the canonical `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`.
 - [ ] Generation manifest or README records generator package, canonical path or resolved package location, generator version or commit, command, input, output, language, SDK type, package name, SDK family name, and standard profile.
@@ -686,7 +702,7 @@ node .\sdks\sdkwork-<domain>-backend-sdk\bin\verify-sdk.mjs
   spec, and API prefix values match the referenced dependency family.
 - [ ] Generated transport does not copy, import, vendor, or retain stale files for dependency-owned
   APIs.
-- [ ] Enabling `dependencyApiExports` does not change the generated product SDK method surface or add
+- [ ] Enabling `dependencyApiExports` does not change the generated application-owned SDK method surface or add
   dependency-owned schemas, API classes, docs, imports, or package metadata.
 - [ ] Generated transport output, generated docs, generated manifests, and generated package/build
   metadata do not reference package names declared in `sdkDependencies[].packageByLanguage`.

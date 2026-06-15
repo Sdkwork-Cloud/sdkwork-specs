@@ -18,6 +18,9 @@ Rules:
 - Repository/application `.sdkwork/README.md`, `.sdkwork/skills/README.md`, and
   `.sdkwork/plugins/README.md` are local documentation entrypoints governed by
   `SDKWORK_WORKSPACE_SPEC.md`.
+- Repository/application README files `MUST` document the active top-level project directories from
+  `SDKWORK_WORKSPACE_SPEC.md` when the root omits inactive reserved directories or uses both source
+  and generated boundaries such as `apis/` and `sdks/`.
 - Requirements, acceptance criteria, architecture decisions, workflow checkpoints, review evidence, quality gates, release evidence, migration plans, and supply-chain evidence `MUST` link to their governing root spec instead of inventing local-only lifecycle vocabulary.
 - Lifecycle documentation `MUST` be traceable: requirement -> architecture decision when applicable -> implementation/change -> verification -> review -> release or migration evidence.
 - API examples `MUST` match the OpenAPI contract and generated SDK method shape.
@@ -78,6 +81,20 @@ Rules:
 - Workspace READMEs should point to `AGENTS.md` for execution order and to `SOUL.md` for shared agent behavior.
 - Workspace READMEs `MUST NOT` duplicate root standards, include secrets, or
   document user-private runtime paths as committed source directories.
+
+## 2.2 Required Root Layout Documentation
+
+Every independent SDKWork git repository root and every independent SDKWork application root `MUST`
+make its active root layout discoverable from its root README or an explicitly linked document.
+
+Rules:
+
+- Root layout documentation `MUST` cite `SDKWORK_WORKSPACE_SPEC.md` for the standard directory dictionary.
+- If the root omits inactive reserved directories, the README `MUST` state which capabilities are active and which standard directories are intentionally absent.
+- Each standard top-level directory README `MUST` document purpose, owner, allowed content, forbidden content, related specs, and verification command or checklist.
+- If both `apis/` and `sdks/` exist, the README `MUST` explain that `apis/` contains authored API contracts and API review inputs, while `sdks/` contains SDK family workspaces, materialized authority OpenAPI, derived `sdkgen` inputs, and generated SDK output.
+- If both `plugins/` and `.sdkwork/plugins/` exist, the README `MUST` distinguish application/runtime plugin source from repository/application agent plugin workspaces.
+- If `configs/` or architecture-local `config/` and runtime config paths are documented, the README `MUST` distinguish source-controlled safe templates from user-private or environment-private runtime config governed by `RUNTIME_DIRECTORY_SPEC.md`.
 
 ## 3. API Documentation
 
@@ -166,6 +183,7 @@ Rules:
 - [ ] `AGENTS.md` links to root `sdkwork-specs`, `SOUL.md`, and `AGENTS_SPEC.md` by relative path.
 - [ ] Tool compatibility files such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` point to `AGENTS.md` and do not duplicate divergent rules.
 - [ ] Repository/application `.sdkwork/` README files exist and cite `SDKWORK_WORKSPACE_SPEC.md`.
+- [ ] Repository/application root README documents the active standard top-level directories, including `apis/` versus `sdks/` when API contracts and generated SDK workspaces both exist.
 - [ ] Requirements and acceptance criteria link to `REQUIREMENTS_SPEC.md` when non-trivial behavior is documented.
 - [ ] Architecture decisions link to `ARCHITECTURE_DECISION_SPEC.md` and record supersession when decisions change.
 - [ ] Module README includes public API, SDK surface, config, security, and verification.

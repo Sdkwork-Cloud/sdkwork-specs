@@ -114,7 +114,7 @@ catalog:
 members = [ "crates/*", "services/*" ]
 
 [workspace.dependencies]
-sdkwork_id_rust = { path = "../sdkwork-appbase/packages/native-rust/foundation/sdkwork-id-rust" }
+sdkwork_platform_id_service = { package = "sdkwork-platform-id-service", path = "../sdkwork-appbase/crates/sdkwork-platform-id-service" }
 sdkwork_drive_storage_contract = { path = "../sdkwork-drive/crates/sdkwork-drive-storage-contract" }
 sdkwork_knowledgebase_contract = { path = "crates/sdkwork-knowledgebase-contract" }
 ```
@@ -122,7 +122,7 @@ sdkwork_knowledgebase_contract = { path = "crates/sdkwork-knowledgebase-contract
 ```toml
 # Member Cargo.toml  (consumes from [workspace.dependencies])
 [dependencies]
-sdkwork_id_rust.workspace = true
+sdkwork_platform_id_service.workspace = true
 sdkwork_drive_storage_contract.workspace = true
 sdkwork_knowledgebase_contract.workspace = true
 ```
@@ -235,16 +235,17 @@ Rules:
   overrides, and tests must make that override status visible.
 - Managed gateway startup `MUST` use the native build command for the gateway application, such as
   `cargo run -p sdkwork-api-gateway-service --bin sdkwork-api-gateway`, from the gateway workspace.
-  Product launchers must not introduce a second machine-readable gateway catalog to discover
+  Application launchers must not introduce a second machine-readable gateway catalog to discover
   foundation surfaces.
-- If the product edge server uses the gateway's standard local port, the product may choose a
+- If the application edge server uses the gateway's standard local port, the application may choose a
   documented app-specific managed gateway bind. The bind and the resulting common SDK root must be
   declared in the component spec or launcher tests so the gateway target remains obvious.
-- Legacy product-local foundation API adapters, embedded runtimes, and same-origin mounts may remain
-  only as explicit migration compatibility. They must not be the default runtime mode when the
+- Existing governed application-local foundation API adapters, embedded runtimes, and same-origin
+  mounts must migrate to the shared gateway path and must not be the default runtime mode when the
   shared gateway declares that dependency surface.
-- Product-owned APIs remain product-owned. If a product API becomes reusable by other applications,
-  the product must expose a standard SDKWork API authority, SDK family, component spec, and public
+- Application-owned APIs remain application-owned. If an application-owned API becomes reusable by
+  other applications, the application must expose a standard SDKWork API authority, SDK family,
+  component spec, and public
   executable router/upstream entrypoint that the gateway can integrate through the same Cargo and
   SDKWork spec rules.
 - Cargo dependencies, Cargo workspace membership, and Cargo features do not by themselves authorize
@@ -303,15 +304,15 @@ Rules:
 - Tests `MUST` fail on `link:` protocol references to SDKWork cross-workspace sources in pnpm `package.json` files; SDKWork cross-workspace sources `MUST` use `workspace:*`.
 - Tests `MUST` fail on direct `path = "../sdkwork-..."` declarations in member Cargo crate `Cargo.toml` files; SDKWork cross-workspace sources `MUST` use `{ workspace = true }`.
 - Tests `MUST` verify package manager lockfiles or equivalent reproducibility files are present and updated when required by the repository's build tool.
-- SDK generation tests `MUST` verify dependency-owned API operations are filtered from product-owned SDK generator inputs.
+- SDK generation tests `MUST` verify dependency-owned API operations are filtered from application-owned SDK generator inputs.
 - Dependency integration tests `MUST` verify `dependencyApiExports` defaults to no export, configured
-  exports reference declared `sdkDependencies`, and generated product SDK output does not change when
+  exports reference declared `sdkDependencies`, and generated application-owned SDK output does not change when
   dependency export configuration changes.
 - Runtime dependency tests `MUST` verify `dependencyApiSurfaces` exists for HTTP dependency SDKs and
   fails when a dependency API is treated as same-origin without executable router/controller/service
   coverage.
-- Product application launch tests `MUST` verify that shared foundation API defaults use the
-  declared gateway common SDK root or managed gateway process. They must fail when a product server
+- Application launch tests `MUST` verify that shared foundation API defaults use the
+  declared gateway common SDK root or managed gateway process. They must fail when an application server
   silently defaults to direct appbase, Drive, Notary, RTC, Agent/Kernel, AIoT, commerce, or other
   foundation module service URLs while the shared gateway declares that surface.
 - Gateway integration tests `MUST` verify that foundation API Cargo features resolve through

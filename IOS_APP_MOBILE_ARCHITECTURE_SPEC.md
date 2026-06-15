@@ -204,7 +204,7 @@ Rules:
 - iOS app packages `MUST` consume `/app/v3/api` through generated Swift app SDK clients or approved iOS appbase wrappers.
 - iOS admin packages, when approved as `backend-admin` surfaces, `MUST` consume `/backend/v3/api` through generated Swift backend SDK clients or approved backend wrappers.
 - Runtime/bootstrap `MUST` construct generated Swift SDK clients, appbase SDK clients or wrappers, a global token-manager equivalent, token/context stores, and iOS host adapters before feature services are initialized.
-- The global token-manager equivalent must be shared by appbase app SDK, every authenticated product/dependency app-api SDK client, and explicit `backend-admin` appbase backend/product backend/dependency backend SDK clients.
+- The global token-manager equivalent must be shared by appbase app SDK, every authenticated application/dependency app-api SDK client, and explicit `backend-admin` appbase backend/application backend/dependency backend SDK clients.
 - Missing Swift SDK methods must be fixed in OpenAPI/generator inputs and regenerated. iOS packages must not fill gaps with raw URLSession calls, manual headers, copied TypeScript/Flutter/Kotlin wrappers, or local DTO forks.
 - Logout and refresh failure must clear keychain/secure storage, token manager, context store, sensitive iOS state, and realtime/session bridges.
 

@@ -198,8 +198,8 @@ Rules:
 - A `rust-route-crate` component `MUST` use a component name and Cargo package name that follow
   `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or
   `sdkwork-router-<capability>-backend-api`.
-- A `rust-route-crate` component root `SHOULD` follow
-  `packages/sdkwork-router-<capability>-<surface>/`.
+- A `rust-route-crate` component root `MUST` follow
+  `crates/sdkwork-router-<capability>-<surface>/`.
 - A `rust-route-crate` component `MUST` declare `contracts.routeManifest` and must not declare
   generated SDK clients in `contracts.sdkClients`.
 - A `rust-route-crate` component manifest `MUST` include `API_SPEC.md`,
@@ -238,19 +238,19 @@ Rules:
   base URL key. Component specs may summarize those prefixes on the service dependency entry with
   an `apiPrefixes` array, but must not invent prefix-specific service ids that do not correspond to
   a real upstream service boundary.
-- Product application component specs that consume shared foundation APIs through a gateway `MUST`
+- Application component specs that consume shared foundation APIs through a gateway `MUST`
   identify the gateway application, target mode, common SDK root env key, gateway base URL or bind
-  env keys when applicable, and any legacy compatibility product-local aggregation components.
+  env keys when applicable, and any governed application-local aggregation components pending removal.
   Local launch scripts must be covered by tests that prove the default dependency upstream points to
   the shared gateway root or a managed gateway process; direct dependency module URLs are split-mode
-  overrides, not the product integration standard.
-- Product application component specs `MUST` distinguish product-owned API roots from dependency
-  SDK roots. A `foundationApiGateway` declaration must not imply that product app-api, backend-api,
-  or open-api surfaces are served by the gateway unless the product exposes them as declared gateway
+  overrides, not the application integration standard.
+- Application component specs `MUST` distinguish application-owned API roots from dependency
+  SDK roots. A `foundationApiGateway` declaration must not imply that application-owned app-api, backend-api,
+  or open-api surfaces are served by the gateway unless the application exposes them as declared gateway
   dependency surfaces.
-- Legacy product-local foundation adapters in component specs `MUST` be marked as explicit
-  compatibility only and must not be declared as default same-origin dependency surface coverage
-  when the shared gateway is the target runtime.
+- Existing governed application-local foundation adapters in component specs `MUST` be marked as
+  removal-bound exceptions and must not be declared as default same-origin dependency surface
+  coverage when the shared gateway is the target runtime.
 
 ## 5. Discovery Rules
 

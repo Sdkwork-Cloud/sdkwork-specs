@@ -216,7 +216,7 @@ Rules:
 - Android app packages `MUST` consume `/app/v3/api` through generated Kotlin/Java app SDK clients or approved Android appbase wrappers.
 - Android admin packages, when approved as `backend-admin` surfaces, `MUST` consume `/backend/v3/api` through generated Kotlin/Java backend SDK clients or approved backend wrappers.
 - Runtime/bootstrap `MUST` construct generated Kotlin/Java SDK clients, appbase SDK clients or wrappers, a global token-manager equivalent, token/context stores, and Android host adapters before feature services are initialized.
-- The global token-manager equivalent must be shared by appbase app SDK, every authenticated product/dependency app-api SDK client, and explicit `backend-admin` appbase backend/product backend/dependency backend SDK clients.
+- The global token-manager equivalent must be shared by appbase app SDK, every authenticated application/dependency app-api SDK client, and explicit `backend-admin` appbase backend/application backend/dependency backend SDK clients.
 - Missing Kotlin/Java SDK methods must be fixed in OpenAPI/generator inputs and regenerated. Android packages must not fill gaps with raw OkHttp/Retrofit calls, manual headers, copied TypeScript/Flutter wrappers, or local DTO forks.
 - Logout and refresh failure must clear secure platform storage, token manager, context store, sensitive Android state, and realtime/session bridges.
 

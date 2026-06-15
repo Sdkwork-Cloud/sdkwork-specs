@@ -63,7 +63,7 @@ Rust RPC is split into foundation, generated proto, server adapter, and optional
 ### 3.1 Foundation RPC Crate
 
 ```text
-packages/native-rust/foundation/sdkwork-rpc-core-rust/
+crates/sdkwork-rpc-core-rust/
   Cargo.toml
   src/lib.rs
   src/context.rs
@@ -95,12 +95,12 @@ Rules:
 ### 3.2 Domain Proto Crates
 
 ```text
-packages/native-rust/iam/sdkwork-iam-rpc-proto-rust/
+crates/sdkwork-iam-rpc-proto-rust/
   Cargo.toml
   build.rs
   src/lib.rs
 
-packages/native-rust/commerce/sdkwork-commerce-rpc-proto-rust/
+crates/sdkwork-commerce-rpc-proto-rust/
   Cargo.toml
   build.rs
   src/lib.rs
@@ -134,7 +134,7 @@ Rules:
 ### 3.3 Domain RPC Server Crates
 
 ```text
-packages/native-rust/iam/sdkwork-iam-rpc-rust/
+crates/sdkwork-iam-rpc-rust/
   Cargo.toml
   src/lib.rs
   src/server.rs
@@ -145,7 +145,7 @@ packages/native-rust/iam/sdkwork-iam-rpc-rust/
   src/backend/
   tests/iam_rpc_contract.rs
 
-packages/native-rust/commerce/sdkwork-commerce-rpc-rust/
+crates/sdkwork-commerce-rpc-rust/
   Cargo.toml
   src/lib.rs
   src/server.rs
@@ -359,7 +359,7 @@ Standard interceptor responsibilities:
 Rules:
 
 - Context mapping MUST reject any metadata or payload value that attempts to override token-derived context.
-- IAM metadata, token, and AppContext validation MUST follow `IAM_LOGIN_INTEGRATION_SPEC.md`; RPC adapters validate context and dispatch to runtime services, but do not create product-local login/session flows.
+- IAM metadata, token, and AppContext validation MUST follow `IAM_LOGIN_INTEGRATION_SPEC.md`; RPC adapters validate context and dispatch to runtime services, but do not create application-local login/session flows.
 - Metadata parsing MUST be case-insensitive where gRPC metadata semantics require it, but SDKWork code should emit lowercase keys.
 - Interceptors MUST NOT perform business authorization alone; service/runtime authorization still applies.
 
@@ -478,8 +478,8 @@ Required tests for every domain RPC crate:
 Example commands:
 
 ```text
-cargo test --manifest-path apps/sdkwork-appbase/packages/native-rust/iam/sdkwork-iam-rpc-rust/Cargo.toml
-cargo test --manifest-path apps/sdkwork-commerce/packages/native-rust/commerce/sdkwork-commerce-rpc-rust/Cargo.toml
+cargo test -p sdkwork-iam-rpc-rust
+cargo test -p sdkwork-commerce-rpc-rust
 ```
 
 ## 14. Environment And Deployment

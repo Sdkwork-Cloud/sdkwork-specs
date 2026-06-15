@@ -387,7 +387,7 @@ Rules:
 - App and mobile console packages `MUST` use generated TypeScript app SDK clients or approved appbase app wrappers for `/app/v3/api`.
 - Mobile admin packages, when approved as `backend-admin` surfaces, `MUST` use generated TypeScript backend SDK clients or approved backend wrappers for `/backend/v3/api`.
 - Packages without `h5-admin` are non-admin for SDK selection. They `MUST` use generated app SDK clients or approved app SDK wrappers and `MUST NOT` import, export, construct, proxy, or route through backend SDK clients, appbase backend SDK clients, backend wrappers, backend generated SDK packages, or backend base URL resolvers.
-- Runtime/bootstrap `MUST` create one global TokenManager per authenticated session context and bind it to appbase app SDK, product/dependency app SDKs, Drive app SDK, IM app SDK, and other authenticated dependency app SDKs.
+- Runtime/bootstrap `MUST` create one global TokenManager per authenticated session context and bind it to appbase app SDK, application/dependency app SDKs, Drive app SDK, IM app SDK, and other authenticated dependency app SDKs.
 - Explicit `backend-admin` H5 admin packages may receive backend SDK clients through `h5-admin-core`; those clients must not be exported through `h5-core`.
 - Protected open-api clients, when used from H5 packages, `MUST` be injected with their approved API key credential provider. They `MUST NOT` be added to app/backend token-manager client lists.
 - H5 token storage should prefer server-managed httpOnly cookie architectures when available. If browser session/local storage is used, the security risk and clearing behavior must be documented.
@@ -578,7 +578,7 @@ Acceptance checklist:
 - [ ] Root `src/` remains thin.
 - [ ] Packages use the `h5` segment and split core, commons, shell, capability, optional console/admin, and Capacitor host responsibilities.
 - [ ] App/console/admin routes, SDK clients, permissions, i18n, and tests are separated.
-- [ ] `h5-core` exports product app SDK and appbase app SDK wrappers needed by the frontend app, and does not export backend SDK wrappers.
+- [ ] `h5-core` exports the application-owned app SDK and appbase app SDK wrappers needed by the frontend app, and does not export backend SDK wrappers.
 - [ ] Backend SDK and appbase backend SDK wrappers are available only from `h5-admin-core` or an equivalent `backend-admin` boundary.
 - [ ] Route ids align with `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
 - [ ] SDK clients and appbase IAM runtime are created in bootstrap/core and injected.

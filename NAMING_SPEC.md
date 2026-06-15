@@ -53,6 +53,13 @@ Rules:
 | Shared Harmony native package | `sdkwork-<capability>-harmony-native` | `sdkwork-order-harmony-native` |
 | Backend/admin React package | `@sdkwork/react-backend-<domain>` | `@sdkwork/react-backend-commerce` |
 | Route crate package | `sdkwork-router-<capability>-<surface>` | `sdkwork-router-product-app-api` |
+| Rust service crate | `sdkwork-<domain>-<capability>-service` | `sdkwork-drive-node-service` |
+| Rust SQLx repository crate | `sdkwork-<domain>-<capability>-repository-sqlx` | `sdkwork-drive-node-repository-sqlx` |
+| Rust API server crate | `sdkwork-<app>-api-server` | `sdkwork-drive-api-server` |
+| Rust service host crate | `sdkwork-<app>-service-host` | `sdkwork-drive-service-host` |
+| Rust native host crate | `sdkwork-<app>-native-host` or `sdkwork-<app>-tauri-host` | `sdkwork-drive-native-host` |
+| Rust worker crate | `sdkwork-<domain>-<capability>-worker` | `sdkwork-drive-maintenance-worker` |
+| Rust gateway crate | `sdkwork-<app>-gateway` | `sdkwork-drive-gateway` |
 | Open API authority | `sdkwork-<domain>-open-api` | `sdkwork-im-open-api` |
 | App API authority | `sdkwork-<domain>-app-api` | `sdkwork-commerce-app-api` |
 | Backend API authority | `sdkwork-<domain>-backend-api` | `sdkwork-commerce-backend-api` |
@@ -71,7 +78,9 @@ Rules:
 
 Rules:
 
-- Rust packages use kebab-case; Rust modules and imports use snake_case.
+- Rust packages use kebab-case and Rust modules/imports use snake_case. Rust crate names must use
+  the responsibility-specific families from `RUST_CODE_SPEC.md`, such as `service`,
+  `repository-sqlx`, `api-server`, `service-host`, `native-host`, `worker`, or `gateway`.
 - Java packages use lowercase dotted names under an approved SDKWork root; Java classes use PascalCase.
 - TypeScript packages use kebab-case or approved scoped names; exported types/classes/components use PascalCase; functions and variables use camelCase.
 - Dart and Flutter package names use lowercase snake_case; SDKWork Flutter mobile packages use the `sdkwork_<product>_flutter_mobile_<capability>` family from `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`.
@@ -159,6 +168,38 @@ Rules:
 - Optional `core`, `commons`, `shell`, `console-core`, `console-shell`, `admin-core`, `admin-shell`, and `host` suffixes are reserved role names inside each client root package family.
 - The `<capability>` token is the concrete business module token. It `MUST` use canonical domain/capability vocabulary and `MUST NOT` be a catch-all such as `common`, `misc`, `manager`, `backend`, `console`, or `admin`.
 
+## 4.3 Rust Crate Responsibility Naming
+
+Rust crate names must describe engineering responsibility, not a vague application tier.
+
+Rules:
+
+- `sdkwork-<domain>-<capability>-service` owns business rules, use cases, domain models, commands,
+  results, and service ports.
+- `sdkwork-<domain>-<capability>-repository-sqlx` owns SQLx database access for a service-defined
+  repository port.
+- `sdkwork-router-<capability>-<surface>` owns HTTP route adaptation for one capability and one
+  surface. `<surface>` is normally `open-api`, `app-api`, or `backend-api`.
+- `sdkwork-<app>-api-server` owns an HTTP server process that mounts route crates and listens on
+  HTTP.
+- `sdkwork-<app>-service-host` owns an in-process service container and must not mount HTTP routes.
+- `sdkwork-<app>-native-host` and `sdkwork-<app>-tauri-host` own native/Tauri command and platform
+  adapter boundaries.
+- `sdkwork-<domain>-<capability>-worker` owns background jobs, schedulers, queues, maintenance
+  loops, retries, locks, and cursors.
+- `sdkwork-<app>-gateway` owns upstream routing, route precedence, proxy behavior, and dependency
+  API surface aggregation.
+- The following Rust crate names are forbidden and are not compatibility exceptions:
+  `sdkwork-<app>-product`, `sdkwork-<app>-runtime`,
+  `sdkwork-<domain>-<capability>-runtime`, `sdkwork-<app>-backend`,
+  `sdkwork-<app>-core`, `sdkwork-<app>-common`, `sdkwork-<app>-manager`, and
+  `sdkwork-<app>-server-runtime`.
+- A business capability may be named `product` when the domain actually owns product/catalog
+  behavior, for example `sdkwork-commerce-product-service`. The forbidden form is using `product`
+  as the application entrypoint or runtime suffix, such as `sdkwork-drive-product`.
+- Repositories must not preserve forbidden Rust crate names through wrapper crates, package aliases,
+  feature aliases, or public re-export aliases.
+
 ## 5. Component Naming
 
 Rules:
@@ -175,11 +216,15 @@ Rules:
 - If two names differ only by legacy aliases, case, pluralization, or omitted surface, choose the canonical name and document migration.
 - Compatibility wrappers may preserve old imports during migration, but new public contracts use canonical names.
 - Breaking renames require `GOVERNANCE_SPEC.md` approval and migration notes.
+- Renaming a forbidden Rust crate to its responsibility-specific name may need a migration/release
+  plan, but the final compliant state must remove the forbidden crate name and all public aliases.
 
 ## 7. Acceptance Checklist
 
 - [ ] Domain and capability names are canonical.
 - [ ] Package, route crate, SDK family, and API authority names follow the required patterns.
+- [ ] Rust crate names use responsibility-specific families and do not use forbidden generic
+      `product`, `runtime`, `backend`, `core`, `common`, or `manager` suffixes.
 - [ ] Client app packages use the required PC, H5, Flutter, mini program, Android native, iOS native, or Harmony native architecture segment and reserved role names.
 - [ ] Component manifests use matching names.
 - [ ] Database identifiers follow `DATABASE_SPEC.md`.

@@ -382,7 +382,7 @@ Rules:
 - Runtime config `SHOULD` allow one browser-visible public SDK root, for example `PORTAL_PUBLIC_SDK_BASE_URL`, and derive standard open-api, app-api, and backend-api public runtime URLs from it. Applications `MAY` also expose per-surface or per-SDK public override keys such as `PORTAL_PUBLIC_OPEN_API_BASE_URL`, `PORTAL_PUBLIC_APP_API_BASE_URL`, `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, or dependency-specific keys.
 - Bootstrap `MUST` classify every SDK before constructing feature services: authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, public open-api, local/native, or test fake. The presence of `backendApiBaseUrl` alone is not permission to construct a backend SDK client.
 - Token providers for app-api and backend-api SDKs `MUST` support both `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>`.
-- In an authenticated application session context, every app-api SDK client and every explicit `backend-admin` backend-api SDK client `MUST` receive credentials from the same global `TokenManager`. This includes appbase app SDKs, product/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, product/dependency backend SDKs, and approved composed wrappers backed by those SDKs.
+- In an authenticated application session context, every app-api SDK client and every explicit `backend-admin` backend-api SDK client `MUST` receive credentials from the same global `TokenManager`. This includes appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, application/dependency backend SDKs, and approved composed wrappers backed by those SDKs.
 - Server service-context runtimes that do not represent a user login session `MUST` use one request/service credential provider per service context. They must not create per-domain or per-SDK credential providers for calls that share the same context.
 - App-api and backend-api SDK clients `MUST NOT` receive `authToken`, `accessToken`, or `refreshToken` through environment variables, public runtime config, feature flags, app manifests, or per-call manual headers.
 - `Access-Token` is the canonical access isolation header. Generated SDKs, runtime adapters, server guards, and tests must not introduce aliases such as `X-Access-Token`, `access_token` query parameters, or product-specific access headers.
@@ -419,15 +419,15 @@ Rules:
   web gateway upstream must default to that common gateway root for foundation surfaces; direct
   dependency module URLs are per-surface overrides for explicit split deployments and must not be
   hidden as the default.
-- A common dependency gateway root does not collapse product-owned SDK roots. Product
+- A common dependency gateway root does not collapse application-owned SDK roots. Application-owned
   `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` may remain same-origin or otherwise
-  product-owned while dependency SDK base URLs derive from the shared gateway root.
-- Product-local runtime env `MUST NOT` materialize per-module foundation upstream defaults beside a
+  application-owned while dependency SDK base URLs derive from the shared gateway root.
+- Application-local runtime env `MUST NOT` materialize per-module foundation upstream defaults beside a
   configured shared gateway root. Appbase, Drive, commerce, search, voice, image, comments, course,
   messaging, or other foundation module URLs are explicit split overrides only.
-- Launch/config tests for products that consume a shared foundation gateway `MUST` prove dependency
-  SDK defaults derive from the gateway root while product-owned app/backend/open SDK base URLs remain
-  product-owned.
+- Launch/config tests for applications that consume a shared foundation gateway `MUST` prove dependency
+  SDK defaults derive from the gateway root while application-owned app/backend/open SDK base URLs remain
+  application-owned.
 - When dependency API surfaces overlap by prefix, runtime config or the component spec `MUST`
   describe the route precedence that the gateway enforces. Specific dependency patterns and fixed
   IAM/provider routes resolve before broad fallback prefixes. Foundation prefixes such as Drive,
@@ -439,7 +439,7 @@ Rules:
 - Same-origin dependency surface config `MUST` name only production-capable routers, controllers,
   service adapters, or upstreams as verified coverage. Demo routers, mock servers, fixture stores,
   hard-coded IAM tenants/users/organizations/API keys, or seed-only responses are valid only in
-  explicitly marked tests and must not enable product same-origin SDK base URL inheritance.
+  explicitly marked tests and must not enable application same-origin SDK base URL inheritance.
 - `dependencyApiSurfaces` entries with `runtimeMode: "external-service"` `MUST` set
   `sameOriginAllowed: false` and provide `requiredBaseUrlKey` or another deterministic pointer to
   `sdkBaseUrls.dependencySdkBaseUrls[<sdkFamily>]`.
@@ -450,18 +450,18 @@ Rules:
   unverified, SDK client bootstrap `MUST` require the dependency-specific base URL from
   `sdkBaseUrls.dependencySdkBaseUrls`, a common `sdkBaseUrl` that explicitly represents a gateway
   serving that dependency surface, or an equivalent env/runtime config key and must fail fast before
-  constructing a client with the product-owned base URL.
+  constructing a client with the application-owned base URL.
 - Runtime bootstrap `MUST` compare `dependencyApiExports` with `dependencyApiSurfaces`. Any export
   with `runtimeRequired: true` must have either verified same-origin coverage or a configured
   dependency-specific base URL before feature services are constructed.
-- `backend-admin` dependency SDKs `MUST` not inherit a browser-visible product backend base URL unless
+- `backend-admin` dependency SDKs `MUST` not inherit a browser-visible application backend base URL unless
   the `backend-admin` UI is allowed to call that surface and runtime mount coverage proves every
   dependency-owned method/path is served at that same origin. They `MAY` use a common SDK root only
   when that root is explicitly configured as a gateway serving the dependency backend surface, not
-  merely because the product backend SDK has a default `/backend/v3/api` URL.
+  merely because the application-owned backend SDK has a default `/backend/v3/api` URL.
 - For appbase backend-admin IAM, `PORTAL_PUBLIC_SDK_BASE_URL` may derive
   `PORTAL_PUBLIC_APPBASE_BACKEND_API_BASE_URL` only when it is a gateway that serves
-  `/backend/v3/api/iam/*`. A product backend default such as
+  `/backend/v3/api/iam/*`. An application backend default such as
   `PORTAL_PUBLIC_BACKEND_API_BASE_URL` or `VITE_CLAWROUTER_BACKEND_API_BASE_URL` may be used for
   `@sdkwork/appbase-backend-sdk` only when `dependencyApiSurfaces` records verified same-origin
   mount coverage for a production-capable appbase backend IAM router/controller/service adapter.
@@ -614,7 +614,7 @@ Rules:
 - [ ] Apps with PostgreSQL development support provide `.env.postgres.example` and ignore `.env.postgres`.
 - [ ] SDK clients are constructed in bootstrap from one common SDK base URL plus per-surface/per-SDK overrides, with separate effective open-api, app-api, and `backend-admin` backend-api URLs where those surfaces are consumed.
 - [ ] SDK inventory classifies every consumed SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, public open-api, local/native, or test fake before services are constructed.
-- [ ] Appbase app SDKs, product/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, product/dependency backend SDKs, and approved composed wrappers in the same authenticated application session receive the same global `TokenManager`; server service-context runtimes use one request/service credential provider per service context.
+- [ ] Appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, application/dependency backend SDKs, and approved composed wrappers in the same authenticated application session receive the same global `TokenManager`; server service-context runtimes use one request/service credential provider per service context.
 - [ ] Protected open-api SDKs receive API key credentials through a separate provider and are not placed in login TokenManager client lists.
 - [ ] Runtime config contains SDK base URL values and token-manager behavior, but does not contain actual auth/access/refresh tokens or raw API keys.
 - [ ] Runtime config contains only i18n locale strategy and catalog manifest references, not translated message content or monolithic locale bundles.
@@ -623,10 +623,10 @@ Rules:
   `runtimeRequired: true` have verified same-origin `dependencyApiSurfaces` coverage or explicit
   dependency SDK base URL config before feature services are constructed.
 - [ ] Same-origin dependency API surfaces name an executable router/controller/service export and
-  have verified coverage before dependency SDK clients inherit product app/backend base URLs.
+  have verified coverage before dependency SDK clients inherit application app/backend base URLs.
 - [ ] Rust gateway dependency API surfaces, when used, name Cargo feature/dependency evidence that
   resolves through Cargo metadata instead of a separate gateway catalog.
-- [ ] Product runtime defaults route shared foundation API upstreams through the declared gateway
+- [ ] Application runtime defaults route shared foundation API upstreams through the declared gateway
   common SDK root or managed gateway process; direct dependency module URLs are explicit overrides.
 - [ ] Deployment mode and environment are explicit.
 - [ ] Desktop installed config defaults to user-private SQLite, while desktop-started backend service config uses the server PostgreSQL dev profile unless an explicit SQLite profile is selected.

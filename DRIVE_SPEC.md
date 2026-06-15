@@ -10,7 +10,7 @@ SDKWork Drive is the platform authority for files and object-storage-backed cont
 
 `MediaResource` is the cross-domain representation of a usable media/file resource. Drive owns the storage lifecycle behind it. Business modules own only their business relation to a Drive resource and, when useful, a `MediaResource` snapshot for read models and transport.
 
-Drive Uploader is the required upload capability for all SDKWork applications. Client applications such as PC browser/desktop/tablet, H5/Capacitor, Flutter, WeChat Mini Program, iOS, Android, and HarmonyOS clients use the generated `sdkwork-drive-app-sdk` high-level `client.uploader.*` surface. Server-side Rust services that generate, import, transform, or proxy bytes into SDKWork-owned storage use the Drive product Rust uploader component, normally `sdkwork_drive_product::application::uploader_service::DriveUploaderService` or an approved `sdkwork_drive_product::uploader` facade. These two entry points share one Drive uploader core so tenant, organization, user, anonymous actor, app, resource, profile, retention, and usage statistics remain complete.
+Drive Uploader is the required upload capability for all SDKWork applications. Client applications such as PC browser/desktop/tablet, H5/Capacitor, Flutter, WeChat Mini Program, iOS, Android, and HarmonyOS clients use the generated `sdkwork-drive-app-sdk` high-level `client.uploader.*` surface. Server-side Rust services that generate, import, transform, or proxy bytes into SDKWork-owned storage use the Drive server-side uploader service, normally from the `sdkwork-drive-uploader-service` crate (`sdkwork_drive_uploader_service` in Rust imports) or an approved Drive server-side uploader facade. These two entry points share one Drive uploader core so tenant, organization, user, anonymous actor, app, resource, profile, retention, and usage statistics remain complete.
 
 ## 1. Normative Language
 
@@ -262,7 +262,7 @@ Rules:
 
 ### 6.3 Drive Uploader App API
 
-Drive Uploader App API is the remote application upload adapter over the Drive product uploader service. It is required when browser, desktop renderer, H5/Capacitor, Flutter, mini-program, iOS, Android, HarmonyOS, or other non-in-process clients upload user-selected files into SDKWork-owned storage.
+Drive Uploader App API is the remote application upload adapter over the Drive server-side uploader service. It is required when browser, desktop renderer, H5/Capacitor, Flutter, mini-program, iOS, Android, HarmonyOS, or other non-in-process clients upload user-selected files into SDKWork-owned storage.
 
 Required route contract:
 
@@ -275,11 +275,11 @@ Required route contract:
 
 Rules:
 
-- Drive App API handlers `MUST` delegate to the Drive product uploader service or equivalent Drive-owned application service. They must not reimplement upload-space resolution, object-key planning, retention cleanup, part validation, or statistic recording in route code.
+- Drive App API handlers `MUST` delegate to the Drive server-side uploader service or equivalent Drive-owned application service. They must not reimplement upload-space resolution, object-key planning, retention cleanup, part validation, or statistic recording in route code.
 - The prepare request `MUST` carry enough attribution for Drive statistics: `tenantId`, optional `organizationId`, user or anonymous/system actor, `appId`, `appResourceType`, `appResourceId`, optional `scene`, optional `source`, `uploadProfileCode`, content metadata, target policy, and retention.
 - Raw `shareToken` is allowed only on prepare requests that target an explicit shared Drive folder. Drive must hash or otherwise protect the token before lookup and must not store or return the raw token.
-- Business product APIs that need an uploaded file `MUST` receive a Drive reference, Drive-backed `MediaResource`, or business relation id. They must not expose `/upload`, `/presign`, `/complete`, or file-part endpoints that duplicate Drive Uploader.
-- Server-side Rust code in the same trusted runtime should call the Drive product Rust uploader component directly instead of calling these App API routes over HTTP.
+- Business APIs that need an uploaded file `MUST` receive a Drive reference, Drive-backed `MediaResource`, or business relation id. They must not expose `/upload`, `/presign`, `/complete`, or file-part endpoints that duplicate Drive Uploader.
+- Server-side Rust code in the same trusted backend should call the Drive server-side uploader service directly instead of calling these App API routes over HTTP.
 
 ## 7. RPC Contract
 
@@ -362,7 +362,7 @@ avatar
 thumbnail
 ```
 
-Profile selection controls validation, default retention, chunk size, concurrency, checksum rules, content-type grouping, and post-processing hints. It must not create a separate upload implementation. A new profile requires a Drive governance/API/SDK update, not a product-local enum.
+Profile selection controls validation, default retention, chunk size, concurrency, checksum rules, content-type grouping, and post-processing hints. It must not create a separate upload implementation. A new profile requires a Drive governance/API/SDK update, not an application-local enum.
 
 Generated SDK output `MUST NOT` be hand-edited. If `client.uploader.*` cannot perform a required upload flow, update Drive OpenAPI, product service, App API adapter, and SDK composed layer, then regenerate and verify the SDK.
 
@@ -373,11 +373,11 @@ All SDKWork application uploads enter Drive through one of these modes:
 | Mode | Required entry point | Owns | Forbidden |
 | --- | --- | --- | --- |
 | Client upload from browser, desktop renderer, tablet, H5/Capacitor, Flutter, mini-program, iOS, Android, or HarmonyOS | `sdkwork-drive-app-sdk` high-level `client.uploader.*` | file picker integration, transient preview/progress, local resumable state, SDK calls | app-local presign code, raw Drive App API HTTP, provider SDK calls, object-key generation |
-| Server-side Rust upload for generated/imported/transformed bytes | `sdkwork_drive_product::application::uploader_service::DriveUploaderService` or approved `sdkwork_drive_product::uploader` facade | server byte source, actor/resource attribution, retention/profile choice, product-service call | calling `/app/v3/api/drive/uploader/*` over HTTP inside the same Rust backend, direct S3/OSS/MinIO/local file lifecycle |
-| Business API command that associates a file with a domain aggregate | product app/backend SDK command accepting Drive reference, Drive-backed `MediaResource`, or relation id | domain relation, business validation, authorization | duplicate `/upload`, `/presign`, `/complete`, upload-session, or file-part endpoints |
+| Server-side Rust upload for generated/imported/transformed bytes | `sdkwork-drive-uploader-service` crate or approved Drive server-side uploader facade | server byte source, actor/resource attribution, retention/profile choice, Drive service call | calling `/app/v3/api/drive/uploader/*` over HTTP inside the same Rust backend, direct S3/OSS/MinIO/local file lifecycle |
+| Business API command that associates a file with a domain aggregate | application-owned app/backend SDK command accepting Drive reference, Drive-backed `MediaResource`, or relation id | domain relation, business validation, authorization | duplicate `/upload`, `/presign`, `/complete`, upload-session, or file-part endpoints |
 | `backend-admin` provider, quota, policy, and diagnostic work | Drive backend SDK or Drive backend service | provider/policy/quota/admin lifecycle | using app upload flow for operator storage management |
 
-Every application product that uses upload must define canonical values for `appId`, `appResourceType`, `appResourceId`, `scene`, `source`, and allowed `uploadProfileCode` values in its local component spec, architecture spec, or runbook. These names must be stable enough for tenant, user, app, resource, and profile usage reports.
+Every upload-capable application must define canonical values for `appId`, `appResourceType`, `appResourceId`, `scene`, `source`, and allowed `uploadProfileCode` values in its local component spec, architecture spec, or runbook. These names must be stable enough for tenant, user, app, resource, and profile usage reports.
 
 Standard frontend flow:
 
@@ -406,12 +406,12 @@ Rules:
 
 ### 9.1 Server-Side Rust Upload
 
-Rust services that generate, import, transform, or receive trusted server-side bytes use the Drive product uploader service directly.
+Rust services that generate, import, transform, or receive trusted server-side bytes use the Drive server-side uploader service directly.
 
 Required service boundary:
 
 ```rust
-use sdkwork_drive_product::application::uploader_service::{
+use sdkwork_drive_uploader_service::service::{
     DriveUploaderService, PrepareUploaderUploadCommand, MarkUploaderPartUploadedCommand,
     UploaderActor, UploaderRetention, UploaderTarget,
 };
@@ -424,8 +424,8 @@ Rules:
 - Use `UploaderTarget::AutoUploadSpace` by default. Explicit target-space uploads require Drive permission validation; anonymous/external explicit target uploads require an active writer share-link token.
 - Use `UploaderRetention::LongTerm` for durable business files and `UploaderRetention::Temporary` for temporary imports, transient generated content, or expiring processing artifacts. Cleanup behavior is owned by Drive maintenance jobs.
 - Profile helpers such as `prepare_video_upload`, `prepare_image_upload`, or approved `upload_*_bytes` helpers are shortcuts only. They must delegate to the same profile-driven Drive Uploader core.
-- Rust services `MUST NOT` build object keys, create Drive upload sessions directly, maintain part facts, call storage providers directly, write app-local files as durable SDKWork content, or call Drive App API over HTTP when they can depend on the Drive product component.
-- External non-Rust services that cannot link the product component may use Drive App API or an approved generated Drive SDK, but they still follow the same attribution, profile, retention, and business-reference rules.
+- Rust services `MUST NOT` build object keys, create Drive upload sessions directly, maintain part facts, call storage providers directly, write app-local files as durable SDKWork content, or call Drive App API over HTTP when they can depend on the Drive server-side uploader service.
+- External non-Rust services that cannot link the Drive server-side uploader service may use Drive App API or an approved generated Drive SDK, but they still follow the same attribution, profile, retention, and business-reference rules.
 
 ### 9.2 Attribution And Statistics
 
@@ -608,10 +608,10 @@ New SDKWork code `MUST NOT` introduce:
 - Business APIs that return provider bucket/object identity as normal application DTOs.
 - Frontend services that bypass Drive SDK because a generated method is missing.
 - App-local uploader widgets, service facades, upload queues, resumable-state tables, or upload statistic counters that bypass `sdkwork-drive-app-sdk client.uploader.*`.
-- Server-side Rust services that upload SDKWork-owned files by calling S3/OSS/MinIO/local filesystem provider APIs directly instead of `DriveUploaderService` or an approved Drive product uploader facade.
-- Rust services in the same trusted backend that call `/app/v3/api/drive/uploader/*` over HTTP instead of using the Drive product Rust component.
+- Server-side Rust services that upload SDKWork-owned files by calling S3/OSS/MinIO/local filesystem provider APIs directly instead of `DriveUploaderService` or an approved Drive server-side uploader facade.
+- Rust services in the same trusted backend that call `/app/v3/api/drive/uploader/*` over HTTP instead of using the Drive server-side uploader service.
 - Business APIs that expose duplicate file upload, presign, upload-session, file-part, object-key, or completion endpoints for SDKWork-owned files.
-- Product-local upload profile enums that diverge from Drive standard profiles.
+- Application-local upload profile enums that diverge from Drive standard profiles.
 
 If a capability is missing in Drive, the standard fix is to add it to `sdkwork-drive`, update the Drive API/RPC contract, regenerate the Drive SDK, and then consume it from the business module.
 
@@ -635,10 +635,10 @@ Legacy compatibility is allowed only for already published external contracts wi
 - [ ] File/upload/object-storage lifecycle is owned by Drive.
 - [ ] Business schemas store `drive_space_id`, `drive_node_id`, `drive_uri`, or `MediaResource` snapshots, not provider object keys.
 - [ ] Client upload services use `sdkwork-drive-app-sdk client.uploader.*` and keep `File`, object URLs, local progress, local resumable state, and presigned URLs transient.
-- [ ] Server-side Rust uploads use `DriveUploaderService`, `PrepareUploaderUploadCommand`, or an approved Drive product uploader facade rather than HTTP App API calls or provider SDK calls.
-- [ ] Upload session preparation, part presign, part mark-uploaded, completion, abort, and download grants use Drive APIs, Drive SDKs, Drive RPC, or Drive product components.
+- [ ] Server-side Rust uploads use `DriveUploaderService`, `PrepareUploaderUploadCommand`, or an approved Drive server-side uploader facade rather than HTTP App API calls or provider SDK calls.
+- [ ] Upload session preparation, part presign, part mark-uploaded, completion, abort, and download grants use Drive APIs, Drive SDKs, Drive RPC, or Drive server-side components.
 - [ ] Every upload supplies tenant, organization when applicable, user/anonymous/system actor, `appId`, `appResourceType`, `appResourceId`, `scene`, `source`, profile, content metadata, target, and retention.
-- [ ] Upload profiles use Drive standard codes and do not fork product-local upload implementations.
+- [ ] Upload profiles use Drive standard codes and do not fork application-local upload implementations.
 - [ ] Usage/stat dashboards and quota reports aggregate from Drive uploader facts, not app-local counters.
 - [ ] Drive-backed `MediaResource` values use `uri = drive://spaces/{spaceId}/nodes/{nodeId}`.
 - [ ] Provider credentials, bucket names, object keys, and signed URLs do not leak into business DTOs or persisted business state.

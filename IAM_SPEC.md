@@ -41,10 +41,12 @@ Reusable IAM modules use layered packages so each application can switch generat
 | Service | `@sdkwork/iam-service` | Framework-independent IAM business facade over injected SDK clients |
 | Runtime | `@sdkwork/iam-runtime` | Environment/deployment config, token store, context store, auth header provider |
 | React | `@sdkwork/iam-react` | React provider and hooks over the IAM runtime |
-| Rust core | `sdkwork_iam_core` | Local/private Rust IAM context and token parity contracts |
-| Rust HTTP | `sdkwork_iam_http` | Local/private Rust route contract parity with Java app/backend APIs |
-| Rust storage | `sdkwork_iam_storage_sqlx` | Local/private Rust SQL migration and persistence contract |
-| Rust Tauri | `sdkwork_iam_tauri` | Tauri host adapter boundary for local/private IAM |
+| Rust IAM context | `sdkwork_iam_context_service` | Local/private Rust IAM context and token parity contracts |
+| Rust app-api route | `sdkwork_router_iam_app_api` | Local/private Rust app-api route contract parity with Java app APIs |
+| Rust backend-api route | `sdkwork_router_iam_backend_api` | Local/private Rust backend-api route contract parity with Java backend APIs |
+| Rust open-api route | `sdkwork_router_iam_open_api` | Local/private Rust open-api route contract parity when IAM exposes public integration APIs |
+| Rust SQLx directory repository | `sdkwork_iam_directory_repository_sqlx` | Local/private Rust SQL migration and persistence contract |
+| Rust Tauri host | `sdkwork_appbase_tauri_host` | Tauri host adapter boundary for local/private IAM |
 
 Rules:
 
@@ -235,8 +237,8 @@ Minimum app-api resources:
 | `messaging.verificationCodes` | `messaging.verificationCodes.create`, `messaging.verificationCodes.verify` |
 | `auth.passwordResetRequests` | `passwordResetRequests.create` |
 | `auth.passwordResets` | `passwordResets.create` |
-| `auth.oauthAuthorizationUrls` | `oauthAuthorizationUrls.retrieve` |
-| `auth.oauthSessions` | `oauthSessions.create` |
+| `oauth.authorizationUrls` | `oauth.authorizationUrls.create` |
+| `oauth.sessions` | `oauth.sessions.create` |
 | `iam.users.current` | `users.current.retrieve` |
 
 Minimum backend-api resources:

@@ -61,7 +61,7 @@ Desktop applications have two different persistence concerns:
 | --- | --- | --- |
 | Desktop local user data | SQLite | Native runtime, installed package, host-local user config |
 | Tablet local user data | SQLite or approved platform-local encrypted storage | Native runtime, installed package, platform app-private storage |
-| Service/backend runtime started by desktop development commands | PostgreSQL | Server/runtime service profile |
+| Explicit service/backend runtime started by desktop development commands | PostgreSQL | Server/runtime service profile |
 
 Rules:
 
@@ -72,15 +72,19 @@ Rules:
   SQLite or an approved encrypted platform-local storage adapter under the
   platform app-private directory. They `MUST NOT` write user state into generated
   native project directories.
-- Desktop/Tauri development commands that start the product service runtime,
-  such as `pnpm desktop:dev` or `pnpm tauri:dev`, `MUST` use the server
-  PostgreSQL development profile for the service/backend process.
+- Desktop/Tauri development commands that start the product service runtime
+  `MUST` use the server PostgreSQL development profile for the service/backend
+  process. Applications whose default desktop development commands are
+  gateway-backed client commands, such as SDKWork Claw Router
+  `pnpm desktop:dev` and `pnpm tauri:dev`, must keep product server startup on
+  explicit server commands.
 - The desktop shell must not infer that the service database is SQLite just
   because the deployment mode is `desktop`. The deployment mode describes shell
   behavior; the launched service profile describes backend persistence.
 - SQLite development entrypoints are allowed only as explicit local-data or
-  regression profiles, such as `pnpm tauri:dev:sqlite`; they must not replace
-  the default service/runtime PostgreSQL profile.
+  regression profiles, such as `pnpm server:dev:sqlite` or a documented
+  desktop-local validation command; they must not replace the default explicit
+  service/runtime PostgreSQL profile.
 - Feature UI and host adapters `MUST NOT` access either SQLite or PostgreSQL
   directly. They call services, SDKs, or local runtime APIs.
 
@@ -133,7 +137,7 @@ Rules:
 - The root PC app package owns web bootstrap and web build scripts.
 - Repositories that include a desktop app `MUST` expose top-level launch commands: `pnpm dev` starts the default PC renderer, and `pnpm tauri:dev` starts the default Tauri desktop shell.
 - The PC renderer dev command `MUST` use the same host and port as the Tauri `devUrl`, and it `MUST` fail on port conflicts instead of silently falling back to another port.
-- Existing backend or product server development commands `MUST` remain available under explicit names such as `pnpm dev:server`, `pnpm dev:postgres`, or `pnpm dev:sqlite` when `pnpm dev` is assigned to the desktop renderer.
+- Existing backend or application server development commands `MUST` remain available under explicit names such as `pnpm dev:server`, `pnpm dev:postgres`, or `pnpm dev:sqlite` when `pnpm dev` is assigned to the desktop renderer.
 - The desktop package owns Tauri CLI, Tauri config, Rust shell code, icons, permissions, and native bundle scripts.
 - The desktop package also owns iPadOS and Android tablet Tauri target metadata, generated native project directories, signing/runbook references, and target-specific capabilities.
 - The root PC app `MUST NOT` own Tauri native dependencies unless the app is intentionally single-package and documents that exception.
@@ -188,7 +192,7 @@ Rules:
 
 - Desktop apps `MUST` use the same generated SDK boundary as web apps.
 - Desktop IAM login/session integration `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`; Tauri may support host storage, OAuth/deep-link bridging, and local runtime lifecycle, but must not own business authentication.
-- Desktop runtime/bootstrap `MUST` follow `APP_SDK_INTEGRATION_SPEC.md`: construct appbase app SDK clients, product/dependency app SDK clients, explicit `backend-admin` backend SDK clients only when the desktop runtime owns a `backend-admin` surface, one global token manager, token/context stores, API key providers, and host adapters in one composition boundary.
+- Desktop runtime/bootstrap `MUST` follow `APP_SDK_INTEGRATION_SPEC.md`: construct appbase app SDK clients, application/dependency app SDK clients, explicit `backend-admin` backend SDK clients only when the desktop runtime owns a `backend-admin` surface, one global token manager, token/context stores, API key providers, and host adapters in one composition boundary.
 - Renderer appbase IAM runtime `MUST` own login, registration, current session, refresh, logout, verification, OAuth, QR auth, password reset, runtime metadata, current-user self-service, and token propagation to authenticated SDK clients.
 - SDK clients are constructed in bootstrap/core code and injected into service facades.
 - UI components `MUST NOT` create SDK clients, manually attach auth headers, parse JWTs for authorization, or call raw HTTP for business behavior.
@@ -285,9 +289,15 @@ pnpm tauri:android:build:prod
 
 Command rules:
 
-- `tauri:dev` uses the desktop development profile and may call `dev:server` for a launched backend service.
-- `tauri:dev:server` makes the backend service profile explicit when contributors need to debug the desktop plus service integration path.
-- `tauri:dev:sqlite` is the explicit local SQLite regression profile. It must not become the default server integration command.
+- `tauri:dev` uses the desktop development profile. It may remain client-only
+  when the application standard assigns default API serving to a shared
+  gateway.
+- `tauri:dev:server` or an equivalent explicit server command makes the backend
+  service profile explicit when contributors need to debug the desktop plus
+  service integration path.
+- `tauri:dev:sqlite`, `server:dev:sqlite`, or an equivalent documented command
+  is the explicit local SQLite regression profile. It must not become the
+  default server integration command.
 - `tauri:test:config` validates platform config merge, profile normalization, desktop/server split, secret absence, local path resolution, and test isolation.
 - `tauri:build:prod`, `tauri:ios:build:prod`, and `tauri:android:build:prod` must run release preflight before packaging.
 

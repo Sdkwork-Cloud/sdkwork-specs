@@ -382,7 +382,7 @@ Rules:
 - App capability packages may depend on `pc-core`, `pc-commons`, appbase wrappers, generated app SDK ports, and approved shared contracts.
 - Console packages may depend on `pc-console-core`, `pc-console-shell` public exports, `pc-core`, `pc-commons`, appbase wrappers, generated app SDK ports, and approved shared contracts. They `MUST NOT` depend on admin packages.
 - Admin packages may depend on `pc-admin-core`, `pc-admin-shell` public exports, `pc-core`, `pc-commons`, generated backend SDK ports, and approved shared contracts. They `MUST NOT` depend on app or console packages for business behavior.
-- `pc-core` SDK exports `MUST` include product app SDK and dependency app SDK wrappers needed by the app renderer, including appbase app SDK wrappers for appbase IAM, current user, workspace, contacts, address book, and user-visible IAM directory read/list/tree resources. `pc-core` `MUST NOT` export product backend SDK wrappers, appbase backend SDK wrappers, backend base URL resolvers, or backend generated SDK clients.
+- `pc-core` SDK exports `MUST` include the application-owned app SDK and dependency app SDK wrappers needed by the app renderer, including appbase app SDK wrappers for appbase IAM, current user, workspace, contacts, address book, and user-visible IAM directory read/list/tree resources. `pc-core` `MUST NOT` export application-owned backend SDK wrappers, appbase backend SDK wrappers, backend base URL resolvers, or backend generated SDK clients.
 - `pc-admin-core` or an equivalent `backend-admin` SDK subpath owns backend SDK and appbase backend SDK wrapper exports. App and console packages may not import that `backend-admin` SDK subpath.
 - Shell packages compose routes and layout. They `MUST NOT` own business services or hidden SDK clients.
 - Native host packages may depend on renderer build outputs and host adapter contracts. They `MUST NOT` directly depend on app, console, or admin business packages for workflow logic.
@@ -398,8 +398,8 @@ Rules:
 - App and console packages `MUST` use generated TypeScript app SDK clients or approved appbase app wrappers for `/app/v3/api`.
 - Admin packages are `backend-admin` packages and `MUST` use generated TypeScript backend SDK clients or approved backend wrappers for `/backend/v3/api`.
 - Packages without `pc-admin` are non-admin for SDK selection. They `MUST` use generated app SDK clients or approved app SDK wrappers and `MUST NOT` import, export, construct, proxy, or route through backend SDK clients, appbase backend SDK clients, backend wrappers, backend generated SDK packages, or backend base URL resolvers.
-- App and console packages that implement contacts, address books, organization trees, department trees, memberships, assignments, positions, or role-binding read views `MUST` use appbase app SDK resources or an approved app SDK wrapper. They `MUST NOT` use appbase backend SDK or product backend SDK for those user-visible directory workflows.
-- Admin packages may use appbase backend SDK for `backend-admin` IAM management and product backend SDK for operator resources. That permission does not extend to `pc-core`, app packages, or user-facing console packages.
+- App and console packages that implement contacts, address books, organization trees, department trees, memberships, assignments, positions, or role-binding read views `MUST` use appbase app SDK resources or an approved app SDK wrapper. They `MUST NOT` use appbase backend SDK or application-owned backend SDK for those user-visible directory workflows.
+- Admin packages may use appbase backend SDK for `backend-admin` IAM management and application-owned backend SDK for operator resources. That permission does not extend to `pc-core`, app packages, or user-facing console packages.
 - Protected open-api clients, when used from PC packages, `MUST` be injected with their approved API key credential provider. They `MUST NOT` be added to app/backend token-manager client lists.
 - Runtime/bootstrap `MUST` create one global TokenManager per authenticated session context and bind it to appbase app SDK clients, downstream authenticated app-api SDK clients, and explicit `backend-admin` backend-api SDK clients.
 - Appbase IAM runtime owns login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user self-service. Verification-code delivery and verification are messaging-owned app-api capabilities and must be injected through the generated messaging app SDK surface when auth flows need them.
@@ -556,7 +556,7 @@ Acceptance checklist:
 - [ ] Console packages are user-facing management console packages, not internal admin packages.
 - [ ] Admin packages are `backend-admin` internal company/staff backend packages, not user app packages.
 - [ ] App/console/admin routes, SDK clients, permissions, i18n, and tests are separated.
-- [ ] `pc-core` exports product app SDK and appbase app SDK wrappers needed by the frontend app, and does not export backend SDK wrappers.
+- [ ] `pc-core` exports the application-owned app SDK and appbase app SDK wrappers needed by the frontend app, and does not export backend SDK wrappers.
 - [ ] Backend SDK and appbase backend SDK wrappers are available only from `pc-admin-core` or an equivalent `backend-admin` boundary.
 - [ ] Root `src/` remains thin.
 - [ ] Browser public runtime config, desktop user config, server config, container config, and Tauri platform config are separated and validated for dev/test/staging/prod.

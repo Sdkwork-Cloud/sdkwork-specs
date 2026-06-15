@@ -164,7 +164,7 @@ Rules:
 - Runtime/bootstrap `MUST` construct generated app SDK clients, appbase IAM clients or wrappers, one global TokenManager equivalent, token/context stores, and host adapters.
 - Mini program login codes, phone-number grants, profile prompts, subscription permissions, and scene inputs are platform facts. They must be exchanged through approved app-api or appbase flows, not feature-local raw request calls.
 - Missing app SDK methods must be fixed in the owning app-api/OpenAPI/generator inputs and regenerated. Mini program packages must not fill gaps with raw request APIs, manual headers, or copied browser wrappers.
-- `appbaseApp`, optional `backend-admin` `appbaseBackend`, downstream product/dependency app-api SDK clients, and explicit `backend-admin` backend-api SDK clients must share the same authenticated session token manager or approved mini program equivalent.
+- `appbaseApp`, optional `backend-admin` `appbaseBackend`, downstream application/dependency app-api SDK clients, and explicit `backend-admin` backend-api SDK clients must share the same authenticated session token manager or approved mini program equivalent.
 - UI pages and components must not construct SDK clients, attach auth/API key headers, parse JWTs for authorization, or call raw platform request APIs for business transport.
 
 ## 6. Host Adapter Boundary
