@@ -2947,3 +2947,60 @@ let query = Query::new()
 - SoftDelete - 软删除
 - Versioned - 乐观锁
 - AutoTimestamp - 自动时间戳
+
+## 35. 数据库框架最佳实践
+
+### 35.1 Entity 设计原则
+
+1. **字段映射**
+   - Entity 字段 MUST 与数据库列名一致
+   - 使用 impl_entity! 宏自动生成映射代码
+   - 主键字段 MUST 是 i64 类型
+
+2. **通用字段**
+   - 使用 AutoTimestamp 自动管理 created_at 和 updated_at
+   - 使用 SoftDelete 实现软删除
+   - 使用 Versioned 实现乐观锁
+
+### 35.2 Repository 使用规范
+
+1. **CRUD 操作**
+   - 使用 impl_repository! 宏自动生成 Repository
+   - 简单 CRUD 使用 Repository 方法
+   - 复杂查询使用 Query 构建器或原生 SQL
+
+2. **查询优化**
+   - 使用 find_first() 替代 find_all().first()
+   - 使用 find_paginated() 进行分页查询
+   - 使用 count() 检查数据存在性
+
+### 35.3 通用类型使用
+
+| 类型 | 用途 | 使用场景 |
+|------|------|----------|
+| AutoTimestamp | 自动时间戳 | 所有需要审计的实体 |
+| SoftDelete | 软删除 | 需要保留历史数据的实体 |
+| Versioned | 乐观锁 | 并发更新场景 |
+| Pagination | 分页参数 | 列表查询 |
+| PaginatedResponse | 分页响应 | API 返回 |
+| QueryFilter | 查询过滤 | 复杂查询条件 |
+
+### 35.4 性能优化
+
+1. **连接池配置**
+   - 根据并发量设置合理的 max_connections
+   - 使用 acquire_timeout 避免连接等待过长
+   - 使用 idle_timeout 释放空闲连接
+
+2. **查询优化**
+   - 避免 SELECT *，只查询需要的列
+   - 使用索引优化查询
+   - 使用分页避免大量数据返回
+
+### 35.5 禁止事项
+
+- 禁止直接拼接 SQL
+- 禁止绕过 Repository 直接操作数据库
+- 禁止在 Entity 中包含业务逻辑
+- 禁止使用 SELECT * 查询大量数据
+- 禁止在循环中执行单条查询
