@@ -70,6 +70,9 @@ Rules:
 Release gate evidence should include:
 
 - manifest, deployment profile, runtime target, and package target validation.
+- application mode matrix coverage for every browser, desktop, server,
+  container/Docker-compatible, mobile, tablet, mini program, or test-runner
+  artifact in the release.
 - version and changelog evidence.
 - build artifact checksums.
 - signing evidence when required.

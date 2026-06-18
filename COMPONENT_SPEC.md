@@ -107,7 +107,7 @@ Rules:
 - `contracts.routeManifest` is used only by Rust HTTP route crate components. It points to the
   route crate manifest entrypoint or normalized `sdks/_route-manifests/<surface>/<packageName>.route-manifest.json`
   artifact, and it is not an SDK client list.
-- `contracts.sdkClients` lists generated SDK client classes or public SDK client exports only when the component owns a generated SDK family. It is not a runtime credential-injection list and `MUST NOT` be used as an IAM token-manager list, app/backend SDK injection list, or open-api API key provider list.
+- `contracts.sdkClients` lists generated SDK client classes or public SDK client exports only when the component owns a generated SDK family. It is not a runtime credential-injection list and `MUST NOT` be used as an IAM token-manager list, app/backend SDK injection list, or open-api credential provider list.
 - `contracts.sdkDependencies` lists dependency SDK families consumed by this component, SDK family,
   or composed facade. It `MUST` be an explicit array for every authored SDK family, composed facade,
   application core package, or runtime component that consumes dependency SDKs; use `[]` when there
@@ -123,7 +123,7 @@ Rules:
   `cargoFeature`, `cargoDependency`, and `embeddedExecutableExport`, when a Rust Cargo workspace
   owns the executable mount. These fields supplement native build-tool metadata; they must not
   duplicate into a standalone gateway catalog.
-- Runtime SDK injection and credential wiring `MUST` follow `CONFIG_SPEC.md`, `SDK_SPEC.md`, and `IAM_LOGIN_INTEGRATION_SPEC.md`: app-api/backend-api SDKs receive the global token manager, while protected open-api SDKs receive API key credentials through a separate provider when their contract declares API key mode.
+- Runtime SDK injection and credential wiring `MUST` follow `CONFIG_SPEC.md`, `SDK_SPEC.md`, and `IAM_LOGIN_INTEGRATION_SPEC.md`: app-api/backend-api SDKs receive the global token manager, while protected open-api SDKs receive credentials through a separate open-api credential provider matching their declared auth mode.
 - `verification.commands` must include at least one command that validates the component or the component specs inventory.
 
 ## 4. Component Types

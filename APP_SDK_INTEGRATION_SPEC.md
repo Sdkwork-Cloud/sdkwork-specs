@@ -18,7 +18,7 @@ Those packages implement the standard runtime shape: `createIamRuntime(...)` cre
 
 Applications normally consume a higher-level appbase auth runtime factory for their architecture, for example `@sdkwork/auth-runtime-pc-react` `createSdkworkAppbasePcAuthRuntime(...)` on PC React. The low-level `@sdkwork/iam-runtime` and `@sdkwork/iam-sdk-adapter` packages are appbase implementation details or approved wrapper internals. Application bootstrap code provides app identity, runtime config, generated SDK clients, the global TokenManager, and session bridge hooks to the high-level factory; it must not reassemble appbase IAM adapters locally when an architecture-level appbase runtime factory exists.
 
-Every SDKWork application uses this as the TokenManager closure rule: within one authenticated session context, every SDK client that sends SDKWork app-api or explicit `backend-admin` backend-api dual-token credentials `MUST` share the same `TokenManager` instance. This includes appbase app SDKs, application/dependency app SDKs such as Drive, Messaging, and IM, explicit `backend-admin` backend SDKs, and any approved composed wrapper backed by those SDKs. Public SDKs that need no credentials receive no token manager. Protected open-api SDKs that declare API key mode receive a separate API key credential provider and `MUST NOT` be added to the login TokenManager client list.
+Every SDKWork application uses this as the TokenManager closure rule: within one authenticated session context, every SDK client that sends SDKWork app-api or explicit `backend-admin` backend-api dual-token credentials `MUST` share the same `TokenManager` instance. This includes appbase app SDKs, application/dependency app SDKs such as Drive, Messaging, and IM, explicit `backend-admin` backend SDKs, and any approved composed wrapper backed by those SDKs. Public SDKs that need no credentials receive no token manager. Protected open-api SDKs receive separate credential providers matching their declared auth mode (`api-key`, `oauth`, or `open-api-flexible`) and `MUST NOT` be added to the login TokenManager client list.
 
 ## 1. Composition Model
 
@@ -195,7 +195,7 @@ Rules:
 - iOS native packages `MUST` use generated Swift SDK clients. They must not call TypeScript, Dart/Flutter, Kotlin/Java, ArkTS, or React wrappers.
 - Harmony native packages `MUST` use generated ArkTS/TypeScript SDK clients adapted for Harmony runtime or approved Harmony wrappers. They must not call React browser wrappers, Dart/Flutter wrappers, Kotlin/Java wrappers, or Swift wrappers.
 - Rust service and native runtime code that calls HTTP APIs directly `MUST` use generated Rust SDKs or approved Rust service clients. It must not embed frontend TypeScript SDK behavior.
-- Open-api SDKs use the credential mode declared by the open-api contract. Protected API-key open-api clients use API key providers, not the app login token manager.
+- Open-api SDKs use the credential mode declared by the open-api contract. Protected open-api clients use API key and/or OAuth bearer credential providers separate from the app login token manager.
 - Architecture-specific wrappers may normalize storage, platform lifecycle, or host integration, but they `MUST` remain thin wrappers over generated SDK resources and appbase runtime behavior.
 - Missing SDK methods `MUST` be fixed in the owning API contract, OpenAPI authority, generator inputs, and generated SDK family before the app integrates the capability.
 
@@ -252,7 +252,7 @@ Rules:
 - Application-owned app SDK, application-owned backend SDK, appbase app SDK, appbase backend SDK, Drive SDK, IM SDK, and other dependency SDK base URLs `SHOULD` be derived from one common SDK root when a single public gateway serves those SDK surfaces. Per-surface and per-SDK base URL overrides `MUST` remain available for split services, external dependency services, private dependency hosts, or tenant-specific routing.
 - A common SDK root is not the same as an arbitrary application `API_BASE_URL`. It must be a root/origin/path prefix that can safely derive standard SDK surface URLs by appending prefixes such as `/v1`, `/app/v3/api`, and `/backend/v3/api`; a surface URL such as `/v1` must not be reused as the root for app/backend SDKs.
 - Base URL config may come from private process env, public browser runtime env, or runtime TOML depending on target, but token values must never come from these config sources.
-- Runtime/bootstrap `MUST` build an SDK inventory before constructing feature services. The inventory classifies each SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, public open-api, local/native, or test fake.
+- Runtime/bootstrap `MUST` build an SDK inventory before constructing feature services. The inventory classifies each SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake.
 - The same `TokenManager` instance `MUST` be passed to `@sdkwork/appbase-app-sdk`, every application/dependency app SDK client, and only those `@sdkwork/appbase-backend-sdk`, application-owned backend SDK, or dependency backend SDK clients that are present in an explicit `backend-admin` authenticated SDK inventory.
 - App auth/login runtime for user-facing application sessions `MUST` construct appbase app SDK and downstream app SDK clients required for login/session/current-user/directory app-side behavior. It `MUST NOT` construct appbase backend SDK or application-owned backend SDK clients just because the application root also contains admin packages.
 - Generated SDK clients that support `setTokenManager(manager)` `MUST` receive the same instance during bootstrap. Generated SDK clients that accept `tokenManager` in a constructor `MUST` receive that same instance instead of a package-local manager.
@@ -374,7 +374,7 @@ Frontend applications compose UI packages, services, SDK clients, IAM runtime, a
 
 Rules:
 
-- Runtime/bootstrap constructs concrete SDK clients, the global token manager, appbase IAM runtime, API key providers, secure storage adapters, and host adapters.
+- Runtime/bootstrap constructs concrete SDK clients, the global token manager, appbase IAM runtime, open-api credential providers, secure storage adapters, and host adapters.
 - UI packages call hooks/services. Hooks/services call injected SDK clients or narrow service ports.
 - UI components `MUST NOT` construct SDK clients, parse tokens, set `Authorization`, set `Access-Token`, set `X-API-Key`, or call raw `fetch`/`axios` for app business.
 - Service facades should preserve generated SDK resource names unless they intentionally compose multiple SDK calls into a domain use case.
@@ -437,7 +437,7 @@ rg -n "createTokenManager\\(|new .*TokenManager|setAuthToken|setAccessToken" app
 - [ ] Runtime/bootstrap uses the approved high-level appbase auth runtime/factory for the architecture and does not locally wire low-level IAM SDK adapters in application code.
 - [ ] Runtime/bootstrap creates exactly one global `TokenManager` per authenticated session context.
 - [ ] Appbase app SDK, every application/dependency app SDK, explicit `backend-admin` appbase backend/application backend/dependency backend SDKs, and every approved composed wrapper backed by those SDKs share that same `TokenManager`.
-- [ ] Protected open-api SDKs that declare API key mode use a separate API key credential provider and are not placed in app/backend TokenManager client lists.
+- [ ] Protected open-api SDKs use a separate open-api credential provider matching their declared auth mode and are not placed in app/backend TokenManager client lists.
 - [ ] Login, registration, session, refresh, logout, QR/OAuth, password reset, runtime metadata, and current-user self-service use appbase app SDK resources, while verification-code delivery uses the generated messaging app SDK surface.
 - [ ] `backend-admin` IAM management uses appbase backend SDK and does not expose user-facing auth session creation.
 - [ ] Rust route crates and route aggregation follow the route crate -> API authority -> SDK family model.

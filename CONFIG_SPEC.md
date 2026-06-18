@@ -320,6 +320,46 @@ Rules:
   Direct `password` is allowed only when the process environment or config file
   is protected as a secret-bearing source.
 
+### 2.1 Runtime Target Authority
+
+`SdkworkRuntimeTarget` is the canonical runtime-target vocabulary for SDKWork
+application config, manifests, workflow targets, release evidence, topology
+fixtures, and validation. Other specs may reference this list but must not
+invent alternate deployment-mode values.
+
+| Runtime target | Runtime family | Config owner | Secret/session owner | Package/release notes |
+| --- | --- | --- | --- | --- |
+| `browser` | web/H5 renderer | public runtime config and browser bootstrap | browser token storage adapter only; no private secrets | Web URL or static web package; may be `cloud` or documented standalone/offline package. |
+| `desktop` | PC desktop host | desktop user config and native host config | OS secure storage or approved user-private secrets | Signed desktop installer or app bundle; defaults to standalone. |
+| `tablet-ipados` | PC tablet host | PC renderer config plus iPadOS/Tauri host config | iPadOS secure storage or approved host adapter | IPA/TestFlight/App Store/private package for large-screen tablet behavior. |
+| `tablet-android` | PC tablet host | PC renderer config plus Android/Tauri host config | Android secure storage or approved host adapter | APK/AAB/Play/private package for large-screen tablet behavior. |
+| `capacitor-ios` | H5 mobile host | H5 browser config plus Capacitor iOS host config | iOS secure storage through Capacitor adapter | IPA/TestFlight/App Store/private package. |
+| `capacitor-android` | H5 mobile host | H5 browser config plus Capacitor Android host config | Android secure storage through Capacitor adapter | APK/AAB/Play/private package. |
+| `flutter-ios` | Flutter mobile host | Flutter app config plus iOS host config | Flutter secure storage adapter backed by iOS facilities | IPA/TestFlight/App Store/private package. |
+| `flutter-android` | Flutter mobile host | Flutter app config plus Android host config | Flutter secure storage adapter backed by Android facilities | APK/AAB/Play/private package. |
+| `android-native` | native Android app | Android app config plus Gradle/manifest host config | Android secure storage or approved platform adapter | APK/AAB/Play/private package. |
+| `ios-native` | native iOS app | iOS app config plus Xcode/Swift package host config | iOS Keychain or approved platform adapter | IPA/TestFlight/App Store/private package. |
+| `harmony-native` | native HarmonyOS app | Harmony app config plus hvigor/ohpm host config | Harmony secure storage or approved platform adapter | Harmony package or store/private distribution artifact. |
+| `mini-program` | mini program host | mini program app config plus platform host config | platform session/storage adapter; no committed app secret | Platform upload/review/release package. |
+| `server` | service process | server runtime config | process secret manager or protected config file | Archive, OS service, or cloud service artifact. |
+| `container` | containerized service | mounted config, env, and platform secret manager | orchestrator secret manager or mounted secret files | OCI/Docker-compatible image, chart, manifest, or deployment bundle. |
+| `test-runner` | automated test runtime | generated test config | ephemeral test credentials only | Test evidence only; not a production package target. |
+
+Rules:
+
+- Validators `MUST` reject `mobile`, `native`, `web`, `docker`, `server`,
+  `desktop`, or `container` when they are used as deployment profiles. Only
+  exact `SdkworkRuntimeTarget` values may describe runtime targets.
+- Package profile values such as `mobile`, `tablet`, `desktop`, `server`, and
+  `container` are artifact taxonomy labels. They do not replace
+  `runtimeTarget`.
+- Docker-compatible artifacts use `runtimeTarget = "container"`. The word
+  `docker` may appear only in package format, tooling, provider, or operator
+  documentation.
+- H5 web and PC web both use `runtimeTarget = "browser"`. The app root and
+  `runtime.framework` distinguish `react`, `react-h5`, and other browser
+  architectures.
+
 ## 3. SDK Client Bootstrap
 
 Bootstrap creates SDK clients:
@@ -356,14 +396,14 @@ Rules:
 - Service modules receive constructed clients, not constructor details.
 - Runtime config selects SDK base URLs, dependency surfaces, and credential modes. It `MUST NOT` contain live tokens, raw API keys, or per-user session credential values.
 - Runtime config `SHOULD` allow one browser-visible public SDK root, for example `PORTAL_PUBLIC_SDK_BASE_URL`, and derive standard open-api, app-api, and backend-api public runtime URLs from it. Applications `MAY` also expose per-surface or per-SDK public override keys such as `PORTAL_PUBLIC_OPEN_API_BASE_URL`, `PORTAL_PUBLIC_APP_API_BASE_URL`, `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, or dependency-specific keys.
-- Bootstrap `MUST` classify every SDK before constructing feature services: authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, public open-api, local/native, or test fake. The presence of `backendApiBaseUrl` alone is not permission to construct a backend SDK client.
+- Bootstrap `MUST` classify every SDK before constructing feature services: authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake. The presence of `backendApiBaseUrl` alone is not permission to construct a backend SDK client.
 - Token providers for app-api and backend-api SDKs `MUST` support both `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>`.
 - In an authenticated application session context, every app-api SDK client and every explicit `backend-admin` backend-api SDK client `MUST` receive credentials from the same global `TokenManager`. This includes appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, application/dependency backend SDKs, and approved composed wrappers backed by those SDKs.
 - Server service-context runtimes that do not represent a user login session `MUST` use one request/service credential provider per service context. They must not create per-domain or per-SDK credential providers for calls that share the same context.
 - App-api and backend-api SDK clients `MUST NOT` receive `authToken`, `accessToken`, or `refreshToken` through environment variables, public runtime config, feature flags, app manifests, or per-call manual headers.
 - `Access-Token` is the canonical access isolation header. Generated SDKs, runtime adapters, server guards, and tests must not introduce aliases such as `X-Access-Token`, `access_token` query parameters, or product-specific access headers.
 - Bootstrap may expose `getAuthHeaders()` only for approved runtime bridges, local service calls, or tests. UI components and feature service facades must call SDK methods instead of assembling headers.
-- API key providers for protected open-api SDKs `MUST` be separate from the app login token manager. Raw API key values `MUST NOT` be stored in browser runtime env, app manifests, generated SDK docs, frontend bundles, logs, screenshots, or telemetry. Browser-facing open-api usage must be public, session-mediated, or backed by an approved short-lived credential flow.
+- Open-api credential providers for protected open-api SDKs `MUST` be separate from the app login token manager. API key and OAuth bearer secrets `MUST NOT` be stored in browser runtime env, app manifests, generated SDK docs, frontend bundles, logs, screenshots, or telemetry. Browser-facing open-api usage must be public, session-mediated, or backed by an approved short-lived credential flow.
 - Dependency SDK base URLs `MUST` be configured explicitly when they do not inherit the application common SDK root or a product app's verified same-origin defaults. Dependency-owned SDKs must not be regenerated or hard-coded into product SDK base URLs.
 - Dependency SDK base URLs may inherit the common `sdkBaseUrl` when that base URL is documented as a gateway/root that serves the dependency surface, or they may inherit a product same-origin app/backend default only when the
   application runtime declares `dependencyApiSurfaces` mount coverage for that dependency SDK
@@ -589,9 +629,9 @@ Rules:
 - [ ] Database env parsing maps `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE` to typed config and rejects `DATABASE_PROVIDER`/`DATABASE_SSLMODE`.
 - [ ] Apps with PostgreSQL development support provide `.env.postgres.example` and ignore `.env.postgres`.
 - [ ] SDK clients are constructed in bootstrap from one common SDK base URL plus per-surface/per-SDK overrides, with separate effective open-api, app-api, and `backend-admin` backend-api URLs where those surfaces are consumed.
-- [ ] SDK inventory classifies every consumed SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, public open-api, local/native, or test fake before services are constructed.
+- [ ] SDK inventory classifies every consumed SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake before services are constructed.
 - [ ] Appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, application/dependency backend SDKs, and approved composed wrappers in the same authenticated application session receive the same global `TokenManager`; server service-context runtimes use one request/service credential provider per service context.
-- [ ] Protected open-api SDKs receive API key credentials through a separate provider and are not placed in login TokenManager client lists.
+- [ ] Protected open-api SDKs receive credentials through a separate open-api credential provider matching their declared auth mode and are not placed in login TokenManager client lists.
 - [ ] Runtime config contains SDK base URL values and token-manager behavior, but does not contain actual auth/access/refresh tokens or raw API keys.
 - [ ] Runtime config contains only i18n locale strategy and catalog manifest references, not translated message content or monolithic locale bundles.
 - [ ] Dependency SDK base URLs are keyed by SDK family id and are injected during bootstrap instead of hard-coded in services.

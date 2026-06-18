@@ -49,7 +49,7 @@ Rules:
 - Raw `fetch`, `axios`, or handwritten HTTP clients are forbidden for SDKWork APIs when generated SDK methods exist.
 - Do not manually assemble `Authorization`, `Access-Token`, or `X-API-Key` headers in business modules.
 - Protected app-api/backend-api SDKs use the global TokenManager or equivalent credential hook.
-- Protected open-api SDKs use approved API key credential providers.
+- Protected open-api SDKs use approved open-api credential providers matching their declared auth mode.
 
 ## 4. Naming
 

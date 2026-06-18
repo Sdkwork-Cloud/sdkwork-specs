@@ -2,10 +2,15 @@
 
 - Version: 3.0
 - Scope: reusable runtime topology patterns referenced by `specs/topology.spec.json` `archetype`
-- Related: `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `DEPLOYMENT_SPEC.md`
+- Related: `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`
 
 Archetypes are normative templates. Application specs instantiate them with
 concrete deployment profiles, surfaces, binds, dependencies, and orchestration.
+They describe connectivity and service layout, not UI/application mode. Browser,
+desktop, tablet, mobile, mini program, server, container, and test targets are
+runtime targets governed by `CONFIG_SPEC.md` and `DEPLOYMENT_SPEC.md`; they do
+not require separate topology archetypes merely because the package runs on a
+different client host.
 
 **Naming:** all profile ids, surface ids, env keys, and plane names must match
 `APP_RUNTIME_TOPOLOGY_NAMING.md`.

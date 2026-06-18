@@ -323,12 +323,30 @@ Package ids must follow `NAMING_SPEC.md`:
 
 | Package type | Package id example | Source type | Package format | Platform |
 | --- | --- | --- | --- | --- |
+| Browser web URL | `web-universal-cloud-browser-web-url` | `WEB_URL` | `OTHER` | `WEB` |
 | H5 mobile URL | `h5-universal-cloud-mobile-web-url` | `WEB_URL` | `OTHER` | `H5` |
 | WeChat H5 URL | `h5-weixin-universal-cloud-mobile-web-url` | `WEB_URL` | `OTHER` | `H5_WEIXIN` |
+| Standalone server archive | `linux-x64-standalone-server-tar-gz` | `BINARY_URL` | `TAR_GZ` | `API` or `OTHER` |
+| Standalone or cloud container image | `container-x64-cloud-container-oci` | `CONTAINER_IMAGE` | `DOCKER_IMAGE` | `API` or `OTHER` |
+| Windows desktop installer | `windows-x64-standalone-desktop-msi` | `BINARY_URL` | `MSI` | `DESKTOP_WINDOWS` |
+| macOS desktop image | `macos-arm64-standalone-desktop-dmg` | `BINARY_URL` | `DMG` | `DESKTOP_MACOS` |
+| iPadOS tablet app | `ipados-universal-standalone-tablet-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
+| Android tablet app | `android-tablet-arm64-standalone-tablet-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
+| Capacitor iOS mobile app | `ios-universal-standalone-mobile-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
+| Capacitor Android mobile app | `android-arm64-standalone-mobile-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
+| Flutter iOS mobile app | `ios-universal-standalone-mobile-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
+| Flutter Android mobile app | `android-arm64-standalone-mobile-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
 | Android mobile app bundle | `android-arm64-standalone-mobile-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
 | iOS mobile app archive | `ios-universal-standalone-mobile-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
 | Harmony mobile app package | `harmony-arm64-standalone-mobile-other` | `BINARY_URL` or `APP_STORE` | `OTHER` until a backend package format enum for Harmony package artifacts is available; metadata must state the HAP/APP artifact kind | `APP_HARMONY` |
 | WeChat mini program package | `mp-weixin-universal-cloud-mini-program-mini-program-package` | `MINI_PROGRAM` | `MINI_PROGRAM_PACKAGE` | `MP_WEIXIN` |
+
+The package id profile segment is an artifact taxonomy segment, not
+`deploymentProfile` and not `runtime.family`. Standard package profiles are
+`browser`, `desktop`, `mobile`, `tablet`, `mini-program`, `server`,
+`container`, `worker`, `library`, and test-only profiles such as `test`. If a
+manifest stores an explicit package profile in metadata, it `MUST` match the
+profile segment parsed from the package id.
 
 Desktop packages must declare `architecture`. Recommended values are `x64`, `arm64`, `universal`, `all`, or `any`.
 
@@ -344,6 +362,44 @@ Rules:
   segment as required by `GITHUB_WORKFLOW_SPEC.md`.
 - Package metadata `MUST NOT` treat `server`, `container`, `desktop`, mobile,
   tablet, browser, or mini-program as deployment profiles.
+- Docker-compatible images use `runtimeTarget = "container"`. `docker` may
+  appear in `packageFormat = "DOCKER_IMAGE"` and operator documentation only,
+  not as a runtime target or deployment profile.
+- Example rows that share a package id represent alternative implementation
+  architectures for the same platform/package shape. One manifest `MUST NOT`
+  declare duplicate package ids; if one app ships multiple releasable artifacts
+  for the same platform, architecture, deployment profile, profile, and format,
+  it must use an explicit package variant as defined by `GITHUB_WORKFLOW_SPEC.md`.
+
+### 10.1 Package Runtime Consistency Matrix
+
+Manifest validators `MUST` enforce package consistency between backend
+platform enums, SDKWork deployment metadata, and runtime target vocabulary from
+`CONFIG_SPEC.md`.
+
+| Package/platform class | Required runtime target | Deployment profile rule | Package profile rule |
+| --- | --- | --- | --- |
+| `WEB`, `H5`, `H5_WEIXIN` web URL/static package | `browser` | Usually `cloud`; `standalone` requires a documented local/offline/private bundle | `browser` or `mobile` according to root architecture. |
+| `DESKTOP_WINDOWS`, `DESKTOP_MACOS`, `DESKTOP_LINUX` | `desktop` | `standalone` | `desktop`. |
+| iPadOS/Android tablet native package | `tablet-ipados` or `tablet-android` | `standalone` for packaged tablet apps | `tablet`. |
+| Capacitor mobile package | `capacitor-ios` or `capacitor-android` | `standalone` | `mobile`. |
+| Flutter mobile package | `flutter-ios` or `flutter-android` | `standalone` | `mobile`. |
+| Native Android/iOS/Harmony package | `android-native`, `ios-native`, or `harmony-native` | `standalone` | `mobile`. |
+| `MP_*` mini program package | `mini-program` | Usually `cloud`; `standalone` requires documented platform-local/private distribution | `mini-program`. |
+| Server archive/service package | `server` | `standalone` or `cloud` depending artifact role | `server`. |
+| Container or Docker-compatible image | `container` | `standalone` for single-container units; `cloud` for orchestrated images/bundles | `container`. |
+| Test-only package or fixture | `test-runner` | Not production deployable | `test` or equivalent test-only profile. |
+
+Rules:
+
+- The package id profile segment may stay broad, such as `mobile`, while
+  `runtimeTarget` and `runtime.framework` carry the exact implementation
+  architecture. Do not multiply package id profiles into
+  `flutter-mobile`, `capacitor-mobile`, or native-specific variants unless two
+  releasable artifacts would otherwise collide.
+- A package entry whose platform, package format, runtime target, deployment
+  profile, or runtime framework contradicts this matrix `MUST` fail manifest
+  validation.
 
 ## 11. Latest Download Resolution
 
@@ -477,6 +533,8 @@ The validator enforces:
 - package id uniqueness
 - valid supported/default deployment profiles
 - package deploymentProfile/runtimeTarget consistency
+- package runtime target/platform/package format consistency from the matrix in
+  this standard
 - required media icons, screenshots, and preview assets
 - store-grade icon, screenshot, and preview dimensions
 - desktop architecture
@@ -490,6 +548,18 @@ The validator enforces:
 - secret-key rejection in metadata and dev sections
 - strict unknown-field rejection to prevent schema drift
 - global `app.key` uniqueness across discovered app configs before batch export
+
+Schema and examples must stay aligned with validator behavior:
+
+- `apps/schemas/sdkwork.app.schema.v3.json` `MUST` declare the exact
+  `deploymentProfile` and `runtimeTarget` vocabularies used by this standard.
+- Manifest examples `MUST` include at least one package target for every
+  supported app mode family the example claims: browser, desktop, server,
+  container/Docker-compatible, mobile, tablet, mini program, and test-only
+  fixtures when present.
+- The validator, schema, full example, initializer, and PlusApp export
+  projection `MUST` be updated in the same change whenever this package matrix
+  changes.
 
 ## 16. New App Checklist
 

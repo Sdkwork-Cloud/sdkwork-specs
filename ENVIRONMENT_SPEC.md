@@ -14,7 +14,9 @@ Environment configuration must satisfy these goals:
 
 - One application can run in development, test, staging, and production without code changes.
 - `dev`, `test`, `staging`, and `prod` file profiles can be used by scripts while application runtime normalizes them to `development`, `test`, `staging`, and `production`.
-- One product can support `standalone` and `cloud` deployment profiles with explicit browser, H5, desktop, mobile-native, mini program, service/server, container, and test-runner runtime targets.
+- One product can support `standalone` and `cloud` deployment profiles with
+  explicit browser, H5, desktop, tablet, Capacitor, Flutter, native mobile,
+  mini program, service/server, container, and test-runner runtime targets.
 - Browser renderer, H5 mobile renderer, desktop native host, tablet native host, Capacitor host, Flutter host, mini program runtime, native Android host, native iOS host, native Harmony host, server process, container process, and test runner config are separated.
 - Server-side release deployments use PostgreSQL by default.
 - Desktop installs use SQLite by default in the SDKWork user private data directory defined by `RUNTIME_DIRECTORY_SPEC.md`.
@@ -297,6 +299,13 @@ one PC application root.
 
 Rules:
 
+- The runtime target table above is an exhaustive config profile matrix for
+  application runtime targets. Environment templates, TOML files, generated
+  public runtime JSON, native host config, and workflow env must use these
+  exact values from `CONFIG_SPEC.md`.
+- Docker-compatible deployments `MUST` declare `runtime_target = "container"`.
+  `docker` is allowed only as tooling/provider/package-format wording, not as
+  a runtime target or deployment profile value.
 - `pnpm dev` for a PC root starts the browser renderer unless the local app spec says otherwise.
 - `pnpm dev:server` starts the server process with the development server config profile.
 - `pnpm tauri:dev` starts the desktop shell and may also start a server process, but the server process reads the server development profile, not the installed desktop profile.
@@ -353,7 +362,8 @@ TokenManager.
 | Auth token | Appbase IAM session/login/refresh/current-session | `Authorization: Bearer <auth_token>` | Not allowed in env, `.env`, public runtime config, app manifest, or feature flags. |
 | Access token | Appbase IAM session/login/refresh/current-session | `Access-Token: <access_token>` | Not allowed in env, `.env`, public runtime config, app manifest, or feature flags. |
 | Refresh token | Appbase IAM refresh flow only | Not sent on business API requests | Not allowed in env or browser public runtime config. Storage is controlled by appbase IAM runtime. |
-| API key | API key provider for protected open-api SDKs | `X-API-Key` or declared scheme | Raw value may exist only in protected secret manager, server-side config, OS secure storage, or test fixture. Never in browser public runtime config. |
+| API key | Open-api credential provider for `api-key` or `open-api-flexible` mode | `X-API-Key` or declared scheme | Raw value may exist only in protected secret manager, server-side config, OS secure storage, or test fixture. Never in browser public runtime config. |
+| OAuth bearer | Open-api credential provider for `oauth` or `open-api-flexible` mode | `Authorization: Bearer <token>` | Raw value may exist only in protected secret manager, server-side config, OS secure storage, or test fixture. Never in browser public runtime config. |
 
 Rules:
 

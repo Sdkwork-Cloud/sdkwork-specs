@@ -260,7 +260,7 @@ Rules:
 - Route crates `MUST` mount routers through framework helpers such as `with_web_request_context` and `MUST` declare `WebRequestContext` on every handler.
 - API server crates `MUST` assemble the standard 18-stage chain through `sdkwork-web-bootstrap` or an equivalent documented framework bootstrap API.
 - Route crates, API servers, gateways, and controller packages `MUST NOT` assemble ad hoc Axum/Tower security stacks, custom credential parsers, local Spring filter frameworks, or parallel request-context types that bypass the framework profile.
-- Business adapters such as appbase IAM `MUST` implement framework extension traits (`WebRequestContextResolver`, `ApiKeyLookupService`, `AuthorizationPolicy`, `TenantIsolationPolicy`, `DomainContextInjector`) instead of exposing a separate HTTP context framework.
+- Business adapters such as appbase IAM `MUST` implement framework extension traits (`WebRequestContextResolver`, `ApiKeyLookupService`, `OAuthTokenLookupService`, `OpenApiCredentialSchemeDetector`, `AuthorizationPolicy`, `TenantIsolationPolicy`, `DomainContextInjector`) instead of exposing a separate HTTP context framework.
 - Handlers `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission scopes, or request IDs from raw headers after framework context resolution.
 - Services `MUST` accept `&WebRequestContext` or `TenantAppContext`. Repositories `MUST` receive tenant and data-scope decisions from service/context inputs.
 - Route manifests `MUST` declare `requestContext: WebRequestContext` and `apiSurface` on every route entry. They `SHOULD` use framework contract types such as `HttpRoute` and `RouteAuth` when projecting OpenAPI materialization input.
@@ -274,7 +274,7 @@ Rules:
 
 - Surface classification, request identity, credential parsing, context resolution, authentication, context injection, and secure response headers `MUST` run before protected handlers.
 - Protected app-api and backend-api handlers `MUST` consume the standard dual-token context.
-- Protected open-api handlers `MUST` consume the standard API key context unless a documented compatibility contract declares another mode.
+- Protected open-api handlers `MUST` consume framework-resolved API key, OAuth bearer, or flexible open-api context according to the route manifest. They `MUST NOT` parse credential headers directly unless a documented compatibility contract declares another mode.
 - Handlers and services `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission scopes, or request IDs from raw headers.
 - The typed request context for authenticated user flows `MUST` carry tenant
   id, organization id, login scope, user id, session id, app id, environment,
@@ -383,7 +383,7 @@ Every web backend change should verify the relevant subset:
 - Handler/controller tests cover request decoding, typed context consumption, problem-detail mapping, and forbidden raw header parsing.
 - Service tests cover business rules, authorization decisions, tenant/data-scope behavior, idempotency, and transaction behavior without starting an HTTP server.
 - Repository tests cover tenant predicates, indexes/query shape where relevant, optimistic concurrency, and migration compatibility.
-- Security tests cover missing/invalid credentials, insufficient permission, wrong tenant, and absence of app login token fallback for protected open-api.
+- Security tests cover missing/invalid credentials, insufficient permission, wrong tenant, and absence of app login token fallback for protected open-api across `api-key`, `oauth`, and `open-api-flexible` modes.
 - Static scans fail on UI/service imports of route crates, generated SDK output edits, raw HTTP fallback, manual auth/API key headers, and handler-level credential reparsing.
 - Dependency API surface tests compare `sdkDependencies` with `dependencyApiSurfaces`, fail when a
   same-origin dependency has no verified executable router/controller coverage, and fail when an

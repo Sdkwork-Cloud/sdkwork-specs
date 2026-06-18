@@ -389,7 +389,7 @@ Rules:
 - Packages without `h5-admin` are non-admin for SDK selection. They `MUST` use generated app SDK clients or approved app SDK wrappers and `MUST NOT` import, export, construct, proxy, or route through backend SDK clients, appbase backend SDK clients, backend wrappers, backend generated SDK packages, or backend base URL resolvers.
 - Runtime/bootstrap `MUST` create one global TokenManager per authenticated session context and bind it to appbase app SDK, application/dependency app SDKs, Drive app SDK, IM app SDK, and other authenticated dependency app SDKs.
 - Explicit `backend-admin` H5 admin packages may receive backend SDK clients through `h5-admin-core`; those clients must not be exported through `h5-core`.
-- Protected open-api clients, when used from H5 packages, `MUST` be injected with their approved API key credential provider. They `MUST NOT` be added to app/backend token-manager client lists.
+- Protected open-api clients, when used from H5 packages, `MUST` be injected with their approved open-api credential provider matching the declared auth mode. They `MUST NOT` be added to app/backend token-manager client lists.
 - H5 token storage should prefer server-managed httpOnly cookie architectures when available. If browser session/local storage is used, the security risk and clearing behavior must be documented.
 - Capacitor token/context storage must use secure storage host adapters where available.
 - Secure storage adapters may persist appbase token/context state for the central runtime. They must not own login, refresh, permission checks, or business authorization.
@@ -560,7 +560,7 @@ Required verification for H5 application architecture changes:
 | Package naming | Static check proves new packages use `sdkwork-<product>-h5-*`, including reserved console/admin/host forms. |
 | Renderer sharing | Tests or static checks prove H5, WebView, iOS, and Android targets reuse the same renderer, route contributions, SDK clients, IAM runtime, and TokenManager. |
 | Surface split | Static scan proves app, console, and admin packages do not deep import each other or share hidden route/service internals. |
-| SDK boundary | Static scan proves app/console packages use app SDKs, approved `backend-admin` packages use backend SDKs, protected open-api uses API key provider, and no raw HTTP/manual auth headers/generated SDK edits were introduced. |
+| SDK boundary | Static scan proves app/console packages use app SDKs, approved `backend-admin` packages use backend SDKs, protected open-api uses declared open-api credential provider, and no raw HTTP/manual auth headers/generated SDK edits were introduced. |
 | SDK export boundary | Static scan proves `h5-core` exports app SDK/appbase app SDK wrappers and no backend SDK wrappers, while backend SDK/appbase backend SDK wrappers are exported only from `h5-admin-core` or another approved `backend-admin` boundary. |
 | IAM clearing | Tests prove logout, refresh failure, tenant switch, and account switch clear browser storage, secure storage, token manager, context store, caches, realtime/session bridges, and sensitive state. |
 | Host boundary | Static scan proves feature packages do not import Capacitor plugins, WeChat globals, browser globals, or platform globals directly for business workflows. |

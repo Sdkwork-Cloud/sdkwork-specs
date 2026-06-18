@@ -2,7 +2,7 @@
 
 - Version: 3.0
 - Scope: canonical names for deployment profile, runtime topology vocabulary, profiles, surfaces, environment keys, CLI flags, and documentation
-- Related: `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `NAMING_SPEC.md`, `DEPLOYMENT_SPEC.md`
+- Related: `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `NAMING_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`
 
 This file is the naming authority for application runtime topology. If another
 document uses a retired synonym, that document is wrong.
@@ -43,7 +43,8 @@ Rules:
 
 - `standalone` and `cloud` are the only deployment profile values.
 - Do not use `saas`, `private`, `local`, `test`, `server`, `container`,
-  `desktop`, or `web` as deployment profile values.
+  `desktop`, `browser`, `web`, `mobile`, `mini-program`, `docker`, or hosting
+  aliases as deployment profile values.
 - SaaS/customer-private ownership is release environment metadata, not a
   topology axis.
 - `server`, `container`, `desktop`, browser, mobile, mini-program, and
@@ -74,7 +75,7 @@ Rules:
 | `distribution` as embedded/distributed | `serviceLayout` |
 | `profile` as ambiguous shorthand | `environment` or full profile id |
 | `deploymentMode` as `saas/private/local/test` | `deploymentProfile` plus environment/release metadata |
-| `deploymentMode` as `server/container/desktop/web` | `runtimeTarget` |
+| `deploymentMode` as `server/container/desktop/web/mobile/mini-program/docker` | `runtimeTarget` plus package metadata; Docker-compatible artifacts map to `container` |
 | `plane`: product, foundation, admin, device | `connectivityPlane`: application, platform, operations, edge |
 | `gateway-mode`, `local-minimal`, `split-mode` | profile id plus `serviceLayout` |
 
@@ -139,7 +140,7 @@ Retired surface ids: `product-ingress`, `foundation-gateway`,
 | Key | Meaning |
 | --- | --- |
 | `SDKWORK_<APP>_DEPLOYMENT_PROFILE` | `standalone` or `cloud` |
-| `SDKWORK_<APP>_RUNTIME_TARGET` | `browser`, `server`, `container`, `desktop`, mobile/native, mini-program, or `test-runner` |
+| `SDKWORK_<APP>_RUNTIME_TARGET` | One exact `CONFIG_SPEC.md` runtime target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, or `test-runner` |
 
 Browser/public runtime documents may expose `deploymentProfile` and
 `runtimeTarget` only as non-secret normalized values.

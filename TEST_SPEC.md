@@ -251,11 +251,27 @@ Rules:
 - Application workflow tests `MUST` fail when large framework workflow bodies, dependency checkout scripts, matrix planning, release upload logic, or attestation logic are copied into application repositories.
 - Framework planner tests `MUST` reject unknown config properties, schema-declared type violations, empty target lists, duplicate target ids, non-canonical target ids, duplicate target formats, unsupported enum values, missing or mismatched Linux native package distributions, mixed Linux native/generic formats, dynamic lifecycle `uses`, unsafe relative paths, dependency checkout path overlaps, unsafe dependency refs, unsupported dependency token secret names, deployment selectors that match no package target, and non-string lifecycle `env` values.
 - Framework planner tests `MUST` prove JSON Schema, planner validation, example configs, generated bootstrap output, and reusable workflow policy consumption remain aligned.
-- Package naming tests `MUST` prove package ids use `<platform>-<architecture>-<profile>-<format-token>` for generic packages, Linux native `deb`/`rpm` package ids use `linux-<distribution>-<architecture>-<profile>-<format-token>`, variant packages use `<platform>-<architecture>-<profile>-<variant>-<format-token>` or `linux-<distribution>-<architecture>-<profile>-<variant>-<format-token>`, artifact names use `<artifactPrefix>-<packageId>`, `tar.gz` becomes `tar-gz`, server packages do not use `service` aliases, Windows desktop targets cover both `msi` and `exe` when both installers are configured, and server, PC desktop, mobile, tablet, variant, and multi-format targets remain unique.
+- Package naming tests `MUST` prove package ids use `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>` for generic packages, Linux native `deb`/`rpm` package ids use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<format-token>`, variant packages use `<platform>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>` or `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>`, artifact names use `<artifactPrefix>-<packageId>`, `tar.gz` becomes `tar-gz`, server packages do not use `service` aliases, Windows desktop targets cover both `msi` and `exe` when both installers are configured, and browser, H5, server, PC desktop, Capacitor, Flutter, native mobile, tablet, mini program, container, variant, and multi-format targets remain unique.
+- Package target taxonomy tests `MUST` prove `platform`, package `profile`,
+  `deploymentProfile`, and `runtimeTarget` are separate fields. They must fail
+  when package profile is `web`, `docker`, `standalone`, or `cloud`; when
+  platform is used as `runtimeTarget`; or when runtime target is used as
+  deployment profile.
+- Package runtime target tests `MUST` cover every canonical `CONFIG_SPEC.md`
+  runtime target used by the application: `browser`, `desktop`,
+  `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`,
+  `flutter-ios`, `flutter-android`, `android-native`, `ios-native`,
+  `harmony-native`, `mini-program`, `server`, `container`, and
+  `test-runner`. Tests must fail when `mobile`, `native`, `web`, or `docker`
+  is used as a runtime target.
 - Toolchain tests `MUST` prove `actions/setup-toolchains` consumes every planner output for supported toolchains instead of silently ignoring declared language versions or mobile/native toggles.
-- Matrix tests `MUST` cover platform, architecture, profile, format, multi-format artifact naming, no-target failure behavior, and tablet targets when tablet packaging is supported.
+- Matrix tests `MUST` cover platform, architecture, deployment profile, package
+  profile, runtime target, format, multi-format artifact naming, no-target
+  failure behavior, browser/H5 targets, mobile/native targets, mini program
+  targets, container/Docker-compatible targets, and tablet targets when tablet
+  packaging is supported.
 - Version resolution tests `MUST` prove GitHub workflow matrix summaries, lifecycle environments, and changelog planning prefer explicit package versions, then normalized release tags, then `release.defaultVersion`.
-- Generator tests `MUST` prove `init-app` emits canonical starter targets for requested profiles, including Linux Debian `deb`, Linux RHEL `rpm`, generic Linux `tar.gz`, Windows desktop `msi`, Windows desktop `exe`, and macOS desktop `dmg` when server and desktop profiles are requested.
+- Generator tests `MUST` prove `init-app` emits canonical starter targets for requested profiles, including Linux Debian `deb`, Linux RHEL `rpm`, generic Linux `tar.gz`, Windows desktop `msi`, Windows desktop `exe`, macOS desktop `dmg`, browser/H5 web URL targets, container OCI targets, mobile app targets, tablet targets, and mini program package targets when those profiles are requested.
 - Generator tests `MUST` prove generated lifecycle placeholder steps are shell-neutral across Linux, Windows, and macOS runners by using an explicit supported shell and reading SDKWork values through a shell-neutral environment API such as `process.env`.
 - Lifecycle tests `MUST` prove package and deployment environment variables are injected into lifecycle steps, Linux native package deployment keeps `SDKWORK_PACKAGE_DISTRIBUTION`, variant package deployment keeps `SDKWORK_PACKAGE_VARIANT`, and execution stops on failure.
 - Publication tests `MUST` prove `publish.workflowArtifact`, `publish.githubRelease`, `publish.retentionDays`, and caller inputs are both respected.
@@ -317,7 +333,7 @@ Rules:
   `x-sdkwork-source-route-crate`, `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and
   `x-sdkwork-rate-limit-tier` when present in the authority OpenAPI.
 - Auth-mode tests `MUST` prove protected app-api/backend-api routes project dual-token security,
-  protected open-api routes project API key security unless a compatibility contract says otherwise,
+  protected open-api routes project API key, OAuth bearer, or flexible open-api security according to the route manifest,
   and public SDK-generated routes project both `security: []` and
   `x-sdkwork-auth-mode: anonymous`.
 - Credential-entry tests `MUST` prove login, registration, OAuth session creation, QR auth session
@@ -359,7 +375,7 @@ Rules:
   decisions, tenant/data-scope behavior, idempotency, transaction boundaries, events, cache
   invalidation, and provider adapter calls where relevant.
 - Repository tests `MUST` cover tenant predicates, organization/data-scope predicates, optimistic
-  concurrency, migration compatibility, and index/query shape for high-traffic queries.
+  concurrency, migration compatibility, TEXT-stored `instant` cast comparisons for IAM/session/token expiry paths, and index/query shape for high-traffic queries.
 - Static scans `MUST` fail when handlers or services parse `Authorization`, `Access-Token`,
   `X-API-Key`, request IDs, tenant IDs, organization IDs, user IDs, or permission scopes from raw
   headers instead of consuming the typed request context.
@@ -398,6 +414,7 @@ Rules:
 - Java/Spring tests, when Java API modules are present, `MUST` prove typed context argument
   resolution, interceptor order, centralized problem-detail mapping, and OpenAPI/manifest metadata
   parity with the Rust framework profile.
+- Open-api auth check: protected routes declare `api-key`, `oauth`, or `open-api-flexible`; security vectors cover missing credentials, API key resolution, OAuth bearer resolution, and flexible scheme selection.
 - Architecture tests `MUST` fail when `sdkwork-web-framework` depends on business route crates or when business repositories vendor framework pipeline source locally.
 
 ## 2.4 PC Application Architecture Tests
@@ -613,8 +630,9 @@ Rules:
 - Tests `MUST` fail when checked-in application runtime config, TOML examples,
   app manifests, topology profile ids, workflow targets, package metadata, or
   release env files use `saas`, `private`, `local`, `test`, `server`,
-  `container`, `desktop`, `web`, `self-hosted`, `cloud-hosted`, or `hosting` as
-  deployment profile values.
+  `container`, `desktop`, `browser`, `web`, `mobile`, `mini-program`,
+  `docker`, `self-hosted`, `cloud-hosted`, or `hosting` as deployment profile
+  values.
 - Static config scans `MUST` fail for new application startup inputs that define
   `SDKWORK_<APP>_DEPLOYMENT_MODE`, `SDKWORK_CLAW_DEPLOYMENT_MODE`,
   `[runtime].deployment_mode`, `deploymentMode`, or CLI flags such as
@@ -630,11 +648,26 @@ Rules:
 - App manifest tests `MUST` prove `runtime.supportedDeploymentProfiles` is
   non-empty, `runtime.defaultDeploymentProfile` is supported, and package
   entries use valid `deploymentProfile` plus `runtimeTarget` metadata.
+- App manifest tests `MUST` prove package platform, source type, package
+  format, package profile, deployment profile, runtime target, and
+  `runtime.framework` align with the package consistency matrix in
+  `APP_MANIFEST_SPEC.md`.
+- App manifest tests `MUST` fail when a package id profile segment conflicts
+  with explicit package metadata, `runtimeTarget`, or `runtime.framework`.
+- App manifest tests `MUST` prove schema, full example, validator, initializer,
+  and PlusApp export projection stay aligned when deployment profile,
+  runtimeTarget, package matrix, or release metadata rules change.
 - GitHub workflow planner tests `MUST` prove deployable targets declare
   `deploymentProfile` and `runtimeTarget`, inject `SDKWORK_DEPLOYMENT_PROFILE`
   and `SDKWORK_RUNTIME_TARGET` into package/deployment lifecycle steps, and
   generate package ids with the deployment profile segment required by
   `GITHUB_WORKFLOW_SPEC.md`.
+- GitHub workflow planner tests `MUST` fail when `docker`, `mobile`, `native`,
+  or `web` is used as a deployment profile or non-canonical runtime target.
+- Runtime target matrix tests `MUST` prove browser, desktop, tablet,
+  Capacitor, Flutter, native Android, native iOS, native Harmony, mini program,
+  server, container, and test-runner targets can each be represented without
+  creating new deployment profile values.
 - Deployment smoke tests `MUST` prove standalone profiles can run as one
   application deployment unit with one public application ingress for HTTP
   `*-api` surfaces, while cloud profiles use explicit split-service URLs,
@@ -645,14 +678,14 @@ Rules:
 Rules:
 
 - Protected app-api and backend-api operations `MUST` test missing auth token, missing access token, invalid token, expired token, wrong tenant, wrong tenant signing key, conflicting auth/access token tenant, invalid login scope, and insufficient permission.
-- Protected open-api operations `MUST` test missing API key, invalid API key, expired/revoked API key, wrong tenant/app binding, insufficient permission scope, and the absence of app login token fallback.
+- Protected open-api operations `MUST` test missing API key, invalid API key, expired/revoked API key, missing OAuth bearer, invalid OAuth bearer, expired/revoked OAuth bearer, wrong tenant/app binding, insufficient permission scope, flexible mode scheme selection when both headers are present, and the absence of app login token fallback.
 - IAM login integration `MUST` test the checks required by `IAM_LOGIN_INTEGRATION_SPEC.md`: appbase boundary, SDK token wiring, route guard, logout clearing, forbidden application-local auth routes, Rust dual-token guard, AppContext safety, anonymous login request behavior, tenant resolution from real IAM data, and organization-selection continuation behavior.
 - IAM login tests `MUST` prove login requests do not trust inbound credentials or SDKWork context-projection headers as tenant/user/organization context.
 - IAM token tests `MUST` prove `authToken` and `accessToken` both include matching tenant, organization, login scope, user, and session claims, and reject contradictory claims.
 - IAM tenant signing tests `MUST` prove different tenants use different signing keys or key references, `kid` resolves to the expected tenant key, and a token signed with another tenant's key fails validation.
 - IAM organization login tests `MUST` cover zero organization membership as tenant-level login, one active organization membership as automatic organization login, multiple active memberships as an organization-selection challenge, and final selection membership validation before token issuance.
 - Static or contract tests `MUST` fail when authenticated backend code fills request context from demo tenants, hard-coded tenants, mock users, email-normalized user ids, or raw request context headers instead of verified token/session context.
-- App SDK composition tests `MUST` prove the application bootstrap declares or derives an SDK inventory and classifies every consumed SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, public open-api, local/native, or test fake before feature services are constructed.
+- App SDK composition tests `MUST` prove the application bootstrap declares or derives an SDK inventory and classifies every consumed SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake before feature services are constructed.
 - App SDK composition tests `MUST` prove appbase app SDK, application/dependency app SDKs, explicit `backend-admin` appbase backend/application backend/dependency backend SDKs, and approved composed wrappers backed by those SDKs share one TokenManager through `setTokenManager`, constructor injection, or the language-equivalent credential hook.
 - App SDK composition tests `MUST` prove Drive app SDK clients and other dependency SDK clients are declared as dependency SDKs for consuming applications, share the authenticated global TokenManager when required, and are not regenerated into application-owned SDK families.
 - App SDK composition tests `MUST` prove `dependencyApiExports` is explicit and defaults to `[]`.
@@ -679,7 +712,7 @@ Rules:
 - Static frontend scans MUST fail on xRequestId, `x-request-id`, `X-Request-Id`, `createRequestId`, or direct `crypto.randomUUID()` usage in application source because request identity is server-owned.
 - Static SDK and OpenAPI scans MUST fail when generated app/backend HTTP SDKs or app/backend OpenAPI documents expose `xRequestId` or `X-Request-Id`.
 - Static SDK and OpenAPI scans MUST fail when generated app-api, backend-api, or protected open-api SDKs or OpenAPI documents expose `tenant_id` or `tenantId` as current-tenant method arguments, `params` fields, request parameters, per-call credential options, or client-writable body fields. Tenant context must be asserted through dual-token or API-key context tests instead.
-- Static SDK/bootstrap scans MUST fail when protected open-api SDK clients are added to app/backend global token-manager client lists instead of an API key credential provider.
+- Static SDK/bootstrap scans MUST fail when protected open-api SDK clients are added to app/backend global token-manager client lists instead of a declared open-api credential provider.
 - Static SDK/bootstrap scans MUST fail when authenticated app-api SDK clients or explicit `backend-admin` backend-api SDK clients are not passed through the global token-manager-aware SDK list such as `clients.sdkClients`.
 - Static SDK/bootstrap scans MUST fail when the same application runtime/session context creates more than one live `TokenManager`, creates per-domain/per-package/per-service TokenManagers, or constructs an authenticated app SDK client or explicit `backend-admin` backend SDK client without joining the global TokenManager closure.
 - Static SDK/bootstrap scans MUST fail when application packages import `@sdkwork/iam-sdk-adapter`, call `createIamAppSdkAdapter(...)`, call `createIamBackendSdkAdapter(...)`, or wire `createIamRuntime(...)` directly for appbase login instead of using the approved high-level appbase runtime/factory.
@@ -695,7 +728,7 @@ Rules:
 - Architecture SDK checks `MUST` verify TypeScript SDKs stay in React and mini program packages, Dart/Flutter SDKs stay in Flutter packages, Kotlin/Java SDKs stay in Android native packages, Swift SDKs stay in iOS native packages, ArkTS/TypeScript Harmony SDKs stay in Harmony native packages, Rust SDKs or Rust service clients stay in Rust/native runtime code, and no package imports another architecture's UI/runtime wrapper to bypass a missing SDK method.
 - Public runtime env checks `MUST` fail if `/runtime-env.js`, `/runtime-env.json`, `PORTAL_PUBLIC_*`, `VITE_*`, `PUBLIC_*`, or `NEXT_PUBLIC_*` exposes secrets, database URLs, Redis URLs, tokens, signing keys, private service endpoints, or backend-only credentials.
 - Browser bootstrap tests `MUST` prove public runtime config loads before generated SDK clients are constructed and that open-api, app-api, and backend-api base URLs remain independent.
-- TokenManager bootstrap tests `MUST` prove base URLs and SDK inventory classification are resolved before SDK construction, the same global TokenManager is injected into appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` backend SDKs, and approved composed SDK clients for the same authenticated session context, and protected open-api SDKs use API key credential providers instead.
+- TokenManager bootstrap tests `MUST` prove base URLs and SDK inventory classification are resolved before SDK construction, the same global TokenManager is injected into appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` backend SDKs, and approved composed SDK clients for the same authenticated session context, and protected open-api SDKs use declared open-api credential providers instead.
 - `backend-admin` UI verification `MUST` fail if business pages, services, or repositories are placed in `@sdkwork/react-backend-ui`, `@sdkwork/react-backend-core`, or one catch-all backend package instead of `@sdkwork/react-backend-<domain>`.
 - PC application architecture verification `MUST` fail if new app, console, or admin packages omit the `pc` segment or if `pc-console` and `pc-admin` packages import each other's business internals.
 - App UI verification `MUST` fail if user-facing packages call `/backend/v3/api`, import backend SDK packages, or depend on `backend-admin` UI packages.
@@ -712,6 +745,10 @@ Rules:
   authority OpenAPI under the owning `sdks/` SDK family when `apis/` is used as the source contract
   location.
 - SDK workspace tests `MUST` verify route crate -> aggregated API authority -> generated SDK family mappings when Rust route crates participate in API generation, for example `sdkwork-router-product-app-api` -> `sdkwork-commerce-app-api` -> `sdkwork-commerce-app-sdk`.
+- Observability tests `MUST` prove logs, metrics, traces, health checks, and
+  dashboard projections use `deployment_profile` and exact
+  `CONFIG_SPEC.md` `runtime_target` label values without introducing
+  `web`, `mobile`, `native`, or `docker` runtime-target aliases.
 - Module README examples `SHOULD` be checked against exported public APIs when tooling is available.
 - App manifest changes `SHOULD` run `node apps/scripts/validate-sdkwork-app-standard-v3.mjs`.
 
@@ -748,6 +785,10 @@ Rules:
 - [ ] Environment/config checks pass for lifecycle environment, profile alias, deployment profile, build mode, runtime target, dev/test/staging/prod files, local override ignore rules, browser public runtime, desktop user/server split, H5/Capacitor config, Flutter config, mini program config, native Android config, native iOS config, native Harmony config, container config, and Tauri platform config.
 - [ ] Deployment profile checks reject retired deployment-mode keys and values, validate standalone/cloud topology profile ids, and prove package/workflow metadata carries `deploymentProfile` and `runtimeTarget`.
 - [ ] GitHub workflow checks pass for thin reusable workflow entrypoints, config validation, matrix planning, dependency checkout safety, lifecycle env injection, publication policy gates, artifact attestation policy, deployment environment binding, and framework repository validation when GitHub packaging/release/deployment workflows are touched.
+- [ ] Observability checks pass for structured logs, metrics, traces, health
+      checks, `deployment_profile`, exact `runtime_target` labels, bounded
+      labels, and secret/PII redaction when runtime or production readiness is
+      touched.
 - [ ] SDK base URL and Access-Token checks pass for per-surface base URL resolution, dependency SDK base URLs, forbidden token env variables, `Access-Token` header semantics, and global TokenManager injection.
 - [ ] Drive Uploader checks pass for client `client.uploader.*` usage, Rust `DriveUploaderService` usage, attribution/statistics, retention cleanup, and forbidden app-local upload/provider bypasses when upload is touched.
 - [ ] Verification commands and outputs are recorded.

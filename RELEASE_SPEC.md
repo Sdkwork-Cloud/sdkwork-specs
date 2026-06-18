@@ -71,6 +71,31 @@ Rules:
   `container`, and `desktop` are runtime targets only.
 - Store submissions and private distribution records are release evidence, not replacement for source-controlled release metadata.
 
+### 4.1 Runtime Target Release Evidence
+
+Release records `MUST` describe evidence by runtime target, not only by product
+version.
+
+| Runtime target class | Required release evidence | Rollback expectation |
+| --- | --- | --- |
+| `browser` / H5 web | Static asset or web URL package id, asset checksums when packaged, public runtime config version, CDN/edge host, cache invalidation plan | Previous asset version or host route can be restored without changing API contracts. |
+| `desktop` | Installer/app bundle package id, OS/signing evidence, update channel, user data compatibility notes | Previous installer/update channel can be restored; user data migrations are reversible or forward-fix approved. |
+| `tablet-ipados`, `tablet-android` | Tablet package id, signing/store/private distribution evidence, large-screen target metadata | Store/private rollout can be paused or reverted according to platform constraints. |
+| `capacitor-*`, `flutter-*`, native mobile | App package id, signing/provisioning evidence, store/private track, minimum supported version, staged rollout status | Store rollout can be halted, superseded, or force-updated with documented user impact. |
+| `mini-program` | Platform package id, platform app id, upload/review/release record, platform version, subpackage evidence | Platform release can be rolled back, disabled, or superseded according to platform rules. |
+| `server` | Archive/service package id, runtime config version, database/Redis compatibility, service health checks | Previous service package/config can be restored or forward-fix plan is approved. |
+| `container` | Image/bundle package id, immutable digest, SBOM/provenance, orchestration manifest/chart version, probes | Previous digest/manifest can be redeployed and data migrations are covered. |
+| `test-runner` | Test artifact id or workflow run evidence only | Not a production rollback target. |
+
+Rules:
+
+- A release that includes more than one runtime target `MUST` record evidence
+  and rollback for each target separately.
+- Client runtime releases `MUST` name the SDK/API surface versions they expect
+  and the minimum compatible backend/runtime version when compatibility matters.
+- Container/Docker-compatible releases `MUST` record immutable image digests;
+  mutable tags are convenience labels, not release identity.
+
 ## 5. Rollout And Rollback
 
 Rules:

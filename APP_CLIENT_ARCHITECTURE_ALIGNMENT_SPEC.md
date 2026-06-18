@@ -260,7 +260,7 @@ Rules:
 
 - Runtime/bootstrap constructs concrete SDK clients after typed runtime config is resolved.
 - Authenticated app-api SDK clients and explicit `backend-admin` backend-api SDK clients share one global TokenManager or language-equivalent token manager per authenticated session context.
-- Protected open-api SDK clients use declared API key credential providers and must not be added to app/backend token-manager lists unless the API contract explicitly declares that mode.
+- Protected open-api SDK clients use declared open-api credential providers matching their auth mode and must not be added to app/backend token-manager lists.
 - Appbase IAM owns login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, current-user self-service, and token propagation.
 - Feature packages must not implement raw HTTP fallbacks for missing SDK methods. Missing methods are fixed in the owning API contract, generator input, and generated SDK family.
 - Logout, refresh failure, tenant switch, and account switch must clear token/context stores, sensitive state, realtime/session bridges, and platform secure storage when present.

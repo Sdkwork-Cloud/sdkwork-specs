@@ -92,7 +92,7 @@ Rules:
 - PC app shells `MUST` follow `APP_PC_ARCHITECTURE_SPEC.md` for root layout, `packages/` taxonomy, app/console/admin route ownership, and browser/desktop renderer reuse.
 - H5 mobile, Flutter mobile, mini program, native Android, native iOS, and native HarmonyOS app shells `MUST` follow `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` and their root architecture standards for package taxonomy, route identity, host adapters, and renderer/platform packaging boundaries.
 - Rust-enabled independent app shells `MUST` compose `sdkwork-appbase` Rust runtime crates and appbase generated SDK clients before application-owned domain modules so login/session/context/bootstrap behavior stays shared.
-- App shells `MUST` follow `APP_SDK_INTEGRATION_SPEC.md` when wiring generated SDK clients, dependency SDKs, appbase IAM runtime, API key providers, host adapters, and global token/session state.
+- App shells `MUST` follow `APP_SDK_INTEGRATION_SPEC.md` when wiring generated SDK clients, dependency SDKs, appbase IAM runtime, open-api credential providers, host adapters, and global token/session state.
 - Application shells and modules that own, serve, develop, proxy, or compose `open-api`, `app-api`, `backend-api`, or any SDKWork HTTP `*-api` surface `MUST` follow `WEB_FRAMEWORK_SPEC.md` before route/controller implementation. Rust HTTP runtimes `MUST` integrate `sdkwork-web-framework`; Java/Spring runtimes `MUST` preserve the same typed `WebRequestContext`, interceptor, route metadata, and problem-detail semantics.
 - Applications `MUST` compose other applications and reusable capabilities through generated SDK packages, declared `sdkDependencies`, component specs, package root exports, service ports, or approved composed facades.
 - Applications `MUST NOT` copy another app's private `src` files, generated SDK output, DTO shims, route constants, auth UI, token stores, or appbase-owned API routes.
@@ -128,7 +128,7 @@ Rules:
 - Architecture-specific UI packages `MUST` use the generated SDK language that matches the architecture.
 - A React package `MUST NOT` import Flutter, Android, iOS, or Harmony SDK/UI implementations; Flutter packages `MUST NOT` import TypeScript React wrappers; native Android/iOS/Harmony packages `MUST NOT` import another client architecture's UI/runtime wrappers.
 - Rust services `MUST NOT` embed frontend SDK wrappers. Rust code that calls HTTP APIs directly uses Rust SDKs or approved Rust service clients.
-- App-api SDK clients and explicit `backend-admin` backend-api SDK clients `MUST` share the authenticated TokenManager created by the application runtime. Protected open-api SDK clients use their declared API key provider unless the contract explicitly declares a different mode.
+- App-api SDK clients and explicit `backend-admin` backend-api SDK clients `MUST` share the authenticated TokenManager created by the application runtime. Protected open-api SDK clients use their declared open-api credential provider (`api-key`, `oauth`, or `open-api-flexible`).
 - Independent `apps/` repositories with Rust, Tauri, native runtime, or
   backend capability `MUST` declare `sdkwork-appbase` before publishing
   application-owned SDK families.
@@ -231,12 +231,29 @@ Rules:
 Reusable modules `MUST` accept explicit inputs.
 
 ```ts
+export type AppModuleRuntimeTarget =
+  | "browser"
+  | "desktop"
+  | "tablet-ipados"
+  | "tablet-android"
+  | "capacitor-ios"
+  | "capacitor-android"
+  | "flutter-ios"
+  | "flutter-android"
+  | "android-native"
+  | "ios-native"
+  | "harmony-native"
+  | "mini-program"
+  | "server"
+  | "container"
+  | "test-runner";
+
 export interface AppModuleRuntime<TAppClient, TBackendClient> {
   appClient: TAppClient;
   backendClient?: TBackendClient;
   environment: "development" | "test" | "staging" | "production";
   deploymentProfile: "standalone" | "cloud";
-  runtimeTarget?: "browser" | "desktop" | "server" | "container" | "test-runner" | string;
+  runtimeTarget?: AppModuleRuntimeTarget;
 }
 ```
 
@@ -244,6 +261,9 @@ Rules:
 
 - No shared module may hard-code a cloud base URL, loopback port, tenant ID,
   token, or generated SDK package.
+- `AppModuleRuntimeTarget` `MUST` stay aligned with the
+  `SdkworkRuntimeTarget` vocabulary in `CONFIG_SPEC.md`; shared modules may
+  branch only on capability-relevant runtime differences.
 - Environment differences belong in bootstrap/config.
 - Runtime inputs `SHOULD` be serializable where they cross host/native boundaries.
 - Feature flags `SHOULD` be capability-scoped.

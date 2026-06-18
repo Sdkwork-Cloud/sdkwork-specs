@@ -176,15 +176,25 @@ Adoption steps: `APP_RUNTIME_TOPOLOGY_ADOPTION.md`.
 
 ## 9. Deployment Standard Mapping
 
-| Deployment profile | Typical service layout | Typical runtime targets |
+| Deployment profile | Typical service layout | Runtime target coverage |
 | --- | --- | --- |
-| `standalone` | `unified-process` | `server`, `container`, `desktop`, `test-runner` |
-| `cloud` | `split-services` | `container`, `server`, `browser`, `test-runner` |
+| `standalone` | `unified-process` | `server`, `container`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program` when packaged as a private/platform-local app, and `test-runner` |
+| `cloud` | `split-services` | `container`, `server`, `browser`, `mini-program`, H5 browser surfaces, cloud-served public runtime config, and `test-runner` |
 
 Rules:
 
-- `server`, `container`, `desktop`, `browser`, mobile, mini-program, and
-  `test-runner` are runtime targets, not deployment profiles.
+- `server`, `container`, `desktop`, `browser`, tablet, Capacitor, Flutter,
+  native mobile, mini-program, and `test-runner` values from `CONFIG_SPEC.md`
+  are runtime targets, not deployment profiles.
+- Client runtime targets may be standalone release artifacts while their SDK
+  base URLs point at cloud-hosted services. This does not create a third
+  deployment profile.
+- `browser` and H5 cloud surfaces normally connect to `application.public-ingress`
+  and `platform.api-gateway` through public runtime config. Native, desktop,
+  tablet, Flutter, Capacitor, and mini program packages connect through the
+  same declared surfaces after host/bootstrap config resolves SDK base URLs.
+- `docker` is not a topology or deployment profile value. Docker-compatible
+  packages use `runtimeTarget = "container"` and container/OCI package metadata.
 - SaaS and customer-private ownership are release/deployment-environment
   metadata. They must not create new topology profile ids.
 

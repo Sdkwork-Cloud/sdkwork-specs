@@ -1,7 +1,7 @@
 # PC Application Architecture Standard
 
 - Version: 1.0
-- Scope: SDKWork PC application roots that support PC browser web, desktop, and large-screen tablet native packaging, including app modules, user-facing console modules, internal admin modules, shared renderer packages, Tauri/native host packages, and iPadOS/Android tablet deployment targets
+- Scope: SDKWork PC application roots that support PC browser web, desktop, and large-screen tablet native packaging, including app modules, user-facing console modules, internal admin modules, shared renderer packages, Tauri/native host packages, and iPadOS/Android tablet runtime/package targets
 - Related: `SDKWORK_WORKSPACE_SPEC.md`, `APPLICATION_SPEC.md`, `NAMING_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the application-root architecture for SDKWork PC applications. A PC application is one product application root that can run as a browser web application and, when required, as a desktop or large-screen tablet native application through a host such as Tauri.
@@ -13,7 +13,7 @@ Reference inputs:
 - `apps/docs/ARCHITECT.md` defines the pnpm workspace, thin root `src/`, `packages/`, and service-layer split pattern.
 - `apps/sdkwork-im/apps/sdkwork-chat-pc` demonstrates a PC app root with renderer bootstrap, app packages, console/admin package families, and desktop package placement.
 - `apps/sdkwork-claw-router/apps/sdkwork-claw-router-portal` demonstrates app, console, and admin capability decomposition at scale. Its packages without a `pc` segment are migration references; new PC packages use the normalized naming in this standard.
-- Tauri v2 official docs define mobile development commands, platform-specific config merging, iOS signing, Android/iOS build outputs, and mobile multi-window behavior. SDKWork PC tablet packaging uses those capabilities only as a large-screen PC deployment profile.
+- Tauri v2 official docs define mobile development commands, platform-specific config merging, iOS signing, Android/iOS build outputs, and mobile multi-window behavior. SDKWork PC tablet packaging uses those capabilities only as a large-screen PC runtime/package target.
 
 ## 1. Core Model
 
@@ -400,7 +400,7 @@ Rules:
 - Packages without `pc-admin` are non-admin for SDK selection. They `MUST` use generated app SDK clients or approved app SDK wrappers and `MUST NOT` import, export, construct, proxy, or route through backend SDK clients, appbase backend SDK clients, backend wrappers, backend generated SDK packages, or backend base URL resolvers.
 - App and console packages that implement contacts, address books, organization trees, department trees, memberships, assignments, positions, or role-binding read views `MUST` use appbase app SDK resources or an approved app SDK wrapper. They `MUST NOT` use appbase backend SDK or application-owned backend SDK for those user-visible directory workflows.
 - Admin packages may use appbase backend SDK for `backend-admin` IAM management and application-owned backend SDK for operator resources. That permission does not extend to `pc-core`, app packages, or user-facing console packages.
-- Protected open-api clients, when used from PC packages, `MUST` be injected with their approved API key credential provider. They `MUST NOT` be added to app/backend token-manager client lists.
+- Protected open-api clients, when used from PC packages, `MUST` be injected with their approved open-api credential provider matching the declared auth mode. They `MUST NOT` be added to app/backend token-manager client lists.
 - Runtime/bootstrap `MUST` create one global TokenManager per authenticated session context and bind it to appbase app SDK clients, downstream authenticated app-api SDK clients, and explicit `backend-admin` backend-api SDK clients.
 - Appbase IAM runtime owns login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user self-service. Verification-code delivery and verification are messaging-owned app-api capabilities and must be injected through the generated messaging app SDK surface when auth flows need them.
 - Product packages `MUST NOT` copy appbase IAM APIs, regenerate appbase-owned contracts, or create local auth/session SDK ports when the appbase resource exists.
@@ -425,9 +425,10 @@ Rules:
 - Desktop-local and tablet-local files, runtime paths, SQLite usage, logs, cache, temp files, and secrets follow `RUNTIME_DIRECTORY_SPEC.md` and `DESKTOP_APP_ARCHITECTURE_SPEC.md`.
 - Release builds `MUST NOT` hard-code localhost service endpoints, developer directories, tokens, or private keys.
 
-## 8.1 Tablet And iPadOS Packaging Profile
+## 8.1 Tablet And iPadOS Runtime And Package Profile
 
-Tablet packaging is a PC large-screen deployment profile, not a replacement for H5 or phone-native architectures.
+Tablet packaging is a PC large-screen runtime/package target, not a deployment
+profile and not a replacement for H5 or phone-native architectures.
 
 Rules:
 
@@ -539,7 +540,7 @@ Required verification for PC application architecture changes:
 | Root layout | Static check proves `.sdkwork/`, `src/`, `packages/`, `sdks/`, `scripts/`, and required metadata exist for application roots. |
 | Package naming | Static check proves new packages use `sdkwork-<product>-pc-*`, `sdkwork-<product>-pc-console-*`, or `sdkwork-<product>-pc-admin-*`. |
 | Surface split | Static scan proves app, console, and admin packages do not deep import each other or share hidden route/service internals. |
-| SDK boundary | Static scan proves app/console use app SDKs, `backend-admin` packages use backend SDKs, protected open-api uses API key provider, and no raw HTTP/manual auth headers were introduced. |
+| SDK boundary | Static scan proves app/console use app SDKs, `backend-admin` packages use backend SDKs, protected open-api uses declared open-api credential provider, and no raw HTTP/manual auth headers were introduced. |
 | SDK export boundary | Static scan proves `pc-core` exports app SDK/appbase app SDK wrappers and no backend SDK wrappers, while backend SDK/appbase backend SDK wrappers are exported only from `pc-admin-core` or another `backend-admin` boundary. |
 | IAM boundary | Tests prove appbase IAM runtime, global TokenManager, logout clearing, session restore, and route guards behave across app, console, and admin surfaces. |
 | Config profile boundary | Static and runtime tests prove `development/test/staging/production`, profile aliases, deployment profile, build mode, and runtime target are separated; browser, desktop, server, container, and Tauri platform config files do not leak into each other. |

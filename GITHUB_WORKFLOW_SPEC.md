@@ -160,19 +160,28 @@ Rules:
 - `targets[]` `MUST` declare deploymentProfile, runtimeTarget, profile,
   platform, architecture, formats, runner, and output globs.
 - `targets` `MUST` contain at least one target.
+- `targets[].platform` identifies the delivery ecosystem or package platform,
+  such as `web`, `h5`, `h5-weixin`, `windows`, `macos`, `linux`, `container`,
+  `android`, `ios`, `harmony`, `ipados`, `android-tablet`, `mp-weixin`,
+  `mp-alipay`, `mp-dingtalk`, or another approved lower kebab platform token.
+- `targets[].profile` is the package profile segment. Standard profiles are
+  `browser`, `desktop`, `mobile`, `tablet`, `mini-program`, `server`,
+  `container`, `worker`, `library`, and `test`. It is not a deployment profile
+  and must not use `web`, `docker`, `standalone`, or `cloud`.
 - `targets[].deploymentProfile` `MUST` be `standalone` or `cloud` for every
   deployable target.
 - `targets[].runtimeTarget` `MUST` describe where the package runs using the
   runtime target vocabulary from `CONFIG_SPEC.md`, such as `server`,
-  `container`, `desktop`, `browser`, `android-native`, `ios-native`,
-  `harmony-native`, `mini-program`, or `test-runner`. It must not be used as a
-  deployment profile.
+  `container`, `desktop`, `browser`, `tablet-ipados`, `tablet-android`,
+  `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`,
+  `android-native`, `ios-native`, `harmony-native`, `mini-program`, or
+  `test-runner`. It must not be used as a deployment profile.
 - `targets[].formats` `MUST` contain unique format values so one target cannot emit duplicate package jobs or duplicate artifact names.
 - Selecting no targets for a requested deployment profile/platform/profile/architecture/format `MUST` fail before package jobs run.
 - Every matrix package item `MUST` have a canonical `packageId` using `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>`.
 - Linux native `deb` and `rpm` package items `MUST` use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<format-token>`.
 - Package targets with a real package variant `MUST` insert the lowercase kebab `variant` segment before the format token: `<platform>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>`. Linux native package variants use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>`.
-- Use `targets[].variant` only when two or more releasable artifacts would otherwise share the same platform, architecture, profile, and format. Common examples are container or deployment packages split by `cpu`, `nvidia-cuda`, or `amd-rocm`.
+- Use `targets[].variant` only when two or more releasable artifacts would otherwise share the same platform, architecture, deployment profile, profile, and format. Common examples are container or deployment packages split by `cpu`, `nvidia-cuda`, or `amd-rocm`.
 - `format-token` `MUST` be lowercase kebab-case. Format values with separators normalize those separators to hyphens; for example `tar.gz` becomes `tar-gz`.
 - GitHub workflow artifact names `MUST` use `<release.artifactPrefix>-<packageId>`.
 - Multi-format targets `MUST` produce distinct package ids and artifact names for each format.
@@ -187,11 +196,17 @@ Rules:
 - Do not use `service` as a server package alias. The package profile segment is
   `server`; the deployment profile segment remains `standalone` or `cloud`.
 - Tablet packages are first-class package targets when the app supports large-screen tablet behavior. Use profile `tablet` with platforms such as `ipados`, `android-tablet`, or `windows-tablet`.
+- Docker-compatible packages use platform/profile metadata for `container` and
+  format `oci` or a Docker image format. `docker` must not be used as
+  `deploymentProfile`, `runtimeTarget`, package profile, or topology profile.
 
 Examples:
 
 | App surface | Platform | Distribution | Architecture | Format | Package id |
 | --- | --- | --- | --- | --- | --- |
+| Cloud browser web URL | `web` | omitted | `universal` | `web-url` | `web-universal-cloud-browser-web-url` |
+| Cloud H5 mobile URL | `h5` | omitted | `universal` | `web-url` | `h5-universal-cloud-mobile-web-url` |
+| Cloud WeChat H5 URL | `h5-weixin` | omitted | `universal` | `web-url` | `h5-weixin-universal-cloud-mobile-web-url` |
 | Standalone server Debian package | `linux` | `debian` | `x64` | `deb` | `linux-debian-x64-standalone-server-deb` |
 | Standalone server Ubuntu package | `linux` | `ubuntu` | `arm64` | `deb` | `linux-ubuntu-arm64-standalone-server-deb` |
 | Standalone server RHEL package | `linux` | `rhel` | `x64` | `rpm` | `linux-rhel-x64-standalone-server-rpm` |
@@ -203,10 +218,23 @@ Examples:
 | Standalone PC desktop | `windows` | omitted | `x64` | `msi` | `windows-x64-standalone-desktop-msi` |
 | Standalone PC desktop | `windows` | omitted | `x64` | `exe` | `windows-x64-standalone-desktop-exe` |
 | Standalone PC desktop | `macos` | omitted | `arm64` | `dmg` | `macos-arm64-standalone-desktop-dmg` |
+| Standalone Capacitor Android | `android` | omitted | `arm64` | `aab` | `android-arm64-standalone-mobile-aab` |
+| Standalone Capacitor iOS | `ios` | omitted | `universal` | `ipa` | `ios-universal-standalone-mobile-ipa` |
+| Standalone Flutter Android | `android` | omitted | `arm64` | `aab` | `android-arm64-standalone-mobile-aab` |
+| Standalone Flutter iOS | `ios` | omitted | `universal` | `ipa` | `ios-universal-standalone-mobile-ipa` |
 | Standalone mobile phone | `android` | omitted | `arm64` | `aab` | `android-arm64-standalone-mobile-aab` |
 | Standalone mobile phone | `ios` | omitted | `universal` | `ipa` | `ios-universal-standalone-mobile-ipa` |
+| Standalone Harmony mobile | `harmony` | omitted | `arm64` | `other` | `harmony-arm64-standalone-mobile-other` |
 | Standalone tablet | `ipados` | omitted | `universal` | `ipa` | `ipados-universal-standalone-tablet-ipa` |
+| Standalone Android tablet | `android-tablet` | omitted | `arm64` | `aab` | `android-tablet-arm64-standalone-tablet-aab` |
 | Standalone tablet | `windows-tablet` | omitted | `x64` | `msix` | `windows-tablet-x64-standalone-tablet-msix` |
+| Cloud WeChat mini program | `mp-weixin` | omitted | `universal` | `mini-program-package` | `mp-weixin-universal-cloud-mini-program-mini-program-package` |
+
+Rows with the same package id are alternative architecture examples for the
+same platform/package shape. One workflow config `MUST NOT` declare duplicate
+package ids; use `targets[].variant` when one application intentionally ships
+multiple artifacts for the same platform, architecture, deployment profile,
+profile, and format.
 
 ## 6. Dependency Checkout
 
@@ -280,7 +308,10 @@ Rules:
   `windows-x64-standalone-desktop-exe`, and
   `macos-arm64-standalone-desktop-dmg`. Cloud starter targets `MUST` include a
   `cloud` deployment profile segment, such as
-  `container-x64-cloud-container-oci`.
+  `container-x64-cloud-container-oci`. Browser, H5, mobile, tablet, and mini
+  program starter targets `MUST` use the same package id formula and exact
+  `runtimeTarget` values from `CONFIG_SPEC.md` when those profiles are
+  requested.
 - The framework `init-app` generator `MUST` emit a default `release.changelog.source: auto` configuration so new applications publish Release notes from the app manifest, `CHANGELOG.md`, or git commit subjects without local workflow YAML.
 - Generated lifecycle placeholder steps `MUST` be shell-neutral across Linux, Windows, and macOS runners. Placeholders SHOULD use the planner-supported `node` shell and read SDKWork values through `process.env` instead of Bash-only `$SDKWORK_*` or PowerShell-only `$env:SDKWORK_*` syntax.
 - The framework `MUST` keep the application workflow template as a single source of truth for generator output.
@@ -301,7 +332,7 @@ Application integration verification `MUST` check:
 - Application workflow inputs use event-safe expressions for manual, tag push, and release events.
 - Matrix selection works for all declared deployment profiles, runtime targets,
   target profiles, platforms, architectures, variants, and formats.
-- Package ids and artifact names follow `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>` and `<artifactPrefix>-<packageId>` for generic server, PC desktop, mobile, tablet, container, and multi-format targets, Linux native `deb`/`rpm` package ids include the `distribution` segment, and variant targets insert `<variant>` before `<format-token>`.
+- Package ids and artifact names follow `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>` and `<artifactPrefix>-<packageId>` for browser, H5, server, PC desktop, Capacitor, Flutter, native mobile, tablet, mini program, container/Docker-compatible, and multi-format targets, Linux native `deb`/`rpm` package ids include the `distribution` segment, and variant targets insert `<variant>` before `<format-token>`.
 - Lifecycle steps receive `SDKWORK_DEPLOYMENT_PROFILE` and
   `SDKWORK_RUNTIME_TARGET` for package and deployment jobs.
 - Linux native package lifecycle and deployment lifecycle receive `SDKWORK_PACKAGE_DISTRIBUTION`.
@@ -317,7 +348,12 @@ Application integration verification `MUST` check:
 Framework verification `MUST` check:
 
 - Planner validation rejects unknown fields, schema-declared type violations, empty target lists, duplicate target formats, unsafe paths, dependency checkout path overlaps, unsafe Git refs, unsupported token secrets, dynamic lifecycle `uses`, invalid lifecycle env values, duplicate target ids, missing or invalid deployment profiles, deployment selectors that match no package target, and unsupported enum values.
-- Planner validation rejects non-canonical target ids, non-canonical explicit package ids, multi-format target package ids, missing Linux native package distributions, distribution/format mismatches, malformed package variants, and Linux native package targets that mix `deb` or `rpm` with generic formats.
+- Planner validation rejects non-canonical target ids, non-canonical explicit
+  package ids, multi-format target package ids, missing Linux native package
+  distributions, distribution/format mismatches, malformed package variants,
+  invalid package profiles, non-canonical runtime targets, platform/profile/
+  runtimeTarget/deploymentProfile mixups, and Linux native package targets that
+  mix `deb` or `rpm` with generic formats.
 - JSON Schema stays aligned with planner validation.
 - The generated application workflow matches the checked-in application template.
 - The setup-toolchains action consumes every declared toolchain output from the planner.

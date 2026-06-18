@@ -63,6 +63,31 @@ Rules:
 - When signing is required globally, target-level config must not disable signing without governance approval.
 - Signature verification instructions should be documented for externally distributed artifacts.
 
+### 5.1 Runtime Target Supply-Chain Evidence
+
+Artifact evidence `MUST` match the package runtime target and distribution
+channel.
+
+| Runtime target class | Required evidence |
+| --- | --- |
+| `browser` and H5 web | Build provenance, asset checksums when packaged, public runtime config provenance, and CDN/edge publication trace. |
+| `desktop` | Installer/app bundle checksum, OS signing or notarization evidence where applicable, update feed provenance, and bundled dependency inventory. |
+| `tablet-*`, `capacitor-*`, `flutter-*`, native mobile | Platform signing/provisioning evidence, app-store/private track record, package checksum when directly distributed, and toolchain provenance. |
+| `mini-program` | Upload identity, platform app id, package checksum when exported, review/release record, and platform key custody evidence. |
+| `server` | Archive/service checksum, build provenance, SBOM, signing when required, and runtime config template provenance. |
+| `container` | Immutable OCI digest or Docker-compatible image digest, SBOM/provenance, base image trace, and attestation when enabled. |
+| `test-runner` | Workflow/test artifact provenance; no production signing claim. |
+
+Rules:
+
+- Docker-compatible image tags are not immutable evidence. Release records must
+  store the digest used by the deployment or publication.
+- Mobile, tablet, desktop, and mini program signing credentials `MUST` live in
+  protected CI environments, platform key stores, or approved secret managers,
+  not in source-controlled manifests, config, or package assets.
+- Browser and H5 packages must not embed private SDK endpoints, auth tokens,
+  API keys, or tenant-specific runtime config in static assets.
+
 ## 6. Generated Artifacts
 
 Rules:

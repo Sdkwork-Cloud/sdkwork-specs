@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: authentication, authorization, token use, API/RPC security, frontend handling, logging, secrets
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `DATABASE_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
 
 Security is a cross-cutting requirement. It must be enforced by backend services and reflected in OpenAPI contracts, SDK behavior, frontend service boundaries, and tests.
 
@@ -10,7 +10,7 @@ Security is a cross-cutting requirement. It must be enforced by backend services
 
 Rules:
 
-- Protected HTTP APIs `MUST` use the authentication mode declared by their API surface. Protected app-api and backend-api operations require both `AuthToken` and `AccessToken`; protected open-api operations require API key mode unless an explicitly documented compatibility contract defines a different scheme.
+- Protected HTTP APIs `MUST` use the authentication mode declared by their API surface. Protected app-api and backend-api operations require both `AuthToken` and `AccessToken`. Protected open-api operations require `api-key`, `oauth`, or `open-api-flexible` mode according to the route manifest unless an explicitly documented compatibility contract defines a different scheme.
 - Protected RPC methods `MUST` require the equivalent `authorization` and `access-token` metadata unless the method is explicitly public or internal mTLS-only.
 - Product app login/session integration, AuthGate behavior, generated SDK token wiring, logout clearing, and Rust AppContext validation `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - Public endpoints `MUST` explicitly declare `security: []`. Public endpoints generated into SDKs that must not receive stored user credentials `MUST` also declare `x-sdkwork-auth-mode: anonymous`, and generated SDKs `MUST` skip automatic credential injection for those operations.
@@ -24,8 +24,9 @@ Rules:
 - Registration and password-reset services `MUST NOT` synthesize a missing confirmation by copying the password into `confirmPassword`; they `MUST` reject explicitly mismatched password confirmation values before calling SDK resources, and backend handlers `MUST` enforce the same rule.
 - Development verification-code values may prefill UI fields only. They `MUST NOT` bypass SDK verification, challenge creation, session creation, registration creation, or password reset completion.
 - Tokens and secrets `MUST NOT` be logged.
-- Protected open-api requests `MUST` resolve API keys through a server-side API key lookup service. The API key record, not the raw submitted key alone, supplies tenant, organization, user, app, data scope, and permission scope.
-- API key lookup implementations `MUST` support different storage backends through an interface or service boundary. The standard may use IAM tables, tenant-local API key tables, encrypted secret stores, caches, or remote IAM services.
+- Protected open-api requests `MUST` resolve API keys through a server-side API key lookup service when the route declares `api-key` or flexible mode selects API key. The API key record, not the raw submitted key alone, supplies tenant, organization, user, app, data scope, and permission scope.
+- Protected open-api requests `MUST` resolve OAuth bearer tokens through a server-side OAuth token lookup service when the route declares `oauth` or flexible mode selects OAuth bearer. Verified token/session metadata, not the raw bearer value alone, supplies tenant, organization, user, app, data scope, and permission scope.
+- API key and OAuth bearer lookup implementations `MUST` support different storage backends through service boundaries. The standard may use IAM tables, tenant-local stores, encrypted secret stores, caches, or remote IAM services.
 - Web backend handlers, controller methods, services, repositories, and provider adapters `MUST` follow `WEB_BACKEND_SPEC.md`: they consume typed request context and must not reparse raw credential headers after framework context resolution.
 
 ## 1.0.1 RPC SDK Metadata Security
@@ -162,6 +163,7 @@ Rules:
 - [ ] Tenant-bound token signing or equivalent server-side validation prevents cross-tenant token reuse.
 - [ ] Multi-organization login uses a continuation challenge and validates selected membership before issuing business tokens.
 - [ ] API key open-api validation resolves a server-side API key record before context injection.
+- [ ] OAuth bearer open-api validation resolves a server-side token/session record before context injection.
 - [ ] Protected HTTP routers for open-api, app-api, and backend-api run the standard interceptor chain through `sdkwork-web-framework` (Rust) or an equivalent framework (Java), or a stricter documented superset.
 - [ ] Generated RPC SDK clients support metadata providers for auth, access token, trace, idempotency, and request hash metadata.
 - [ ] RPC SDK examples use metadata providers and do not hard-code live tokens.

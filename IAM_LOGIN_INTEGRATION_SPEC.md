@@ -39,7 +39,7 @@ Rules:
 - Current-session bootstrap `MUST` call `@sdkwork/appbase-app-sdk` `auth.sessions.current.retrieve()` when that SDK resource is available. If current-session validation fails, the runtime `MUST` clear centralized session storage, context storage, token manager state, and sensitive session bridges, then report anonymous state; it `MUST NOT` fall back to cached user/profile data or locally stored tokens.
 - Registration and password-reset services `MUST` preserve literal password values, `MUST NOT` synthesize a missing confirmation by copying the password into `confirmPassword`, and `MUST` reject an explicitly provided password confirmation that differs from the password before calling SDK resources. UI confirmation checks do not replace this service/runtime boundary check, and backend handlers must enforce the same rule.
 - Development verification-code configuration may prefill UI input fields only. It `MUST NOT` skip `messaging.verificationCodes.create`, `messaging.verificationCodes.verify`, password-reset request creation, registration creation, or session creation, and new configuration names should use `prefill` instead of `bypass`.
-- Application-owned open-api SDKs that declare API key security `MUST` receive credentials through an API key credential provider or approved provider, not through the app login token manager.
+- Application-owned open-api SDKs `MUST` receive credentials through a declared open-api credential provider matching their contract auth mode (`api-key`, `oauth`, or `open-api-flexible`), not through the app login token manager.
 - UI components `MUST NOT` call raw HTTP, manually assemble `Authorization` or `Access-Token`, parse JWTs for authorization, or store duplicate token DTOs.
 - Application/dependency app SDKs and explicit `backend-admin` backend SDKs `MUST NOT` own login, parse tokens, refresh tokens independently, or persist second session state; they only consume the global token manager for request authentication.
 - Protected business services `MUST` consume a verified session projection through typed context, not through body/query tenant or user fields.
@@ -65,7 +65,7 @@ Use the smallest package set needed for the target UI architecture.
 | Appbase backend SDK | `@sdkwork/appbase-backend-sdk` | canonical `backend-admin` IAM management transport |
 | Application-owned app/backend SDKs | generated app-api SDKs and explicit `backend-admin` backend-api SDKs | protected business operations that receive the global token manager only |
 | Dependency app/backend SDKs | generated dependency app-api SDKs and explicit `backend-admin` backend-api SDKs | dependency-owned protected operations such as Drive, Messaging, IM, or other reusable app SDK capabilities that receive the same global token manager only |
-| Application-owned open-api SDKs | generated open-api SDKs | protected public/domain operations that receive API key credentials when their contract declares API key mode |
+| Application-owned open-api SDKs | generated open-api SDKs | protected public/domain operations that receive API key and/or OAuth bearer credentials per their declared auth mode |
 | Rust AppContext crate | product-independent context helper crate | dual-token and SDKWork AppContext extraction/validation |
 
 Rules:
@@ -85,7 +85,7 @@ Minimum app-side steps:
 3. Create one session module that reads, writes, normalizes, and clears `authToken`, `accessToken`, `refreshToken`, `sessionId`, `user`, and `context`.
 4. Create `@sdkwork/appbase-app-sdk` as `appbaseApp` in bootstrap/core code. Create `@sdkwork/appbase-backend-sdk` as `appbaseBackend` only when the runtime is an explicit `backend-admin` surface.
 5. Build an SDK inventory, then pass every authenticated application/dependency app-api SDK and every explicit `backend-admin` backend-api SDK through `clients.sdkClients` or the local equivalent so the same global token manager is injected.
-6. Pass protected open-api SDK clients through a separate API key credential provider when their contract declares API key mode.
+6. Pass protected open-api SDK clients through a separate open-api credential provider matching their declared auth mode (`api-key`, `oauth`, or `open-api-flexible`).
 7. Use appbase auth UI/runtime packages or an approved high-level appbase auth integration wrapper for login, registration, refresh, OAuth, QR auth, password reset, runtime metadata, and current-user self-service.
 8. Create only the product-specific runtime bridge needed for bootstrap/logout/current-session handoff, when appbase UI/runtime cannot consume those ports directly.
 9. Wrap product routes with an `AuthGate`.
@@ -142,7 +142,7 @@ Rules:
 
 - `createIamRuntime(...)` `MUST` create or receive the global `AuthTokenManager`.
 - `clients.appbaseApp` is required. `clients.appbaseBackend` is optional and only used when `backend-admin` IAM management is part of the runtime.
-- `clients.sdkClients` contains downstream authenticated application/dependency app-api SDK clients, explicit `backend-admin` backend-api SDK clients, plus approved composed wrappers backed by those SDKs. It does not contain protected open-api SDKs that use API key mode.
+- `clients.sdkClients` contains downstream authenticated application/dependency app-api SDK clients, explicit `backend-admin` backend-api SDK clients, plus approved composed wrappers backed by those SDKs. It does not contain protected open-api SDKs.
 - The runtime `MUST` bind the same token manager to every client with `setTokenManager(manager)`.
 - The runtime `MUST` hydrate the token manager from `tokenStore` when in-memory tokens are empty.
 - `contextStore` `MUST` persist returned `AppContext` and derive or expose `ShardingContext` when the platform provides that helper.
@@ -173,7 +173,7 @@ Rules:
 
 ## 5. Session And Token Rules
 
-SDKWork protected app-api and backend-api operations use a dual-token model. Protected open-api operations use API key mode when their API contract declares it, and do not participate in app login/session creation.
+SDKWork protected app-api and backend-api operations use a dual-token model. Protected open-api operations use the auth mode declared by their API contract (`api-key`, `oauth`, or `open-api-flexible`) and do not participate in app login/session creation.
 
 | Token | Transport | Purpose |
 | --- | --- | --- |
@@ -202,7 +202,7 @@ Rules:
 - `commitSession(session)` is allowed only for new session flows. `commitSession(session, { preserveRefreshToken: true })` is allowed only for current-session bootstrap, current-session update, refresh continuation, and equivalent session restoration flows.
 - `commitSession` `MUST` be awaited before auth service, runtime, route guard, or UI controller APIs resolve. If a custom committer returns a committed session, the runtime reports that normalized return value. If it returns `void`, the runtime reports the standard committed session it computed before invoking the committer.
 - Logout clearing is a two-level `finally` rule: the service/runtime clears persisted tokens, global token manager, context store, realtime/session bridges, and sensitive caches even when remote session deletion fails; the UI/controller clears in-memory authenticated state even when service logout rejects after local cleanup.
-- The global token manager is the app-api SDK and explicit `backend-admin` backend-api SDK login-retention standard. Product/dependency app SDKs and explicit `backend-admin` backend SDKs `MUST NOT` maintain independent token stores, independent TokenManagers, or refresh flows. Product open-api SDKs that use API key mode manage API key credentials through their declared SDK credential provider and `MUST NOT` treat API keys as app login sessions.
+- The global token manager is the app-api SDK and explicit `backend-admin` backend-api SDK login-retention standard. Product/dependency app SDKs and explicit `backend-admin` backend SDKs `MUST NOT` maintain independent token stores, independent TokenManagers, or refresh flows. Product open-api SDKs manage credentials through their declared open-api credential provider and `MUST NOT` treat API keys or OAuth bearer tokens as app login sessions.
 - Frontend code outside SDK/bootstrap `MUST NOT` set `Authorization`, `Access-Token`, `X-Sdkwork-*`, or equivalent auth headers manually.
 - `authToken`, `accessToken`, and `refreshToken` `MUST NOT` be logged, copied into URLs, exposed in UI, or saved in product feature state.
 - Token refresh failure `MUST` clear the global token manager, session store, context store, realtime/session bridges, sensitive caches, and route to login through a single runtime clearing path.

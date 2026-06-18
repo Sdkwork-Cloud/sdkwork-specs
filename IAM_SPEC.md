@@ -2,7 +2,7 @@
 
 - Version: 1.1
 - Scope: tenant, organization, user, authentication, authorization, sessions, devices, MFA, API keys, security events, audit events
-- Related: `API_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `DATABASE_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `MODULE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `PRIVACY_SPEC.md`
+- Related: `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `DATABASE_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `MODULE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `PRIVACY_SPEC.md`
 
 IAM is the foundational domain for every SDKWork application. It owns the reusable user system, login/session system, tenant and organization isolation model, authorization model, security posture, and the token-derived context that lets standalone and cloud deployments expose the same application behavior.
 
@@ -212,9 +212,9 @@ Rules:
 - Tenant signing keys `MUST` support rotation with overlapping validation windows. Revoked or expired keys `MUST NOT` sign new tokens.
 - Signing material `MUST` be stored encrypted or in an approved secret manager/KMS. It `MUST NOT` be logged, returned by APIs, embedded in public runtime config, or stored in generated SDK output.
 
-## 5.3 API Key Context Resolution
+## 5.3 API Key Context Resolution (Open-api)
 
-Open-api and machine-to-machine flows use API keys only when the API contract declares API key mode. API key mode is a context-resolution mode, not a bypass around IAM.
+Open-api and machine-to-machine flows use API keys when the API contract declares `auth.mode: api-key` or when `open-api-flexible` selects the API key scheme. API key mode is a context-resolution mode, not a bypass around IAM.
 
 Rules:
 
@@ -224,6 +224,29 @@ Rules:
 - `ApiKeyParser` and `ApiKeyLookupService` or equivalent interfaces are required extension points. They allow different products to keep API keys in different IAM tables, tenant-local tables, encrypted secret stores, caches, or remote IAM services.
 - API key lookup `MUST` validate tenant binding, organization binding, app audience, permission scope, expiry, revocation, and allowed source before returning `AppRequestPrincipal`.
 - API key mode and dual-token mode `MUST` be mutually exclusive for a single request.
+- Standard IAM adapter lookup uses `iam_api_key.key_hash` through `IamApiKeyLookupService`. Production profiles `MUST NOT` trust inline claim strings in the raw API key value alone.
+
+## 5.4 OAuth Bearer Context Resolution (Open-api)
+
+Open-api routes may declare `auth.mode: oauth` or accept OAuth bearer credentials through `auth.mode: open-api-flexible`.
+
+Rules:
+
+- OAuth bearer mode `MUST` resolve a server-side token or session record before protected business logic runs.
+- Resolution `MAY` use access-token hash lookup against `iam_session`, OAuth JWT verification with tenant-bound signing keys from `iam_tenant_signing_key`, or a product-specific token store behind `OAuthTokenLookupService`.
+- Raw bearer token values `MUST` be stored hashed when persisted. Logs and audit records must use token/session ids and safe prefixes only.
+- `OAuthBearerParser` and `OAuthTokenLookupService` are required framework extension points. Implementations `MAY` live in `sdkwork-iam-web-adapter` (`IamOAuthTokenLookupService`) or product-owned adapters.
+- OAuth bearer lookup `MUST` validate tenant binding, app audience, permission scope, expiry, revocation, and signing-key tenant binding before returning `WebRequestPrincipal` / `AppContext`.
+- OAuth bearer mode and dual-token mode `MUST` be mutually exclusive for a single request. Open-api OAuth bearer requests `MUST NOT` carry `Access-Token`.
+- Production and production-like profiles `MUST NOT` trust inline OAuth claim strings in the bearer token value alone.
+
+## 5.5 IAM Web Adapter For Open-api
+
+Rules:
+
+- `sdkwork-iam-web-adapter` `MUST` provide `IamOpenApiWebRequestContextResolver` (alias of `IamDatabaseWebRequestContextResolver`) for standard IAM open-api wiring.
+- Open-api bootstrap `MUST` pass the route manifest to `build_iam_open_api_web_framework_layer(resolver, route_manifest)` so `RouteAuth::ApiKey`, `RouteAuth::OAuth`, and `RouteAuth::OpenApiFlexible` are enforced consistently.
+- Session/token SQL against IAM foundation tables `MUST` follow `DATABASE_SPEC.md` section 8.1.1 for TEXT-stored `instant` comparisons.
 
 ## 6. API Surface
 
@@ -316,6 +339,8 @@ Rules:
 - [ ] Both `authToken` and `accessToken` include matching `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims.
 - [ ] Token signing and validation use tenant-bound signing keys with key id and tenant binding checks.
 - [ ] API key operations resolve a server-side API key record and never trust raw key claims alone in production.
+- [ ] OAuth bearer open-api operations resolve a server-side token/session record and never trust raw bearer claim strings alone in production.
+- [ ] Open-api IAM ingress uses `IamOpenApiWebRequestContextResolver` with route-manifest auth modes instead of handler-local credential parsing.
 - [ ] AppContext and ShardingContext are derived from verified token context.
 - [ ] Appbase HTTP handlers consume typed `WebRequestContext`/`AppContext` and do not reparse credentials.
 - [ ] Tenant and organization isolation is enforced in Java and Rust.

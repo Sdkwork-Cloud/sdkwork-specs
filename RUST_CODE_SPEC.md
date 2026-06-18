@@ -432,6 +432,8 @@ Rules:
 - Shared mutable state must be explicit in state structs or service ports.
 - SQLx queries belong in repository modules, not handlers or route manifests.
 - Tenant, organization, user, request id, trace, and permission context must come from typed request context, not raw headers.
+- IAM session/token lookup for open-api `MUST` live in `sdkwork-iam-web-adapter` or product adapters implementing framework traits; route handlers `MUST NOT` duplicate credential resolution SQL.
+- Queries comparing logical `instant` columns physically stored as TEXT `MUST` use explicit PostgreSQL casts such as `expires_at::timestamptz > $1::timestamptz` per `DATABASE_SPEC.md` section 8.1.1. `MUST NOT` bind `chrono::DateTime<Utc>` directly against TEXT `instant` columns without cast.
 - Provider SDK calls belong in adapters behind traits or service ports.
 
 ## 7. Formatting And Verification

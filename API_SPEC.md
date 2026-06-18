@@ -105,7 +105,7 @@ SDKWork uses three canonical API surfaces.
 | App API | `app-api` | `/app/v3/api` | Application development clients, desktop apps, mobile apps, H5, PC applications, and other user-facing app clients | Allowed and canonical |
 | Backend API | `backend-api` | `/backend/v3/api` | Admin consoles, internal operators, backend SDKs, control plane, automation | Forbidden |
 
-The runtime request framework classifies every SDKWork HTTP API path outside `/app/v3/api` and `/backend/v3/api` as `open-api` for context resolution. Open-api does not require the literal path segment `open`; domain-specific prefixes such as `/im/v3/api` are open-api when they are not app-api or backend-api. Protected open-api operations use API key style context resolution unless a specific contract says otherwise.
+The runtime request framework classifies every SDKWork HTTP API path outside `/app/v3/api` and `/backend/v3/api` as `open-api` for context resolution. Open-api does not require the literal path segment `open`; domain-specific prefixes such as `/im/v3/api` are open-api when they are not app-api or backend-api. Protected open-api operations use header-driven API key, OAuth bearer, or `open-api-flexible` context resolution according to the route manifest unless a specific contract declares `public` or a documented compatibility mode.
 
 Rules:
 
@@ -303,7 +303,7 @@ Rules:
 - Every `routes[]` entry `MUST` declare `requestContext: WebRequestContext`. Public routes still receive `WebRequestContext` with an anonymous principal; protected routes require a resolved principal before business logic.
 - Every `routes[]` entry `MUST` declare `apiSurface` and it `MUST` match the top-level `surface`. The materializer `MUST` reject missing or mismatched values.
 - `routes[].apiSurface` values `MUST` use canonical kebab-case contract labels such as `open-api`, `app-api`, and `backend-api`. Runtime enum labels such as `openApi`, `appApi`, and `backendApi` are not valid route manifest or OpenAPI extension values.
-- `auth.mode` `MUST` be one of `public`, `dual-token`, `api-key`, or `compatibility`. Protected app-api and backend-api routes use `dual-token`; protected open-api routes use `api-key` unless a documented compatibility contract declares a different mode.
+- `auth.mode` `MUST` be one of `public`, `dual-token`, `api-key`, `oauth`, `open-api-flexible`, or `compatibility`. Protected app-api and backend-api routes use `dual-token`. Protected open-api routes use `api-key`, `oauth`, or `open-api-flexible` unless a documented compatibility contract declares a different mode.
 - Public SDK-generated routes `MUST` materialize `security: []` and `x-sdkwork-auth-mode: anonymous`; a framework-specific `x-sdkwork-route-auth: public` extension may be present but does not replace `x-sdkwork-auth-mode`.
 - Login, registration, OAuth session creation, QR auth session creation or password completion, password reset request, password reset completion, and equivalent credential-entry routes `MUST` set `forbidCredentialHeaders: true`.
 - `ownership.owner` and `ownership.apiAuthority` materialize to `x-sdkwork-owner` and `x-sdkwork-api-authority`. `source.crateRoot` or `routes[].source` materializes to `x-sdkwork-source` and `x-sdkwork-source-route-crate`.
@@ -641,7 +641,7 @@ Rules:
 
 ### 9.2 Security Schemes
 
-App and backend protected operations use dual-token security. Open API operations use API key security when they are not explicitly public.
+App and backend protected operations use dual-token security. Protected open-api operations use API key security, OAuth bearer security, or flexible open-api security according to the route manifest when they are not explicitly public.
 
 ```yaml
 components:
@@ -658,19 +658,26 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
+    OAuthBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 ```
 
 Rules:
 
 - Protected app-api and backend-api operations `MUST` require both `AuthToken` and `AccessToken`.
-- Protected open-api operations `MUST` require `ApiKey`.
+- Protected open-api operations with `auth.mode: api-key` `MUST` require `ApiKey`.
+- Protected open-api operations with `auth.mode: oauth` `MUST` require `OAuthBearer`.
+- Protected open-api operations with `auth.mode: open-api-flexible` `MAY` declare both `ApiKey` and `OAuthBearer`; runtime selection follows `WEB_FRAMEWORK_SPEC.md` section 6.1.
 - Public operations `MUST` explicitly set `security: []`.
-- `Authorization: Bearer <auth_token>` authenticates the principal/session.
-- `Access-Token: <access_token>` carries access context such as tenant, organization, app, environment, and scope claims.
+- `Authorization: Bearer <auth_token>` authenticates the principal/session on app-api/backend-api dual-token requests.
+- `Authorization: Bearer <token>` on open-api OAuth routes carries an OAuth bearer credential. It `MUST NOT` be treated as app-api `auth_token` when `Access-Token` is absent and the route declares `oauth` or `open-api-flexible`.
+- `Access-Token: <access_token>` carries access context such as tenant, organization, app, environment, and scope claims on app-api/backend-api requests.
 - `X-API-Key` carries an API key credential only. The server resolves tenant, organization, user, app, scope, and key identity from the validated API key object.
-- `Access-Token` is the canonical SDKWork access isolation header for v3 contracts.
+- `Access-Token` is the canonical SDKWork access isolation header for v3 app-api/backend-api contracts.
 - Do not define duplicate security scheme names for the same token.
-- API key mode and dual-token mode `MUST` be mutually exclusive for one request.
+- Open-api credential modes and dual-token mode `MUST` be mutually exclusive for one request.
 - App-api login/session creation operations are public session-creation operations. They `MUST` declare the correct public or challenge-specific security contract and `MUST NOT` use inbound `AuthToken`, `AccessToken`, or context headers to choose tenant or organization.
 
 Protected app/backend operation example:
@@ -681,11 +688,21 @@ security:
     AccessToken: []
 ```
 
-Protected open-api operation example:
+Protected open-api operation examples:
 
 ```yaml
+# auth.mode: api-key
 security:
   - ApiKey: []
+
+# auth.mode: oauth
+security:
+  - OAuthBearer: []
+
+# auth.mode: open-api-flexible
+security:
+  - ApiKey: []
+    OAuthBearer: []
 ```
 
 Public operation example:
@@ -710,7 +727,7 @@ Rules:
 - `login_scope` `MUST` be `TENANT` when `organization_id` is absent or `0`, and `ORGANIZATION` when `organization_id` is present and non-zero. Contradictory token claims are invalid.
 - Business requests `MUST NOT` trust tenant, organization, role, or user IDs supplied only by body/query parameters when they conflict with token context.
 - Current-tenant selection `MUST NOT` be modeled as a client-supplied OpenAPI parameter or request field. Protected app-api, backend-api, and open-api contracts `MUST NOT` declare `tenant_id`, `tenantId`, `tenant`, `tenant-id`, `X-Tenant-Id`, or equivalent tenant selectors in path, query, header, cookie, or client-writable request body solely to choose the authenticated tenant.
-- New SDK-generated operations `MUST NOT` expose `tenant_id` or `tenantId` as method parameters, `params` fields, or request body fields for current tenant context. App-api and backend-api callers get tenant context from `Authorization` plus `Access-Token`; protected open-api callers get tenant context from the validated API key record.
+- Protected open-api callers get tenant context from the validated API key record or validated OAuth bearer token/session lookup.
 - API paths `MUST NOT` use `/tenants/{tenantId}/...` to scope ordinary current-tenant business resources. Use context-relative resources such as `/orders`, `/files`, or `/iam/organizations`, then enforce tenant and data scope from `WebRequestContext`.
 - Explicit tenant administration or cross-tenant platform operations may address a tenant as the managed resource only when the operation is `backend-admin` or platform scoped, declares a platform/cross-tenant permission, and verifies explicit authorization. Such identifiers must be target/resource identifiers, not ambient request context selectors, and they `MUST NOT` weaken the ban on generated `tenant_id` or `tenantId` current-context inputs.
 - If a request path contains a tenant or organization resource identifier, the server `MUST` verify it matches or is authorized by token claims.
@@ -776,7 +793,7 @@ API surface and resolver standard:
 
 | Surface | Prefixes | Auth mode | Resolver standard |
 | --- | --- | --- | --- |
-| `open-api` | Any approved SDKWork HTTP API prefix outside `/app/v3/api` and `/backend/v3/api`, for example `/im/v3/api` | API key | Framework `ApiKeyLookupService` resolves the API key record and produces `WebRequestPrincipal`. |
+| `open-api` | Any approved SDKWork HTTP API prefix outside `/app/v3/api` and `/backend/v3/api`, for example `/im/v3/api` | `api-key`, `oauth`, or `open-api-flexible` | Framework `ApiKeyLookupService` and/or `OAuthTokenLookupService` resolve the credential and produce `WebRequestPrincipal`. Flexible routes additionally use `OpenApiCredentialSchemeDetector`. |
 | `app-api` | `/app/v3/api` | Dual token | Framework `WebRequestContextResolver` validates dual tokens and produces one principal context. |
 | `backend-api` | `/backend/v3/api` | Dual token | Framework `WebRequestContextResolver` validates dual tokens and produces one principal context. |
 
@@ -784,13 +801,14 @@ Rules:
 
 - `WebRequestContext` `MUST` be resolved once at the framework boundary and injected as a typed request extension or equivalent runtime context.
 - Business handlers `MUST` consume the typed context. They `MUST NOT` reparse auth tokens, access tokens, API keys, or tenant/user fields from raw headers.
-- `WebRequestContextResolver`, `ApiKeyLookupService`, `AuthorizationPolicy`, `TenantIsolationPolicy`, and `DomainContextInjector` are standard framework extension points. appbase and product repositories implement them; they `MUST NOT` expose a parallel HTTP context framework.
+- `WebRequestContextResolver`, `ApiKeyLookupService`, `OAuthTokenLookupService`, `OpenApiCredentialSchemeDetector`, `AuthorizationPolicy`, `TenantIsolationPolicy`, and `DomainContextInjector` are standard framework extension points. appbase and product repositories implement them; they `MUST NOT` expose a parallel HTTP context framework.
 - The default parser may support standalone development claim formats, but
   production parsers `MUST` validate signature, tenant-bound signing key or key
   id, token type, expiry, issuer, audience, revocation, tenant binding,
   organization binding, login-scope consistency, app binding, deployment
   profile, runtime target, and permission scope.
 - API key lookup `MUST` be abstracted behind a service/interface. Implementations may use `iam_api_key`, tenant-local API key tables, encrypted secret stores, caches, or remote IAM services.
+- OAuth bearer lookup `MUST` be abstracted behind a service/interface. Implementations may validate access-token hashes against `iam_session`, OAuth JWT claims with tenant-bound signing keys, or product-specific token stores.
 - API key records `MUST` provide the principal user id, tenant id, organization id when applicable, app id, data scope, permission scope, key id, and revocation/expiry state.
 - Dual-token resolution `MUST` reject conflicting tenant, organization, user, session, or app claims when both tokens carry the same field.
 - Dual-token resolution `MUST` reject missing or conflicting `login_scope` claims and any `TENANT`/`ORGANIZATION` claim mismatch with `organization_id`.
@@ -1176,7 +1194,7 @@ SDKWork governance tools may read these extensions.
 | `x-sdkwork-data-scope` | Data visibility scope |
 | `x-sdkwork-audit-event` | Audit event type |
 | `x-sdkwork-idempotent` | Whether idempotency is required |
-| `x-sdkwork-auth-mode` | Operation credential mode: `anonymous`, `dual-token`, `refresh-token`, `api-key`, or `internal` |
+| `x-sdkwork-auth-mode` | Operation credential mode: `anonymous`, `dual-token`, `refresh-token`, `api-key`, `oauth`, `open-api-flexible`, or `internal` |
 | `x-sdkwork-forbid-credential-headers` | Whether the server must reject inbound credential and SDKWork context headers for this operation |
 | `x-sdkwork-sdk-resource` | SDK nested resource override if path inference is insufficient |
 | `x-sdkwork-deployment-profile` | `standalone`, `cloud`, or `all` |
@@ -1346,7 +1364,7 @@ An API is standard only when this checklist passes:
 - [ ] Public SDK-generated operations that must not send stored credentials set `x-sdkwork-auth-mode: anonymous`.
 - [ ] Login-like anonymous credential-entry operations set `x-sdkwork-forbid-credential-headers: true` and runtime code rejects credential/context headers.
 - [ ] Protected app-api and backend-api operations require both `AuthToken` and `AccessToken`.
-- [ ] Protected open-api operations require `ApiKey`.
+- [ ] Protected open-api operations require `ApiKey`, `OAuthBearer`, or both per declared `auth.mode` (`api-key`, `oauth`, or `open-api-flexible`).
 - [ ] Auth/session creation operations do not use inbound tokens or context headers to choose tenant, organization, or user.
 - [ ] Dual-token protected operations validate matching tenant, organization, login scope, user, session, app, and token type claims.
 - [ ] Token validation uses tenant-bound signing keys or an equivalent server-side tenant-bound token lookup.

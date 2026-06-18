@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: domains, capabilities, repositories, applications, components, packages, SDK families, API authorities, route crates, database identifiers, files, and test names
-- Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CODE_STYLE_SPEC.md`
+- Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CODE_STYLE_SPEC.md`
 
 This standard is the naming entrypoint for SDKWork. It indexes naming rules that are also governed by more specific specs. If this file conflicts with a more specific root spec, the more specific spec wins and this file must be updated.
 
@@ -70,8 +70,8 @@ Rules:
 | RPC SDK family | `sdkwork-<sdk-family-stem>-rpc-sdk` | `sdkwork-im-rpc-sdk` |
 | Component spec | `specs/component.spec.json` | `packages/foo/specs/component.spec.json` |
 | App manifest | `sdkwork.app.config.json` | `apps/foo/sdkwork.app.config.json` |
-| GitHub package id | `<platform>-<architecture>-<profile>-<format-token>`; Linux native packages use `linux-<distribution>-<architecture>-<profile>-<format-token>`; variant packages insert `<variant>` before `<format-token>` | `windows-x64-desktop-msi`, `linux-debian-x64-server-deb`, `container-x64-server-nvidia-cuda-tar-gz` |
-| GitHub artifact name | `<artifact-prefix>-<package-id>` | `sdkwork-drive-android-arm64-mobile-aab` |
+| GitHub package id | `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>`; Linux native packages use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<format-token>`; variant packages insert `<variant>` before `<format-token>` | `windows-x64-standalone-desktop-msi`, `linux-debian-x64-standalone-server-deb`, `container-x64-cloud-container-nvidia-cuda-tar-gz` |
+| GitHub artifact name | `<artifact-prefix>-<package-id>` | `sdkwork-drive-android-arm64-standalone-mobile-aab` |
 | Agent entrypoint | `AGENTS.md` | `AGENTS.md` |
 | Tool compatibility shim | `<TOOL>.md` | `CLAUDE.md`, `GEMINI.md`, `CODEX.md` |
 
@@ -112,10 +112,10 @@ Rules:
 
 Rules:
 
-- GitHub workflow package ids use `<platform>-<architecture>-<profile>-<format-token>`.
-- Linux native `deb` and `rpm` package ids use `linux-<distribution>-<architecture>-<profile>-<format-token>` because distribution families have different package metadata, dependencies, signing, repositories, and install validation.
-- Package ids with a real variant use `<platform>-<architecture>-<profile>-<variant>-<format-token>`. Linux native variant packages use `linux-<distribution>-<architecture>-<profile>-<variant>-<format-token>`.
-- Use the variant segment only when distinct releasable artifacts share the same platform, architecture, profile, and format. Examples include `cpu`, `nvidia-cuda`, and `amd-rocm` deployment bundles.
+- GitHub workflow package ids use `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>`.
+- Linux native `deb` and `rpm` package ids use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<format-token>` because distribution families have different package metadata, dependencies, signing, repositories, and install validation.
+- Package ids with a real variant use `<platform>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>`. Linux native variant packages use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>`.
+- Use the variant segment only when distinct releasable artifacts share the same platform, architecture, deployment profile, profile, and format. Examples include `cpu`, `nvidia-cuda`, and `amd-rocm` deployment bundles.
 - GitHub workflow artifact names use `<artifact-prefix>-<package-id>`.
 - `artifact-prefix` comes from `release.artifactPrefix` and normally matches `app.id` unless an application has a documented release-branding reason.
 - `format-token` is the lowercase kebab token for the package format. Dots and other separators are normalized to hyphens, for example `tar.gz` becomes `tar-gz`.
@@ -123,32 +123,37 @@ Rules:
 - Generic Linux archive formats such as `tar.gz`, `appimage`, `snap`, and `flatpak` do not include the distribution segment unless a more specific future standard defines one.
 - Package ids and artifact names `MUST` use lowercase kebab tokens only. Do not use `service` as a package profile alias for `server`, and do not omit the format token.
 - Variant values `MUST` use lowercase kebab tokens and must not be encoded into `architecture`, `profile`, or `format`.
-- When an SDKWork application supports more than one surface, the `profile` segment distinguishes server, PC desktop, mobile, tablet, web, mini-program, worker, and library packages.
+- When an SDKWork application supports more than one surface, the `profile` segment distinguishes server, desktop, browser, mobile, tablet, mini-program, worker, and library packages.
+- The `deployment-profile` segment is always `standalone` or `cloud`. Runtime
+  targets such as `server`, `container`, `desktop`, `browser`, mobile,
+  mini-program, or Docker-compatible container images must not replace that
+  segment.
 
 Examples:
 
 | Surface | Package id | Artifact name with `artifact-prefix: sdkwork-drive` |
 | --- | --- | --- |
-| Server Debian `.deb` | `linux-debian-x64-server-deb` | `sdkwork-drive-linux-debian-x64-server-deb` |
-| Server Ubuntu `.deb` | `linux-ubuntu-arm64-server-deb` | `sdkwork-drive-linux-ubuntu-arm64-server-deb` |
-| Server RHEL `.rpm` | `linux-rhel-x64-server-rpm` | `sdkwork-drive-linux-rhel-x64-server-rpm` |
-| Desktop Fedora `.rpm` | `linux-fedora-x64-desktop-rpm` | `sdkwork-drive-linux-fedora-x64-desktop-rpm` |
-| Server Linux archive | `linux-x64-server-tar-gz` | `sdkwork-drive-linux-x64-server-tar-gz` |
-| Server container image | `container-arm64-server-oci` | `sdkwork-drive-container-arm64-server-oci` |
-| CPU container bundle | `container-x64-server-cpu-tar-gz` | `sdkwork-drive-container-x64-server-cpu-tar-gz` |
-| NVIDIA CUDA container bundle | `container-x64-server-nvidia-cuda-tar-gz` | `sdkwork-drive-container-x64-server-nvidia-cuda-tar-gz` |
-| AMD ROCm container bundle | `container-x64-server-amd-rocm-tar-gz` | `sdkwork-drive-container-x64-server-amd-rocm-tar-gz` |
-| PC desktop Windows installer | `windows-x64-desktop-msi` | `sdkwork-drive-windows-x64-desktop-msi` |
-| PC desktop Windows bootstrapper | `windows-x64-desktop-exe` | `sdkwork-drive-windows-x64-desktop-exe` |
-| PC desktop macOS bundle | `macos-arm64-desktop-dmg` | `sdkwork-drive-macos-arm64-desktop-dmg` |
-| H5 mobile URL package | `h5-universal-mobile-web-url` | `sdkwork-drive-h5-universal-mobile-web-url` |
-| WeChat H5 mobile URL package | `h5-weixin-universal-mobile-web-url` | `sdkwork-drive-h5-weixin-universal-mobile-web-url` |
-| Phone Android app bundle | `android-arm64-mobile-aab` | `sdkwork-drive-android-arm64-mobile-aab` |
-| Phone iOS app archive | `ios-universal-mobile-ipa` | `sdkwork-drive-ios-universal-mobile-ipa` |
-| Phone Harmony app package | `harmony-arm64-mobile-other` | `sdkwork-drive-harmony-arm64-mobile-other` |
-| Tablet iPadOS app archive | `ipados-universal-tablet-ipa` | `sdkwork-drive-ipados-universal-tablet-ipa` |
-| Tablet Windows package | `windows-tablet-x64-tablet-msix` | `sdkwork-drive-windows-tablet-x64-tablet-msix` |
-| WeChat mini program package | `mp-weixin-universal-mini-program-mini-program-package` | `sdkwork-drive-mp-weixin-universal-mini-program-mini-program-package` |
+| Server Debian `.deb` | `linux-debian-x64-standalone-server-deb` | `sdkwork-drive-linux-debian-x64-standalone-server-deb` |
+| Server Ubuntu `.deb` | `linux-ubuntu-arm64-standalone-server-deb` | `sdkwork-drive-linux-ubuntu-arm64-standalone-server-deb` |
+| Server RHEL `.rpm` | `linux-rhel-x64-standalone-server-rpm` | `sdkwork-drive-linux-rhel-x64-standalone-server-rpm` |
+| Desktop Fedora `.rpm` | `linux-fedora-x64-standalone-desktop-rpm` | `sdkwork-drive-linux-fedora-x64-standalone-desktop-rpm` |
+| Server Linux archive | `linux-x64-standalone-server-tar-gz` | `sdkwork-drive-linux-x64-standalone-server-tar-gz` |
+| Standalone container image | `container-arm64-standalone-container-oci` | `sdkwork-drive-container-arm64-standalone-container-oci` |
+| Cloud CPU container bundle | `container-x64-cloud-container-cpu-tar-gz` | `sdkwork-drive-container-x64-cloud-container-cpu-tar-gz` |
+| Cloud NVIDIA CUDA container bundle | `container-x64-cloud-container-nvidia-cuda-tar-gz` | `sdkwork-drive-container-x64-cloud-container-nvidia-cuda-tar-gz` |
+| Cloud AMD ROCm container bundle | `container-x64-cloud-container-amd-rocm-tar-gz` | `sdkwork-drive-container-x64-cloud-container-amd-rocm-tar-gz` |
+| PC desktop Windows installer | `windows-x64-standalone-desktop-msi` | `sdkwork-drive-windows-x64-standalone-desktop-msi` |
+| PC desktop Windows bootstrapper | `windows-x64-standalone-desktop-exe` | `sdkwork-drive-windows-x64-standalone-desktop-exe` |
+| PC desktop macOS bundle | `macos-arm64-standalone-desktop-dmg` | `sdkwork-drive-macos-arm64-standalone-desktop-dmg` |
+| Browser web URL package | `web-universal-cloud-browser-web-url` | `sdkwork-drive-web-universal-cloud-browser-web-url` |
+| H5 mobile URL package | `h5-universal-cloud-mobile-web-url` | `sdkwork-drive-h5-universal-cloud-mobile-web-url` |
+| WeChat H5 mobile URL package | `h5-weixin-universal-cloud-mobile-web-url` | `sdkwork-drive-h5-weixin-universal-cloud-mobile-web-url` |
+| Phone Android app bundle | `android-arm64-standalone-mobile-aab` | `sdkwork-drive-android-arm64-standalone-mobile-aab` |
+| Phone iOS app archive | `ios-universal-standalone-mobile-ipa` | `sdkwork-drive-ios-universal-standalone-mobile-ipa` |
+| Phone Harmony app package | `harmony-arm64-standalone-mobile-other` | `sdkwork-drive-harmony-arm64-standalone-mobile-other` |
+| Tablet iPadOS app archive | `ipados-universal-standalone-tablet-ipa` | `sdkwork-drive-ipados-universal-standalone-tablet-ipa` |
+| Tablet Windows package | `windows-tablet-x64-standalone-tablet-msix` | `sdkwork-drive-windows-tablet-x64-standalone-tablet-msix` |
+| WeChat mini program package | `mp-weixin-universal-cloud-mini-program-mini-program-package` | `sdkwork-drive-mp-weixin-universal-cloud-mini-program-mini-program-package` |
 
 ## 4.2 Client Architecture Package Naming
 

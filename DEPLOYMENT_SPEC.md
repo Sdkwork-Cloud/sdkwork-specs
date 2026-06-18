@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: standalone/cloud application deployment profiles, Java Spring, Rust backend, HTTP/RPC runtime bootstrap, frontend bootstrap, environment config
-- Related: `APPLICATION_SPEC.md`, `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `RELEASE_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`
 
 SDKWork applications must deploy through one of two standardized application deployment profiles: `standalone` or `cloud`. Shared module APIs, route contracts, generated SDKs, IAM request context, and runtime bootstrap must remain the same across both profiles.
 
@@ -23,7 +23,8 @@ Rules:
 
 - `deploymentProfile` values are only `standalone` and `cloud`.
 - Old values such as `saas`, `private`, `local`, `test`, `server`,
-  `container`, `desktop`, and `web` `MUST NOT` be used as deployment profile
+  `container`, `desktop`, `browser`, `web`, `mobile`, `mini-program`,
+  `docker`, and hosting aliases `MUST NOT` be used as deployment profile
   values.
 - SaaS, customer-private, local, and test are environment, ownership, tenancy,
   release, or test-fixture concerns. They must be represented through
@@ -82,6 +83,41 @@ Rules:
 - Cloud release artifacts are container images, charts/manifests, deployment
   bundles, or provider-specific deployment packages with SBOM, provenance,
   checksums, signing, rollout, and rollback evidence.
+
+### 1.3 Application Mode Coverage
+
+`CONFIG_SPEC.md` owns the canonical `runtimeTarget` vocabulary. This section
+defines how those runtime targets participate in the two deployment profiles;
+it is not a second enum.
+
+| Application mode | Runtime target values | Allowed deployment profiles | Primary config owner | Release behavior |
+| --- | --- | --- | --- | --- |
+| Browser web | `browser` | `cloud`; `standalone` only for a packaged local/offline web shell or private static bundle | Public runtime config from `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md` | Web URL, static bundle, or edge-hosted package with public SDK base URLs and asset rollback evidence. |
+| PC desktop | `desktop` | `standalone` | Desktop/user runtime config plus platform host config | Signed installer or app bundle; user-private storage defaults apply. |
+| Large-screen tablet | `tablet-ipados`, `tablet-android` | `standalone` for packaged tablet apps; `cloud` only for hosted browser/tablet web surfaces | PC renderer config plus tablet host config | IPA/APK/AAB or platform package evidence; tablet is a runtime/package target, not a deployment profile. |
+| H5 and Capacitor mobile | `browser`, `capacitor-ios`, `capacitor-android` | `cloud` for H5 web URLs; `standalone` for packaged Capacitor apps | H5 public config plus Capacitor host config | Web URL for H5; IPA/APK/AAB for Capacitor packages. |
+| Flutter mobile | `flutter-ios`, `flutter-android` | `standalone` for packaged apps | Flutter app config plus platform host config | IPA/APK/AAB or store-owned package with signing and store rollout evidence. |
+| Native mobile | `android-native`, `ios-native`, `harmony-native` | `standalone` for packaged apps | Native app config plus platform host config | AAB/APK, IPA, Harmony package, app-store, or private distribution evidence. |
+| Mini program | `mini-program` | `cloud` when served through platform review/release; `standalone` only for documented private/platform-local packages | Mini program config plus host platform config | Platform upload/review/release package with app id, version, and rollback notes. |
+| Server service | `server` | `standalone` or `cloud` | Server process config | Archive, service package, or cloud service artifact with PostgreSQL/Redis and ingress evidence. |
+| Container image or bundle | `container` | `standalone` for single-container units; `cloud` for orchestrated images/bundles | Mounted container config, env, and platform secrets | OCI image, Docker-compatible image, chart/manifest, or deployment bundle with digest and rollback evidence. |
+| Test runner | `test-runner` | Not a production deployment profile; uses `environment = test` | Ephemeral test config | Test artifacts are evidence only and must not be published as production runtime packages. |
+
+Rules:
+
+- `deploymentProfile` answers how the application is deployed and operated.
+  `runtimeTarget` answers where the package runs. A client package may be a
+  standalone artifact while calling cloud SDK surfaces.
+- `docker` is a packaging/tool ecosystem term. SDKWork runtime metadata uses
+  `runtimeTarget = "container"` and package/workflow metadata uses container or
+  OCI/Docker image formats as defined by `APP_MANIFEST_SPEC.md` and
+  `GITHUB_WORKFLOW_SPEC.md`.
+- Package metadata, workflow targets, release notes, and manifest entries
+  `MUST` carry both `deploymentProfile` and `runtimeTarget` and validate them
+  against the matrix above.
+- Pure client packages do not have to expose HTTP ingress. Any API surface they
+  serve, proxy, or compose still follows `WEB_FRAMEWORK_SPEC.md`,
+  `API_SPEC.md`, and `WebRequestContext` rules.
 
 ## 2. Environment Names
 

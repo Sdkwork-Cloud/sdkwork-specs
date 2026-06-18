@@ -121,7 +121,7 @@ Rules:
 | --- | --- | --- | --- |
 | app-api | `/app/v3/api` | Dual token | `with_web_request_context` + dual-token resolver |
 | backend-api | `/backend/v3/api` | Dual token | Same |
-| open-api | Approved domain prefix, for example `/im/v3/api` | API key or public | API key lookup + `WebRequestContext` |
+| open-api | Approved domain prefix, for example `/im/v3/api` | API key, OAuth bearer, open-api-flexible, or public | Header-driven credential resolution + `WebRequestContext` |
 | gateway-api | Gateway-owned prefixes | Surface-specific | Context resolution before proxy/composition |
 | public | Configured public prefixes | None | `WebRequestContext` with `principal: None` |
 
@@ -129,7 +129,29 @@ Rules:
 
 - Surface classification `MUST` run in the framework pipeline before credential parsing.
 - Protected app-api and backend-api handlers `MUST` call `require_tenant_id()` and `require_app_id()` or an equivalent framework/profile guard before business logic that reads tenant-owned data.
-- Protected open-api handlers `MUST` consume API-key-derived tenant/app context unless a documented compatibility contract declares a different mode.
+- Protected open-api handlers `MUST` consume framework-resolved tenant/app context from API key lookup, OAuth bearer lookup, or a documented compatibility contract. They `MUST NOT` parse credential headers directly.
+- Open-api credential mode `MUST` be declared in the route manifest (`auth.mode`) and enforced before protected business logic runs.
+
+### 6.1 Open-api Credential Modes
+
+Protected open-api routes `MUST` declare one of these route-level auth modes:
+
+| Route manifest `auth.mode` | Framework `RouteAuth` | Credential transport | Resolver path |
+| --- | --- | --- | --- |
+| `api-key` | `ApiKey` | `X-Api-Key` | `WebRequestContextResolver::resolve_api_key` + `ApiKeyLookupService` |
+| `oauth` | `OAuth` | `Authorization: Bearer <token>` without `Access-Token` | `WebRequestContextResolver::resolve_oauth_bearer` + `OAuthTokenLookupService` |
+| `open-api-flexible` | `OpenApiFlexible` | API key and/or OAuth bearer headers | `OpenApiCredentialSchemeDetector` chooses scheme, then dispatches to the matching resolver |
+| `public` | `Public` | none | anonymous `WebRequestContext` |
+
+Rules:
+
+- Credential scheme detection for open-api `MUST` be header-driven. When `Access-Token` is present, the request `MUST NOT` be classified as open-api OAuth bearer; app-api/backend-api dual-token rules take precedence on those surfaces.
+- `OpenApiFlexible` default preference when both `X-Api-Key` and OAuth bearer are present is API key first. Applications `MAY` override `OpenApiCredentialSchemeDetector` through framework runtime assembly.
+- Open-api credential modes and app-api/backend-api dual-token mode `MUST` be mutually exclusive for one request.
+- Production and production-like profiles `MUST` resolve API keys and OAuth bearer tokens through server-side lookup services. Dev-only inline claim-string resolvers are allowed only in local/private profiles documented by the owning repository.
+- IAM standard adapter: `sdkwork-iam-web-adapter` implements `IamOpenApiWebRequestContextResolver` (`IamDatabaseWebRequestContextResolver`) with `IamApiKeyLookupService` and `IamOAuthTokenLookupService`. Product repositories `SHOULD` reuse this adapter instead of forking open-api credential resolution.
+- L1 trait signatures, detector defaults, and Axum extractors: `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`, `../sdkwork-web-framework/docs/03-web-request-context.md`, and `../sdkwork-web-framework/docs/15-extension-points-registry.md`.
+
 - Business route crates `MUST NOT` live in `sdkwork-web-framework`. Framework-owned admin or control-plane route crates may live in the framework repository only when their ownership is explicit, their paths are framework-owned, and they follow the same `WebRequestContext`, manifest, OpenAPI, and security rules as application route crates.
 - Surface prefix rules remain authoritative in `API_SPEC.md` section 4.
 - Public route declarations use framework route metadata such as `RouteAuth::Public`; SDK/OpenAPI metadata for those operations uses `security: []` and `x-sdkwork-auth-mode: anonymous`.
@@ -191,8 +213,10 @@ The framework defines extension points; business repositories implement them.
 
 | Trait | Stage | Typical implementer |
 | --- | --- | --- |
-| `WebRequestContextResolver` | 10 | appbase `IamWebRequestContextResolver` |
-| `ApiKeyLookupService` | 10 (open-api) | appbase or owning domain |
+| `WebRequestContextResolver` | 10 | appbase `IamWebRequestContextResolver` / `IamOpenApiWebRequestContextResolver` |
+| `ApiKeyLookupService` | 10 (open-api api-key) | appbase or owning domain |
+| `OAuthTokenLookupService` | 10 (open-api oauth) | appbase or owning domain |
+| `OpenApiCredentialSchemeDetector` | 10 (open-api flexible) | appbase or product override |
 | `AuthorizationPolicy` | 12 | appbase or product policy service |
 | `TenantIsolationPolicy` | 13 | appbase or product policy service |
 | `DomainContextInjector` | 14 | appbase IAM injector, product injectors |
@@ -200,7 +224,7 @@ The framework defines extension points; business repositories implement them.
 Rules:
 
 - Business adapters `MUST` register through framework runtime assembly. They `MUST NOT` bypass the standard chain.
-- IAM token validation, API key lookup, RBAC, and tenant isolation remain business-owned, but their hook positions and semantics are framework-owned.
+- IAM token validation, API key lookup, OAuth bearer lookup, RBAC, and tenant isolation remain business-owned, but their hook positions and semantics are framework-owned.
 - appbase and product repositories `MUST` implement framework traits instead of exposing a parallel HTTP context framework.
 
 ## 10. Handler, Service, And Repository Rules
@@ -267,7 +291,7 @@ Business repository after framework integration:
 - Bootstrap smoke test: API server or gateway mounts routes through framework bootstrap.
 - OpenAPI check: every operation declares `x-sdkwork-request-context: WebRequestContext` and canonical `x-sdkwork-api-surface`; protected operations declare the required security scheme; public SDK-generated operations declare `security: []` and `x-sdkwork-auth-mode: anonymous`.
 - Credential-entry check: login-like anonymous operations declare route-level `forbidCredentialHeaders: true`, materialize `x-sdkwork-forbid-credential-headers: true`, and reject inbound credential/context headers before handler logic.
-- Open-api prefix check: approved domain prefixes such as `/im/v3/api` classify and materialize as `open-api`; hard-coded-only `/open/v3/api` classification is not sufficient.
+- Open-api auth check: protected routes declare `api-key`, `oauth`, or `open-api-flexible`; security vectors cover missing credentials, API key resolution, OAuth bearer resolution, and flexible scheme selection.
 - SDK generation check: authority OpenAPI and derived `*.sdkgen.*` inputs preserve request-context and surface extensions.
 - Java profile check, when Java is present: typed context argument resolution, interceptor order, and problem-detail mapping match this standard.
 
@@ -286,5 +310,7 @@ Detailed test requirements: `TEST_SPEC.md` section 2.3.1.
 - [ ] Handlers/controllers declare typed `WebRequestContext`; no raw credential, tenant, organization, user, permission, or request-id header parsing.
 - [ ] Business adapters implement framework traits; no parallel HTTP context framework in appbase or product repositories.
 - [ ] Java controllers, when present, preserve equivalent typed context, interceptor semantics, route metadata, and problem-detail behavior.
+- [ ] Protected open-api routes declare `api-key`, `oauth`, or `open-api-flexible` auth mode and resolve credentials through framework extension traits, not handler-local header parsing.
 - [ ] SDK generation inputs preserve request-context and API-surface extensions from authority OpenAPI.
+- [ ] Open-api prefix check: approved domain prefixes such as `/im/v3/api` classify and materialize as `open-api`; hard-coded-only `/open/v3/api` classification is not sufficient.
 - [ ] Verification commands from section 14 pass before merge.

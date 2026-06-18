@@ -226,6 +226,37 @@ Rules:
 - Logs should go to stdout/stderr by default. File logs are optional and, when
   enabled, use `/var/log/sdkwork/<app>`.
 
+### 4.6 Non-System Client Runtime Targets
+
+Browser, mobile, tablet, and mini program targets must preserve the same
+configuration semantics without forcing server filesystem paths onto sandboxed
+clients.
+
+| Runtime target | Writable runtime location | Config rule | Persistence rule |
+| --- | --- | --- | --- |
+| `browser` | Browser storage only through approved auth/session adapters | Public runtime JSON or `/runtime-env.js`; no private process config | No database, Redis, secret files, or server paths. |
+| `tablet-ipados`, `tablet-android` | Platform app-private storage plus approved native host directories | PC renderer config plus tablet host config | Local SQLite/encrypted cache only when documented by the PC/tablet architecture. |
+| `capacitor-ios`, `capacitor-android` | Platform app-private storage through Capacitor adapters | H5 public config plus Capacitor host config | Secure storage adapter and local caches only; no committed tokens or signing secrets. |
+| `flutter-ios`, `flutter-android` | Platform app-private storage through Flutter adapters | Flutter app config plus host platform config | Secure storage adapter and local caches only. |
+| `android-native`, `ios-native`, `harmony-native` | Platform app-private storage | Native app config plus platform host config | Secure storage/keychain equivalents and local caches only. |
+| `mini-program` | Platform storage and subpackage/runtime cache controlled by the mini program host | `config/mini-program` plus host platform config | Platform session/storage adapter only; no private app secret in source or package output. |
+
+Rules:
+
+- These targets `MUST NOT` be required to create `/etc/sdkwork`,
+  `/var/lib/sdkwork`, `%ProgramData%\sdkwork`, or `~/.sdkwork` paths unless a
+  desktop/native host standard explicitly maps that target to an OS user scope.
+- Runtime config for sandboxed clients carries the same fields
+  (`environment`, `deploymentProfile`, `runtimeTarget`, SDK base URLs, and
+  feature flags) but is materialized through the platform's public/app config
+  mechanism.
+- Secrets, auth tokens, refresh tokens, API keys, signing keys, database URLs,
+  and Redis URLs `MUST NOT` be stored in browser runtime config, mini program
+  config, generated mobile assets, or committed native platform config.
+- Client-local durable data is cache or user-private app data unless an
+  architecture decision documents an offline-first authoritative data model and
+  synchronization contract.
+
 ## 5. Development Environment Standard
 
 Development configuration must be easy to run locally without weakening release

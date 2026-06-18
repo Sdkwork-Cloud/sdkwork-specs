@@ -749,7 +749,18 @@ MUST NOT�?
 - 公共契约 MUST 使用逻辑类型，不直接把某个数据库的方言类型当作唯一标准�?
 - 生产 DDL MAY 使用数据库特性优化，但必须提供可移植的降级映射�?
 - `json` �?SQLite、SQL Server、Oracle 等不同数据库中实现差异较大，契约�?MUST 定义 JSON Schema 或语言 DTO�?
-- 向量、空间、全文、数组等高级类型 SHOULD 作为派生能力，不作为跨数据库最低契约�?
+- 向量、空间、全文、数组等高级类型 SHOULD 作为派生能力，不作为跨数据库最低契约。
+
+### 8.1.1 TEXT 存储的 instant 查询规则
+
+IAM foundation 与跨库 parity schema 中，逻辑类型 `instant` 在 SQLite/兼容 profile 下物理列常为 `TEXT`（例如 `iam_session.expires_at`、`iam_tenant_signing_key.active_until`、`iam_api_key.expires_at`）。
+
+Rules:
+
+- 写入 `instant` 的 TEXT 列时，应用层 `MUST` 使用统一的 RFC3339 UTC 字符串或单一 documented 绑定格式；不同模块不得混用不可比较的 timestamp 文本格式。
+- 在 PostgreSQL 上对 TEXT 存储的 `instant` 列做范围比较时，SQL `MUST` 显式 cast，例如 `expires_at::timestamptz > $1::timestamptz`。`MUST NOT` 直接写 `expires_at > $1` 并绑定 `timestamptz` 参数，否则 PostgreSQL 会报 `operator does not exist: text > timestamp with time zone` 且导致 token/session 校验失败。
+- 仅当写入格式被 schema 与 repository 统一保证为可排序 ISO8601 UTC 文本时，才 `MAY` 使用 TEXT 字典序比较；IAM session/token 路径 `SHOULD` 优先使用 cast 比较以避免环境差异。
+- Repository 与 web-adapter 中的 session/token 过期判断 `MUST` 与 migration 物理类型一致；不得假设所有 `instant` 列都是原生 `TIMESTAMPTZ`。�?
 
 ### 8.2 长度和精�?
 

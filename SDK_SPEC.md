@@ -454,12 +454,12 @@ Rules:
 
 - SDKs that consume protected app-api or backend-api operations `MUST` support `Authorization: Bearer <auth_token>`.
 - SDKs that consume protected app-api or backend-api operations `MUST` support `Access-Token: <access_token>`.
-- SDKs that consume protected open-api operations `MUST` support `X-API-Key` or the declared API key security scheme.
+- SDKs that consume protected open-api operations `MUST` support the credential transport declared by the open-api contract: `X-API-Key` for `api-key` mode, `Authorization: Bearer <token>` for `oauth` mode, or both for `open-api-flexible` mode.
 - New v3 app-api and backend-api SDKs `MUST` use `Access-Token` as the canonical access token header.
 - Generated app-api and backend-api SDKs `MUST` expose a language-idiomatic global token manager hook, for example `setTokenManager(manager)` or constructor `tokenManager`, that can provide `authToken`, `accessToken`, and `refreshToken` for protected app/backend requests without per-call manual headers.
 - Generated app-api and backend-api SDKs `MUST NOT` expose per-call `tenant_id`, `tenantId`, `tenant`, `X-Tenant-Id`, or equivalent current-tenant credential/context options. Tenant context is supplied by the shared `TokenManager` through the dual-token headers.
-- Generated protected open-api SDKs `MUST NOT` expose per-call `tenant_id` or `tenantId` to select tenant context. API key mode resolves tenant context from the validated API key record through the SDK credential provider.
-- Generated open-api SDKs that use API key security `MUST` expose an API key credential provider or constructor option; they `MUST NOT` reuse the app login token manager unless a documented compatibility contract explicitly requires dual-token mode.
+- Generated protected open-api SDKs `MUST NOT` expose per-call `tenant_id` or `tenantId` to select tenant context. Tenant context is resolved from the validated API key record or OAuth bearer token/session lookup through the declared SDK credential provider.
+- Generated open-api SDKs `MUST` expose a credential provider or constructor option matching the declared open-api auth mode (API key provider, OAuth bearer provider, or flexible provider). They `MUST NOT` reuse the app login token manager unless a documented compatibility contract explicitly requires dual-token mode.
 - Frontend service modules `MUST` set tokens or API keys through SDK credential APIs, not manual headers.
 - IAM login/session token wiring `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`: the appbase auth runtime, `@sdkwork/appbase-app-sdk`, and one global token manager own token injection, route guards, refresh, logout, and session clearing.
 - Appbase login, registration, session validation, current-session retrieval/update/delete, refresh, OAuth, QR auth, password reset, verification-code operations, runtime metadata, and current-user self-service `MUST` use `@sdkwork/appbase-app-sdk` generated from `sdkwork-appbase-app-api`.
@@ -470,7 +470,7 @@ Rules:
 - Except for explicit `backend-admin` package or service boundaries, SDKWork application consumers `MUST` use the generated app SDK family or an approved app SDK wrapper for SDKWork remote capabilities. Non-admin modules `MUST NOT` import, export, construct, wrap, re-export, proxy, or indirectly call backend SDK clients, appbase backend SDK clients, backend SDK wrapper functions, backend generated SDK packages, or backend base URL resolvers.
 - Application and frontend core packages that compose SDK clients `MUST` continue to export the application-owned app SDK and required dependency app SDK wrappers for app integration, including appbase app SDK wrappers. Fixing backend SDK leakage by deleting app SDK exports is forbidden. If a user-facing app or console workflow needs a missing method, add the method to the owning app-api/app SDK or move the workflow to a `backend-admin` surface; do not route the workflow through backend SDK from a non-admin module.
 - Every application runtime `MUST` create exactly one global `TokenManager` per authenticated session context and pass that same instance to `@sdkwork/appbase-app-sdk`, every application/dependency app SDK, and only those appbase backend SDK, application-owned backend SDK, or dependency backend SDK clients that are present in an explicit `backend-admin` authenticated SDK inventory.
-- Application bootstrap `MUST` classify every consumed SDK before service construction: authenticated app-api SDKs and explicit `backend-admin` backend-api SDKs join the single TokenManager closure; protected open-api SDKs with API key mode use a separate API key credential provider; public SDKs receive no credentials; local/native adapters stay outside HTTP credential injection.
+- Application bootstrap `MUST` classify every consumed SDK before service construction: authenticated app-api SDKs and explicit `backend-admin` backend-api SDKs join the single TokenManager closure; protected open-api SDKs use separate credential providers matching their declared auth mode (`api-key`, `oauth`, or `open-api-flexible`); public SDKs receive no credentials; local/native adapters stay outside HTTP credential injection.
 - Other app-api SDKs and backend-api SDKs `MUST NOT` accept a separate login client, parse auth/access tokens, persist login state, refresh tokens independently, expose app-local session stores, or create their own `TokenManager`. They only receive the global `TokenManager` and use it for request auth headers.
 - Login, registration, OAuth session creation, refresh, current-session retrieval/update, and session restoration `MUST` update the global token manager, central session store, and context store through the ordered appbase IAM runtime lifecycle. The standard commit order is: validate the appbase session payload, persist normalized tokens in the central session store, write returned AppContext or clear stale AppContext, then sync the global token manager. Token persistence failure `MUST NOT` expose new in-memory tokens; context propagation failure `MUST` roll back token/context stores and clear the global token manager.
 - New appbase session flows such as login, registration, and OAuth session creation `MUST` replace the stored token set and `MUST NOT` inherit an old `refreshToken` when appbase does not return one. Current-session retrieval/update and refresh continuation may preserve the current stored `refreshToken` only when appbase returns rotated `authToken`/`accessToken` without a new `refreshToken`.
@@ -539,20 +539,20 @@ Rules:
 - UI packages receive services or service providers.
 - Service packages receive generated SDK clients or approved adapters with standard resource-style surfaces.
 - Appbase IAM service/runtime packages name the login authority `appbaseAppClient` or `appbaseApp`, not generic `appClient`, so application-owned SDKs cannot be confused with the login/session authority.
-- Appbase app SDK clients participate in the app login TokenManager through `clients.appbaseApp` or the language-equivalent appbase client slot. Appbase backend SDK clients participate only through an explicit `backend-admin` `clients.appbaseBackend` slot. Downstream application/dependency app SDK clients, explicit `backend-admin` backend SDK clients, and approved composed wrappers participate through `clients.sdkClients` or the language-equivalent token-manager-aware SDK list for the same authenticated session context. Open-api SDK clients that declare API key security participate in a separate API key credential provider and `MUST NOT` be placed in TokenManager-only SDK client lists.
+- Appbase app SDK clients participate in the app login TokenManager through `clients.appbaseApp` or the language-equivalent appbase client slot. Appbase backend SDK clients participate only through an explicit `backend-admin` `clients.appbaseBackend` slot. Downstream application/dependency app SDK clients, explicit `backend-admin` backend SDK clients, and approved composed wrappers participate through `clients.sdkClients` or the language-equivalent token-manager-aware SDK list for the same authenticated session context. Protected open-api SDK clients participate in a separate open-api credential provider matching their declared auth mode and `MUST NOT` be placed in TokenManager-only SDK client lists.
 - Bootstrap code constructs generated clients for the active lifecycle
   environment, deployment profile, and runtime target. It injects the global
   `TokenManager` into every authenticated app-api SDK client and explicit
-  `backend-admin` backend-api SDK client, and injects API key credentials into
-  protected open-api SDK clients through a separate provider when their
-  contract declares API key mode.
+  `backend-admin` backend-api SDK client, and injects open-api credentials into
+  protected open-api SDK clients through a separate provider matching their
+  declared auth mode (`api-key`, `oauth`, or `open-api-flexible`).
 - Bootstrap code may vary by application, generated SDK constructor,
   deployment profile, runtime target, auth provider, and host runtime. The
   injected service-facing client surface `MUST NOT` vary.
 - Test code may provide fake SDK clients that implement the same resource surface.
 - Reusable frontend modules follow `FRONTEND_SPEC.md`: UI calls services, services call injected SDK clients.
 - Runtime/bootstrap configuration follows `CONFIG_SPEC.md`.
-- SDK clients must remain stateless with respect to login orchestration except for holding the provided `TokenManager` or API key provider reference. They must not cache auth/access/refresh token values independently of those providers.
+- SDK clients must remain stateless with respect to login orchestration except for holding the provided `TokenManager` or open-api credential provider reference. They must not cache auth/access/refresh token values independently of those providers.
 
 ## 6. Generated Package Quality
 
@@ -662,7 +662,7 @@ Every SDK generation flow `MUST` verify:
 - [ ] Generated method surface includes nested resources from dotted operationIds.
 - [ ] Auth headers are generated correctly, and `x-sdkwork-auth-mode: anonymous` operations generate credential-suppression behavior.
 - [ ] Generated app-api, backend-api, and protected open-api methods do not expose `tenant_id` or `tenantId` as current-tenant method arguments, `params` fields, per-call options, credential options, or client-writable request body fields.
-- [ ] App-api SDK examples and explicit `backend-admin` backend-api SDK examples use the single application `TokenManager` shared by appbase, product, and dependency SDK clients, while protected open-api SDK examples use API key credential providers and do not reuse app login tokens.
+- [ ] App-api SDK examples and explicit `backend-admin` backend-api SDK examples use the single application `TokenManager` shared by appbase, product, and dependency SDK clients, while protected open-api SDK examples use declared open-api credential providers and do not reuse app login tokens.
 - [ ] Problem-detail errors map to SDK error metadata.
 - [ ] No raw HTTP fallback is introduced in consumers.
 - [ ] Service facade tests can swap app SDK, backend SDK, fake clients, and

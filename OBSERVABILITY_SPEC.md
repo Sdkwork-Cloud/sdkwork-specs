@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: logs, metrics, traces, audit correlation, diagnostics, HTTP/RPC runtime observability
-- Related: `SECURITY_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `EVENT_SPEC.md`, `TEST_SPEC.md`
+- Related: `SECURITY_SPEC.md`, `CONFIG_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `EVENT_SPEC.md`, `TEST_SPEC.md`
 
 Production behavior must be observable without leaking sensitive data.
 
@@ -68,7 +68,7 @@ Required common labels:
 | `service` | Stable process or service name. |
 | `environment` | `development`, `test`, `staging`, or `production`. |
 | `deployment_profile` | `standalone` or `cloud`. |
-| `runtime_target` | `browser`, `desktop`, `server`, `container`, `test-runner`, or another approved `CONFIG_SPEC.md` runtime target. |
+| `runtime_target` | One exact `CONFIG_SPEC.md` runtime target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, or `test-runner`. |
 | `runtime_profile` | Backend/runtime profile, such as `postgresql`, `sqlite`, or `redis`, when the metric depends on infrastructure. |
 | `operation_id` | OpenAPI/RPC operation id where available. |
 | `route` | HTTP route template, not raw path. |
@@ -236,7 +236,7 @@ Rules:
 
 - IAM, billing, permission, key, tenant, and security operations `MUST` emit audit/security events.
 - Audit entries `MUST` capture actor, action, resource, tenant, result, time, and traceId.
-- Appbase audit entries `SHOULD` include server request id, API surface, auth mode, key id when API key mode is used, and safe tenant/organization/user context.
+- Appbase audit entries `SHOULD` include server request id, API surface, auth mode, key id when API key mode is used, session/token id when OAuth bearer mode is used, and safe tenant/organization/user context.
 - Audit logs must not depend only on application console logs.
 
 ## 6. Acceptance Checklist
