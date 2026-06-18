@@ -67,7 +67,7 @@ Rules:
 - Generated RPC SDKs `MUST` be reproducible from proto source, RPC manifest, package manifest, generator version, and, for release, CI, audit, or migration workflows, emitted generation evidence.
 - Generated or composed SDKs are the only transport boundary for appbase modules. Consumers `MUST NOT` replace missing SDK methods with raw HTTP, manual auth headers, local DTO forks, or app-local generated-output edits.
 - SDKWork-owned file upload, download, object-storage provider, and storage lifecycle operations `MUST` use generated Drive SDKs from contracts governed by `DRIVE_SPEC.md`. Business SDKs consume Drive references and `MediaResource`; they `MUST NOT` grow duplicate upload clients.
-- Generated SDKs `MUST` honor OpenAPI `x-sdkwork-auth-mode: anonymous` and `x-sdkwork-auth-mode: refresh-token` by suppressing normal automatic user credential injection for that operation, including global TokenManager auth tokens, access tokens, app context headers, and generated transport compatibility aliases. Refresh-token operations may carry a refresh token only through the operation's declared request body or a dedicated refresh-token credential channel; they must not inherit stale auth/access token headers. The generated operation call site must pass a language-specific `skipAuth` or equivalent option into the shared transport layer, and that transport layer must enforce the skip.
+- Generated SDKs `MUST` honor OpenAPI `x-sdkwork-auth-mode: anonymous` and `x-sdkwork-auth-mode: refresh-token` by suppressing normal automatic user credential injection for that operation, including global TokenManager auth tokens and access tokens. They `MUST NOT` attach AppContext projection headers. Refresh-token operations may carry a refresh token only through the operation's declared request body or a dedicated refresh-token credential channel; they must not inherit stale auth/access token headers. The generated operation call site must pass a language-specific `skipAuth` or equivalent option into the shared transport layer, and that transport layer must enforce the skip.
 - Every OpenAPI-generated SDK family `MUST` declare `sdkOwner` and `apiAuthority` in its `.sdkwork-assembly.json`.
 - Any SDK family directory that contains `openapi/*.sdkgen.json`, `openapi/*.sdkgen.yaml`, or
   `openapi/*.sdkgen.yml` `MUST` have a sibling `.sdkwork-assembly.json`. Missing assembly metadata
@@ -97,7 +97,7 @@ Rules:
   appbase modules, provider repos, or other SDKWork apps into its own app/backend/open SDK family.
   This applies even when the consuming application links the Rust crate or starts the runtime route
   as part of a local profile.
-- Independent SDKWork application repositories under `apps/` that include Rust local/private
+- Independent SDKWork application repositories under `apps/` that include Rust
   services, Tauri hosts, native/Tauri host crates, route crates, repository crates, service crates,
   or worker crates `MUST` declare `sdkwork-appbase` as a dependency and consume the relevant appbase
   Rust crates plus appbase generated SDK families. This requirement applies before the application
@@ -170,11 +170,11 @@ Rules:
   materialization exclusion set. It `MUST NOT` broaden the consuming SDK's OpenAPI input.
 - Appbase examples are normative: appbase identity, session, IAM, verification, QR auth, and
   appbase backend management capabilities remain in `sdkwork-appbase-app-sdk` and
-  `sdkwork-appbase-backend-sdk`. Applications such as `craw-chat`, `sdkwork-claw-router`, and
+  `sdkwork-appbase-backend-sdk`. Applications such as `sdkwork-im`, `sdkwork-claw-router`, and
   `sdkwork-birdcoder` consume those SDKs and generate only their application-owned app/backend APIs.
 - Rust-enabled independent apps must also declare the Rust language packages for those appbase SDK
   families when Rust code calls appbase HTTP APIs directly, and must depend on appbase Rust runtime
-  crates for shared context, auth, bootstrap, and local/private route behavior. Application-owned
+  crates for shared context, auth, bootstrap, and standalone route behavior. Application-owned
   SDK generation still remains owner-only.
 
 ## 1.2 Dependency API Authority Export And Runtime Mount Boundaries
@@ -399,20 +399,21 @@ Rules:
 - Rust route crate names `MUST` follow `API_SPEC.md`: `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
 - Route crate names, API authority names, and SDK family names `MUST` remain mechanically distinguishable. A standards checker must be able to identify whether a name is a route crate, API authority, or SDK family from the name alone.
 - Generated clients must expose typed request/response models.
-- SaaS Java and Rust local/private implementations may use different runtime clients, but shared API SDK surfaces must remain semantically identical.
-- Deprecated `openchat` SDK sources `MUST NOT` be used for new integrations. IM integrations use the active `craw-chat` SDK workspaces, and RTC integrations use the active `sdkwork-rtc` SDK workspace at `../sdkwork-rtc/sdks/sdkwork-rtc-sdk`, while preserving public package names.
+- Standalone and cloud implementations may use different runtime clients, but
+  shared API SDK surfaces must remain semantically identical.
+- Deprecated `openchat` SDK sources `MUST NOT` be used for new integrations. IM integrations use the active `sdkwork-im` SDK workspaces, and RTC integrations use the active `sdkwork-rtc` SDK workspace at `../sdkwork-rtc/sdks/sdkwork-rtc-sdk`, while preserving public package names.
 - Craw Chat appbase-owned `/app/v3/api` consumers `MUST` use the current `sdkwork-appbase` app SDK or an approved wrapper on top of it. Craw Chat `MUST NOT` create a local app SDK fork for appbase-owned IAM, workspace, login, registration, bootstrap, or session capabilities.
 - Craw Chat domain-owned `/app/v3/api` extensions may be generated through its application-root `sdks/sdkwork-im-app-sdk` only when the authority is declared as `sdkwork-im-app-api` and the routes are not appbase-owned capabilities.
 - Craw Chat `/im/v3/api` consumers `MUST` use its application-root `sdks/sdkwork-im-sdk`. Appbase IAM, workspace, and app/client bootstrap capabilities remain outside the IM SDK.
 - `sdkwork-appbase` owns the standard reusable appbase app/backend SDK families: `sdkwork-appbase-app-sdk` generated from `sdkwork-appbase-app-api` and `sdkwork-appbase-backend-sdk` generated from `sdkwork-appbase-backend-api`.
 - Applications that consume appbase API capabilities `MUST` integrate those generated SDKs or approved composed wrappers. They `MUST NOT` create app-local raw HTTP clients, local SDK forks, or duplicate appbase OpenAPI authority files for the same capabilities.
-- Independent `apps/` repositories with Rust local/private services, Tauri hosts, native/Tauri host
+- Independent `apps/` repositories with Rust services, Tauri hosts, native/Tauri host
   crates, route crates, repository crates, service crates, or worker crates `MUST` list
   `sdkwork-appbase-app-sdk` and, when `backend-admin` capabilities are used,
   `sdkwork-appbase-backend-sdk` as SDK dependencies. Their Rust manifests must also declare the
   required appbase Rust crates instead of reimplementing appbase request context, token validation,
   session restoration, workspace/bootstrap, or IAM helper logic locally.
-- For example, if `craw-chat` depends on `sdkwork-appbase`, the `craw-chat` app/backend SDK generation inputs must contain only `craw-chat`-owned app/backend operations. `sdkwork-appbase` IAM app/backend operations remain in appbase SDKs and are declared as dependencies, never regenerated into `craw-chat` SDKs.
+- For example, if `sdkwork-im` depends on `sdkwork-appbase`, the `sdkwork-im` app/backend SDK generation inputs must contain only `sdkwork-im`-owned app/backend operations. `sdkwork-appbase` IAM app/backend operations remain in appbase SDKs and are declared as dependencies, never regenerated into `sdkwork-im` SDKs.
 
 ## 3. Client Surface
 
@@ -441,6 +442,7 @@ Rules:
 - Nested resource objects come from dotted `operationId` resource segments.
 - Final method name comes from dotted `operationId` action segment.
 - Method arguments `SHOULD` be ordered as path parameters, body, query/options.
+- Generated method arguments `MUST NOT` include `tenant_id` or `tenantId` to select the current tenant. Current tenant context is supplied by the SDK credential provider, not by each resource method call.
 - SDK docs `MUST` show resource-style calls.
 - OperationId and tag rules are defined by `API_SPEC.md`; SDK-specific code must not reinterpret vague operationIds into a different shape.
 - SDK generation `MUST` treat dotted `operationId` as a structural contract, not a display label. For example, tag `auth` plus operationId `sessions.current.retrieve` generates `client.auth.sessions.current.retrieve()`.
@@ -455,6 +457,8 @@ Rules:
 - SDKs that consume protected open-api operations `MUST` support `X-API-Key` or the declared API key security scheme.
 - New v3 app-api and backend-api SDKs `MUST` use `Access-Token` as the canonical access token header.
 - Generated app-api and backend-api SDKs `MUST` expose a language-idiomatic global token manager hook, for example `setTokenManager(manager)` or constructor `tokenManager`, that can provide `authToken`, `accessToken`, and `refreshToken` for protected app/backend requests without per-call manual headers.
+- Generated app-api and backend-api SDKs `MUST NOT` expose per-call `tenant_id`, `tenantId`, `tenant`, `X-Tenant-Id`, or equivalent current-tenant credential/context options. Tenant context is supplied by the shared `TokenManager` through the dual-token headers.
+- Generated protected open-api SDKs `MUST NOT` expose per-call `tenant_id` or `tenantId` to select tenant context. API key mode resolves tenant context from the validated API key record through the SDK credential provider.
 - Generated open-api SDKs that use API key security `MUST` expose an API key credential provider or constructor option; they `MUST NOT` reuse the app login token manager unless a documented compatibility contract explicitly requires dual-token mode.
 - Frontend service modules `MUST` set tokens or API keys through SDK credential APIs, not manual headers.
 - IAM login/session token wiring `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`: the appbase auth runtime, `@sdkwork/appbase-app-sdk`, and one global token manager own token injection, route guards, refresh, logout, and session clearing.
@@ -536,8 +540,15 @@ Rules:
 - Service packages receive generated SDK clients or approved adapters with standard resource-style surfaces.
 - Appbase IAM service/runtime packages name the login authority `appbaseAppClient` or `appbaseApp`, not generic `appClient`, so application-owned SDKs cannot be confused with the login/session authority.
 - Appbase app SDK clients participate in the app login TokenManager through `clients.appbaseApp` or the language-equivalent appbase client slot. Appbase backend SDK clients participate only through an explicit `backend-admin` `clients.appbaseBackend` slot. Downstream application/dependency app SDK clients, explicit `backend-admin` backend SDK clients, and approved composed wrappers participate through `clients.sdkClients` or the language-equivalent token-manager-aware SDK list for the same authenticated session context. Open-api SDK clients that declare API key security participate in a separate API key credential provider and `MUST NOT` be placed in TokenManager-only SDK client lists.
-- Bootstrap code constructs generated clients for development, test, production, SaaS, private, or local mode. It injects the global `TokenManager` into every authenticated app-api SDK client and explicit `backend-admin` backend-api SDK client, and injects API key credentials into protected open-api SDK clients through a separate provider when their contract declares API key mode.
-- Bootstrap code may vary by application, generated SDK constructor, deployment mode, auth provider, and host runtime. The injected service-facing client surface `MUST NOT` vary.
+- Bootstrap code constructs generated clients for the active lifecycle
+  environment, deployment profile, and runtime target. It injects the global
+  `TokenManager` into every authenticated app-api SDK client and explicit
+  `backend-admin` backend-api SDK client, and injects API key credentials into
+  protected open-api SDK clients through a separate provider when their
+  contract declares API key mode.
+- Bootstrap code may vary by application, generated SDK constructor,
+  deployment profile, runtime target, auth provider, and host runtime. The
+  injected service-facing client surface `MUST NOT` vary.
 - Test code may provide fake SDK clients that implement the same resource surface.
 - Reusable frontend modules follow `FRONTEND_SPEC.md`: UI calls services, services call injected SDK clients.
 - Runtime/bootstrap configuration follows `CONFIG_SPEC.md`.
@@ -650,10 +661,12 @@ Every SDK generation flow `MUST` verify:
 - [ ] Generated README examples use intended resource-style calls.
 - [ ] Generated method surface includes nested resources from dotted operationIds.
 - [ ] Auth headers are generated correctly, and `x-sdkwork-auth-mode: anonymous` operations generate credential-suppression behavior.
+- [ ] Generated app-api, backend-api, and protected open-api methods do not expose `tenant_id` or `tenantId` as current-tenant method arguments, `params` fields, per-call options, credential options, or client-writable request body fields.
 - [ ] App-api SDK examples and explicit `backend-admin` backend-api SDK examples use the single application `TokenManager` shared by appbase, product, and dependency SDK clients, while protected open-api SDK examples use API key credential providers and do not reuse app login tokens.
 - [ ] Problem-detail errors map to SDK error metadata.
 - [ ] No raw HTTP fallback is introduced in consumers.
-- [ ] Service facade tests can swap app SDK, backend SDK, fake clients, and local/private clients without changing UI code.
+- [ ] Service facade tests can swap app SDK, backend SDK, fake clients, and
+  standalone/cloud clients without changing UI code.
 
 ## 9. RPC SDK Generation
 

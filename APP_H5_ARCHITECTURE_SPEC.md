@@ -147,14 +147,14 @@ Directory rules:
 
 ## 2.1 Configuration And Environment Matrix
 
-H5 application roots must keep lifecycle environment, profile alias, build mode, deployment mode, runtime target, and host target separate.
+H5 application roots must keep lifecycle environment, profile alias, build mode, deployment profile, runtime target, and host target separate.
 
 | Concern | Standard values | Owner |
 | --- | --- | --- |
 | Lifecycle environment | `development`, `test`, `staging`, `production` | `CONFIG_SPEC.md` typed runtime config |
 | Profile alias | `dev`, `test`, `staging`, `prod` | scripts and config file names only |
 | Build mode | Vite/Capacitor/build-tool mode | build scripts and tool config |
-| Deployment mode | `h5`, `h5-weixin`, `webview`, `capacitor-ios`, `capacitor-android`, `server`, `container`, `local`, `private`, `saas`, `test` | runtime/bootstrap |
+| Deployment profile | `standalone`, `cloud` | runtime/bootstrap |
 | Runtime target | `browser`, `wechat-browser`, `embedded-webview`, `capacitor-ios`, `capacitor-android`, `server`, `container`, `test-runner` | runtime/bootstrap |
 
 Standard config ownership:

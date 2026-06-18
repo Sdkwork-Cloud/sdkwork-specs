@@ -69,13 +69,14 @@ Rules:
 
 Release gate evidence should include:
 
-- manifest and package target validation.
+- manifest, deployment profile, runtime target, and package target validation.
 - version and changelog evidence.
 - build artifact checksums.
 - signing evidence when required.
 - SBOM and provenance evidence when required.
 - migration readiness and rollback path.
-- deployment/rollout plan.
+- deployment/rollout plan that names `standalone` or `cloud` and the affected
+  runtime targets.
 - smoke test and monitoring plan.
 - owner approval for production or customer-impacting releases.
 
@@ -94,7 +95,10 @@ Rules:
 | High | tests, static checks, owner review, docs, rollback notes |
 | Critical | governance approval, migration/release plan, security/privacy review, production evidence |
 
-Risk is high or critical when work touches authentication, authorization, tenant isolation, generated SDK ownership, database migrations, public APIs, release artifacts, root standards, or cross-repository behavior.
+Risk is high or critical when work touches authentication, authorization,
+tenant isolation, generated SDK ownership, database migrations, public APIs,
+release artifacts, deployment profile/topology, root standards, or
+cross-repository behavior.
 
 Additional RPC SDK risk mapping:
 

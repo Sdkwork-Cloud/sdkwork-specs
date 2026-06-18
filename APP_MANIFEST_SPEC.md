@@ -134,6 +134,28 @@ web, mobile, desktop, server, cli, mini-program, library, plugin
 
 `runtime.defaultPlatform` and `runtime.defaultArchitecture` drive default latest download resolution and `PlusApp.downloadUrl` projection.
 
+`runtime.supportedDeploymentProfiles` declares which SDKWork application
+deployment architectures the app supports:
+
+```text
+standalone, cloud
+```
+
+`runtime.defaultDeploymentProfile` selects the default profile used by local
+tooling, package generation, and latest-download resolution when a caller does
+not request one explicitly.
+
+Rules:
+
+- `runtime.supportedDeploymentProfiles` `MUST` be non-empty and every value
+  `MUST` be `standalone` or `cloud`.
+- `runtime.defaultDeploymentProfile` `MUST` be one of
+  `runtime.supportedDeploymentProfiles`.
+- App manifests `MUST NOT` use `saas`, `private`, `local`, `test`, `server`,
+  `container`, `desktop`, `web`, `self-hosted`, or `cloud-hosted` as deployment
+  profile values. `server`, `container`, `desktop`, browser, mobile, tablet,
+  and mini-program concepts belong to `runtimeTarget` or package metadata.
+
 ### 6.1 Client Architecture Manifest Alignment
 
 Client roots must keep manifest runtime metadata aligned with their root architecture standard.
@@ -267,12 +289,14 @@ Required fields:
 
 ```json
 {
-  "id": "windows-x64-desktop-msi",
+  "id": "windows-x64-standalone-desktop-msi",
   "name": "SDKWork Drive Windows x64 MSI",
   "sourceType": "BINARY_URL",
   "packageFormat": "MSI",
   "platform": "DESKTOP_WINDOWS",
   "architecture": "x64",
+  "deploymentProfile": "standalone",
+  "runtimeTarget": "desktop",
   "url": "https://cdn.sdkwork.com/...",
   "checksumAlgorithm": "SHA-256",
   "checksum": "...",
@@ -299,16 +323,27 @@ Package ids must follow `NAMING_SPEC.md`:
 
 | Package type | Package id example | Source type | Package format | Platform |
 | --- | --- | --- | --- | --- |
-| H5 mobile URL | `h5-universal-mobile-web-url` | `WEB_URL` | `OTHER` | `H5` |
-| WeChat H5 URL | `h5-weixin-universal-mobile-web-url` | `WEB_URL` | `OTHER` | `H5_WEIXIN` |
-| Android mobile app bundle | `android-arm64-mobile-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
-| iOS mobile app archive | `ios-universal-mobile-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
-| Harmony mobile app package | `harmony-arm64-mobile-other` | `BINARY_URL` or `APP_STORE` | `OTHER` until a backend package format enum for Harmony package artifacts is available; metadata must state the HAP/APP artifact kind | `APP_HARMONY` |
-| WeChat mini program package | `mp-weixin-universal-mini-program-mini-program-package` | `MINI_PROGRAM` | `MINI_PROGRAM_PACKAGE` | `MP_WEIXIN` |
+| H5 mobile URL | `h5-universal-cloud-mobile-web-url` | `WEB_URL` | `OTHER` | `H5` |
+| WeChat H5 URL | `h5-weixin-universal-cloud-mobile-web-url` | `WEB_URL` | `OTHER` | `H5_WEIXIN` |
+| Android mobile app bundle | `android-arm64-standalone-mobile-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
+| iOS mobile app archive | `ios-universal-standalone-mobile-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
+| Harmony mobile app package | `harmony-arm64-standalone-mobile-other` | `BINARY_URL` or `APP_STORE` | `OTHER` until a backend package format enum for Harmony package artifacts is available; metadata must state the HAP/APP artifact kind | `APP_HARMONY` |
+| WeChat mini program package | `mp-weixin-universal-cloud-mini-program-mini-program-package` | `MINI_PROGRAM` | `MINI_PROGRAM_PACKAGE` | `MP_WEIXIN` |
 
 Desktop packages must declare `architecture`. Recommended values are `x64`, `arm64`, `universal`, `all`, or `any`.
 
 Container packages must use an immutable OCI reference or digest-bearing URL.
+
+Rules:
+
+- Every deployable package entry `MUST` declare `deploymentProfile` and
+  `runtimeTarget`.
+- Package `deploymentProfile` values `MUST` be included in
+  `runtime.supportedDeploymentProfiles`.
+- Package ids for deployable artifacts `MUST` include the deployment profile
+  segment as required by `GITHUB_WORKFLOW_SPEC.md`.
+- Package metadata `MUST NOT` treat `server`, `container`, `desktop`, mobile,
+  tablet, browser, or mini-program as deployment profiles.
 
 ## 11. Latest Download Resolution
 
@@ -440,6 +475,8 @@ The validator enforces:
 - SemVer versions
 - valid default package id
 - package id uniqueness
+- valid supported/default deployment profiles
+- package deploymentProfile/runtimeTarget consistency
 - required media icons, screenshots, and preview assets
 - store-grade icon, screenshot, and preview dimensions
 - desktop architecture
@@ -461,6 +498,7 @@ The validator enforces:
 - [ ] Choose one immutable `app.key`.
 - [ ] Use backend enum names exactly.
 - [ ] Fill platform and package matrix before registration.
+- [ ] Choose supported deployment profiles and one default deployment profile.
 - [ ] Add primary icon, store icons, screenshots, and preview assets.
 - [ ] Add checksums for every direct package.
 - [ ] Add package metadata for signing, OS requirements, and server health checks.

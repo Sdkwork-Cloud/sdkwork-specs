@@ -123,7 +123,7 @@ Rules:
 - Client upload services `MUST` receive an injected Drive app SDK client or a narrow facade backed by `sdkwork-drive-app-sdk client.uploader.*`.
 - Runtime/bootstrap `MUST` create the Drive app SDK client with its own Drive App API base URL and bind the same global TokenManager when the Drive App API surface is authenticated.
 - Service facades may expose domain names such as `uploadAvatar`, `uploadAttachment`, or `uploadCatalogImage`, but their implementation must delegate to `client.uploader.uploadAvatar`, `client.uploader.uploadAttachment`, `client.uploader.uploadImage`, `client.uploader.uploadByProfile`, or another approved Drive uploader method.
-- Application service facades must supply Drive Uploader attribution from application context: `tenantId`, optional `organizationId`, user or anonymous actor, `appId`, `appResourceType`, `appResourceId`, optional `scene`, optional `source`, `uploadProfileCode`, and retention.
+- Application service facades must supply Drive Uploader business attribution from stable application context: `appId`, `appResourceType`, `appResourceId`, optional `scene`, optional `source`, `uploadProfileCode`, and retention. Tenant, organization, and authenticated user attribution must come from the Drive app SDK's TokenManager-backed request context or the server-side API key/request context, not from generated method arguments.
 - UI components may select files, preview files, display progress, retry, and remove local selections. They must not create upload task ids, provider object keys, Drive presign URLs, or statistic dimensions directly.
 - Server-side Rust application services that upload generated/imported bytes `MUST` call `DriveUploaderService`, `PrepareUploaderUploadCommand`, or an approved Drive server-side uploader facade. They must not call Drive App API over HTTP from the same trusted backend just to reuse client routes.
 - Application-owned SDK generation `MUST NOT` include Drive uploader App API operations in the application-owned authority. Drive uploader operations stay in the Drive SDK family and are declared as dependencies when composed.
@@ -180,7 +180,7 @@ Each application architecture uses the SDK family and IAM wrapper that match its
 | iOS native app | Swift | generated Swift app SDKs plus typed iOS host adapters | generated Swift appbase app SDK or approved appbase iOS wrapper |
 | Harmony native app | ArkTS/TypeScript | generated ArkTS/TypeScript app SDKs adapted for Harmony runtime plus typed HarmonyOS host adapters | appbase Harmony wrapper when available, otherwise generated appbase app SDK through an approved Harmony runtime adapter |
 | Desktop/Tauri renderer | TypeScript | generated TypeScript app SDKs injected by renderer bootstrap | appbase IAM runtime in renderer, native secure storage only through host adapter |
-| Rust local/private backend | Rust | generated Rust dependency SDKs or Rust service traits for dependency calls | appbase Rust crates for context/auth/bootstrap and generated appbase SDKs when Rust calls appbase HTTP APIs |
+| Rust backend/runtime | Rust | generated Rust dependency SDKs or Rust service traits for dependency calls | appbase Rust crates for context/auth/bootstrap and generated appbase SDKs when Rust calls appbase HTTP APIs |
 | Backend/admin React | TypeScript | generated TypeScript backend SDKs for the `backend-admin` surface | appbase backend SDK for IAM administration, no user-facing auth session creation |
 
 Rules:
@@ -288,8 +288,11 @@ Rules:
 - Rust route crates `MUST` follow `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
 - Rust route crates own route/path configuration, handler binding, and route manifests for one capability and one surface. They do not become frontend path libraries.
 - Application shells aggregate route manifests into project/domain API authorities such as `sdkwork-commerce-app-api`, then generate owner-only SDK families.
-- Rust local/private implementations that expose or validate appbase IAM/session/context behavior `MUST` depend on appbase Rust crates. Product Rust services must not fork appbase auth guards, context extraction, token validation, or bootstrap behavior.
-- Protected Rust business routes `MUST` validate dual tokens and inject typed `AppRequestContext`/`AppContext` according to `IAM_LOGIN_INTEGRATION_SPEC.md`.
+- Rust implementations that expose or validate appbase IAM/session/context
+  behavior `MUST` depend on appbase Rust crates. Product Rust services must not
+  fork appbase auth guards, context extraction, token validation, or bootstrap
+  behavior.
+- Protected Rust business routes `MUST` validate dual tokens and inject typed `WebRequestContext`/`AppContext` through `sdkwork-web-framework` according to `WEB_FRAMEWORK_SPEC.md` and `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - Rust services that call dependency-owned APIs directly `MUST` use generated dependency SDKs or approved service traits. They must not copy OpenAPI routes into the product authority.
 - Tauri/native commands may start or bridge local Rust runtimes, but they `MUST NOT` own business authentication or become hidden app-api/backend-api surfaces.
 

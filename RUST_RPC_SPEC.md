@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Baseline: Rust `tonic`/`prost` gRPC stack over SDKWork proto contracts
-- Scope: Rust local/private RPC server crates, generated proto crates, typed RPC clients, runtime adapters, bootstrap, tests, and packaging
+- Scope: Rust standalone/cloud RPC server crates, generated proto crates, typed RPC clients, runtime adapters, bootstrap, tests, and packaging
 - Related: `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `DRIVE_SPEC.md`, `SDK_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `DATABASE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
 - Canonical location: `specs/RUST_RPC_SPEC.md`
 
@@ -10,7 +10,7 @@ This document defines how SDKWork Rust services implement the language-neutral R
 
 ## 1. Rust RPC Positioning
 
-Rust RPC exists to make SDKWork local/private services callable by other languages and service runtimes without giving those callers direct database access.
+Rust RPC exists to make SDKWork standalone and internal services callable by other languages and service runtimes without giving those callers direct database access.
 
 Rules:
 
@@ -176,7 +176,7 @@ Rules:
 
 ### 3.4 Bootstrap Integration
 
-Existing local/private bootstrap crates add a stage for RPC binding.
+Existing standalone/cloud bootstrap crates add a stage for RPC binding.
 
 Commerce standard stages:
 
@@ -500,8 +500,10 @@ Standard environment keys:
 
 Rules:
 
-- Local mode MAY bind to loopback without TLS when documented as local-only.
-- Private and SaaS production SHOULD require TLS; service-to-service production SHOULD use mTLS.
+- Standalone desktop/development targets MAY bind to loopback without TLS when
+  documented as local-only.
+- Cloud production and customer-owned service production SHOULD require TLS;
+  service-to-service production SHOULD use mTLS.
 - Public app RPC endpoints must be behind approved ingress/proxy/security controls.
 - Reflection must not be publicly exposed without access control.
 

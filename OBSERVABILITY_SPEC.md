@@ -67,7 +67,8 @@ Required common labels:
 | --- | --- |
 | `service` | Stable process or service name. |
 | `environment` | `development`, `test`, `staging`, or `production`. |
-| `deployment_mode` | `desktop`, `server`, `container`, `saas`, `private`, `local`, or `test`. |
+| `deployment_profile` | `standalone` or `cloud`. |
+| `runtime_target` | `browser`, `desktop`, `server`, `container`, `test-runner`, or another approved `CONFIG_SPEC.md` runtime target. |
 | `runtime_profile` | Backend/runtime profile, such as `postgresql`, `sqlite`, or `redis`, when the metric depends on infrastructure. |
 | `operation_id` | OpenAPI/RPC operation id where available. |
 | `route` | HTTP route template, not raw path. |
@@ -114,6 +115,18 @@ Histogram guidance:
   must be documented and stable for dashboards.
 - Background job duration histograms may use coarser buckets, but must still use
   seconds.
+- RPC stream lifecycle histograms should use coarser buckets appropriate for
+  long-lived connections, for example `1`, `5`, `10`, `30`, `60`, `300`, `600`,
+  `1800`, `3600`, and `14400` seconds.
+
+Health check metrics:
+
+- `<service>_health_status` gauge: `1` when serving, `0` when not serving.
+- Labels: `service`, `environment`, `deployment_profile`, `runtime_target`.
+- Health endpoints SHOULD expose per-service health status when multiple services
+  are registered in a single process.
+- Health metrics MUST NOT require authentication to scrape when the deployment
+  policy allows internal health monitoring.
 
 Core API metrics:
 
@@ -134,6 +147,44 @@ Core RPC metrics:
 - RPC auth failure count.
 - RPC health serving status.
 - Proto lint, breaking-change, and generated-client validation failures in CI.
+
+RPC stream metrics (for server-streaming and bidirectional-streaming methods):
+
+- Active stream count by surface and service.
+- Stream lifecycle duration histogram.
+- Stream event throughput count by service and method.
+- Stream error and disconnect count by service and error kind.
+
+gRPC status code to metric label mapping:
+
+| gRPC Status Code | Metric `status` Label |
+| --- | --- |
+| `OK` | `ok` |
+| `CANCELLED` | `cancelled` |
+| `UNKNOWN` | `unknown` |
+| `INVALID_ARGUMENT` | `invalid_argument` |
+| `DEADLINE_EXCEEDED` | `deadline_exceeded` |
+| `NOT_FOUND` | `not_found` |
+| `ALREADY_EXISTS` | `already_exists` |
+| `PERMISSION_DENIED` | `permission_denied` |
+| `RESOURCE_EXHAUSTED` | `resource_exhausted` |
+| `FAILED_PRECONDITION` | `failed_precondition` |
+| `ABORTED` | `aborted` |
+| `OUT_OF_RANGE` | `out_of_range` |
+| `UNIMPLEMENTED` | `unimplemented` |
+| `INTERNAL` | `internal` |
+| `UNAVAILABLE` | `unavailable` |
+| `DATA_LOSS` | `data_loss` |
+| `UNAUTHENTICATED` | `unauthenticated` |
+
+RPC `api_surface` label values:
+
+| Proto Surface | Metric `api_surface` Label |
+| --- | --- |
+| `internal.v1` or `internal.v3` | `rpc-internal` |
+| `backend.v3` | `rpc-backend` |
+| `app.v3` | `rpc-app` |
+| `common.v1` | `rpc-common` |
 
 Core Drive metrics:
 
@@ -172,8 +223,10 @@ Projection and dashboard metrics:
 Rules:
 
 - Services `SHOULD` use OpenTelemetry-compatible trace concepts.
-- Trace spans `SHOULD` include operationId, route template, deployment mode, and safe tenant scope.
-- RPC trace spans `SHOULD` include proto package, service, method, operationId, gRPC status code, deployment mode, and safe tenant scope.
+- Trace spans `SHOULD` include operationId, route template, deployment profile,
+  runtime target, and safe tenant scope.
+- RPC trace spans `SHOULD` include proto package, service, method, operationId,
+  gRPC status code, deployment profile, runtime target, and safe tenant scope.
 - Database spans must not include raw SQL with sensitive values.
 - Drive spans must not include signed URLs, object keys, provider credentials, or raw file content.
 
@@ -200,3 +253,8 @@ Rules:
 - [ ] Generated RPC SDKs expose deadline and trace metadata options when the language target supports them.
 - [ ] RPC services propagate `traceparent` and report package/service/method/status metrics when RPC is enabled.
 - [ ] Drive upload/download/provider metrics and traces are present without exposing signed URLs, object keys, or credentials.
+- [ ] RPC stream methods report active stream count, stream duration, and stream error count.
+- [ ] gRPC status codes are normalized to standard metric label values.
+- [ ] RPC `api_surface` labels distinguish `rpc-internal`, `rpc-backend`, `rpc-app`, and `rpc-common`.
+- [ ] Health status metrics are exposed per-service when multiple services share a process.
+- [ ] Stream lifecycle histogram buckets are documented for long-lived connections.

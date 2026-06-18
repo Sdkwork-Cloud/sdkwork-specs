@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Baseline: gRPC over HTTP/2, Protocol Buffers proto3, SDKWork v3 operation semantics
-- Scope: cross-language RPC contracts, Rust local/private services, Java SaaS parity services, generated RPC clients, service-to-service calls, private deployment APIs, local desktop host RPC
+- Scope: cross-language RPC contracts, Rust services, Java/Rust parity services, generated RPC clients, service-to-service calls, internal deployment APIs, local desktop host RPC
 - Related: `API_SPEC.md`, `DATABASE_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SDK_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `DOMAIN_SPEC.md`, `IAM_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `RUST_RPC_SPEC.md`
 - Canonical location: `specs/RPC_SPEC.md`
 
@@ -80,7 +80,7 @@ SDKWork standard RPC uses:
 | Browser usage | gRPC-Web is optional and must be explicitly enabled per app. Normal frontend UI continues to use generated HTTP SDKs unless a product explicitly selects gRPC-Web. |
 | Gateway | JSON/HTTP gateway MAY be generated for internal compatibility, but it MUST NOT replace `API_SPEC.md` OpenAPI source-of-truth for HTTP app/backend APIs. |
 | Health | Use standard gRPC health checking. |
-| Reflection | SHOULD be enabled in local/private development and controlled private operations. It MUST be disabled or access-controlled in public production. |
+| Reflection | SHOULD be enabled only in standalone development and controlled internal operations. It MUST be disabled or access-controlled in public production. |
 
 Rules:
 
@@ -95,9 +95,9 @@ SDKWork RPC has the same app/backend separation as HTTP plus an internal-only su
 
 | Surface | Proto package segment | Audience | Auth |
 | --- | --- | --- | --- |
-| App RPC | `app.v3` | Product clients, desktop/mobile hosts, local/private app clients | App auth/session token model. |
+| App RPC | `app.v3` | Product clients, desktop/mobile hosts, standalone/cloud app clients | App auth/session token model. |
 | Backend RPC | `backend.v3` | Admin consoles, operator tooling, backend SDKs | Backend/operator token or service identity. |
-| Internal RPC | `internal.v1` or `internal.v3` | Service-to-service, local host, migration/runtime orchestration | mTLS or explicit local/private trust boundary. |
+| Internal RPC | `internal.v1` or `internal.v3` | Service-to-service, local host, migration/runtime orchestration | mTLS or explicit standalone/internal trust boundary. |
 | Common RPC | `common.v1` | Shared messages only, no business service ownership | No direct app endpoint. |
 
 Rules:
@@ -287,7 +287,7 @@ Standard common message set:
 
 | Message | Purpose |
 | --- | --- |
-| `AppContext` | Tenant, organization, user, session, app, environment, deployment mode, surface profile. |
+| `AppContext` | Tenant, organization, user, session, app, environment, deployment profile, runtime target, surface profile. |
 | `CallerContext` | Actor/service identity and auth level for backend/internal calls. |
 | `PageRequest` | Page size, cursor, sort, filters for list methods. |
 | `PageResponse` | Next cursor, total count policy, list metadata. |

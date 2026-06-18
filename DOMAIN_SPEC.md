@@ -10,9 +10,11 @@ This standard defines how SDKWork domains are named, bounded, and composed. It p
 
 Rules:
 
-- A domain `MUST` represent a business capability, not a product name, team name, database technology, frontend framework, or deployment mode.
+- A domain `MUST` represent a business capability, not a product name, team name, database technology, frontend framework, deployment profile, or runtime target.
 - A domain `MUST` have one owner, one bounded context description, one canonical prefix, and one public integration contract.
-- Canonical names `MUST` be stable across Java SaaS, Rust local/private, OpenAPI, database, SDK, frontend packages, events, permissions, and documentation.
+- Canonical names `MUST` be stable across Java/Rust implementations,
+  standalone/cloud deployment profiles, OpenAPI, database, SDK, frontend
+  packages, events, permissions, and documentation.
 - Ambiguous names such as `identity`, `common`, `base`, `core`, `manager`, `misc`, and `system` `MUST NOT` be used as domain names unless the spec explicitly defines the bounded context.
 - Product-specific behavior `MAY` extend a standard domain through an extension package, but it must not mutate the shared domain contract.
 
@@ -53,7 +55,9 @@ Rules:
 
 - A new domain `MUST` be added to this catalog or an app-local extension catalog before APIs or tables are created.
 - A new domain `MUST` declare whether it is shared foundation, product feature, integration adapter, or app-local extension.
-- A shared foundation domain `MUST` target Java/Rust contract parity when it participates in SaaS/private/local switching.
+- A shared foundation domain `MUST` target Java/Rust contract parity when it
+  participates in standalone/cloud deployment profiles or multiple runtime
+  targets.
 - File storage work uses the `drive` domain and `DRIVE_SPEC.md`. Other domains may reference Drive resources, but they must not take ownership of storage lifecycle.
 
 ## 4. Bounded Context Record
@@ -119,6 +123,6 @@ IAM, authentication, tenant isolation, organization structure, users, roles, per
 - [ ] Domain name is canonical and not vague.
 - [ ] Domain has owner, boundary, dependencies, and capability list.
 - [ ] API path, tag, operationId, SDK namespace, table prefix, event prefix, and permission prefix align.
-- [ ] Java SaaS and Rust local/private parity requirement is explicit.
+- [ ] Java/Rust and standalone/cloud parity requirement is explicit.
 - [ ] Cross-domain references use stable IDs or published contracts.
 - [ ] Extension points are explicit and do not mutate the standard domain.

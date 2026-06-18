@@ -11,7 +11,7 @@ This file is the PC application root standard. `APP_PC_REACT_UI_SPEC.md` remains
 Reference inputs:
 
 - `apps/docs/ARCHITECT.md` defines the pnpm workspace, thin root `src/`, `packages/`, and service-layer split pattern.
-- `apps/craw-chat/apps/sdkwork-chat-pc` demonstrates a PC app root with renderer bootstrap, app packages, console/admin package families, and desktop package placement.
+- `apps/sdkwork-im/apps/sdkwork-chat-pc` demonstrates a PC app root with renderer bootstrap, app packages, console/admin package families, and desktop package placement.
 - `apps/sdkwork-claw-router/apps/sdkwork-claw-router-portal` demonstrates app, console, and admin capability decomposition at scale. Its packages without a `pc` segment are migration references; new PC packages use the normalized naming in this standard.
 - Tauri v2 official docs define mobile development commands, platform-specific config merging, iOS signing, Android/iOS build outputs, and mobile multi-window behavior. SDKWork PC tablet packaging uses those capabilities only as a large-screen PC deployment profile.
 
@@ -139,7 +139,7 @@ Directory rules:
 
 ## 2.1 Configuration And Environment Matrix
 
-PC application roots must keep lifecycle environment, deployment mode, build
+PC application roots must keep lifecycle environment, deployment profile, build
 mode, and runtime target separate.
 
 | Concern | Standard values | Owner |
@@ -147,7 +147,7 @@ mode, and runtime target separate.
 | Lifecycle environment | `development`, `test`, `staging`, `production` | `CONFIG_SPEC.md` typed runtime config |
 | Profile alias | `dev`, `test`, `staging`, `prod` | scripts and config file names only |
 | Build mode | Vite/Tauri/Spring/build-tool mode | build scripts and tool config |
-| Deployment mode | `web`, `desktop`, `tablet-ipados`, `tablet-android`, `server`, `container`, `local`, `private`, `saas`, `test` | runtime/bootstrap |
+| Deployment profile | `standalone`, `cloud` | runtime/bootstrap |
 | Runtime target | `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `server`, `container`, `test-runner` | runtime/bootstrap |
 
 Standard config ownership:
@@ -542,7 +542,7 @@ Required verification for PC application architecture changes:
 | SDK boundary | Static scan proves app/console use app SDKs, `backend-admin` packages use backend SDKs, protected open-api uses API key provider, and no raw HTTP/manual auth headers were introduced. |
 | SDK export boundary | Static scan proves `pc-core` exports app SDK/appbase app SDK wrappers and no backend SDK wrappers, while backend SDK/appbase backend SDK wrappers are exported only from `pc-admin-core` or another `backend-admin` boundary. |
 | IAM boundary | Tests prove appbase IAM runtime, global TokenManager, logout clearing, session restore, and route guards behave across app, console, and admin surfaces. |
-| Config profile boundary | Static and runtime tests prove `development/test/staging/production`, profile aliases, deployment mode, build mode, and runtime target are separated; browser, desktop, server, container, and Tauri platform config files do not leak into each other. |
+| Config profile boundary | Static and runtime tests prove `development/test/staging/production`, profile aliases, deployment profile, build mode, and runtime target are separated; browser, desktop, server, container, and Tauri platform config files do not leak into each other. |
 | Environment file hygiene | Static scan proves checked-in files are safe examples only and ignored host-local files include `.env.local`, `.env.<profile>.local`, `.env.postgres`, `.env.release.local`, and `config/*.local.toml`. |
 | Root thinness | Static scan or code review proves root `src/` owns bootstrap/composition only, not business services or mock data. |
 | Desktop and tablet parity | When native targets exist, Tauri config, platform config files, host adapters, web fallback, renderer reuse, iPadOS packaging, and Android tablet packaging pass `DESKTOP_APP_ARCHITECTURE_SPEC.md`. |

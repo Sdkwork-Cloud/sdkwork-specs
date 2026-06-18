@@ -4,7 +4,7 @@
 - Scope: personal data, tenant data, data classification, consent, retention, export, deletion, residency
 - Related: `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `DRIVE_SPEC.md`, `API_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`
 
-This standard defines privacy and data protection requirements for SDKWork SaaS, private, and local deployments. It is not a legal policy; it is an engineering contract that makes privacy behavior explicit and testable.
+This standard defines privacy and data protection requirements for SDKWork standalone/cloud deployments, customer-owned environments, and local runtime targets. It is not a legal policy; it is an engineering contract that makes privacy behavior explicit and testable.
 
 ## 1. Data Classification
 
@@ -66,10 +66,13 @@ Rules:
 
 Rules:
 
-- SaaS, private, and local deployments `MUST` document where tenant data is stored and processed.
+- Standalone/cloud deployments and customer-owned environments `MUST`
+  document where tenant data is stored and processed.
 - Cross-region or cross-border synchronization `MUST` be explicit.
-- Local/private mode `SHOULD` avoid sending tenant data to SaaS unless the user/operator opts in.
-- Telemetry from local/private mode must be configurable and privacy-safe.
+- Standalone/customer-owned runtime targets `SHOULD` avoid sending tenant data
+  to SDKWork-hosted cloud services unless the user/operator opts in.
+- Telemetry from standalone/customer-owned runtime targets must be configurable
+  and privacy-safe.
 
 ## 7. Acceptance Checklist
 
@@ -78,4 +81,4 @@ Rules:
 - [ ] Logs/events do not expose secrets or full sensitive payloads.
 - [ ] Retention/export/delete behavior is defined.
 - [ ] Drive-backed files and derived media artifacts are covered by retention/export/delete/residency rules.
-- [ ] SaaS/private/local data residency behavior is explicit.
+- [ ] Standalone/cloud and customer-owned data residency behavior is explicit.

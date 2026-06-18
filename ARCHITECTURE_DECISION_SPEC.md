@@ -68,7 +68,7 @@ Architecture descriptions should include only the views needed for the decision:
 | Component/package | package boundaries, component ownership, dependency direction, or public exports change |
 | API/SDK | API authority, operation ownership, generated SDK surface, or app/backend/open SDK boundary changes |
 | Data | database ownership, persistence model, retention, tenant isolation, or migration changes |
-| Runtime/deployment | process topology, service boundaries, config surfaces, deployment mode, or runtime directories change |
+| Runtime/deployment | process topology, service boundaries, config surfaces, deployment profile, runtime target, or runtime directories change |
 | Client route/UI | cross-client route identity, host adapters, UI architecture, or package families change |
 | Security/privacy | authn/authz, token flow, secrets, data classification, audit, or privacy behavior changes |
 | Release/migration | rollout, rollback, compatibility windows, or release train behavior changes |

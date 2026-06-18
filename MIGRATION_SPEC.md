@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: API migration, database migration, SDK migration, config migration, package migration, route migration, compatibility windows, rollback
-- Related: `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `GOVERNANCE_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `GOVERNANCE_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 This standard defines how SDKWork changes existing contracts without breaking consumers unexpectedly.
 
@@ -81,11 +81,20 @@ Rules:
 - Route ids and i18n keys should remain stable across client migrations unless a route migration plan exists.
 - Public naming migrations require `NAMING_SPEC.md` and governance review.
 
+### 4.1 HTTP Framework Migration
+
+Rules:
+
+- Repositories migrating from `sdkwork-platform-http-context-service` or other appbase-local HTTP context frameworks to `sdkwork-web-framework` must follow `WEB_FRAMEWORK_SPEC.md` and the framework migration guide at `../sdkwork-web-framework/docs/10-migration-from-appbase.md`.
+- During migration, `AppRequestContext` may remain as a type alias for `WebRequestContext`, but new handlers, OpenAPI extensions, and documentation must use `WebRequestContext`.
+- Migration plans must name affected route crates, API servers, appbase adapters, and verification commands before removing legacy HTTP context crates.
+
 ## 5. Data Migration
 
 Rules:
 
-- Database migrations must be forward-safe for the supported deployment model.
+- Database migrations must be forward-safe for the supported deployment profile
+  and runtime target.
 - Backfills must be idempotent and resumable.
 - Tenant isolation, indexing, query shape, and audit requirements must be tested when data moves.
 - Destructive data migrations require explicit owner approval, backup/restore evidence, and rollback or forward-fix plan.
@@ -94,7 +103,8 @@ Rules:
 
 Rules:
 
-- Config migrations must keep lifecycle environment, deployment mode, build mode, and runtime target separated.
+- Config migrations must keep lifecycle environment, deployment profile, build
+  mode, and runtime target separated.
 - Old env/config keys must have compatibility aliases only when documented with removal dates.
 - Release plans must describe when old and new contracts are accepted.
 - Rollback must explain whether config, SDK, database, and artifacts roll back together or separately.

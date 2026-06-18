@@ -214,7 +214,7 @@ schema registry 至少 SHOULD 支持�?
 | 画像 | 用�?| 必备字段�?|
 | --- | --- | --- |
 | `core_entity` | 用户、订单、商品、文件、会话等核心业务对象 | 标识、审计、生命周�?|
-| `tenant_entity` | SaaS、多组织、多应用数据 | 标识、审计、租户、生命周�?|
+| `tenant_entity` | 多租户、多组织、多应用数据 | 标识、审计、租户、生命周�?|
 | `user_entity` | 用户私有数据、用户创建内�?| 标识、审计、租户、用户、生命周�?|
 | `owner_entity` | 可归属不同主体的资源 | 标识、审计、owner、生命周�?|
 | `tree_entity` | 分类、目录、组织、项目树 | 标识、审计、父节点、路径、排�?|
@@ -2801,14 +2801,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use std::time::Duration;
-use sdkwork_database_config::DatabaseConfig;
+use sdkwork_database_config::{DatabaseConfig, DatabaseRuntimeProfile};
 use sdkwork_database_sqlx::PoolBuilder;
 
 let config = DatabaseConfig::from_env("MY_SERVICE")?;
 let pool = PoolBuilder::new(config)
     .max_connections(32)
     .acquire_timeout(Duration::from_secs(30))
-    .mode(DeploymentMode::Integrated)
+    .runtime_profile(DatabaseRuntimeProfile::Integrated)
     .table_prefix("my_service_")
     .build()
     .await?;

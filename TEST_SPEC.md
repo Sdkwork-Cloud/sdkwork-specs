@@ -41,14 +41,14 @@ No standard is complete until it is executable.
 | Harmony native mobile architecture | Validate `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`: `sdkwork-<product>-harmony-mobile-*`, `sdkwork-<product>-harmony-mobile-console-*`, and `sdkwork-<product>-harmony-mobile-admin-*` package names, thin root `entry/`, generated ArkTS/TypeScript app/backend SDK boundary, HarmonyOS host adapters, route identity, Harmony config, and release metadata |
 | Native mobile UI | Validate `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, or `APP_HARMONY_NATIVE_UI_SPEC.md`: package-local screens/pages/components/services/state/i18n/routes, host adapter contracts, app/user-console SDK boundary, UI states, and lifecycle/security checks |
 | Internationalization | Validate `I18N_SPEC.md`: package-local catalog fragments, thin aggregators, duplicate-key checks, missing-key checks, fallback behavior, and no authored app/root/package locale monoliths |
-| Environment/config | Validate `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`: lifecycle environment, profile alias, deployment mode, build mode, runtime target, dev/test/staging/prod files, browser/desktop/H5/Capacitor/Flutter/mini-program/native Android/native iOS/native Harmony/server/container/Tauri config separation, public/private/secret boundaries |
+| Environment/config | Validate `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`: lifecycle environment, profile alias, deployment profile, build mode, runtime target, dev/test/staging/prod files, browser/desktop/H5/Capacitor/Flutter/mini-program/native Android/native iOS/native Harmony/server/container/Tauri config separation, public/private/secret boundaries |
 | Database | Schema lint, migration test, tenant/index checks |
 | Drive | Drive API/SDK contract tests, Drive Uploader App SDK tests, Rust `DriveUploaderService` tests, upload-session idempotency, resumable part tests, attribution/statistic tests, retention cleanup tests, provider capability tests, business-module scans for forbidden app-local storage lifecycle |
 | IAM/security | Token validation, permission denial, tenant isolation, audit event, appbase login integration, logout clearing, Rust AppContext guard |
 | Frontend | Service tests with injected SDK client, UI integration tests |
 | UI architecture | Static/package scan that the package family matches `UI_ARCHITECTURE_SPEC.md` plus the relevant root architecture spec and exactly one detailed UI/package spec such as `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, or `BACKEND_UI_SPEC.md` |
-| Deployment | SaaS/local/private parity tests |
-| GitHub workflow | `GITHUB_WORKFLOW_SPEC.md` checks for `sdkwork.workflow.json`, thin reusable workflow entrypoint, planner/schema alignment, safe refs and paths, lifecycle env, release policy, publication policy gates, supply-chain policy, attestation policy, deployment environment binding, and repository validation |
+| Deployment | Standalone/cloud parity tests, topology profile validation, deployment profile and runtime target separation |
+| GitHub workflow | `GITHUB_WORKFLOW_SPEC.md` checks for `sdkwork.workflow.json`, thin reusable workflow entrypoint, planner/schema alignment, deploymentProfile/runtimeTarget target metadata, safe refs and paths, lifecycle env, release policy, publication policy gates, supply-chain policy, attestation policy, deployment environment binding, and repository validation |
 | Events | Schema compatibility, idempotent consumer, replay behavior |
 | Performance | Pagination, latency budget, retry, rate-limit behavior |
 | Documentation | README/examples match public contracts |
@@ -61,8 +61,13 @@ Rules:
 - Every Rust HTTP route crate change `MUST` include or update verification that the crate name,
   declared surface, mounted path prefix, route manifest, aggregated API authority, and generated SDK
   family mapping satisfy `API_SPEC.md`, `SDK_SPEC.md`, and `SDK_WORKSPACE_GENERATION_SPEC.md`.
+- Every SDKWork HTTP `*-api` contract/runtime change `MUST` include verification that route
+  manifests, authority OpenAPI, derived `*.sdkgen.*` inputs, and runtime handlers/controllers keep
+  the `WEB_FRAMEWORK_SPEC.md` request-context contract: `requestContext: WebRequestContext`,
+  `apiSurface`, `x-sdkwork-request-context: WebRequestContext`, and `x-sdkwork-api-surface`.
 - Every SDK workspace or OpenAPI generation change `MUST` satisfy `SDK_SPEC.md` first for canonical SDK/API naming vocabulary, family naming, package semantics, generated client behavior, auth behavior, and service integration; then satisfy `SDK_WORKSPACE_GENERATION_SPEC.md` for application-root `sdks/` layout, authority OpenAPI location, deterministic derived inputs, generated-output placement, and component specs.
 - SDK generation verification `MUST` prove the command uses the canonical `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`; `sdkwork-code-generator`, local stubs, copied generator code, or generic OpenAPI generators are not valid production SDK verification evidence.
+- SDK/OpenAPI contract tests `MUST` fail when route manifests, authority OpenAPI, derived `*.sdkgen.*` inputs, generated SDK method surfaces, generated README examples, or generated type models expose `tenant_id` or `tenantId` as a current-tenant path, query, header, cookie, method, `params`, per-call option, credential option, or client-writable request body input.
 - Dependency API surface verification `MUST` prove each HTTP `sdkDependencies` entry has a matching
   `dependencyApiSurfaces` runtime declaration. The test must fail when route contracts, route
   manifests, or OpenAPI authority files are treated as same-origin executable router coverage
@@ -299,19 +304,33 @@ Rules:
   `/backend/v3/api`. Open-api tests `MUST` allow only the approved versioned domain prefix declared
   by the authority, for example `/im/v3/api`.
 - Route-entry tests `MUST` validate uppercase HTTP method, full path including prefix, stable
-  operationId, non-empty tags, auth projection, handler traceability, schema references when known,
-  and source traceability.
+  operationId, non-empty tags, `requestContext: WebRequestContext`, route-level `apiSurface`, auth
+  projection, handler traceability, schema references when known, and source traceability.
+- Route-entry tests `MUST` fail when `apiSurface` or `x-sdkwork-api-surface` uses camelCase
+  runtime labels such as `openApi`, `appApi`, or `backendApi`; contract artifacts use canonical
+  kebab-case labels such as `open-api`, `app-api`, and `backend-api`.
 - Duplicate tests `MUST` fail on duplicate `(method, path)` pairs after path-template
   normalization.
-- Ownership tests `MUST` prove the route manifest owner, API authority, SDK family, and route-level
-  ownership materialize to `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`, and
-  `x-sdkwork-source-route-crate` in the authority OpenAPI.
+- Ownership and framework metadata tests `MUST` prove the route manifest owner, API authority, SDK
+  family, route-level ownership, `requestContext`, `apiSurface`, and optional `rateLimitTier`
+  materialize to `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`,
+  `x-sdkwork-source-route-crate`, `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and
+  `x-sdkwork-rate-limit-tier` when present in the authority OpenAPI.
 - Auth-mode tests `MUST` prove protected app-api/backend-api routes project dual-token security,
   protected open-api routes project API key security unless a compatibility contract says otherwise,
-  and public routes project `security: []`.
+  and public SDK-generated routes project both `security: []` and
+  `x-sdkwork-auth-mode: anonymous`.
+- Credential-entry tests `MUST` prove login, registration, OAuth session creation, QR auth session
+  creation or password completion, password reset request, password reset completion, and equivalent
+  anonymous credential-entry operations set `forbidCredentialHeaders: true`, materialize
+  `x-sdkwork-forbid-credential-headers: true`, and reject inbound `Authorization`, `Access-Token`,
+  `X-Api-Key`/`X-API-Key`, SDKWork identity projection headers, and equivalent credential headers.
+- Open-api prefix tests `MUST` prove approved domain prefixes such as `/im/v3/api` classify as
+  `open-api` and fail when framework/materializer code recognizes only a literal `/open/v3/api`
+  prefix.
 - Aggregation tests `MUST` fail on mixed surfaces, mismatched owner/domain/API authority/SDK family,
-  wrong prefix, operationId/tag/domain mismatch, and dependency-owned operations declared in the
-  consuming authority.
+  wrong prefix, missing or mismatched `requestContext`/`apiSurface`, operationId/tag/domain
+  mismatch, and dependency-owned operations declared in the consuming authority.
 - Determinism tests `SHOULD` run route-manifest-to-authority materialization twice and compare the
   produced authority OpenAPI and derived `*.sdkgen.*` inputs.
 
@@ -322,7 +341,8 @@ Rules:
 - RPC manifest tests `MUST` verify every service method maps to an SDKWork operationId or a documented composition method.
 - Public RPC packages `MUST` generate and compile Rust clients plus at least one non-Rust client in CI or release validation.
 - Rust RPC server tests `MUST` cover metadata auth, access token, request id, trace, deadline, idempotency key, and error mapping.
-- Health and reflection behavior `MUST` be tested for local/private/production configuration.
+- Health and reflection behavior `MUST` be tested for standalone development,
+  customer-owned internal, and production cloud configuration.
 - RPC adapter tests `MUST` verify the adapter uses runtime/service boundaries and does not depend on HTTP/Tauri adapters or direct SQLx storage unless explicitly approved.
 
 ## 2.3 Web Backend Implementation Tests
@@ -348,6 +368,37 @@ Rules:
   copied into an application-owned API authority.
 - Provider adapter tests `MUST` prove raw HTTP usage, when present, is isolated inside an approved
   provider adapter and does not leak provider DTOs or raw provider errors into SDKWork API schemas.
+
+### 2.3.1 Web Framework Integration Tests
+
+Web framework integration tests prove every SDKWork HTTP `*-api` runtime follows
+`WEB_FRAMEWORK_SPEC.md`, not only `WEB_BACKEND_SPEC.md`.
+
+Rules:
+
+- Application repositories and modules that own, serve, develop, proxy, or compose any SDKWork HTTP
+  `*-api` surface `MUST` include framework integration checks.
+- Repositories with Rust HTTP route crates, API servers, or gateways `MUST` include verification that
+  `sdkwork-web-framework` is declared as a dependency.
+- Bootstrap smoke tests `MUST` prove API servers and gateways mount routes through framework
+  bootstrap rather than ad hoc Axum/Tower security stacks.
+- Pipeline contract tests `MUST` prove the standard 18-stage interceptor order is not bypassed for
+  protected routers or gateway proxy/composition routes.
+- Route manifest tests `MUST` fail when any route entry omits `requestContext: WebRequestContext` or
+  `apiSurface`.
+- OpenAPI/materialization tests `MUST` fail when HTTP operations omit
+  `x-sdkwork-request-context: WebRequestContext` or `x-sdkwork-api-surface`.
+- SDK workspace tests `MUST` fail when derived `*.sdkgen.*` inputs drop
+  `x-sdkwork-request-context`, `x-sdkwork-api-surface`, or required rate-limit tiers from the
+  authority OpenAPI.
+- Static scans `MUST` fail when route crate handlers or Java controller methods parse
+  `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission
+  scopes, or request IDs from raw headers instead of consuming `WebRequestContext` or the Java
+  typed-context equivalent.
+- Java/Spring tests, when Java API modules are present, `MUST` prove typed context argument
+  resolution, interceptor order, centralized problem-detail mapping, and OpenAPI/manifest metadata
+  parity with the Rust framework profile.
+- Architecture tests `MUST` fail when `sdkwork-web-framework` depends on business route crates or when business repositories vendor framework pipeline source locally.
 
 ## 2.4 PC Application Architecture Tests
 
@@ -542,12 +593,52 @@ Rules:
 - Rust server-side upload tests `MUST` prove generated/imported server bytes call `DriveUploaderService`, `PrepareUploaderUploadCommand`, or an approved Drive server-side uploader facade instead of calling `/app/v3/api/drive/uploader/*` over HTTP or direct S3/OSS/MinIO/local filesystem provider APIs.
 - App API route tests `MUST` prove `/app/v3/api/drive/uploader/uploads`, `/app/v3/api/drive/uploader/uploads/{uploadItemId}/parts/{partNo}`, `/app/v3/api/drive/upload_sessions/{uploadSessionId}/parts/{partNo}`, and `/app/v3/api/drive/upload_sessions/{uploadSessionId}/complete` delegate to Drive-owned services and expose SDKWork operationIds.
 - App SDK tests `MUST` prove `sdkwork-drive-app-sdk` exposes `client.uploader.upload`, `uploadByProfile`, `uploadVideo`, `uploadImage`, `uploadAudio`, `uploadDocument`, `uploadArchive`, `uploadText`, `uploadDataset`, `uploadAttachment`, `uploadAvatar`, and `uploadThumbnail`.
-- Client upload service tests `MUST` prove feature upload facades delegate to injected Drive SDK `client.uploader.*`, provide tenant, organization when applicable, user/anonymous actor, `appId`, `appResourceType`, `appResourceId`, `scene`, `source`, profile, file metadata, target, and retention.
+- Client upload service tests `MUST` prove feature upload facades delegate to injected Drive SDK `client.uploader.*`, provide `appId`, `appResourceType`, `appResourceId`, `scene`, `source`, profile, file metadata, target, and retention, and do not pass tenant, organization, or authenticated user context as generated SDK method inputs.
 - Attribution tests `MUST` prove Drive uploader facts retain tenant, organization, actor type/id, user id when available, app id, app resource type/id, scene, source, upload profile, content type/group, file size, part counts, Drive space/node/session, and retention.
 - Resumability tests `MUST` prove prepare/resume returns already uploaded parts, mark-uploaded is idempotent, missing parts are uploaded only once, and server state remains authoritative over local SDK state.
 - Retention and cleanup tests `MUST` prove temporary uploads are swept by Drive maintenance jobs, automatic soft delete/hard delete records audit and `dr_drive_file_sensitive_operation` snapshots, and app-local cleanup jobs do not own Drive content lifecycle.
 - Explicit target-space tests `MUST` prove active target-space validation, writer/owner permission checks, anonymous writer share-token handling, raw share-token non-persistence, and forbidden anonymous target writes without a valid share token.
 - Business API tests `MUST` prove application commands accept Drive references, Drive-backed `MediaResource`, or business relation ids after upload. They must fail when application APIs expose duplicate `/upload`, `/presign`, `/complete`, upload-session, file-part, bucket, or object-key contracts for SDKWork-owned files.
+
+## 2.6 Deployment Profile And Runtime Topology Tests
+
+Deployment profile tests make `DEPLOYMENT_SPEC.md`,
+`APP_RUNTIME_TOPOLOGY_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`,
+`APP_MANIFEST_SPEC.md`, and `GITHUB_WORKFLOW_SPEC.md` executable.
+
+Rules:
+
+- Config, env, manifest, topology, and workflow validation `MUST` accept only
+  `deploymentProfile` values `standalone` and `cloud`.
+- Tests `MUST` fail when checked-in application runtime config, TOML examples,
+  app manifests, topology profile ids, workflow targets, package metadata, or
+  release env files use `saas`, `private`, `local`, `test`, `server`,
+  `container`, `desktop`, `web`, `self-hosted`, `cloud-hosted`, or `hosting` as
+  deployment profile values.
+- Static config scans `MUST` fail for new application startup inputs that define
+  `SDKWORK_<APP>_DEPLOYMENT_MODE`, `SDKWORK_CLAW_DEPLOYMENT_MODE`,
+  `[runtime].deployment_mode`, `deploymentMode`, or CLI flags such as
+  `--hosting` as active deployment architecture. Migration tools may cover
+  those aliases only when tests prove they normalize to `deploymentProfile`,
+  `runtimeTarget`, and v3 topology profile ids before application code sees the
+  config.
+- Topology tests `MUST` fail when profile ids begin with `self-hosted.` or
+  `cloud-hosted.`, or when they do not follow
+  `<deploymentProfile>.<serviceLayout>.<environment>`.
+- Runtime config tests `MUST` prove lifecycle environment, config profile,
+  build mode, deployment profile, and runtime target are normalized separately.
+- App manifest tests `MUST` prove `runtime.supportedDeploymentProfiles` is
+  non-empty, `runtime.defaultDeploymentProfile` is supported, and package
+  entries use valid `deploymentProfile` plus `runtimeTarget` metadata.
+- GitHub workflow planner tests `MUST` prove deployable targets declare
+  `deploymentProfile` and `runtimeTarget`, inject `SDKWORK_DEPLOYMENT_PROFILE`
+  and `SDKWORK_RUNTIME_TARGET` into package/deployment lifecycle steps, and
+  generate package ids with the deployment profile segment required by
+  `GITHUB_WORKFLOW_SPEC.md`.
+- Deployment smoke tests `MUST` prove standalone profiles can run as one
+  application deployment unit with one public application ingress for HTTP
+  `*-api` surfaces, while cloud profiles use explicit split-service URLs,
+  secrets, probes, rollout, and rollback metadata.
 
 ## 3. Security Tests
 
@@ -587,6 +678,7 @@ Rules:
 - Raw HTTP usage in business modules `SHOULD` be checked by static scan.
 - Static frontend scans MUST fail on xRequestId, `x-request-id`, `X-Request-Id`, `createRequestId`, or direct `crypto.randomUUID()` usage in application source because request identity is server-owned.
 - Static SDK and OpenAPI scans MUST fail when generated app/backend HTTP SDKs or app/backend OpenAPI documents expose `xRequestId` or `X-Request-Id`.
+- Static SDK and OpenAPI scans MUST fail when generated app-api, backend-api, or protected open-api SDKs or OpenAPI documents expose `tenant_id` or `tenantId` as current-tenant method arguments, `params` fields, request parameters, per-call credential options, or client-writable body fields. Tenant context must be asserted through dual-token or API-key context tests instead.
 - Static SDK/bootstrap scans MUST fail when protected open-api SDK clients are added to app/backend global token-manager client lists instead of an API key credential provider.
 - Static SDK/bootstrap scans MUST fail when authenticated app-api SDK clients or explicit `backend-admin` backend-api SDK clients are not passed through the global token-manager-aware SDK list such as `clients.sdkClients`.
 - Static SDK/bootstrap scans MUST fail when the same application runtime/session context creates more than one live `TokenManager`, creates per-domain/per-package/per-service TokenManagers, or constructs an authenticated app SDK client or explicit `backend-admin` backend SDK client without joining the global TokenManager closure.
@@ -636,7 +728,11 @@ Rules:
 - [ ] Standard top-level directory checks pass when a repository root or application root is created or maintained.
 - [ ] `apis/` and `sdks/` boundary checks pass when API contracts or SDK generation are touched.
 - [ ] OpenAPI/SDK generation verification passes under `SDK_SPEC.md`.
+- [ ] OpenAPI/SDK scans prove current tenant context is not generated as `tenant_id` or `tenantId` inputs.
 - [ ] Web backend implementation checks pass under `WEB_BACKEND_SPEC.md` when controllers, route crates, handlers, services, repositories, or runtime composition are touched.
+- [ ] Web framework integration checks pass under `WEB_FRAMEWORK_SPEC.md` when any SDKWork HTTP
+      `*-api` route crate, controller module, API server, gateway, framework adapter, or runtime
+      composition is touched.
 - [ ] SDK workspace layout and OpenAPI authority/derived input checks pass under `SDK_WORKSPACE_GENERATION_SPEC.md` when SDK generation is touched.
 - [ ] Rust route crate naming, surface prefix, route manifest, and authority aggregation checks pass when Rust HTTP routes are touched.
 - [ ] Proto/RPC generation verification passes when RPC contracts are touched.
@@ -649,7 +745,8 @@ Rules:
 - [ ] UI architecture package placement and SDK surface checks pass for touched UI packages.
 - [ ] PC application architecture root layout, package naming, app/console/admin separation, desktop/tablet host checks, and iPadOS/Android tablet packaging checks pass when a PC application root is touched.
 - [ ] H5 mobile, Flutter mobile, mini program, Android native, iOS native, and Harmony native architecture checks pass when those client roots or packages are touched.
-- [ ] Environment/config checks pass for lifecycle environment, profile alias, deployment mode, build mode, runtime target, dev/test/staging/prod files, local override ignore rules, browser public runtime, desktop user/server split, H5/Capacitor config, Flutter config, mini program config, native Android config, native iOS config, native Harmony config, container config, and Tauri platform config.
+- [ ] Environment/config checks pass for lifecycle environment, profile alias, deployment profile, build mode, runtime target, dev/test/staging/prod files, local override ignore rules, browser public runtime, desktop user/server split, H5/Capacitor config, Flutter config, mini program config, native Android config, native iOS config, native Harmony config, container config, and Tauri platform config.
+- [ ] Deployment profile checks reject retired deployment-mode keys and values, validate standalone/cloud topology profile ids, and prove package/workflow metadata carries `deploymentProfile` and `runtimeTarget`.
 - [ ] GitHub workflow checks pass for thin reusable workflow entrypoints, config validation, matrix planning, dependency checkout safety, lifecycle env injection, publication policy gates, artifact attestation policy, deployment environment binding, and framework repository validation when GitHub packaging/release/deployment workflows are touched.
 - [ ] SDK base URL and Access-Token checks pass for per-surface base URL resolution, dependency SDK base URLs, forbidden token env variables, `Access-Token` header semantics, and global TokenManager injection.
 - [ ] Drive Uploader checks pass for client `client.uploader.*` usage, Rust `DriveUploaderService` usage, attribution/statistics, retention cleanup, and forbidden app-local upload/provider bypasses when upload is touched.

@@ -4,7 +4,7 @@
 - Scope: tenant, organization, user, authentication, authorization, sessions, devices, MFA, API keys, security events, audit events
 - Related: `API_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `DATABASE_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `MODULE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `PRIVACY_SPEC.md`
 
-IAM is the foundational domain for every SDKWork application. It owns the reusable user system, login/session system, tenant and organization isolation model, authorization model, security posture, and the token-derived context that lets SaaS Java and local/private Rust deployments expose the same application behavior.
+IAM is the foundational domain for every SDKWork application. It owns the reusable user system, login/session system, tenant and organization isolation model, authorization model, security posture, and the token-derived context that lets standalone and cloud deployments expose the same application behavior.
 
 The canonical domain name is `iam`. New database tables, API tags, SDK namespaces, service facades, module names, events, permissions, and documentation `MUST NOT` use vague names such as `identity` for this domain.
 
@@ -43,16 +43,17 @@ Reusable IAM modules use layered packages so each application can switch generat
 | React | `@sdkwork/iam-react` | React provider and hooks over the IAM runtime |
 | Rust IAM context | `sdkwork_iam_context_service` | Local/private Rust IAM context and token parity contracts |
 | Rust app-api route | `sdkwork_router_iam_app_api` | Local/private Rust app-api route contract parity with Java app APIs |
-| Rust backend-api route | `sdkwork_router_iam_backend_api` | Local/private Rust backend-api route contract parity with Java backend APIs |
-| Rust open-api route | `sdkwork_router_iam_open_api` | Local/private Rust open-api route contract parity when IAM exposes public integration APIs |
-| Rust SQLx directory repository | `sdkwork_iam_directory_repository_sqlx` | Local/private Rust SQL migration and persistence contract |
-| Rust Tauri host | `sdkwork_appbase_tauri_host` | Tauri host adapter boundary for local/private IAM |
+| Rust backend-api route | `sdkwork_router_iam_backend_api` | Rust backend-api route contract parity with Java backend APIs across standalone/cloud profiles |
+| Rust open-api route | `sdkwork_router_iam_open_api` | Rust open-api route contract parity when IAM exposes public integration APIs |
+| Rust SQLx directory repository | `sdkwork_iam_directory_repository_sqlx` | Rust SQL migration and persistence contract |
+| Rust Tauri host | `sdkwork_appbase_tauri_host` | Tauri host adapter boundary for standalone IAM |
 
 Rules:
 
 - UI components call IAM through `UI -> service -> injected generated SDK client`.
 - Service packages receive `appClient` and optional `backendClient` as ports.
-- Runtime/bootstrap creates the concrete SDK clients for dev/test/prod/SaaS/private/local.
+- Runtime/bootstrap creates the concrete SDK clients for each lifecycle
+  environment, deployment profile, and runtime target.
 - App SDK constructors may differ by application, but injected method surfaces `MUST` remain resource-oriented and stable.
 - Reusable UI IAM capability work belongs in `pc-react/iam` and common IAM packages; do not introduce compatibility package roots outside the canonical IAM boundary.
 
@@ -61,7 +62,7 @@ Rules:
 | Entity | Table | API resource |
 | --- | --- | --- |
 | Tenant | `iam_tenant` | `/iam/tenants` |
-| Tenant member | `iam_tenant_member` | `/iam/tenants/{tenantId}/members` |
+| Tenant member | `iam_tenant_member` | `/iam/tenants/current/members` |
 | Tenant signing key | `iam_tenant_signing_key` | backend management only |
 | Organization | `iam_organization` | `/iam/organizations` |
 | Organization membership | `iam_organization_membership` | `/iam/organizations/{organizationId}/memberships` |
@@ -107,7 +108,9 @@ iam_audit_event
 Rules:
 
 - All IAM tables `MUST` use the `iam_` prefix and follow `DATABASE_SPEC.md`.
-- Java SaaS schema and Rust local/private schema `MUST` preserve the same logical table names, IDs, isolation fields, token hash fields, status semantics, and audit fields.
+- Java and Rust schemas across standalone/cloud profiles `MUST` preserve the
+  same logical table names, IDs, isolation fields, token hash fields, status
+  semantics, and audit fields.
 - Rust may choose SQLite/PostgreSQL-compatible column types, but API-visible semantics and migration intent `MUST` match Java.
 - `iam_user` or the canonical tenant membership relation `MUST` provide the user's tenant binding used by login. Login implementations `MUST NOT` invent tenant ids from usernames, emails, request bodies, headers, or local default values.
 - `iam_organization_membership` `MUST` provide the organization memberships used by login organization selection and authorization. A missing organization membership means tenant-level login only; it does not authorize organization-scoped data.
@@ -119,16 +122,22 @@ Rules:
 Protected IAM and tenant-owned business operations run with two derived contexts:
 
 ```text
-AppContext = tenant + organization + user + session + app + environment + deployment mode + auth level + data scope + permission scope
+AppContext = tenant + organization + user + session + app + environment + deployment profile + runtime target + auth level + data scope + permission scope
 ShardingContext = sharding key + sharding strategy + optional database/schema/table partition
 ```
 
 Rules:
 
-- Java SaaS `MUST` populate `AppContext` and `ShardingContext` from verified token claims or server-side token/session lookup before business logic runs.
-- Rust local/private deployment `MUST` expose the same logical contexts and enforce the same tenant/user/permission checks.
-- Appbase HTTP routers `MUST` resolve `AppRequestContext` at the framework boundary and project it to IAM `AppContext` for business handlers.
-- `AppRequestPrincipal` is the standard HTTP projection of IAM identity and must carry tenant, organization, user, session, app, environment, deployment mode, auth level, data scope, permission scope, optional API key id, and subject type.
+- Java and Rust implementations `MUST` populate `AppContext` and
+  `ShardingContext` from verified token claims or server-side token/session
+  lookup before business logic runs.
+- Standalone and cloud deployments `MUST` expose the same logical contexts and
+  enforce the same tenant/user/permission checks.
+- Appbase HTTP routers `MUST` resolve `WebRequestContext` at the `sdkwork-web-framework` boundary and project it to IAM `AppContext` for business handlers.
+- `AppRequestPrincipal` is the standard HTTP projection of IAM identity and
+  must carry tenant, organization, user, session, app, environment, deployment
+  profile, runtime target, auth level, data scope, permission scope, optional
+  API key id, and subject type.
 - Context values from request body, query, or mutable frontend state are hints only and `MUST NOT` override verified token context.
 - If path/body/query tenant or organization values conflict with token context, the server `MUST` reject the request unless an explicit platform permission authorizes cross-tenant action.
 - `ShardingContext` default selection order is tenant, organization, user, then single/app scope.
@@ -141,14 +150,17 @@ IAM uses two tokens for protected operations:
 | Token | Transport | Owns |
 | --- | --- | --- |
 | `auth_token` | `Authorization: Bearer <auth_token>` | Principal identity, session identity, auth strength, token expiry |
-| `access_token` | `Access-Token: <access_token>` | Tenant, organization, app, environment, deployment mode, data scope, permission scope, sharding context |
+| `access_token` | `Access-Token: <access_token>` | Tenant, organization, app, environment, deployment profile, runtime target, data scope, permission scope, sharding context |
 
 Rules:
 
 - Protected APIs `MUST` require both tokens unless a documented machine/API-key mode is explicitly selected.
 - `Access-Token` is the canonical SDKWork access isolation header for v3 contracts.
 - `auth_token` parsers `MUST` validate principal identity, session identity, tenant identity, organization identity, login scope, auth strength, expiry, issuer, and revocation.
-- `access_token` parsers `MUST` validate principal identity, session identity, tenant identity, organization identity, login scope, app, environment, deployment mode, data scope, permission scope, expiry, issuer, audience, and revocation.
+- `access_token` parsers `MUST` validate principal identity, session identity,
+  tenant identity, organization identity, login scope, app, environment,
+  deployment profile, runtime target, data scope, permission scope, expiry,
+  issuer, audience, and revocation.
 - If both tokens include the same tenant, organization, user, session, or app claim, the values `MUST` match.
 - App API session creation returns `authToken`, `accessToken`, optional `refreshToken`, session metadata, user summary, and AppContext.
 - Refresh token handling `MUST` be server-controlled, revocable, rotated where possible, and unavailable to normal business operation handlers.
@@ -187,7 +199,7 @@ Required common claims:
 | `organization_id` | Active organization id, or `0`/absent for tenant-level sessions. |
 | `login_scope` | `TENANT` when organization id is `0`/absent; `ORGANIZATION` when organization id is present and non-zero. |
 | `app_id` | Application audience. |
-| `environment` and `deployment_mode` | Runtime audience and deployment context. |
+| `environment`, `deployment_profile`, and `runtime_target` | Runtime audience and deployment context. |
 | `iat`, `exp`, `iss`, `aud` | Standard issuance, expiry, issuer, and audience controls. |
 
 Rules:
@@ -225,7 +237,9 @@ Rules:
 - Login, register, refresh, logout, current session, OAuth callback, password reset, MFA challenge, device authorization, and verification-code delivery flows `MUST` live in app-api only.
 - Backend-api `MUST NOT` expose an `auth` namespace or login/session creation APIs. It manages IAM resources after token validation.
 - App and backend API versions `MUST` stay aligned.
-- Java SaaS and Rust local/private implementations `MUST` expose identical paths, methods, operationIds, schemas, response envelopes, error semantics, and security declarations for shared IAM modules.
+- Standalone and cloud implementations `MUST` expose identical paths, methods,
+  operationIds, schemas, response envelopes, error semantics, and security
+  declarations for shared IAM modules.
 - URL static segments use `lower_snake_case`; path parameters use `lowerCamelCase`.
 - OperationIds use dotted lowerCamelCase resource style and generate nested SDK resources, for example `client.auth.sessions.create(body)`.
 
@@ -278,11 +292,11 @@ Rules:
 - Policy evaluation `SHOULD` be deterministic, testable, and auditable.
 - Sensitive authorization changes `MUST` emit audit events and, when security-relevant, security events.
 
-## 8. SaaS And Local/Private Parity
+## 8. Standalone And Cloud Parity
 
 Rules:
 
-- Java SaaS mode and Rust local/private mode `MUST` implement the same IAM behavior for shared modules.
+- Standalone and cloud profiles `MUST` implement the same IAM behavior for shared modules.
 - API parity includes path, method, operationId, schema, status code, envelope, error, security scheme, pagination, and idempotency semantics.
 - Database parity includes logical table names, isolation keys, entity IDs, status values, token hash fields, and audit/security event facts.
 - SDK parity means `@sdkwork/iam-service` and `@sdkwork/iam-runtime` can switch generated app/backend SDK clients without changing React UI code.
@@ -303,7 +317,7 @@ Rules:
 - [ ] Token signing and validation use tenant-bound signing keys with key id and tenant binding checks.
 - [ ] API key operations resolve a server-side API key record and never trust raw key claims alone in production.
 - [ ] AppContext and ShardingContext are derived from verified token context.
-- [ ] Appbase HTTP handlers consume typed `AppRequestContext`/`AppContext` and do not reparse credentials.
+- [ ] Appbase HTTP handlers consume typed `WebRequestContext`/`AppContext` and do not reparse credentials.
 - [ ] Tenant and organization isolation is enforced in Java and Rust.
 - [ ] Permissions use stable dotted codes.
 - [ ] Audit/security events are emitted for sensitive actions.

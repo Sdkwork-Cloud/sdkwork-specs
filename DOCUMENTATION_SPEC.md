@@ -37,7 +37,7 @@ Every reusable module `MUST` have a README with:
 - Public exports.
 - Required SDK client surface.
 - Initialization/configuration example.
-- SaaS/private/local deployment notes.
+- Standalone/cloud deployment profile and runtime target notes.
 - Security and tenant assumptions.
 - Extension points.
 - Verification command.
@@ -56,7 +56,7 @@ Status: standard
 ## Public API
 ## Required SDK Surface
 ## Configuration
-## SaaS/Private/Local Behavior
+## Deployment Profile And Runtime Target Behavior
 ## Security
 ## Extension Points
 ## Verification
@@ -137,7 +137,7 @@ Reusable foundation changes `MUST` record decisions when they affect:
 - security model.
 - SDK generator behavior.
 - Java/Rust parity.
-- deployment mode switching.
+- deployment profile and runtime target switching.
 - client architecture alignment, route identity, or package family ownership.
 - release, migration, security, privacy, or supply-chain posture.
 

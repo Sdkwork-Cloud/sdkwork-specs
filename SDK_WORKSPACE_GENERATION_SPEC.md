@@ -4,7 +4,7 @@
 - Scope: project-level HTTP/OpenAPI `sdks/` workspace layout, SDK family directory placement, OpenAPI 3.x authority documents, derived generator inputs, generated output boundaries, backend API SDK generation workflow
 - Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `COMPONENT_SPEC.md`, `DOMAIN_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `BACKEND_UI_SPEC.md`, `FRONTEND_SPEC.md`, `CONFIG_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
-This detail standard implements the HTTP/OpenAPI SDK workspace and OpenAPI generation parts of `SDK_SPEC.md`. It defines how an application keeps HTTP SDK generation work in the `sdks/` directory under its application root while preserving one common SDKWork architecture. RPC SDK family layout, proto inputs, RPC manifests, and generated RPC output placement are governed by `RPC_SDK_WORKSPACE_SPEC.md`. The application root may live in any repository or product directory; this standard does not assume any fixed parent directory structure. It is intentionally independent of Craw Chat, IM, Java, Rust, React, Flutter, Tauri, SaaS, private, or local deployment choices.
+This detail standard implements the HTTP/OpenAPI SDK workspace and OpenAPI generation parts of `SDK_SPEC.md`. It defines how an application keeps HTTP SDK generation work in the `sdks/` directory under its application root while preserving one common SDKWork architecture. RPC SDK family layout, proto inputs, RPC manifests, and generated RPC output placement are governed by `RPC_SDK_WORKSPACE_SPEC.md`. The application root may live in any repository or product directory; this standard does not assume any fixed parent directory structure. It is intentionally independent of Craw Chat, IM, Java, Rust, React, Flutter, Tauri, standalone/cloud deployment profiles, deployment ownership, or runtime targets.
 
 The standard project-root `apis/` directory from `SDKWORK_WORKSPACE_SPEC.md` is the authoring location for API contract sources and API materialization inputs when a repository or application owns API contracts. This file governs what happens after those inputs are materialized into SDK family workspaces under `sdks/`. `apis/` and `sdks/` are different boundaries: `apis/` stores API source and review inputs; `sdks/` stores SDK families, authority OpenAPI files used for generation, derived `sdkgen` inputs, generated language workspaces, and SDK component metadata.
 
@@ -218,7 +218,7 @@ crates/sdkwork-router-order-backend-api/
 Rules:
 
 - Route crates `MUST` expose route/path definitions through a package root export or Rust public module; consumers must not import private files.
-- Route crates `MUST` expose or feed a route manifest that records package name, API surface, owner, domain, capability, prefix, paths, methods, operationIds, tags, auth requirements, and handler binding metadata.
+- Route crates `MUST` expose or feed a route manifest that records package name, API surface, owner, domain, capability, prefix, paths, methods, operationIds, tags, `requestContext: WebRequestContext`, route-level `apiSurface`, auth requirements, and handler binding metadata.
 - Route manifests `MUST` be deterministic and suitable for OpenAPI materialization.
 - A route crate `MUST` provide one stable manifest entrypoint, for example `src/manifest.rs`
   exporting a framework-neutral manifest structure, a build script emitting JSON, or a checked-in
@@ -252,8 +252,8 @@ Rules:
 - The normalized file name `MUST` be `<packageName>.route-manifest.json`.
 - The normalized directory name `MUST` match manifest `surface`.
 - The file `packageName`, `surface`, `owner`, `domain`, `capability`, `apiAuthority`,
-  `sdkFamily`, `prefix`, and route list `MUST` match the source route crate and `API_SPEC.md`
-  route manifest shape.
+  `sdkFamily`, `prefix`, route list, route-level `requestContext`, and route-level `apiSurface`
+  `MUST` match the source route crate and `API_SPEC.md` route manifest shape.
 - Route manifest artifacts are materialization inputs. They `MUST NOT` be placed below
   `generated/server-openapi`, committed as generated SDK control-plane metadata, or imported by UI
   packages and generated SDK consumers.
@@ -290,18 +290,32 @@ Rules:
   `sdkwork-<domain>-app-api`, or `sdkwork-<domain>-backend-api`. The route crate name
   `sdkwork-router-<capability>-<surface>` `MUST NOT` be used as an authority filename except as an
   internal route manifest input.
-- Authority OpenAPI documents materialized from route manifests `MUST` copy operation ownership and
-  source traceability into `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`, and
-  `x-sdkwork-source-route-crate`.
+- Authority OpenAPI documents materialized from route manifests `MUST` copy operation ownership,
+  source traceability, and framework metadata into `x-sdkwork-owner`,
+  `x-sdkwork-api-authority`, `x-sdkwork-source`, `x-sdkwork-source-route-crate`,
+  `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and `x-sdkwork-rate-limit-tier` when
+  present.
+- Authority OpenAPI and derived `*.sdkgen.*` inputs `MUST` use canonical kebab-case
+  `x-sdkwork-api-surface` values such as `open-api`, `app-api`, and `backend-api`; camelCase
+  framework enum labels such as `openApi`, `appApi`, and `backendApi` are invalid SDK generation
+  inputs.
 - The materializer `MUST` reject missing route manifest fields, duplicate method/path pairs after
   path-template normalization, wrong surface suffixes, wrong prefixes, dependency-owned routes
-  declared as consumer-owned routes, and operationId/tag/domain mismatches.
+  declared as consumer-owned routes, missing or mismatched `requestContext`/`apiSurface`, and
+  operationId/tag/domain mismatches.
 - Derived generator inputs `MUST` be reproducible from the authority document and materialization script.
 - Derived generator inputs `MUST NOT` introduce operations, schemas, security, or paths that are absent from the authority document.
 - Generator-specific normalization, language quirks, and Flutter-specific adjustments belong in derived inputs, not runtime API code.
-- Authority and derived inputs `MUST` preserve operationId, tag, path, schema, security, and problem-detail semantics.
+- Authority and derived inputs `MUST` preserve operationId, tag, path, schema, security, problem-detail semantics, `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and `x-sdkwork-rate-limit-tier`.
 - OpenAPI documents for app-api and backend-api `MUST` use dual-token security where required by `API_SPEC.md` and `IAM_LOGIN_INTEGRATION_SPEC.md`.
+- Public SDK-generated operations `MUST` preserve `security: []` and
+  `x-sdkwork-auth-mode: anonymous` into every derived `*.sdkgen.*` input so SDK credential
+  injection can skip those calls.
+- Login-like anonymous credential-entry operations `MUST` preserve
+  `x-sdkwork-forbid-credential-headers: true` into every derived `*.sdkgen.*` input, and runtime
+  verification must prove the corresponding route rejects inbound credential/context headers.
 - OpenAPI documents `MUST NOT` expose `X-Request-Id` or client-supplied request correlation IDs for app/backend SDKs.
+- Authority OpenAPI and derived `*.sdkgen.*` inputs `MUST NOT` expose current-tenant selectors named `tenant_id`, `tenantId`, `tenant`, `tenant-id`, `X-Tenant-Id`, or equivalent in path, query, header, cookie, or client-writable request bodies. Tenant context is resolved by dual-token, API-key, or typed request-context infrastructure.
 
 ## 4.1 Dependency Authority Exclusion
 
@@ -322,7 +336,7 @@ Rules:
   through `sdkDependencies`.
 - Dependency SDKs are declared in the consuming SDK family's generation config, `.sdkwork-assembly.json`,
   and family-root `specs/component.spec.json` with matching `sdkDependencies` arrays.
-- Independent application roots under `apps/` that include Rust local/private services, Tauri hosts,
+- Independent application roots under `apps/` that include Rust services, Tauri hosts,
   native/Tauri host crates, route crates, repository crates, service crates, or worker crates `MUST`
   declare `sdkwork-appbase` SDK dependencies before generating application-owned SDKs. At minimum,
   app/user-facing app-api consumers declare
@@ -331,7 +345,7 @@ Rules:
 - Those Rust-enabled independent apps `MUST` include the Rust package mapping for each required
   appbase SDK dependency when Rust code consumes appbase HTTP SDKs, and their Rust workspace
   manifests must depend on the appbase Rust runtime crates needed for shared context, auth,
-  bootstrap, token/session validation, and local/private route behavior.
+  bootstrap, token/session validation, and standalone route behavior.
 - Every authored SDK family `MUST` have `specs/component.spec.json` at the family root. Its
   `contracts.sdkDependencies` field `MUST` be present as an explicit array and `MUST` mirror the
   union of top-level `.sdkwork-assembly.json sdkDependencies` plus per-surface `sdkDependencies`.
@@ -470,8 +484,8 @@ Example metadata:
 
 Example:
 
-If `craw-chat` depends on `sdkwork-appbase`, then `craw-chat/sdks/sdkwork-im-app-sdk` and
-`craw-chat/sdks/sdkwork-im-backend-sdk` generate only Craw Chat-owned app/backend APIs.
+If `sdkwork-im` depends on `sdkwork-appbase`, then `sdkwork-im/sdks/sdkwork-im-app-sdk` and
+`sdkwork-im/sdks/sdkwork-im-backend-sdk` generate only Craw Chat-owned app/backend APIs.
 `sdkwork-appbase` app/backend auth, IAM, session, QR auth, and backend management APIs remain in
 `sdkwork-appbase/sdks/sdkwork-appbase-app-sdk` and
 `sdkwork-appbase/sdks/sdkwork-appbase-backend-sdk`. Craw Chat records those SDKs as dependencies
@@ -531,6 +545,8 @@ Rules:
 - Before calling `sdkgen`, materialize owner-only OpenAPI inputs and subtract dependency-owned
   authority routes. Do not pass a runtime-wide or dependency-inclusive OpenAPI document directly to
   `sdkgen`.
+- Before calling `sdkgen`, materialization `MUST` fail if the derived input would generate a current-tenant method argument, `params` field, per-call option, or client-writable body field named `tenant_id` or `tenantId`. Fix the authored API contract or route manifest to use token/API-key context instead of post-processing generated SDK output.
+- Before calling `sdkgen`, materialization `MUST` fail if any HTTP operation in the authority OpenAPI or derived `*.sdkgen.*` input omits `x-sdkwork-request-context: WebRequestContext` or `x-sdkwork-api-surface`.
 - Put generated transport code under `generated/server-openapi`.
 - Put handwritten semantic facades under `composed` only when the SDK family intentionally owns a composed layer.
 - Composed code must import generated transport through package root entrypoints, not private generated source paths.
@@ -585,8 +601,13 @@ Rules:
 - App-side PC React, H5 mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, desktop, and Tauri renderers use app SDKs for user-facing remote business capability.
 - `backend-admin` UI uses backend SDKs for operator capability and follows `BACKEND_UI_SPEC.md`.
 - IAM login/session integration follows `IAM_LOGIN_INTEGRATION_SPEC.md`; do not regenerate application-local login SDKs for appbase-owned auth flows.
-- Rust local/private implementations must expose the same OpenAPI paths, operationIds, schemas, errors, and security semantics as the Java SaaS contract for shared APIs.
-- Rust local/private appbase implementations must wrap protected routers with the standard appbase request context framework so generated app/backend SDK consumers observe the same auth, tenant, organization, user, request id, and problem-detail behavior.
+- Rust implementations must expose the same OpenAPI paths, operationIds,
+  schemas, errors, and security semantics as the Java contract for shared APIs
+  across standalone/cloud profiles.
+- Rust appbase implementations must wrap protected routers with the standard
+  appbase request context framework so generated app/backend SDK consumers
+  observe the same auth, tenant, organization, user, request id, and
+  problem-detail behavior.
 - Tauri commands should validate local/native capability and then call Rust services or injected SDK clients through approved boundaries. They must not become a hidden raw HTTP SDK replacement.
 
 ## 9. Verification
@@ -616,11 +637,16 @@ Every SDK family change should verify the relevant subset:
 - Materialization script rejects route manifests whose crate name, declared surface, and path prefix
   disagree.
 - Materialization script rejects route manifests whose package name, capability, surface,
-  `apiAuthority`, `sdkFamily`, prefix, route ownership, or route auth mode does not match
-  `API_SPEC.md`.
+  `apiAuthority`, `sdkFamily`, prefix, route ownership, route auth mode, `requestContext`, or
+  `apiSurface` does not match `API_SPEC.md`.
 - Materialized authority operations produced from route manifests include `x-sdkwork-owner`,
-  `x-sdkwork-api-authority`, `x-sdkwork-source`, and `x-sdkwork-source-route-crate`.
+  `x-sdkwork-api-authority`, `x-sdkwork-source`, `x-sdkwork-source-route-crate`,
+  `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and `x-sdkwork-rate-limit-tier` when
+  present.
+- Derived `*.sdkgen.*` inputs preserve `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and
+  `x-sdkwork-rate-limit-tier` from the authority OpenAPI.
 - Materialization script excludes dependency-owned authority routes from consuming SDK inputs.
+- Materialization script rejects authority or derived inputs that would generate `tenant_id` or `tenantId` current-tenant SDK inputs.
 - `sdkDependencies` in generation config, `.sdkwork-assembly.json`, and family-root
   `specs/component.spec.json` match exactly. Families with no dependencies still declare
   `contracts.sdkDependencies: []`.
@@ -637,6 +663,7 @@ Every SDK family change should verify the relevant subset:
 - Generated TypeScript compiles when TypeScript is supported.
 - Generated SDK exposes nested resource methods from `tag + dotted operationId`.
 - Generated clients handle `Authorization` and `Access-Token` through SDK/bootstrap infrastructure.
+- Generated clients do not expose `tenant_id` or `tenantId` as current-tenant method arguments, `params` fields, credential options, per-call options, or client-writable request body fields.
 - Problem-detail errors map to generated SDK error metadata where the language supports it.
 - App consumers contain no raw app/backend HTTP fallback, manual auth headers, or local SDK forks.
 - `backend-admin` consumers contain no `fetch`, `axios`, string-built backend URLs, `getBackendSdkClient().http`, or generated-output edits.
@@ -683,7 +710,9 @@ node .\sdks\sdkwork-<domain>-backend-sdk\bin\verify-sdk.mjs
 - [ ] Route crate manifests, when present, aggregate into authority OpenAPI by matching owner,
   domain, surface, API authority, SDK family, and prefix.
 - [ ] Authority OpenAPI operations materialized from route manifests declare `x-sdkwork-owner`,
-  `x-sdkwork-api-authority`, `x-sdkwork-source`, and `x-sdkwork-source-route-crate`.
+  `x-sdkwork-api-authority`, `x-sdkwork-source`, `x-sdkwork-source-route-crate`,
+  `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and `x-sdkwork-rate-limit-tier` when
+  present.
 - [ ] Authority OpenAPI and derived `sdkgen` inputs contain only owner application/repository API
   routes; dependency authorities are subtracted before generation.
 - [ ] Dependency SDKs are recorded in matching `sdkDependencies` entries across generation config,

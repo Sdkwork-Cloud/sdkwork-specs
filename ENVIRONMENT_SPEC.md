@@ -1,12 +1,12 @@
 # Environment Variable And Runtime Configuration Standard
 
 - Version: 1.0
-- Scope: environment variables, runtime config files, public browser runtime config, secrets, database selection, desktop/server/container/H5/Flutter/mini-program/native Android/native iOS/native Harmony deployment modes, SDK base URLs, locale strategy, Access-Token and TokenManager credential config rules, RPC endpoints
+- Scope: environment variables, runtime config files, public browser runtime config, secrets, database selection, standalone/cloud deployment profiles, desktop/server/container/H5/Flutter/mini-program/native Android/native iOS/native Harmony runtime targets, SDK base URLs, locale strategy, Access-Token and TokenManager credential config rules, RPC endpoints
 - Related: `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DATABASE_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the canonical environment and runtime configuration model for SDKWork applications. It exists to prevent each application from inventing different `.env` names, database defaults, SDK base URL rules, config file locations, and secret handling behavior.
 
-`CONFIG_SPEC.md` defines the typed runtime config contract inside application code. This document defines the external operating contract: environment variables, config files, deployment-mode defaults, and validation rules.
+`CONFIG_SPEC.md` defines the typed runtime config contract inside application code. This document defines the external operating contract: environment variables, config files, deployment-profile defaults, runtime-target defaults, and validation rules.
 
 ## 1. Design Goals
 
@@ -14,7 +14,7 @@ Environment configuration must satisfy these goals:
 
 - One application can run in development, test, staging, and production without code changes.
 - `dev`, `test`, `staging`, and `prod` file profiles can be used by scripts while application runtime normalizes them to `development`, `test`, `staging`, and `production`.
-- One product can support browser, H5, desktop, mobile-native, mini program, service/server, and container deployment modes with explicit defaults.
+- One product can support `standalone` and `cloud` deployment profiles with explicit browser, H5, desktop, mobile-native, mini program, service/server, container, and test-runner runtime targets.
 - Browser renderer, H5 mobile renderer, desktop native host, tablet native host, Capacitor host, Flutter host, mini program runtime, native Android host, native iOS host, native Harmony host, server process, container process, and test runner config are separated.
 - Server-side release deployments use PostgreSQL by default.
 - Desktop installs use SQLite by default in the SDKWork user private data directory defined by `RUNTIME_DIRECTORY_SPEC.md`.
@@ -30,7 +30,7 @@ Environment configuration must satisfy these goals:
 | --- | --- |
 | Environment | Lifecycle stage: `development`, `test`, `staging`, or `production`. |
 | Environment profile alias | Short file/script profile: `dev`, `test`, `staging`, or `prod`. `dev` maps to `development`; `prod` maps to `production`. |
-| Deployment mode | Runtime architecture or packaging shape: `web`, `h5`, `h5-weixin`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, platform-specific `mp-*` modes such as `mp-weixin`, `mp-alipay`, `mp-dingtalk`, and `mp-lark`, `server`, `container`, `saas`, `private`, `local`, or `test`. |
+| Deployment profile | Application deployment architecture: `standalone` or `cloud`. |
 | Runtime target | Code execution target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, or `test-runner`. |
 | Build mode | Build tool mode such as Vite mode, Tauri build target, or Spring profile alias. It is not sufficient as the full runtime environment model. |
 | Process env | Environment variables available to a service process. |
@@ -123,9 +123,9 @@ These variables form the baseline for SDKWork applications.
 | --- | --- | --- | --- |
 | `SDKWORK_<APP>_ENVIRONMENT` | private | SHOULD | Lifecycle stage: `development`, `test`, `staging`, `production`. |
 | `SDKWORK_<APP>_CONFIG_PROFILE` | private | SHOULD | File/script profile alias: `dev`, `test`, `staging`, `prod`. Startup must normalize it to `SDKWORK_<APP>_ENVIRONMENT`. |
-| `SDKWORK_<APP>_DEPLOYMENT_MODE` | private | SHOULD | Runtime architecture or packaging shape: `web`, `h5`, `h5-weixin`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, platform-specific `mp-*` modes such as `mp-weixin`, `mp-alipay`, `mp-dingtalk`, and `mp-lark`, `server`, `container`, `saas`, `private`, `local`, `test`. |
+| `SDKWORK_<APP>_DEPLOYMENT_PROFILE` | private | SHOULD | Application deployment architecture: `standalone` or `cloud`. |
 | `SDKWORK_<APP>_RUNTIME_TARGET` | private | SHOULD | Execution target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, `test-runner`. |
-| `SDKWORK_<APP>_BUILD_MODE` | private/public by tool | MAY | Build tool mode. It must not replace `ENVIRONMENT`, `DEPLOYMENT_MODE`, or `RUNTIME_TARGET`. |
+| `SDKWORK_<APP>_BUILD_MODE` | private/public by tool | MAY | Build tool mode. It must not replace `ENVIRONMENT`, `DEPLOYMENT_PROFILE`, or `RUNTIME_TARGET`. |
 | `SDKWORK_<APP>_CONFIG_FILE` | private | MAY | Explicit runtime config file path. |
 | `SDKWORK_<APP>_SERVER_CONFIG_FILE` | private | MAY | Explicit server process config file path when a PC/desktop root also owns server profiles. Defaults to `CONFIG_FILE` when absent. |
 | `SDKWORK_<APP>_DESKTOP_CONFIG_FILE` | private | MAY | Explicit desktop/tablet user config file path. Defaults to the user-private SDKWork config path when absent. |
@@ -145,7 +145,7 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_<APP>_SUPPORTED_LOCALES` | private/public | MAY | Comma-separated supported locale list. It must not contain translated message content. |
 | `SDKWORK_<APP>_FALLBACK_LOCALE` | private/public | MAY | Explicit fallback locale, normally `en-US` for first-party SDKWork apps unless a product spec narrows it. |
 | `SDKWORK_<APP>_I18N_CATALOG_MANIFEST_URL` | private/public | MAY | URL or path to a generated catalog manifest. The manifest points to package-local fragments or generated bundles and must not be an authored monolithic locale file. |
-| `SDKWORK_<APP>_DATABASE_ENGINE` | private | MAY | Database engine, normally `postgresql` for server/container and `sqlite` for desktop/local-only. |
+| `SDKWORK_<APP>_DATABASE_ENGINE` | private | MAY | Database engine, normally `postgresql` for standalone server/container and cloud targets, and `sqlite` for desktop user data. |
 | `SDKWORK_<APP>_DATABASE_HOST` | private | MAY | PostgreSQL host. Prefer this structured field over a URL for release deployments. |
 | `SDKWORK_<APP>_DATABASE_PORT` | private | MAY | PostgreSQL port, normally `5432`. |
 | `SDKWORK_<APP>_DATABASE_NAME` | private | MAY | PostgreSQL database name. |
@@ -155,9 +155,9 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_<APP>_DATABASE_PASSWORD` | secret | MAY | Direct PostgreSQL password override, allowed only for protected process environments or secret-bearing config files. |
 | `SDKWORK_<APP>_DATABASE_SSL_MODE` | private | MAY | PostgreSQL SSL mode. Production deployments should use `require`, `verify-ca`, or `verify-full` where supported. |
 | `SDKWORK_<APP>_DATABASE_URL` | private | MAY | Explicit database URL override. Server release packages should prefer structured runtime config fields for PostgreSQL; desktop and local development may use SQLite. |
-| `SDKWORK_<APP>_DATABASE_FILE` | private | MAY | SQLite database file path for desktop/local-only deployments. |
+| `SDKWORK_<APP>_DATABASE_FILE` | private | MAY | SQLite database file path for desktop user-data targets. |
 | `SDKWORK_<APP>_DATABASE_MAX_CONNECTIONS` | private | MAY | Database pool limit. |
-| `SDKWORK_<APP>_REDIS_ENABLED` | private | MAY | Enables the Redis adapter. Server and container deployments default to `true` and require Redis; desktop and local-only deployments default to `false` unless shared infrastructure is explicitly enabled. |
+| `SDKWORK_<APP>_REDIS_ENABLED` | private | MAY | Enables the Redis adapter. Cloud deployments and standalone server/container targets that require shared state default to `true`; desktop user-data targets default to `false` unless shared infrastructure is explicitly enabled. |
 | `SDKWORK_<APP>_REDIS_HOST` | private | MAY | Redis host used when Redis is enabled. Prefer this structured field over a URL. |
 | `SDKWORK_<APP>_REDIS_PORT` | private | MAY | Redis port used when Redis is enabled. Defaults should normally use `6379`. |
 | `SDKWORK_<APP>_REDIS_DATABASE` | private | MAY | Redis logical database index used when Redis is enabled. Defaults should normally use `0`. |
@@ -263,12 +263,12 @@ apps/<product>-pc/
 
 Rules:
 
-- The file suffix selects the profile template; the file content must still declare and validate `[runtime].environment`, `[runtime].deployment_mode`, and `[runtime].runtime_target`.
+- The file suffix selects the profile template; the file content must still declare and validate `[runtime].environment`, `[runtime].deployment_profile`, and `[runtime].runtime_target`.
 - `development` and `test` config may include disposable local placeholders. `staging` and `production` examples must show secret file or secret-manager references, not direct real secrets.
 - Vite `.env`, `.env.local`, `.env.[mode]`, and `.env.[mode].local` files are build/dev-server inputs only. Only `VITE_` variables may reach browser code, and those variables must be non-secret.
 - Public browser values should be emitted by `/runtime-env.js` or an equivalent JSON document when a built artifact is promoted from test to staging to production.
 - Java/Spring server modules may provide profile examples such as `application-dev.yml.example`, `application-test.yml.example`, `application-staging.yml.example`, and `application-prod.yml.example`. These are server profile examples only; they do not replace the SDKWork typed runtime config model.
-- Rust server, desktop, and local service packages should prefer TOML runtime config with lower snake case keys.
+- Rust server, desktop, standalone service, and cloud service packages should prefer TOML runtime config with lower snake case keys.
 - Tauri target config files may be copied into `config/tauri/` for templates or live under `src-tauri/` in the desktop package. In both cases they are platform packaging config, not secret-bearing runtime config.
 - Production runtime config should be provisioned by installer, service manager, container orchestration, or release tooling. It must not require a committed `.env.production`.
 
@@ -300,9 +300,10 @@ Rules:
 - `pnpm dev` for a PC root starts the browser renderer unless the local app spec says otherwise.
 - `pnpm dev:server` starts the server process with the development server config profile.
 - `pnpm tauri:dev` starts the desktop shell and may also start a server process, but the server process reads the server development profile, not the installed desktop profile.
-- Installed desktop packages use `deployment_mode = "desktop"` and `runtime_target = "desktop"` by default.
-- Server packages use `deployment_mode = "server"` and `runtime_target = "server"` by default.
-- Container packages use `deployment_mode = "container"` and `runtime_target = "container"` by default.
+- Installed desktop packages use `deployment_profile = "standalone"` and `runtime_target = "desktop"` by default.
+- Standalone server packages use `deployment_profile = "standalone"` and `runtime_target = "server"` by default.
+- Standalone single-container packages use `deployment_profile = "standalone"` and `runtime_target = "container"` by default.
+- Cloud container packages use `deployment_profile = "cloud"` and `runtime_target = "container"` by default.
 - Test runners use `environment = "test"` and `runtime_target = "test-runner"` even when the code under test is a server or desktop runtime.
 - A config validator must fail if a production server profile contains localhost API endpoints, development-only secrets, test database names, writable developer directories, or placeholder passwords.
 
@@ -325,7 +326,9 @@ Rules:
 
 - SDKWork open-api SDK and documented compatibility API configuration must use `OPEN_API_BASE_URL` terminology. For SDKWork business open-api SDKs, the value `MUST` be that domain's approved non-app/non-backend prefix from `API_SPEC.md`, for example `/im/v3/api`; it does not imply a literal `/open` path segment. For explicitly documented OpenAI-compatible APIs, `/v1` remains valid as a protocol-compatibility prefix and must not be used as the default for new SDKWork-owned business open-api domains. `gateway` can remain an internal system id when the generated schema or UI already uses it, but environment names should describe the SDK surface.
 - The common SDK root must not itself be a resolved surface URL such as `/v1`, `/app/v3/api`, or `/backend/v3/api`. A surface URL may be configured only through the matching surface or SDK-specific override.
-- App SDK and `backend-admin` SDK clients must receive explicit resolved base URLs after config resolution because they may terminate at different hosts in private deployments.
+- App SDK and `backend-admin` SDK clients must receive explicit resolved base
+  URLs after config resolution because they may terminate at different hosts in
+  cloud or customer-owned split-service deployments.
 - Appbase, Drive, IM, payment, media, or other dependency SDK override variables must be keyed by dependency SDK family/app code. Do not hide dependency base URLs behind an application-local `API_BASE_URL` when the dependency can be deployed independently.
 - Browser public runtime config may expose SDK base URLs only when the browser is allowed to call that SDK surface directly. `backend-admin` base URLs must not be exposed to user-facing app UI or PC user console UI unless that route surface is explicitly `backend-admin`.
 - Defaults should be same-origin paths in browser deployments so remote browsers are not given loopback addresses, but dependency SDK same-origin defaults are allowed only when `dependencyApiSurfaces` records verified mount coverage for that dependency surface.
@@ -364,24 +367,22 @@ Rules:
 
 ## 7. Database Selection Standard
 
-Database defaults depend on deployment mode.
+Database defaults depend on `deploymentProfile` and `runtimeTarget`.
 
-Server and container deployments default to PostgreSQL through the runtime TOML.
-Desktop/runtime local user data remains SQLite by default. Desktop/Tauri
-development commands that start a backend service use PostgreSQL to exercise
-server behavior, but that does not change the desktop package database default.
-`SDKWORK_<APP>_DATABASE_URL` is an explicit operator override, not the primary
-production configuration path.
+Standalone server/container targets and cloud targets default to PostgreSQL
+through runtime TOML, environment, or orchestration config. Desktop user data
+remains SQLite by default. Desktop/Tauri development commands that start a
+backend service use PostgreSQL to exercise server behavior, but that does not
+change the desktop package database default. `SDKWORK_<APP>_DATABASE_URL` is an
+explicit operator override, not the primary production configuration path.
 
-| Deployment mode | Default database | Requirement |
-| --- | --- | --- |
-| `desktop` | SQLite for local user data; PostgreSQL for a launched backend service in dev | Desktop-local data uses a user-private SQLite file. Desktop-started backend services use the server PostgreSQL dev profile unless an explicit SQLite command is selected. |
-| `local` | SQLite or PostgreSQL by explicit profile | Local-only desktop/user data uses SQLite. Integrated service development uses PostgreSQL to match server behavior. |
-| `test` | SQLite or isolated PostgreSQL | Test DB must be isolated per test run. |
-| `server` | PostgreSQL | Release/server packages must use PostgreSQL by default unless an approved local-only exception exists. |
-| `container` | PostgreSQL | Database is external to the container; do not store production DB state in ephemeral layers. |
-| `saas` | PostgreSQL or managed compatible service | Must satisfy `DATABASE_SPEC.md`. |
-| `private` | PostgreSQL by default | SQLite is allowed only for single-user desktop/private appliances with documented limits. |
+| Deployment profile | Runtime target | Default database | Requirement |
+| --- | --- | --- | --- |
+| `standalone` | `desktop` | SQLite for user data; PostgreSQL for a launched backend service in dev | Desktop user data uses a user-private SQLite file. Desktop-started backend services use the server PostgreSQL dev profile unless an explicit SQLite command is selected. |
+| `standalone` | `server` | PostgreSQL | Release/server packages must use PostgreSQL by default unless an approved single-user appliance exception exists. |
+| `standalone` | `container` | PostgreSQL | Single-container packages keep database state external or on explicit mounted volumes; do not store production DB state in ephemeral layers. |
+| `cloud` | `server` or `container` | Managed PostgreSQL or compatible service | Must satisfy `DATABASE_SPEC.md`, secret handling, readiness, backup, and rollback requirements. |
+| `standalone` or `cloud` | `test-runner` | Isolated SQLite or isolated PostgreSQL | Test DB must be isolated per test run. |
 
 Rules:
 
@@ -390,19 +391,22 @@ Rules:
   SQLite by default. They must create the SQLite file under the SDKWork user
   private data directory, not under server data directories and not in
   PostgreSQL, unless the user explicitly configures an external database.
-- For SDKWork Claw Router, `pnpm dev`, `pnpm desktop:dev`, and
-  `pnpm tauri:dev` are sdkwork-api-gateway-backed client commands and must not
-  start the Claw Router application backend service. Explicit application server
-  development commands, such as `pnpm server:dev` and
-  `pnpm server:dev:postgres`, use PostgreSQL for backend service integration.
+- For SDKWork Claw Router, `pnpm clawrouter:dev` (aliases `pnpm dev`,
+  `pnpm server:dev`) start the integrated Claw Router product server with
+  PostgreSQL by default. Gateway-backed client commands such as
+  `pnpm clawrouter:dev:desktop`, `pnpm desktop:dev`, and `pnpm tauri:dev` must
+  not start the Claw Router application backend service. Explicit application
+  server development commands, such as `pnpm server:dev:postgres` and
+  `pnpm clawrouter:dev:postgres`, use PostgreSQL for backend service integration.
   This PostgreSQL profile belongs to the launched service runtime and must not
   be treated as the desktop-local data store.
 - Explicit application server SQLite development commands, such as
-  `pnpm server:dev:sqlite`, must be named clearly and used only when validating
-  local SQLite behavior for the application server runtime. Client aliases such as
-  `pnpm dev:sqlite` or `pnpm tauri:dev:sqlite` must remain gateway-backed
-  client commands when the application standard assigns default API serving to
-  sdkwork-api-gateway.
+  `pnpm server:dev:sqlite` and `pnpm clawrouter:dev:sqlite` (alias
+  `pnpm dev:sqlite`), must be named clearly and used only when validating
+  local SQLite behavior for the application server runtime. Desktop client
+  aliases such as `pnpm desktop:dev:sqlite` or `pnpm tauri:dev:sqlite` must
+  remain gateway-backed client commands when the application standard assigns
+  default API serving to sdkwork-api-gateway.
 - PostgreSQL secrets should use `password_file` or a platform secret; direct `password` is allowed only when the runtime config file is protected as a secret-bearing file.
 - Development PostgreSQL profiles must use a checked-in `.env.postgres.example`
   file with local-only placeholder values and an ignored `.env.postgres`
@@ -483,7 +487,7 @@ TOML is the preferred runtime config file format for SDKWork Rust and desktop/se
 ```toml
 [runtime]
 environment = "production"
-deployment_mode = "server"
+deployment_profile = "standalone"
 runtime_target = "server"
 config_profile = "prod"
 
@@ -535,14 +539,14 @@ sdk_archive_root = "/var/lib/sdkwork/router/sdk-archives"
 Rules:
 
 - Config files should use lower snake case.
-- `[runtime].environment`, `[runtime].deployment_mode`, and `[runtime].runtime_target` are required in non-example release config.
+- `[runtime].environment`, `[runtime].deployment_profile`, and `[runtime].runtime_target` are required in non-example release config.
 - `[runtime].config_profile` is optional and exists only for operator readability or script traceability.
 - Environment variables should use upper snake case.
 - The mapping between file keys and env keys must be documented and tested.
 - Secrets may appear in protected host-local config files, but checked-in examples must use placeholders.
 - Database config must prefer structured fields in `[database]`. A full `url`
   is a private operator override, not the primary release contract.
-- Redis config must live under `[redis]`. Server and container deployments default to `enabled = true` and must fail fast when Redis is required but not configured; desktop and local-only deployments default to `enabled = false`.
+- Redis config must live under `[redis]`. Cloud deployments and standalone server/container deployments that require shared state default to `enabled = true` and must fail fast when Redis is required but not configured; desktop user-data targets default to `enabled = false`.
 - Redis connections should use `host`, `port`, `database`, `username`, `tls`, pool size, and timeout fields as the primary configuration. `url` is an advanced override for managed Redis endpoints whose connection contract cannot be represented cleanly with separate fields.
 - Redis secrets should use `password_file` or platform secrets. Direct `password` is allowed only when the runtime TOML is protected as a secret-bearing file.
 - Public browser runtime config must be generated from `[portal.public]` or equivalent validated env values.
@@ -552,7 +556,7 @@ Development server profile:
 ```toml
 [runtime]
 environment = "development"
-deployment_mode = "server"
+deployment_profile = "standalone"
 runtime_target = "server"
 config_profile = "dev"
 
@@ -585,7 +589,7 @@ Test server profile:
 ```toml
 [runtime]
 environment = "test"
-deployment_mode = "test"
+deployment_profile = "standalone"
 runtime_target = "test-runner"
 config_profile = "test"
 
@@ -621,7 +625,7 @@ Production server profile:
 ```toml
 [runtime]
 environment = "production"
-deployment_mode = "server"
+deployment_profile = "standalone"
 runtime_target = "server"
 config_profile = "prod"
 
@@ -656,7 +660,7 @@ Installed desktop production profile:
 ```toml
 [runtime]
 environment = "production"
-deployment_mode = "desktop"
+deployment_profile = "standalone"
 runtime_target = "desktop"
 config_profile = "prod"
 
@@ -686,8 +690,8 @@ Required behavior:
 - Use only browser-visible runtime variables for SDK client base URLs.
 - Prefer `PORTAL_PUBLIC_SDK_BASE_URL` as the common public SDK root and derive open/app/backend public base URLs from it. Use `PORTAL_PUBLIC_OPEN_API_BASE_URL`, `PORTAL_PUBLIC_APP_API_BASE_URL`, `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, or dependency-specific overrides only for split deployments or nonstandard mounts.
 - Reject invalid public URLs at startup or build-time preflight.
-- Treat Vite mode as build-time input only. Runtime environment, deployment mode, and runtime target must come from validated public runtime config.
-- Browser public runtime config must declare `environment`, `deploymentMode`, and `runtimeTarget = "browser"` or their JSON/language equivalents.
+- Treat Vite mode as build-time input only. Runtime environment, deployment profile, and runtime target must come from validated public runtime config.
+- Browser public runtime config must declare `environment`, `deploymentProfile`, and `runtimeTarget = "browser"` or their JSON/language equivalents.
 
 Recommended variables:
 
@@ -707,7 +711,7 @@ Recommended public runtime config:
 ```json
 {
   "environment": "production",
-  "deploymentMode": "web",
+  "deploymentProfile": "cloud",
   "runtimeTarget": "browser",
   "openApiBaseUrl": "/v1",
   "appApiBaseUrl": "/app/v3/api",
@@ -764,14 +768,14 @@ Required behavior:
   selected.
 - Support a config file in the SDKWork user private config directory.
 - Keep secrets in OS secure storage when possible.
-- Allow `SDKWORK_<APP>_DATABASE_URL` to override the local database for diagnostics and managed private deployments.
+- Allow `SDKWORK_<APP>_DATABASE_URL` to override the local database for diagnostics and managed operator deployments.
 
 Example desktop config:
 
 ```toml
 [runtime]
 environment = "production"
-deployment_mode = "desktop"
+deployment_profile = "standalone"
 runtime_target = "desktop"
 
 [database]
@@ -790,7 +794,7 @@ Required behavior:
 - Read config from the canonical service config path or `SDKWORK_<APP>_CONFIG_FILE`.
 - Bind explicitly and document reverse-proxy assumptions.
 - Fail fast when required secrets or database config are missing.
-- Declare `environment`, `deployment_mode = "server"`, and `runtime_target = "server"` in runtime config.
+- Declare `environment`, `deployment_profile = "standalone"`, and `runtime_target = "server"` in runtime config.
 
 Example server env:
 
@@ -798,7 +802,7 @@ Example server env:
 SDKWORK_<APP>_CONFIG_FILE=/etc/sdkwork/<app>/<app>.toml
 SDKWORK_<APP>_ENVIRONMENT=production
 SDKWORK_<APP>_CONFIG_PROFILE=prod
-SDKWORK_<APP>_DEPLOYMENT_MODE=server
+SDKWORK_<APP>_DEPLOYMENT_PROFILE=standalone
 SDKWORK_<APP>_RUNTIME_TARGET=server
 SDKWORK_<APP>_DATABASE_ENGINE=postgresql
 SDKWORK_<APP>_DATABASE_HOST=db.example.com
@@ -823,7 +827,7 @@ Required behavior:
 - Store mutable data on mounted volumes or external services.
 - Do not bake secrets into the image.
 - Prefer service DNS names for internal API targets.
-- Declare `environment`, `deployment_mode = "container"`, and `runtime_target = "container"`.
+- Declare `environment`, `deployment_profile = "cloud"`, and `runtime_target = "container"` for cloud images. Use `deployment_profile = "standalone"` only for a documented single-container standalone package.
 
 Example container env:
 
@@ -831,7 +835,7 @@ Example container env:
 SDKWORK_<APP>_CONFIG_FILE=/etc/sdkwork/<app>/<app>.toml
 SDKWORK_<APP>_ENVIRONMENT=production
 SDKWORK_<APP>_CONFIG_PROFILE=prod
-SDKWORK_<APP>_DEPLOYMENT_MODE=container
+SDKWORK_<APP>_DEPLOYMENT_PROFILE=cloud
 SDKWORK_<APP>_RUNTIME_TARGET=container
 SDKWORK_<APP>_DATABASE_ENGINE=postgresql
 SDKWORK_<APP>_DATABASE_HOST=postgres
@@ -848,13 +852,14 @@ SDKWORK_<APP>_SERVER_BIND=0.0.0.0:3900
 
 The SdkWork Claw Router product uses the `SDKWORK_CLAW_` prefix for private process values and `PORTAL_PUBLIC_` for browser-visible portal values.
 
-Server and container deployments default to PostgreSQL. Desktop deployments default to SQLite.
+Standalone server/single-container and cloud deployments default to PostgreSQL.
+Desktop runtime targets default to SQLite.
 
 ### 11.1 Runtime Config Precedence
 
 Claw Router startup must resolve runtime configuration in this order:
 
-1. Built-in deployment-mode defaults.
+1. Built-in deployment-profile and runtime-target defaults.
 2. Canonical runtime TOML path defined by `RUNTIME_DIRECTORY_SPEC.md`.
 3. `SDKWORK_CLAW_CONFIG_FILE`.
 4. Private process env overrides such as `SDKWORK_CLAW_DATABASE_URL`.
@@ -862,11 +867,11 @@ Claw Router startup must resolve runtime configuration in this order:
 
 Rules:
 
-- `SDKWORK_CLAW_DEPLOYMENT_MODE=server` is the default for archive, service, and container releases.
-- `SDKWORK_CLAW_DEPLOYMENT_MODE=desktop` is the default for desktop installers.
+- `SDKWORK_CLAW_DEPLOYMENT_PROFILE=standalone` is the default for archive, service, single-container, and desktop releases.
+- `SDKWORK_CLAW_DEPLOYMENT_PROFILE=cloud` is the default for cloud image/bundle releases.
 - `SDKWORK_CLAW_ENVIRONMENT`, `SDKWORK_CLAW_CONFIG_PROFILE`, and
-  `SDKWORK_CLAW_RUNTIME_TARGET` must be resolved before database, Redis, or SDK
-  base URL defaults are selected.
+  `SDKWORK_CLAW_DEPLOYMENT_PROFILE`, and `SDKWORK_CLAW_RUNTIME_TARGET` must be
+  resolved before database, Redis, or SDK base URL defaults are selected.
 - `SDKWORK_CLAW_CONFIG_FILE` may point to any administrator-managed TOML file.
 - `SDKWORK_CLAW_DATABASE_URL` overrides TOML database fields only as an explicit operator override.
 - `SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS` overrides `[database].max_connections` in TOML.
@@ -898,7 +903,7 @@ Rules:
 ### 11.3 Development
 
 ```text
-SDKWORK_CLAW_DEPLOYMENT_MODE=server
+SDKWORK_CLAW_DEPLOYMENT_PROFILE=standalone
 SDKWORK_CLAW_ENVIRONMENT=development
 SDKWORK_CLAW_CONFIG_PROFILE=dev
 SDKWORK_CLAW_RUNTIME_TARGET=server
@@ -959,7 +964,7 @@ profile path.
 ### 11.4 Desktop Install
 
 ```text
-SDKWORK_CLAW_DEPLOYMENT_MODE=desktop
+SDKWORK_CLAW_DEPLOYMENT_PROFILE=standalone
 SDKWORK_CLAW_ENVIRONMENT=production
 SDKWORK_CLAW_CONFIG_PROFILE=prod
 SDKWORK_CLAW_RUNTIME_TARGET=desktop
@@ -994,7 +999,7 @@ Example Linux desktop config:
 ```toml
 [runtime]
 environment = "production"
-deployment_mode = "desktop"
+deployment_profile = "standalone"
 runtime_target = "desktop"
 config_profile = "prod"
 
@@ -1021,7 +1026,7 @@ pool_idle_timeout_seconds = 60
 ### 11.5 Server Release
 
 ```text
-SDKWORK_CLAW_DEPLOYMENT_MODE=server
+SDKWORK_CLAW_DEPLOYMENT_PROFILE=standalone
 SDKWORK_CLAW_ENVIRONMENT=production
 SDKWORK_CLAW_CONFIG_PROFILE=prod
 SDKWORK_CLAW_RUNTIME_TARGET=server
@@ -1050,7 +1055,7 @@ Example Linux server config:
 ```toml
 [runtime]
 environment = "production"
-deployment_mode = "server"
+deployment_profile = "standalone"
 runtime_target = "server"
 config_profile = "prod"
 
@@ -1091,11 +1096,13 @@ container deployments. Keep `[redis].enabled = true`, set `[redis].host`,
 `[redis].password_file` over direct `[redis].password`. Desktop deployments
 keep Redis optional and disabled by default.
 
-### 11.6 Private Split-Service Deployment
+### 11.6 Cloud Split-Service Deployment
 
 Use when the portal edge service forwards to separate internal gateway, app API, and `backend-admin` API services.
 
 ```text
+SDKWORK_CLAW_DEPLOYMENT_PROFILE=cloud
+SDKWORK_CLAW_RUNTIME_TARGET=container
 SDKWORK_CLAW_EDGE_GATEWAY_BASE_URL=http://gateway.internal:18080
 SDKWORK_CLAW_EDGE_APP_API_BASE_URL=http://app-api.internal:18082
 SDKWORK_CLAW_EDGE_BACKEND_API_BASE_URL=http://admin-api.internal:18081
@@ -1180,7 +1187,7 @@ Every application that adopts this standard should provide:
 Acceptance checklist:
 
 - [ ] Env names follow the product and capability prefix rules.
-- [ ] `SDKWORK_<APP>_ENVIRONMENT`, `SDKWORK_<APP>_CONFIG_PROFILE`, `SDKWORK_<APP>_DEPLOYMENT_MODE`, and `SDKWORK_<APP>_RUNTIME_TARGET` are normalized and validated separately.
+- [ ] `SDKWORK_<APP>_ENVIRONMENT`, `SDKWORK_<APP>_CONFIG_PROFILE`, `SDKWORK_<APP>_DEPLOYMENT_PROFILE`, and `SDKWORK_<APP>_RUNTIME_TARGET` are normalized and validated separately.
 - [ ] Dev/test/staging/prod example files exist where applicable and local overrides are ignored.
 - [ ] Public values are separated from private and secret values.
 - [ ] Generated SDK base URLs resolve from one common SDK root plus optional per-surface or per-SDK overrides; effective open-api, app-api, and backend-api URLs are explicit after resolution.
@@ -1203,7 +1210,7 @@ RPC runtime variables are private process variables unless explicitly documented
 | Variable | Visibility | Required | Description |
 | --- | --- | --- | --- |
 | `SDKWORK_<APP>_RPC_ENABLED` | private | MAY | Enables the app/domain RPC server. |
-| `SDKWORK_<APP>_RPC_BIND_ADDR` | private | SHOULD when RPC is enabled | Bind address such as `127.0.0.1:50051` for local mode or `0.0.0.0:50051` behind private ingress. |
+| `SDKWORK_<APP>_RPC_BIND_ADDR` | private | SHOULD when RPC is enabled | Bind address such as `127.0.0.1:50051` for standalone desktop/dev targets or `0.0.0.0:50051` behind approved ingress. |
 | `SDKWORK_<APP>_RPC_PUBLIC_ENDPOINT` | private/public by deployment | MAY | Endpoint published to generated external RPC clients. |
 | `SDKWORK_<APP>_RPC_TLS_ENABLED` | private | SHOULD for production | Enables server TLS. |
 | `SDKWORK_<APP>_RPC_MTLS_ENABLED` | private | SHOULD for service-to-service production | Requires client certificates. |

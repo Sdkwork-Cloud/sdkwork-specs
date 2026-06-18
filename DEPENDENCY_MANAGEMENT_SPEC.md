@@ -2,7 +2,7 @@
 
 - Version: 1.1
 - Scope: native build-tool dependency management, cross-repository source paths, release dependency refs, supply-chain evidence, and dependency-owned SDK/API boundaries
-- Related: `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 This standard defines how SDKWork repositories depend on other SDKWork repositories without creating a second SDKWork-specific dependency system. SDKWork dependency management is build-tool-first: pnpm, Cargo, Flutter/Dart, Gradle, Maven, Python, and other package managers remain the dependency authorities for their language and runtime. SDKWork standards add cross-repository consistency, SDK/API ownership, release refs, and supply-chain evidence only where native tools do not cover SDKWork semantics.
 
@@ -279,7 +279,17 @@ Rules:
   router/controller/service builders or approved service traits. Consumers must not deep-import
   private dependency source files or copy dependency handlers to satisfy runtime composition.
 
-The detailed SDK ownership rules remain in `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `API_SPEC.md`, and `APP_SDK_INTEGRATION_SPEC.md`.
+The detailed SDK ownership rules remain in `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, and `APP_SDK_INTEGRATION_SPEC.md`.
+
+### 6.1 HTTP Framework Dependency
+
+Rules:
+
+- Rust repositories and application modules that own, serve, develop, proxy, or compose any SDKWork HTTP `*-api` surface, including `open-api`, `app-api`, and `backend-api`, `MUST` declare `sdkwork-web-framework` as a native build-tool dependency according to §3.
+- Business repositories `MUST` consume only public `sdkwork-web-*` framework crates or package-root exports. They `MUST NOT` deep-import private framework source or create local framework forks.
+- Business repositories `MUST NOT` vendor, fork, or copy framework interceptor-chain or request-context source into local crates.
+- Business repositories `MUST NOT` depend on deprecated appbase-only HTTP context crates such as `sdkwork-platform-http-context-service` for new HTTP work. Use `sdkwork-web-framework` and appbase IAM web adapters instead.
+- `sdkwork-web-framework` `MUST NOT` depend on business repositories or business route crates.
 
 ## 7. Documentation
 
@@ -334,6 +344,7 @@ Rules:
 - [ ] Stale release dependencies have been removed.
 - [ ] Release dependency refs are pinned or safely validated and included in release evidence.
 - [ ] Dependency-owned APIs are not regenerated into consuming product SDKs.
+- [ ] Rust HTTP-capable repositories declare `sdkwork-web-framework` instead of vendoring or forking the HTTP interceptor/context framework locally.
 - [ ] Dependency API exports are explicit through `dependencyApiExports` and default to no export.
 - [ ] Runtime dependency API surfaces are explicit through `dependencyApiSurfaces`; build-tool
   dependencies are not treated as same-origin router coverage.

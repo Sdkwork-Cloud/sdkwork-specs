@@ -30,6 +30,9 @@ Rules:
 Rules:
 
 - Production releases must be reproducible enough to trace source, config, dependency refs, build workflow, and artifact evidence.
+- Production releases must record whether each deployable artifact or rollout
+  uses `deploymentProfile = standalone` or `deploymentProfile = cloud`, and the
+  `runtimeTarget` it serves.
 - Hotfixes must still satisfy security, generated SDK, migration, and rollback rules for touched surfaces.
 - SDK releases must trace to OpenAPI/proto/generator inputs and generated output boundaries.
 
@@ -47,14 +50,15 @@ Rules:
 Production release evidence should include:
 
 - requirement ids or release scope.
-- release version, tag, commit, workflow run, and package targets.
+- release version, tag, commit, workflow run, deployment profile, runtime
+  target, and package targets.
 - manifest validation.
 - build and test output.
 - artifact names, checksums, and storage locations.
 - signing evidence where required.
 - SBOM and provenance where required.
 - migration plan and status when relevant.
-- rollout and rollback plan.
+- rollout and rollback plan for each deployment profile and runtime target.
 - release notes and user/operator impact.
 - post-release smoke checks and monitoring signals.
 
@@ -62,6 +66,9 @@ Rules:
 
 - Release notes must not be stale or copied from a mismatched version.
 - Release artifacts must not contain secrets, private keys, local env overrides, or user-private runtime state.
+- Release artifacts must not encode retired deployment profile values such as
+  `saas`, `private`, `local`, `server`, `container`, or `desktop`; `server`,
+  `container`, and `desktop` are runtime targets only.
 - Store submissions and private distribution records are release evidence, not replacement for source-controlled release metadata.
 
 ## 5. Rollout And Rollback
@@ -69,7 +76,9 @@ Rules:
 Rules:
 
 - Risky releases should use staged rollout, limited tenant exposure, feature flags, or canary deployment when supported.
-- Rollback must identify which artifacts, database migrations, config changes, SDK versions, and feature flags are reversible.
+- Rollback must identify which deployment-profile-specific artifacts, runtime
+  target packages, database migrations, config changes, SDK versions, and
+  feature flags are reversible.
 - A migration that cannot be rolled back must have a forward-fix plan and explicit approval.
 - Rollout must define monitoring signals and stop conditions.
 
@@ -91,8 +100,8 @@ Rules:
 
 ## 8. Acceptance Checklist
 
-- [ ] Release scope, version, tag, and artifacts are known.
-- [ ] Manifest, workflow, config, and deployment targets are validated.
+- [ ] Release scope, version, tag, deployment profile, runtime target, and artifacts are known.
+- [ ] Manifest, workflow, config, deployment profiles, runtime targets, and deployment targets are validated.
 - [ ] Tests and quality gate evidence are recorded.
 - [ ] Signing, SBOM, and provenance are present when required.
 - [ ] Migration, rollout, rollback, and monitoring plans are present when relevant.

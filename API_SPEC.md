@@ -3,12 +3,12 @@
 - Version: 1.0
 - Baseline: OpenAPI 3.1.2 stable contract profile, JSON Schema 2020-12, RFC 9457 Problem Details
 - Forward-looking baseline: Track OpenAPI 3.2.0, but do not use 3.2-only features until the SDK generator, validators, Java tooling, Rust tooling, and generated TypeScript clients prove parity.
-- Scope: Java Spring app-api, Java Spring backend-api, Rust local/private HTTP APIs, generated HTTP SDKs, frontend services, API tests, web backend implementation alignment, and contract governance
+- Scope: Java Spring app-api, Java Spring backend-api, Rust HTTP APIs, generated HTTP SDKs, frontend services, API tests, web backend implementation alignment, and contract governance
 - Canonical location: `specs/API_SPEC.md`
 
-This document defines the API contract standard for SDKWork applications. It is intentionally independent of Java, Rust, TypeScript, Tauri, React, mobile, cloud, or private deployment choices. API contracts must be stable enough to generate SDKs, switch between SaaS and local deployments, and compose shared application modules without duplicating business logic.
+This document defines the API contract standard for SDKWork applications. It is intentionally independent of Java, Rust, TypeScript, Tauri, React, mobile, standalone, cloud, or deployment ownership choices. API contracts must be stable enough to generate SDKs, switch between standalone and cloud deployment profiles, and compose shared application modules without duplicating business logic.
 
-For repository/application root directory placement, use `specs/SDKWORK_WORKSPACE_SPEC.md`: `apis/` is the standard project-root directory for authored API contracts and API materialization inputs across API kinds. For data persistence and database naming rules, use `specs/DATABASE_SPEC.md`. For canonical domain names, use `specs/DOMAIN_SPEC.md`. For file storage, upload sessions, download grants, object-storage providers, Drive spaces/nodes, and SDKWork-owned file lifecycle, use `specs/DRIVE_SPEC.md`. For media representation, generated asset DTOs, and bare URL cleanup, use `specs/MEDIA_RESOURCE_SPEC.md`. For web backend implementation layering, Java controller/Rust route crate boundaries, handler/service/repository naming, request context consumption, and route materialization responsibilities, use `specs/WEB_BACKEND_SPEC.md`. For SDK naming semantics, generated client behavior, auth integration, and frontend service boundaries, use `specs/SDK_SPEC.md`, `specs/MODULE_SPEC.md`, and `specs/FRONTEND_SPEC.md`; for application-root `sdks/` workspace generation, OpenAPI authority/derived input placement, and generated artifact placement, use `specs/SDK_WORKSPACE_GENERATION_SPEC.md` as the subordinate detail standard under `SDK_SPEC.md`. For IAM login/session integration, appbase auth UI/runtime, logout clearing, and Rust AppContext validation, use `specs/IAM_LOGIN_INTEGRATION_SPEC.md`. For gRPC/protobuf contracts, use `specs/RPC_SPEC.md` and `specs/RUST_RPC_SPEC.md`. HTTP API contracts and RPC contracts must preserve shared operation semantics, but neither document replaces the other.
+For repository/application root directory placement, use `specs/SDKWORK_WORKSPACE_SPEC.md`: `apis/` is the standard project-root directory for authored API contracts and API materialization inputs across API kinds. For data persistence and database naming rules, use `specs/DATABASE_SPEC.md`. For canonical domain names, use `specs/DOMAIN_SPEC.md`. For file storage, upload sessions, download grants, object-storage providers, Drive spaces/nodes, and SDKWork-owned file lifecycle, use `specs/DRIVE_SPEC.md`. For media representation, generated asset DTOs, and bare URL cleanup, use `specs/MEDIA_RESOURCE_SPEC.md`. For mandatory `sdkwork-web-framework` integration on every SDKWork HTTP `*-api` surface, including open-api, app-api, backend-api, route manifests, API servers, gateways, and Java/Spring parity, use `specs/WEB_FRAMEWORK_SPEC.md`; the framework repository L1 detail standard is `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`. For web backend implementation layering, Java controller/Rust route crate boundaries, handler/service/repository naming, request context consumption, and route materialization responsibilities, use `specs/WEB_BACKEND_SPEC.md`. For SDK naming semantics, generated client behavior, auth integration, and frontend service boundaries, use `specs/SDK_SPEC.md`, `specs/MODULE_SPEC.md`, and `specs/FRONTEND_SPEC.md`; for application-root `sdks/` workspace generation, OpenAPI authority/derived input placement, and generated artifact placement, use `specs/SDK_WORKSPACE_GENERATION_SPEC.md` as the subordinate detail standard under `SDK_SPEC.md`. For IAM login/session integration, appbase auth UI/runtime, logout clearing, and Rust AppContext validation, use `specs/IAM_LOGIN_INTEGRATION_SPEC.md`. For gRPC/protobuf contracts, use `specs/RPC_SPEC.md` and `specs/RUST_RPC_SPEC.md`. HTTP API contracts and RPC contracts must preserve shared operation semantics, but neither document replaces the other.
 
 ## 1. Normative Language
 
@@ -124,7 +124,9 @@ Rules:
 - Open-api and backend-api `MUST NOT` expose auth/session login endpoints. They may validate credentials/tokens and consume the validated request context projection.
 - Backend-api `MUST NOT` expose auth/session login endpoints. It may validate tokens and manage resources.
 - Backend-api `MUST NOT` expose an `auth` namespace for IAM login, session creation, password reset, OAuth session, MFA challenge, device authorization, or verification-code delivery APIs. These user-facing flows belong to app-api, with verification-code delivery owned by messaging.
-- SaaS Java deployment and Rust local/private deployment `MUST` expose identical paths, methods, operationIds, schemas, response envelopes, errors, and security declarations for shared modules.
+- Standalone and cloud implementations `MUST` expose identical paths, methods,
+  operationIds, schemas, response envelopes, errors, and security declarations
+  for shared modules.
 - When a shared capability exposes both HTTP and RPC, the HTTP `operationId` and RPC method manifest `operationId` `MUST` describe the same domain operation.
 - RPC services `MUST NOT` be used to hide missing or divergent HTTP/OpenAPI behavior for app/backend public APIs; divergence requires a documented compatibility decision.
 - A frontend module `MUST` call API through `UI -> service -> injected SDK client`. UI components must not assemble raw HTTP requests or auth headers.
@@ -157,7 +159,11 @@ Rules:
 - Java app-api controller class-level mappings `MUST` start with `/app/v3/api`.
 - Java backend-api controller class-level mappings `MUST` start with `/backend/v3/api`.
 - Method-level relative mappings may use subpaths such as `/list` or `/{id}` only when the owning class-level mapping is already canonical.
-- Rust local/private APIs that implement shared app modules `MUST` expose the same `/app/v3/api` paths as app-api only when that module is not already owned by sdkwork-appbase. If the module exists in `sdkwork-appbase` or `legacy-java-plus-app-api`, the consuming application must integrate that module instead of duplicating it locally.
+- Rust APIs that implement shared app modules `MUST` expose the same
+  `/app/v3/api` paths as app-api only when that module is not already owned by
+  sdkwork-appbase. If the module exists in `sdkwork-appbase` or
+  `legacy-java-plus-app-api`, the consuming application must integrate that
+  module instead of duplicating it locally.
 - Backend-api `MUST NOT` publish bare `/v3/api/*` resources. If a resource is part of backend-api, it must move under `/backend/v3/api/...`; if it is not part of backend-api, it must be documented as a non-SDK static/public resource outside the backend-api OpenAPI surface.
 - Generated SDK manifests and OpenAPI source contracts `MUST` fail validation if any runtime path uses a forbidden prefix.
 - Environment examples and app bootstrap defaults `MUST` use canonical prefixes. Historical or migration documents may mention old prefixes only when explicitly labeled `legacy`, `deprecated`, `noncanonical`, or `migration-only`.
@@ -224,6 +230,8 @@ routes:
     path: /app/v3/api/products
     operationId: commerce.product.list
     tags: [commerce.product]
+    requestContext: WebRequestContext
+    apiSurface: app-api
     auth:
       mode: dual-token
       required: true
@@ -269,11 +277,21 @@ Required route fields:
 | `path` | Full canonical path including `prefix`. |
 | `operationId` | Stable SDK operation id following this spec. |
 | `tags` | Non-empty OpenAPI tag list; the primary tag should preserve domain and capability. |
+| `requestContext` | Exact value `WebRequestContext`; every SDKWork HTTP route has a framework-resolved typed context. |
+| `apiSurface` | `open-api`, `app-api`, or `backend-api`; must match the top-level `surface`. |
 | `auth` | Authentication and authorization projection for OpenAPI security metadata. |
 | `handler` | Framework-neutral handler binding reference for traceability. |
 | `schemas` | Request, response, and problem-detail schema references when known. |
 | `ownership` | Operation owner and API authority. Defaults to the top-level owner/authority when omitted by tooling, but materialized OpenAPI `MUST` contain explicit ownership extensions. |
 | `source` | Repo-relative source file and optional line for diagnostics. |
+
+Optional route fields:
+
+| Field | Requirement |
+| --- | --- |
+| `rateLimitTier` | Framework rate-limit tier for abuse-sensitive operations; materializes to `x-sdkwork-rate-limit-tier` when present. |
+| `interceptorChain` | `standard` or a documented stricter profile; protected routes default to the standard chain from `WEB_FRAMEWORK_SPEC.md`. |
+| `forbidCredentialHeaders` | Boolean flag for login-like anonymous credential-entry operations; materializes to `x-sdkwork-forbid-credential-headers: true` and requires runtime rejection of inbound credential/context headers. |
 
 Rules:
 
@@ -282,8 +300,15 @@ Rules:
 - `apiAuthority` and `sdkFamily` `MUST` follow `SDK_SPEC.md`: `sdkwork-<domain>-open-api` -> `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-api` -> `sdkwork-<domain>-app-sdk`, and `sdkwork-<domain>-backend-api` -> `sdkwork-<domain>-backend-sdk`.
 - For `app-api`, `prefix` `MUST` be `/app/v3/api`. For `backend-api`, `prefix` `MUST` be `/backend/v3/api`. For `open-api`, `prefix` `MUST` be an approved versioned domain prefix that is not `/app/v3/api` or `/backend/v3/api`; literal `/open/v3/api` is valid only when the owning domain explicitly approves that prefix.
 - Every `routes[].path` `MUST` start with `prefix`; relative paths are not valid route-manifest materialization input.
+- Every `routes[]` entry `MUST` declare `requestContext: WebRequestContext`. Public routes still receive `WebRequestContext` with an anonymous principal; protected routes require a resolved principal before business logic.
+- Every `routes[]` entry `MUST` declare `apiSurface` and it `MUST` match the top-level `surface`. The materializer `MUST` reject missing or mismatched values.
+- `routes[].apiSurface` values `MUST` use canonical kebab-case contract labels such as `open-api`, `app-api`, and `backend-api`. Runtime enum labels such as `openApi`, `appApi`, and `backendApi` are not valid route manifest or OpenAPI extension values.
 - `auth.mode` `MUST` be one of `public`, `dual-token`, `api-key`, or `compatibility`. Protected app-api and backend-api routes use `dual-token`; protected open-api routes use `api-key` unless a documented compatibility contract declares a different mode.
+- Public SDK-generated routes `MUST` materialize `security: []` and `x-sdkwork-auth-mode: anonymous`; a framework-specific `x-sdkwork-route-auth: public` extension may be present but does not replace `x-sdkwork-auth-mode`.
+- Login, registration, OAuth session creation, QR auth session creation or password completion, password reset request, password reset completion, and equivalent credential-entry routes `MUST` set `forbidCredentialHeaders: true`.
 - `ownership.owner` and `ownership.apiAuthority` materialize to `x-sdkwork-owner` and `x-sdkwork-api-authority`. `source.crateRoot` or `routes[].source` materializes to `x-sdkwork-source` and `x-sdkwork-source-route-crate`.
+- `routes[].requestContext` materializes to `x-sdkwork-request-context`, `routes[].apiSurface` materializes to `x-sdkwork-api-surface`, and `routes[].rateLimitTier` materializes to `x-sdkwork-rate-limit-tier` when present.
+- `routes[].forbidCredentialHeaders: true` materializes to `x-sdkwork-forbid-credential-headers: true`. Runtime routers, gateways, and handlers `MUST` reject inbound dual-token credentials, API-key credentials, SDKWork context projection headers, and equivalent credential headers on those operations.
 - Route manifests `MUST NOT` contain duplicate `(method, path)` pairs after path-template normalization.
 - Route manifests `MUST NOT` include dependency-owned operations as application-owned operations. Appbase, Drive, IAM login/session, and other reusable-module routes remain in their owning route crates and SDK families.
 - Handler and schema references are traceability inputs, not permission to bypass OpenAPI review. The aggregated OpenAPI authority remains the SDK generation contract.
@@ -310,9 +335,23 @@ Rules:
 - `sdkwork-commerce-app-sdk` is the generated SDK family produced from `sdkwork-commerce-app-api`. Product code consumes the SDK family or approved composed wrappers, not the route crates.
 - The same mapping applies to open-api and backend-api: `sdkwork-router-<capability>-open-api` aggregates into `sdkwork-<domain>-open-api` and generates `sdkwork-<domain>-sdk`; `sdkwork-router-<capability>-backend-api` aggregates into `sdkwork-<domain>-backend-api` and generates `sdkwork-<domain>-backend-sdk`.
 - Route manifest inputs `MUST` be grouped by `owner`, `domain`, `surface`, `apiAuthority`, `sdkFamily`, and `prefix`. A materializer `MUST NOT` merge manifests that disagree on any of those fields.
-- Materialization `MUST` reject mixed surfaces, mismatched prefixes, missing owner/domain/capability, a route crate package name that does not match `sdkwork-router-<capability>-<surface>`, operationId/tag/domain mismatch, duplicate method/path pairs, and dependency-owned operations in a consuming app authority.
-- The materialized authority OpenAPI `MUST` write `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`, and `x-sdkwork-source-route-crate` for every operation produced from a route manifest.
+- Materialization `MUST` reject mixed surfaces, mismatched prefixes, missing owner/domain/capability, missing or mismatched route framework metadata, a route crate package name that does not match `sdkwork-router-<capability>-<surface>`, operationId/tag/domain mismatch, duplicate method/path pairs, and dependency-owned operations in a consuming app authority.
+- The materialized authority OpenAPI `MUST` write `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`, `x-sdkwork-source-route-crate`, `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and `x-sdkwork-rate-limit-tier` when present for every operation produced from a route manifest.
 - Authority materialization `MUST` be deterministic: the same route manifests, dependency authorities, and generator configuration must produce byte-stable OpenAPI and derived SDK inputs except for explicitly allowed generated timestamps, which should be avoided in committed artifacts.
+
+### 4.4 Framework Runtime Binding
+
+Every SDKWork HTTP API contract for open-api, app-api, backend-api, or any SDKWork HTTP `*-api` surface `MUST` assume a framework-owned runtime that resolves `WebRequestContext`, executes the standard interceptor chain, and injects typed context before business handlers run.
+
+Rules:
+
+- All SDKWork HTTP API runtime implementations `MUST` integrate `sdkwork-web-framework` for Rust route crates, API servers, gateways, and any Rust-backed application module that owns, serves, proxies, or composes an HTTP `*-api` surface according to `WEB_FRAMEWORK_SPEC.md`.
+- API contracts `MUST NOT` require clients to choose the current tenant, organization, user, app, or permission scope through path, query, header, cookie, or client-writable body fields when token or API-key context already defines that scope.
+- Contract authors `MUST` design operations assuming handlers consume `WebRequestContext` injected by the framework. Handlers `MUST NOT` reparse `Authorization`, `Access-Token`, `X-API-Key`, or SDKWork identity projection headers.
+- Rust route crates and API servers `MUST NOT` bypass the framework to assemble ad hoc Axum/Tower security chains, custom credential parsers, or parallel request-context types.
+- Java Spring controllers `MUST` preserve equivalent `WebRequestContext` vocabulary, 18-stage interceptor semantics, and problem-detail behavior even though they do not cargo-depend on Rust crates.
+- Framework bootstrap, Cargo dependencies, extension trait registration, and verification commands are defined in `WEB_FRAMEWORK_SPEC.md`. Handler/service/repository layering after the framework boundary follows `WEB_BACKEND_SPEC.md`.
+- Every route manifest entry `MUST` declare `requestContext: WebRequestContext` and `apiSurface`; every materialized OpenAPI operation `MUST` declare `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface` according to section 19.
 
 ## 5. URL And Path Standard
 
@@ -433,7 +472,8 @@ Rules:
 - `operationId` `MUST NOT` duplicate the tag name. With tag `iam`, use `organizations.list`, not `iam.organizations.list`.
 - `operationId` `MUST` be globally unique in the OpenAPI document.
 - Path parameter names `MUST NOT` appear in `operationId`. Resource identity belongs in method arguments, not in SDK method names.
-- `operationId` `MUST` remain stable across Java SaaS and Rust local/private implementations.
+- `operationId` `MUST` remain stable across Java/Rust implementations and
+  standalone/cloud deployment profiles.
 
 ### 7.2 Tag And OperationId Responsibilities
 
@@ -589,7 +629,9 @@ components:
 Rules:
 
 - OpenAPI version `SHOULD` be `3.1.2` for new standard contracts when the SDK generator supports it. A `3.1.x` patch level is acceptable when a toolchain has not yet adopted `3.1.2`.
-- OpenAPI `3.2.x` features `MUST NOT` be used in source contracts until generator and runtime parity tests pass for TypeScript, Java SaaS, and Rust local/private targets.
+- OpenAPI `3.2.x` features `MUST NOT` be used in source contracts until
+  generator and runtime parity tests pass for TypeScript, Java, Rust,
+  standalone, and cloud targets.
 - JSON Schema dialect `SHOULD` be compatible with 2020-12.
 - `info.version` `MUST` be semantic and traceable to generated SDK versions.
 - Each operation `MUST` include `summary`, `operationId`, `tags`, `responses`, and explicit `security`.
@@ -659,7 +701,7 @@ The dual-token model separates authentication from access isolation.
 | Token | Header | Purpose |
 | --- | --- | --- |
 | `auth_token` | `Authorization: Bearer` | Principal identity, session identity, tenant, organization, login scope, authentication strength, token expiry |
-| `access_token` | `Access-Token` | Principal identity, session identity, tenant, organization, login scope, app, environment, data scope, permission scope, deployment mode |
+| `access_token` | `Access-Token` | Principal identity, session identity, tenant, organization, login scope, app, environment, deployment profile, runtime target, data scope, permission scope |
 
 Rules:
 
@@ -667,7 +709,11 @@ Rules:
 - `auth_token` and `access_token` `MUST` both carry matching `tenant_id`, `organization_id`, `login_scope`, `user_id`/`sub`, and `session_id`/`sid` claims.
 - `login_scope` `MUST` be `TENANT` when `organization_id` is absent or `0`, and `ORGANIZATION` when `organization_id` is present and non-zero. Contradictory token claims are invalid.
 - Business requests `MUST NOT` trust tenant, organization, role, or user IDs supplied only by body/query parameters when they conflict with token context.
-- If a request path contains `tenantId` or `organizationId`, the server `MUST` verify it matches or is authorized by token claims.
+- Current-tenant selection `MUST NOT` be modeled as a client-supplied OpenAPI parameter or request field. Protected app-api, backend-api, and open-api contracts `MUST NOT` declare `tenant_id`, `tenantId`, `tenant`, `tenant-id`, `X-Tenant-Id`, or equivalent tenant selectors in path, query, header, cookie, or client-writable request body solely to choose the authenticated tenant.
+- New SDK-generated operations `MUST NOT` expose `tenant_id` or `tenantId` as method parameters, `params` fields, or request body fields for current tenant context. App-api and backend-api callers get tenant context from `Authorization` plus `Access-Token`; protected open-api callers get tenant context from the validated API key record.
+- API paths `MUST NOT` use `/tenants/{tenantId}/...` to scope ordinary current-tenant business resources. Use context-relative resources such as `/orders`, `/files`, or `/iam/organizations`, then enforce tenant and data scope from `WebRequestContext`.
+- Explicit tenant administration or cross-tenant platform operations may address a tenant as the managed resource only when the operation is `backend-admin` or platform scoped, declares a platform/cross-tenant permission, and verifies explicit authorization. Such identifiers must be target/resource identifiers, not ambient request context selectors, and they `MUST NOT` weaken the ban on generated `tenant_id` or `tenantId` current-context inputs.
+- If a request path contains a tenant or organization resource identifier, the server `MUST` verify it matches or is authorized by token claims.
 - A token claim that affects authorization `MUST` be signed or server-validated.
 - Auth/session creation endpoints in app-api are anonymous credential verification flows. They may be public but must return standard token objects and context metadata only after resolving the real IAM user, tenant, and organization context server-side.
 - Multi-organization login `MUST` be represented as a documented continuation response, not as a normal authenticated session. The continuation credential is not valid for protected business operations.
@@ -693,61 +739,79 @@ Recommended token claims:
 }
 ```
 
-### 10.1 Appbase Request Context Framework
+### 10.1 SDKWork Request Context Framework
 
-All SDKWork appbase HTTP implementations `MUST` expose a unified request context before protected business handlers run. The standard Rust implementation is `sdkwork_platform_http_context_service` in `sdkwork-appbase/crates/sdkwork-platform-http-context-service`; Java and other runtimes must preserve the same behavior and vocabulary.
+All SDKWork HTTP implementations for open-api, app-api, and backend-api `MUST` expose a unified `WebRequestContext` before protected business handlers run. The standard Rust framework is `sdkwork-web-framework`; Java and other runtimes must preserve the same behavior and vocabulary. Integration rules are defined in `WEB_FRAMEWORK_SPEC.md`; IAM and domain projections are implemented by appbase or product adapters through framework extension traits.
+
+`AppRequestContext` is a migration-only alias for `WebRequestContext`. New contracts, OpenAPI extensions, handlers, and documentation `MUST` use `WebRequestContext`.
 
 Required context object:
 
 ```text
-AppRequestContext =
+WebRequestContext =
   request_id
   api_surface
   auth_mode
+  transport
   principal
-  path
-  method
-  credential_presence
 
-AppRequestPrincipal =
-  tenant_id
-  organization_id
-  login_scope
-  user_id
-  session_id
-  app_id
-  environment
-  deployment_mode
-  auth_level
-  data_scope
-  permission_scope
-  api_key_id
-  subject_type
+WebRequestPrincipal =
+  tenancy.tenant_id
+  tenancy.organization_id
+  tenancy.login_scope
+  subject.user_id
+  subject.session_id
+  subject.subject_type
+  app.app_id
+  app.environment
+  app.deployment_profile
+  app.runtime_target
+  auth.auth_level
+  auth.api_key_id
+  scopes.data_scope
+  scopes.permission_scope
 ```
 
 API surface and resolver standard:
 
 | Surface | Prefixes | Auth mode | Resolver standard |
 | --- | --- | --- | --- |
-| `open-api` | Any approved SDKWork HTTP API prefix outside `/app/v3/api` and `/backend/v3/api`, for example `/im/v3/api` | API key | `ApiKeyParser` normalizes the credential, then `ApiKeyLookupService` resolves the API key record and produces `AppRequestPrincipal`. |
-| `app-api` | `/app/v3/api` | Dual token | `AuthTokenParser` plus `AccessTokenParser` resolve and validate one principal context. |
-| `backend-api` | `/backend/v3/api` | Dual token | `AuthTokenParser` plus `AccessTokenParser` resolve and validate one principal context. |
+| `open-api` | Any approved SDKWork HTTP API prefix outside `/app/v3/api` and `/backend/v3/api`, for example `/im/v3/api` | API key | Framework `ApiKeyLookupService` resolves the API key record and produces `WebRequestPrincipal`. |
+| `app-api` | `/app/v3/api` | Dual token | Framework `WebRequestContextResolver` validates dual tokens and produces one principal context. |
+| `backend-api` | `/backend/v3/api` | Dual token | Framework `WebRequestContextResolver` validates dual tokens and produces one principal context. |
 
 Rules:
 
-- `AppRequestContext` `MUST` be resolved once at the framework boundary and injected as a typed request extension or equivalent runtime context.
+- `WebRequestContext` `MUST` be resolved once at the framework boundary and injected as a typed request extension or equivalent runtime context.
 - Business handlers `MUST` consume the typed context. They `MUST NOT` reparse auth tokens, access tokens, API keys, or tenant/user fields from raw headers.
-- `AuthTokenParser`, `AccessTokenParser`, `ApiKeyParser`, `ApiKeyLookupService`, and `AppRequestContextResolver` are standard extension points.
-- The default parser may support local/private development claim formats, but production parsers `MUST` validate signature, tenant-bound signing key or key id, token type, expiry, issuer, audience, revocation, tenant binding, organization binding, login-scope consistency, app binding, and permission scope.
+- `WebRequestContextResolver`, `ApiKeyLookupService`, `AuthorizationPolicy`, `TenantIsolationPolicy`, and `DomainContextInjector` are standard framework extension points. appbase and product repositories implement them; they `MUST NOT` expose a parallel HTTP context framework.
+- The default parser may support standalone development claim formats, but
+  production parsers `MUST` validate signature, tenant-bound signing key or key
+  id, token type, expiry, issuer, audience, revocation, tenant binding,
+  organization binding, login-scope consistency, app binding, deployment
+  profile, runtime target, and permission scope.
 - API key lookup `MUST` be abstracted behind a service/interface. Implementations may use `iam_api_key`, tenant-local API key tables, encrypted secret stores, caches, or remote IAM services.
 - API key records `MUST` provide the principal user id, tenant id, organization id when applicable, app id, data scope, permission scope, key id, and revocation/expiry state.
 - Dual-token resolution `MUST` reject conflicting tenant, organization, user, session, or app claims when both tokens carry the same field.
 - Dual-token resolution `MUST` reject missing or conflicting `login_scope` claims and any `TENANT`/`ORGANIZATION` claim mismatch with `organization_id`.
 - Context values from request body, query, path, or frontend state `MUST NOT` override the resolved context.
 
+Forbidden client identity headers:
+
+- Application clients `MUST NOT` send `x-sdkwork-tenant-id`,
+  `x-sdkwork-user-id`, `x-sdkwork-actor-id`, `x-sdkwork-actor-kind`,
+  `x-sdkwork-organization-id`, `x-sdkwork-session-id`, `x-sdkwork-app-id`,
+  `x-sdkwork-environment`, `x-sdkwork-deployment-profile`,
+  `x-sdkwork-deployment-mode`, `x-sdkwork-runtime-target`,
+  `x-sdkwork-auth-level`, `x-sdkwork-data-scope`,
+  `x-sdkwork-permission-scope`, `x-sdkwork-device-id`, or
+  `x-sdkwork-context-signature`.
+- Gateways `MUST NOT` require callers to supply those headers for protected app-api/backend-api traffic. When a gateway terminates TLS and re-issues service calls, it `MUST` forward only the standard dual-token credentials or an internal service identity, not caller-supplied tenant/user metadata.
+- Servers `MUST` ignore or reject identity projection headers that conflict with verified token-derived context.
+
 ### 10.2 API Call Chain And Interceptor Standard
 
-All SDKWork appbase HTTP routers `MUST` run protected requests through an ordered API call chain. The chain is the standard place for cross-cutting policy, security, observability, and context injection.
+All SDKWork HTTP routers for open-api, app-api, and backend-api `MUST` run protected requests through an ordered API call chain. The chain is the standard place for cross-cutting policy, security, observability, and context injection. The standard Rust implementation is owned by `sdkwork-web-framework` (`WebCallInterceptorChain::standard()`); Java runtimes must preserve equivalent semantics.
 
 Standard order:
 
@@ -772,9 +836,10 @@ Standard order:
 
 Rules:
 
-- Frameworks `MUST` expose an interceptor interface equivalent to `ApiCallInterceptor` with `before` and `after` phases.
+- Frameworks `MUST` expose an interceptor interface equivalent to `WebCallInterceptor` with `before` and `after` phases.
 - The standard chain `MUST` be extensible without bypassing context resolution or security guards.
-- Request identity, surface classification, request context resolution, authentication, context injection, response identity, and secure response headers are mandatory for protected appbase routers.
+- Request identity, surface classification, request context resolution, authentication, context injection, response identity, and secure response headers are mandatory for protected HTTP routers on all three API surfaces.
+- Rust integrations `MUST` follow `WEB_FRAMEWORK_SPEC.md`; business repositories `MUST NOT` fork the chain locally.
 - Authorization, tenant isolation, rate limit, idempotency, logging, and audit may be implemented by product-specific interceptors, but their hook positions and semantics `MUST` remain standard.
 - CORS, method guard, cross-site request protection, request size limits, and SQL injection request guards `SHOULD` run before credential parsing to reduce attack surface.
 - The SQL injection guard is a request-layer heuristic only. All database access `MUST` still use bind parameters, typed repositories, input validation, and server-side authorization.
@@ -813,7 +878,7 @@ These paths belong to app-api for user-facing self-service and to backend-api fo
 | Resource | Standard path |
 | --- | --- |
 | Tenants | `/iam/tenants` |
-| Tenant memberships | `/iam/tenants/{tenantId}/members` |
+| Tenant memberships | `/iam/tenants/current/members` |
 | Organizations | `/iam/organizations` |
 | Organization tree | `/iam/organizations/tree` |
 | Organization members | `/iam/organizations/{organizationId}/members` |
@@ -918,7 +983,8 @@ Rules:
 - `POST`, `PUT`, and `PATCH` `SHOULD` use JSON object bodies unless file upload or form semantics are required.
 - Partial update `PATCH` schemas `MUST` distinguish omitted fields from explicit `null`.
 - Sensitive fields such as password, verification code, token, and private key `MUST` be `writeOnly: true`.
-- Server-managed fields such as `id`, `tenantId`, `createdAt`, `updatedAt`, `version`, and audit fields `MUST NOT` be client-writable unless explicitly documented.
+- Server-managed fields such as `id`, `tenant_id`, `tenantId`, `createdAt`, `updatedAt`, `version`, and audit fields `MUST NOT` be client-writable unless explicitly documented.
+- Create, update, and command request bodies `MUST NOT` require or accept client-writable `tenant_id` or `tenantId` fields to select the current tenant. The authenticated tenant is resolved from token/API-key context before handlers run.
 
 Example:
 
@@ -1099,6 +1165,9 @@ SDKWork governance tools may read these extensions.
 
 | Extension | Meaning |
 | --- | --- |
+| `x-sdkwork-request-context` | Typed handler context; value `WebRequestContext` for every HTTP operation |
+| `x-sdkwork-api-surface` | Runtime surface classification: `open-api`, `app-api`, or `backend-api` |
+| `x-sdkwork-rate-limit-tier` | Framework rate-limit tier for abuse-sensitive operations |
 | `x-sdkwork-domain` | Bounded context such as `iam`, `billing`, `ai` |
 | `x-sdkwork-resource` | Canonical resource name |
 | `x-sdkwork-permission` | Required permission code |
@@ -1110,9 +1179,10 @@ SDKWork governance tools may read these extensions.
 | `x-sdkwork-auth-mode` | Operation credential mode: `anonymous`, `dual-token`, `refresh-token`, `api-key`, or `internal` |
 | `x-sdkwork-forbid-credential-headers` | Whether the server must reject inbound credential and SDKWork context headers for this operation |
 | `x-sdkwork-sdk-resource` | SDK nested resource override if path inference is insufficient |
-| `x-sdkwork-deployment` | `saas`, `private`, `local`, or `all` |
+| `x-sdkwork-deployment-profile` | `standalone`, `cloud`, or `all` |
+| `x-sdkwork-runtime-target` | Optional runtime target qualifier when an operation is intentionally runtime-target-specific. Shared app/backend/open APIs should normally omit it. |
 | `x-sdkwork-owner` | Owning application, repository, or reusable platform module that publishes this operation in its own SDK family |
-| `x-sdkwork-api-authority` | Logical API authority that owns the operation, for example `sdkwork-appbase-app-api`, `craw-chat.app`, `sdkwork-drive.backend` |
+| `x-sdkwork-api-authority` | Logical API authority that owns the operation, for example `sdkwork-appbase-app-api`, `sdkwork-im.app`, `sdkwork-drive.backend` |
 | `x-sdkwork-source` | Physical source or scanned module that produced the operation |
 | `x-sdkwork-source-route-crate` | Rust route crate package name when the operation was materialized from `sdkwork.route.manifest` |
 | `x-sdkwork-integration-source` | Integrated dependency source when an operation is present only for runtime composition or compatibility |
@@ -1121,12 +1191,15 @@ Rules:
 
 - Extensions `MUST NOT` contradict security requirements.
 - Extensions are governance metadata; behavior still needs server enforcement.
+- Every HTTP operation `MUST` declare `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface`. Missing either extension makes the contract non-compliant for SDKWork HTTP APIs.
+- `x-sdkwork-api-surface` values `MUST` use canonical kebab-case contract labels: `open-api`, `app-api`, `backend-api`, or another approved `*-api` surface label. CamelCase runtime labels such as `openApi`, `appApi`, `backendApi`, and `gatewayApi` are invalid in OpenAPI and derived `*.sdkgen.*` inputs.
+- Abuse-sensitive operations such as auth, key management, verification, and high-risk mutations `SHOULD` declare `x-sdkwork-rate-limit-tier`.
 - Public operations that are generated into SDKs and must not receive stored user credentials `MUST` declare `security: []` and `x-sdkwork-auth-mode: anonymous`. TypeScript, Flutter, and other generated SDKs `MUST` use that marker to skip automatic credential injection for that operation.
 - Login, registration, OAuth session creation, QR auth session creation or password completion, password reset request, password reset completion, and equivalent credential-entry commands `MUST` additionally declare `x-sdkwork-forbid-credential-headers: true`. Runtime routers, gateways, and handlers `MUST` reject inbound dual-token credentials, SDKWork context-projection headers, and equivalent credential headers for these operations instead of silently ignoring them.
 - `security: []` alone does not imply `x-sdkwork-forbid-credential-headers: true`; public metadata and bootstrap endpoints may be anonymous without rejecting irrelevant credentials unless their contract explicitly sets the extension.
 - Every operation used as input to HTTP SDK generation `MUST` declare `x-sdkwork-owner` and `x-sdkwork-api-authority`.
 - `x-sdkwork-owner` is the SDK generation ownership key. It identifies the app/repo/module that is allowed to generate the operation into its SDK family.
-- `x-sdkwork-api-authority` identifies the logical API authority and should include both owner and surface, for example `sdkwork-appbase-app-api`, `sdkwork-appbase-backend-api`, `craw-chat.im`, or `sdkwork-drive.app`.
+- `x-sdkwork-api-authority` identifies the logical API authority and should include both owner and surface, for example `sdkwork-appbase-app-api`, `sdkwork-appbase-backend-api`, `sdkwork-im.im`, or `sdkwork-drive.app`.
 - `x-sdkwork-source` and `x-sdkwork-integration-source` may describe where the operation was scanned from, but they `MUST NOT` replace `x-sdkwork-owner` for generation decisions.
 - OpenAPI documents may temporarily include dependency-owned operations for runtime integration inspection only when those operations are clearly marked with the dependency owner. The generated SDK input for an app/repo `MUST` filter them out unless the current SDK family owner matches the operation owner.
 - Path prefix, tag, Rust crate name, Java controller package, or filesystem location `MUST NOT` be the only authority for SDK ownership. Those signals may help infer metadata during migration, but the materialized OpenAPI operation must carry explicit ownership before generation.
@@ -1146,6 +1219,7 @@ Rules:
 - App-specific SDK clients may differ by package and constructor, but method shape `MUST` remain consistent.
 - SDK generation inputs `MUST` contain only operations whose `x-sdkwork-owner` matches the SDK family owner declared in the SDK assembly manifest.
 - Dependency-owned operations such as appbase IAM must be consumed through the dependency SDK or approved composed wrapper, not regenerated into the consuming app SDK.
+- SDK generation inputs `MUST NOT` contain current-tenant selector parameters or client-writable request fields named `tenant_id` or `tenantId`. If such a field appears only because the operation is trying to scope the caller's tenant, fix the API contract to use token/API-key context before generation.
 
 ### 20.1 SDK Resource Synthesis Rules
 
@@ -1177,7 +1251,8 @@ Rules:
 Rules:
 
 - SDK clients `MUST` be injectable into frontend services and runtime adapters.
-- Client construction differences between SaaS, local, and test environments `MUST` be isolated in bootstrap code.
+- Client construction differences across environments, deployment profiles, and
+  runtime targets `MUST` be isolated in bootstrap code.
 - A single app may use different app SDK and backend SDK constructors, but the service layer `MUST` hide that difference from UI components.
 - All package-level facades and adapters `SHOULD` expose stable domain services such as `auth`, `iam`, `billing`, or `content` instead of exposing raw generated client internals.
 
@@ -1209,16 +1284,21 @@ Rules:
 - App-specific SDK constructor differences `MUST` be isolated in bootstrap code.
 - Services `SHOULD` depend on interfaces that match generated SDK resource surfaces.
 - UI packages `MUST` not import generated SDK internals directly when a service package exists.
-- Environment switching is handled by SDK client initialization: development, test, staging, production, SaaS, private, local.
+- Environment, deployment profile, and runtime target switching is handled by
+  SDK client initialization: development, test, staging, production,
+  standalone, cloud, browser, desktop, server, container, and other approved
+  runtime targets.
 
-## 22. SaaS And Local Deployment Parity
+## 22. Standalone And Cloud Deployment Parity
 
 Rules:
 
-- Java SaaS and Rust local/private backends `MUST` share the same API contract for common modules.
+- Standalone and cloud backends `MUST` share the same API contract for common modules.
 - Differences in storage, token issuer, or process boundary `MUST NOT` change API paths or schemas.
-- Local-only native features may have local APIs, but common IAM, tenant, organization, user, role, permission, session, and security APIs must remain contract-compatible.
-- SDK tests `SHOULD` be run against both SaaS mock/server and local Rust implementation.
+- Runtime-target-specific native features may have local APIs, but common IAM,
+  tenant, organization, user, role, permission, session, and security APIs must
+  remain contract-compatible.
+- SDK tests `SHOULD` be run against both standalone and cloud implementations.
 
 ## 23. Versioning And Deprecation
 
@@ -1244,13 +1324,16 @@ An API is standard only when this checklist passes:
 - [ ] Runtime source, OpenAPI snapshots, generated SDK inputs, route tables, frontend SDK bootstrap code, and environment examples contain no forbidden legacy API prefix.
 - [ ] Rust HTTP route crates, when present, are named `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
 - [ ] Rust route crate names, declared surfaces, and mounted path prefixes agree.
-- [ ] Route manifests, when present, use `kind: sdkwork.route.manifest`, validate package name, capability, surface, owner, domain, API authority, SDK family, prefix, auth mode, ownership, and duplicate route rules.
+- [ ] Route manifests, when present, use `kind: sdkwork.route.manifest`, validate package name, capability, surface, owner, domain, API authority, SDK family, prefix, `requestContext: WebRequestContext`, `apiSurface`, auth mode, ownership, and duplicate route rules.
 - [ ] Route crate manifests, when present, aggregate into `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, or `sdkwork-<domain>-backend-api`; route crate names are not used as final OpenAPI authority names.
-- [ ] Route manifest materialization writes `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`, and `x-sdkwork-source-route-crate` into authority OpenAPI operations.
+- [ ] Route manifest materialization writes `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`, `x-sdkwork-source-route-crate`, `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and `x-sdkwork-rate-limit-tier` when present into authority OpenAPI operations.
 - [ ] Every SDK-generated operation declares `x-sdkwork-owner` and `x-sdkwork-api-authority`.
 - [ ] No SDK generation input contains operations owned by another app/repo/module.
 - [ ] Integrated dependency APIs are declared as SDK dependencies or composed wrappers instead of duplicated into the current SDK.
+- [ ] No SDK-generated operation exposes `tenant_id` or `tenantId` as a current-tenant path, query, header, cookie, method, `params`, or client-writable body input.
 - [ ] Web backend implementation layers, naming, request context consumption, repository boundaries, provider adapters, and static boundary scans follow `WEB_BACKEND_SPEC.md`.
+- [ ] HTTP runtimes and modules for open-api, app-api, backend-api, or any SDKWork HTTP `*-api` surface follow `WEB_FRAMEWORK_SPEC.md`; Rust runtimes integrate `sdkwork-web-framework`.
+- [ ] Every HTTP operation declares `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface`.
 - [ ] Java app-api class-level mappings start with `/app/v3/api`, and Java backend-api class-level mappings start with `/backend/v3/api`.
 - [ ] Backend-api publishes no bare `/v3/api/*` resource path.
 - [ ] `apps` Java implementations, app/backend Java SDK generation inputs, and generated app/backend Java SDK path helpers pass `cd apps && node scripts/api-spec-java-standard.test.mjs`.
@@ -1268,7 +1351,8 @@ An API is standard only when this checklist passes:
 - [ ] Dual-token protected operations validate matching tenant, organization, login scope, user, session, app, and token type claims.
 - [ ] Token validation uses tenant-bound signing keys or an equivalent server-side tenant-bound token lookup.
 - [ ] Multi-organization login uses a documented continuation response instead of returning normal business tokens before organization selection.
-- [ ] Runtime routers resolve `AppRequestContext` through the standard parser/resolver framework before protected handlers run.
+- [ ] Runtime routers resolve `WebRequestContext` through `sdkwork-web-framework` (Rust) or an equivalent typed context framework (Java) before protected handlers run.
+- [ ] Handlers consume typed `WebRequestContext` and do not reparse credential, tenant, user, permission, or request-id headers.
 - [ ] Runtime routers run the standard API call chain or a stricter documented superset.
 - [ ] Backend API has no login/session creation/refresh/logout endpoint.
 - [ ] Error responses include `application/problem+json`.

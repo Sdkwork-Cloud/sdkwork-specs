@@ -266,7 +266,8 @@ Rules:
 
 Rules:
 
-- Harmony root config separates lifecycle environment, build mode, deployment mode, and runtime target according to `CONFIG_SPEC.md`.
+- Harmony root config separates lifecycle environment, build mode, deployment
+  profile, and runtime target according to `CONFIG_SPEC.md`.
 - `config/app/` and `config/host/` examples must be safe checked-in templates only.
 - Harmony bundle id/app id, module ids, supported device types, permissions, app links, push environment, signing reference names, AppGallery/private distribution references, and store profile references belong to host config or platform templates.
 - Host config must not contain signing private keys, auth tokens, refresh tokens, API keys, database credentials, private service endpoints, SDK ownership, or business route constants.

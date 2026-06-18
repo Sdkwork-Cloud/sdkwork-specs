@@ -61,7 +61,7 @@ App PC React packages are split by user-facing capability and domain.
 
 | Package type | Naming | Owns | Must not own |
 | --- | --- | --- | --- |
-| app shell/runtime | app-specific `src/` or runtime package | providers, router, SDK bootstrap, token store, deployment mode, host integration | reusable domain pages and services |
+| app shell/runtime | app-specific `src/` or runtime package | providers, router, SDK bootstrap, token store, deployment profile, runtime target, host integration | reusable domain pages and services |
 | appbase foundation | `sdkwork-<foundation>-pc-react` | reusable shell, router, workspace, command, search, appbase utilities | business-domain API shortcuts |
 | domain feature package | `sdkwork-<capability>-pc-react` or `sdkwork-<product>-pc-<capability>` | user-facing pages, components, services, hooks, i18n, route metadata | concrete SDK construction, backend admin logic |
 | user console package | `sdkwork-<product>-pc-console-<capability>` | user-facing management console pages, components, services, hooks, i18n, route metadata | company-internal admin workflows, backend-only operation center behavior |

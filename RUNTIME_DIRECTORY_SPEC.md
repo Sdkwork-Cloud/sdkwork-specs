@@ -25,7 +25,7 @@ Runtime layout and infrastructure configuration must satisfy these goals:
 
 - A host can run multiple SDKWork applications without directory collisions.
 - Operators can find all SDKWork application files under a single namespace.
-- Service/server, desktop, container, and development modes use explicit and
+- Service/server, desktop, container, and development targets use explicit and
   predictable directories.
 - Database and Redis settings are represented by typed config fields, not only
   opaque URLs.
@@ -98,7 +98,7 @@ Linux service, archive, and package deployments must use these directories.
 | Private immutable runtime assets | `/usr/lib/sdkwork/<app>` | `root:root` | Binaries, service-local runtime assets, bundled native libraries. |
 | Shared read-only assets | `/usr/share/sdkwork/<app>` | `root:root` | Static portal assets, templates, generated SDK archives, catalogs. |
 | Documentation | `/usr/share/doc/sdkwork/<app>` | `root:root` | Install guide, license notices, runbooks. |
-| Durable mutable data | `/var/lib/sdkwork/<app>` | `sdkwork:sdkwork` | SQLite for local-only service exceptions, catalogs, queues, generated state. |
+| Durable mutable data | `/var/lib/sdkwork/<app>` | `sdkwork:sdkwork` | SQLite only for approved desktop/user-data exceptions, catalogs, queues, generated state. |
 | Logs | `/var/log/sdkwork/<app>` | `sdkwork:adm` or `sdkwork:sdkwork` | File logs only when journald/stdout is not enough. |
 | Cache | `/var/cache/sdkwork/<app>` | `sdkwork:sdkwork` | Rebuildable cache. |
 | Runtime state | `/run/sdkwork/<app>` | `sdkwork:sdkwork` | PID files, sockets, locks. |
@@ -272,10 +272,11 @@ platform secret managers. Dev `.env` files are not production configuration.
 Rules:
 
 - Linux service packages must install or initialize `/etc/sdkwork/<app>`.
-- Server and container deployments must default to PostgreSQL unless an approved
-  local-only exception is documented.
-- Server and container deployments that require shared state must default to
-  Redis and fail fast when Redis is missing or invalid.
+- Standalone server/container and cloud deployments must default to
+  PostgreSQL unless an approved desktop-only or local-data exception is
+  documented.
+- Standalone server/container and cloud deployments that require shared state
+  must default to Redis and fail fast when Redis is missing or invalid.
 - Production config examples must use structured database and Redis fields.
 - `DATABASE_URL` and `REDIS_URL` style overrides are private emergency/operator
   overrides, not the primary release contract.
@@ -284,8 +285,9 @@ Rules:
 - Release package preflight must validate the config file, secret file paths,
   database reachability when requested, Redis reachability when requested,
   writable data/log/cache directories, and public runtime URL rules.
-- Production startup must not silently fall back to SQLite when deployment mode
-  is `server`, `container`, `saas`, or service-style `private`.
+- Production startup must not silently fall back to SQLite when
+  `deployment_profile` is `cloud`, or when `deployment_profile` is `standalone`
+  and `runtime_target` is `server` or `container`.
 
 Recommended Linux permissions:
 
@@ -307,7 +309,8 @@ Recommended Linux permissions:
 Applications must resolve runtime configuration in this order:
 
 1. Built-in safe defaults for non-secret development behavior.
-2. Canonical runtime config file for the deployment mode and OS.
+2. Canonical runtime config file for the deployment profile, runtime target,
+   and OS.
 3. Compatibility fallback config file paths, read-only during migration unless
    the migration plan explicitly says otherwise.
 4. Platform secret manager or secret files referenced by the config file.
@@ -334,7 +337,8 @@ TOML is preferred for SDKWork Rust services and desktop/server packages.
 ```toml
 [runtime]
 environment = "production"
-deployment_mode = "server"
+deployment_profile = "standalone"
+runtime_target = "server"
 app_code = "router"
 process_name = "clawrouter"
 
@@ -394,14 +398,14 @@ Rules:
 
 ## 9. Database Configuration Standard
 
-SDKWork server and container deployments must use structured PostgreSQL
-configuration by default.
+SDKWork standalone server/container and cloud deployments must use structured
+PostgreSQL configuration by default.
 
 Canonical `[database]` fields:
 
 | Field | Required | Notes |
 | --- | --- | --- |
-| `engine` | yes | `postgresql` for server/container/saas/private service; `sqlite` for desktop/local-only. |
+| `engine` | yes | `postgresql` for standalone server/container and cloud targets; `sqlite` for desktop user-data targets. |
 | `host` | PostgreSQL | Hostname or IP for PostgreSQL. |
 | `port` | PostgreSQL | Default `5432`. |
 | `database` | PostgreSQL | Database name or catalog. |
@@ -420,21 +424,22 @@ Canonical `[database]` fields:
 
 Rules:
 
-- Server/container release config must not depend on only `url`. Structured
-  fields are the primary production contract.
+- Standalone server/container and cloud release config must not depend on only
+  `url`. Structured fields are the primary production contract.
 - `SDKWORK_<APP>_DATABASE_URL` may override the structured config only when an
   operator explicitly sets it.
 - PostgreSQL password material should use `password_file` or a platform secret.
 - Direct `password` is allowed only when the entire config file is protected as
   a secret-bearing file.
-- Desktop/local SQLite defaults must place the database under the canonical user
-  private data directory, such as `~/.sdkwork/router/data/router.sqlite`, unless
-  an app-specific migration plan temporarily reads an older location.
+- Desktop user-data SQLite defaults must place the database under the canonical
+  user private data directory, such as `~/.sdkwork/router/data/router.sqlite`,
+  unless an app-specific migration plan temporarily reads an older location.
 - Desktop package local user data must stay on SQLite by default even when the
   repository's integrated development command uses `.env.postgres.example` and
   PostgreSQL. The PostgreSQL dev profile exercises backend service behavior for
-  `pnpm dev`, `pnpm desktop:dev`, or `pnpm tauri:dev`; it is not the desktop
-  data persistence default.
+  `pnpm clawrouter:dev`, `pnpm dev`, or `pnpm server:dev`; it is not the desktop
+  data persistence default. Gateway-backed desktop commands such as
+  `pnpm desktop:dev` or `pnpm tauri:dev` do not start that backend profile.
 - Production startup must fail closed if the database config still contains
   placeholder values.
 - Migration and seed behavior must be controlled by explicit typed fields or
@@ -491,14 +496,14 @@ Rules:
 
 ## 10. Redis Configuration Standard
 
-Redis is the standard shared cache/state backend for server, container, SaaS,
-and service-style private deployments that require shared runtime state.
+Redis is the standard shared cache/state backend for cloud deployments and
+standalone server/container deployments that require shared runtime state.
 
 Canonical `[redis]` fields:
 
 | Field | Required | Notes |
 | --- | --- | --- |
-| `enabled` | yes | `true` for server/container when the app requires shared state; `false` for desktop/local-only defaults. |
+| `enabled` | yes | `true` for cloud and standalone server/container targets when the app requires shared state; `false` for desktop user-data defaults. |
 | `host` | standard mode | Hostname or IP. |
 | `port` | standard mode | Default `6379`. |
 | `database` | standard mode | Logical database index, default `0`. |
@@ -525,8 +530,9 @@ Rules:
 - Redis keys must include an application `key_prefix` unless a stronger
   namespace is enforced by the cache adapter.
 - Applications must document which capabilities require Redis and must fail fast
-  in server/container mode when a required Redis config is absent.
-- Desktop/local-only deployments should keep Redis disabled unless the user
+  for cloud or standalone server/container targets when a required Redis config
+  is absent.
+- Desktop user-data targets should keep Redis disabled unless the user
   explicitly enables shared infrastructure.
 
 Recommended env override mapping:
@@ -618,8 +624,9 @@ Rules:
 - `clawrouter.service`, `clawrouterctl`, and `clawrouter` remain valid process
   and operator command names.
 - Directory paths must use `router`, not `clawrouter`, under SDKWork namespaces.
-- Release/server deployments default to PostgreSQL and Redis.
-- Desktop/local deployments default to SQLite under the user private data
+- Standalone server/container and cloud deployments default to PostgreSQL and
+  Redis when shared runtime state is required.
+- Desktop user-data targets default to SQLite under the user private data
   directory and Redis disabled.
 - Historical desktop paths such as XDG or display-name based locations may be
   read as compatibility fallbacks during migration, but new canonical writes
@@ -651,8 +658,8 @@ Rules:
 - [ ] User private files are under `~/.sdkwork/<app>` or the documented Windows equivalent `%USERPROFILE%\.sdkwork\<app>`.
 - [ ] Development config is separated from release config.
 - [ ] PostgreSQL development config uses checked-in `.env.postgres.example`, ignored `.env.postgres`, `SDKWORK_<APP>_DATABASE_ENGINE=postgresql`, and `SDKWORK_<APP>_DATABASE_SSL_MODE`.
-- [ ] Server/container production config defaults to PostgreSQL through structured `[database]` fields.
-- [ ] Desktop/local config defaults to SQLite under the user private data directory.
+- [ ] Standalone server/container and cloud production config defaults to PostgreSQL through structured `[database]` fields.
+- [ ] Desktop user-data config defaults to SQLite under the user private data directory.
 - [ ] Redis config uses structured `[redis]` fields by default.
 - [ ] `DATABASE_URL` and `REDIS_URL` are private explicit overrides only.
 - [ ] Secrets use secret files or platform secrets and are never committed.

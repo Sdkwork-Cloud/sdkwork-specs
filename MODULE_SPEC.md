@@ -28,7 +28,8 @@ Rules:
 - A module `MUST` declare one primary domain and one capability.
 - A module `MUST` expose one package root export from `src/index.ts` or the language-equivalent public export file defined by its architecture standard.
 - A module `MUST NOT` require app-local globals, hidden singleton SDK clients, hard-coded URLs, hard-coded tenant IDs, or manually assembled auth headers.
-- A module `MUST` be usable with SaaS Java SDK clients and Rust local/private SDK clients when its domain is shared.
+- A module `MUST` be usable with standalone/cloud SDK clients and Java/Rust
+  runtime implementations when its domain is shared.
 - A module `SHOULD` publish a small public type surface and hide implementation internals.
 - A module implementation `MUST` follow `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, and the language-specific spec only for languages it actually uses.
 
@@ -76,7 +77,7 @@ Rules:
 | `iam-permission` | Roles, permissions, policies, authorization hints |
 | `iam-security` | Security events, audit timeline, devices, API keys |
 | `platform-app` | App manifest, app registry, environment, release/update metadata |
-| `runtime-bootstrap` | SDK client creation, deployment mode, token storage, host adapter injection |
+| `runtime-bootstrap` | SDK client creation, deployment profile, runtime target, token storage, host adapter injection |
 
 Rules:
 
@@ -128,7 +129,7 @@ Reusable modules separate what changes from what stays stable:
 
 | Concern | Owner |
 | --- | --- |
-| Concrete SDK constructor, base URL, environment, SaaS/private/local endpoint selection | runtime/bootstrap |
+| Concrete SDK constructor, base URL, environment, deployment profile, runtime target, and endpoint selection | runtime/bootstrap |
 | Generated app SDK package name and client class | application adapter |
 | Generated backend SDK package name and client class | application adapter |
 | Stable resource method surface such as `client.auth.sessions.create` | module SDK port |
@@ -140,7 +141,8 @@ Rules:
 - A shared module `MUST` accept generated SDK clients through typed ports instead of importing app-specific SDK packages directly.
 - A shared module `MUST NOT` create concrete app/backend SDK clients inside UI components or service functions.
 - The app SDK and backend SDK may come from different generated packages, but equivalent shared resources `MUST` use the same `tag + operationId` method tree.
-- Runtime/bootstrap owns dev/test/prod/SaaS/private/local selection and token store wiring.
+- Runtime/bootstrap owns environment, standalone/cloud deployment profile,
+  runtime target, endpoint selection, and token store wiring.
 - Service modules may compose multiple SDK calls into one use case, but they `MUST NOT` hide missing SDK operations with raw HTTP fallbacks.
 - Tests `MUST` prove the service works with fake clients that implement the same generated resource surface.
 
@@ -160,7 +162,8 @@ createIamRuntime({
   },
   config: {
     appId: "sdkwork-router",
-    deploymentMode: "saas",
+    deploymentProfile: "cloud",
+    runtimeTarget: "browser",
     environment: "prod",
   },
   tokenStore,
@@ -169,7 +172,7 @@ createIamRuntime({
 
 Communication modules follow the same rule. IM and RTC consumers use the public packages `@sdkwork/im-sdk` and `@sdkwork/rtc-sdk`, whose active source workspaces are:
 
-- `apps/craw-chat/sdks/sdkwork-im-sdk`
+- `apps/sdkwork-im/sdks/sdkwork-im-sdk`
 - `../sdkwork-rtc/sdks/sdkwork-rtc-sdk`
 
 Deprecated `openchat` sources `MUST NOT` be used for new appbase modules.
@@ -228,7 +231,7 @@ Each reusable module `MUST` include:
 - Extension points.
 - Security assumptions.
 - Tests and verification command.
-- Example integration in a SaaS app and a local/private app when applicable.
+- Example integration in standalone and cloud application profiles when applicable.
 
 ## 8. Acceptance Checklist
 
@@ -239,7 +242,7 @@ Each reusable module `MUST` include:
 - [ ] Dependencies flow in the allowed direction.
 - [ ] SDK clients are injected and typed.
 - [ ] Concrete SDK constructors stay in runtime/bootstrap or application adapters.
-- [ ] SaaS/local/private variation is hidden behind runtime/bootstrap.
+- [ ] Standalone/cloud variation and runtime-target variation are hidden behind runtime/bootstrap.
 - [ ] Extension points are explicit.
 - [ ] Module tests use fake or generated SDK clients.
 - [ ] README documents integration and verification.

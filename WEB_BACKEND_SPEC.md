@@ -1,8 +1,8 @@
 # Web Backend Development Standard
 
 - Version: 1.0
-- Scope: Java Spring HTTP backends, Rust HTTP route crates, Rust local/private backends, SaaS/private/local web backend implementations, and backend API implementation boundaries
-- Related: `API_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `DOMAIN_SPEC.md`, `RUST_CODE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `COMPONENT_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md`
+- Scope: Java Spring HTTP backends, Rust HTTP route crates, standalone/cloud web backend implementations, and backend API implementation boundaries
+- Related: `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `DOMAIN_SPEC.md`, `RUST_CODE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `COMPONENT_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork web backends are implemented after the HTTP contract has been designed. `API_SPEC.md` remains the contract source of truth. This file owns implementation layering, naming, handler/service/repository boundaries, route path placement, request context usage, and backend verification expectations.
 
@@ -30,7 +30,9 @@ Rules:
 - OpenAPI authority documents remain the SDK generation source of truth.
 - Java controller mappings and Rust route manifests are implementation inputs that must match the authority OpenAPI.
 - Runtime route definitions `MUST NOT` be the only place where path, method, operationId, auth, owner, or SDK family semantics are declared.
-- Backend code `MUST` preserve the same operationId, path, schema, security, problem-detail error, tenant, and authorization semantics across Java SaaS, Rust local/private, and other supported runtime modes.
+- Backend code `MUST` preserve the same operationId, path, schema, security,
+  problem-detail error, tenant, and authorization semantics across Java/Rust
+  implementations, standalone/cloud profiles, and supported runtime targets.
 - UI packages, frontend services, `backend-admin` UI packages, and generated SDK consumers `MUST NOT` import route crates, controller classes, path constants, or handler internals.
 
 ## 2. Implementation Layers
@@ -82,7 +84,9 @@ Rules:
 - Java open-api controllers `MUST` use the approved versioned non-app/non-backend domain prefix, for example `/im/v3/api`.
 - Method-level route mappings may be relative only when the class/module-level prefix is canonical.
 - Path constants may exist for local implementation reuse, but they `MUST` be generated from or verified against the route manifest/OpenAPI authority. They are not public consumer contracts.
-- A route path `MUST NOT` be duplicated across Java and Rust implementations unless the duplicate is an intentional SaaS/local parity implementation for the same operationId and authority.
+- A route path `MUST NOT` be duplicated across Java and Rust implementations
+  unless the duplicate is an intentional standalone/cloud parity implementation
+  for the same operationId and authority.
 
 ## 4. Naming Standard
 
@@ -158,7 +162,7 @@ Required crate families for Rust HTTP backends:
 | Business service/use case | `sdkwork-<domain>-<capability>-service` | business rules, authorization, transactions, idempotency, repository/provider ports |
 | SQL repository implementation | `sdkwork-<domain>-<capability>-repository-sqlx` | SQLx row mapping, SQL queries, tenant/data-scope-safe repository implementation |
 | HTTP API server process | `sdkwork-<app>-api-server` | config, state, dependency wiring, route mounting, listener, preflight |
-| In-process service host | `sdkwork-<app>-service-host` | service container for local/private/native usage, no HTTP route mounting |
+| In-process service host | `sdkwork-<app>-service-host` | service container for standalone/native usage, no HTTP route mounting |
 | Gateway/proxy | `sdkwork-<app>-gateway` | upstream routing, route precedence, dependency API surface proxying |
 
 Required route crate shape:
@@ -247,6 +251,21 @@ The following patterns are standards failures:
 - A backend/admin UI or frontend service imports route constants instead of using generated SDK clients.
 - A materializer includes dependency-owned routes in an application-owned SDK generation input.
 
+## 4.4 Framework Integration
+
+Any SDKWork web backend, application repository, application module, route crate, API server, gateway, or controller package that owns, serves, develops, proxies, or composes an HTTP `*-api` surface `MUST` follow `WEB_FRAMEWORK_SPEC.md`. Rust HTTP backends `MUST` integrate `sdkwork-web-framework`. Java Spring backends `MUST` preserve equivalent `WebRequestContext` vocabulary, interceptor semantics, route metadata, and problem-detail behavior.
+
+Rules:
+
+- Route crates `MUST` mount routers through framework helpers such as `with_web_request_context` and `MUST` declare `WebRequestContext` on every handler.
+- API server crates `MUST` assemble the standard 18-stage chain through `sdkwork-web-bootstrap` or an equivalent documented framework bootstrap API.
+- Route crates, API servers, gateways, and controller packages `MUST NOT` assemble ad hoc Axum/Tower security stacks, custom credential parsers, local Spring filter frameworks, or parallel request-context types that bypass the framework profile.
+- Business adapters such as appbase IAM `MUST` implement framework extension traits (`WebRequestContextResolver`, `ApiKeyLookupService`, `AuthorizationPolicy`, `TenantIsolationPolicy`, `DomainContextInjector`) instead of exposing a separate HTTP context framework.
+- Handlers `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission scopes, or request IDs from raw headers after framework context resolution.
+- Services `MUST` accept `&WebRequestContext` or `TenantAppContext`. Repositories `MUST` receive tenant and data-scope decisions from service/context inputs.
+- Route manifests `MUST` declare `requestContext: WebRequestContext` and `apiSurface` on every route entry. They `SHOULD` use framework contract types such as `HttpRoute` and `RouteAuth` when projecting OpenAPI materialization input.
+- L1 crate APIs, pipeline stage names, extension trait signatures, and capability matrix: `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`.
+
 ## 5. Request Context And Security
 
 Protected backends consume a typed request context produced by the standard framework chain.
@@ -257,7 +276,10 @@ Rules:
 - Protected app-api and backend-api handlers `MUST` consume the standard dual-token context.
 - Protected open-api handlers `MUST` consume the standard API key context unless a documented compatibility contract declares another mode.
 - Handlers and services `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission scopes, or request IDs from raw headers.
-- The typed request context for authenticated user flows `MUST` carry tenant id, organization id, login scope, user id, session id, app id, environment, deployment mode, auth level, data scope, and permission scope resolved from verified tokens or server-side session lookup.
+- The typed request context for authenticated user flows `MUST` carry tenant
+  id, organization id, login scope, user id, session id, app id, environment,
+  deployment profile, runtime target, auth level, data scope, and permission
+  scope resolved from verified tokens or server-side session lookup.
 - Backend implementations `MUST NOT` fill authenticated request context with demo tenants, hard-coded tenants, mock users, email-normalized user ids, default organization ids, or request payload/header values when token/session context is missing.
 - When request path/body/query tenant or organization values are present, service/use-case code `MUST` compare them with typed context or explicit cross-tenant authorization before repository access.
 - Business authorization `MUST` be enforced in the service/use-case layer or a shared policy service, not only in router middleware and not only in UI.
@@ -306,7 +328,7 @@ Rules:
 Rules:
 
 - Application shells compose routers/controllers, middleware/interceptors, request context, dependency SDK clients, repositories, provider adapters, and service instances.
-- Rust-enabled application shells that participate in app composition `MUST` follow `APP_SDK_INTEGRATION_SPEC.md`: compose Rust route crates, appbase Rust context/auth/bootstrap crates, dependency SDK clients, application service crates, and generated application-owned SDK families without copying dependency-owned API routes.
+- Rust-enabled application shells that participate in app composition `MUST` follow `APP_SDK_INTEGRATION_SPEC.md` and `WEB_FRAMEWORK_SPEC.md`: compose Rust route crates through `sdkwork-web-framework`, appbase/product framework adapters, dependency SDK clients, application service crates, and generated application-owned SDK families without copying dependency-owned API routes.
 - Dependency route metadata is not handler coverage. A Rust route manifest, path list, OpenAPI
   authority, or route contract crate can describe expected routes, but the runtime may treat a
   dependency API as same-origin mounted only when an executable router, controller, or handler
@@ -341,8 +363,13 @@ Rules:
   app-api routes, importing appbase route metadata, or mounting a local/demo IAM router is not
   sufficient handler coverage.
 - Runtime composition `MUST` be environment-aware through `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`, not hard-coded per handler.
-- SaaS/private/local parity follows `DEPLOYMENT_SPEC.md`: shared APIs preserve paths, operationIds, schemas, auth semantics, and problem-detail behavior across runtime modes.
-- Rust local/private implementations that expose or validate appbase capabilities `MUST` use appbase Rust runtime crates for context, auth, bootstrap, and protected route behavior, plus generated appbase SDKs when Rust code calls appbase HTTP APIs directly.
+- Standalone/cloud parity follows `DEPLOYMENT_SPEC.md`: shared APIs preserve
+  paths, operationIds, schemas, auth semantics, and problem-detail behavior
+  across deployment profiles and runtime targets.
+- Rust standalone/cloud implementations that expose or validate appbase
+  capabilities `MUST` use appbase Rust runtime crates for context, auth,
+  bootstrap, and protected route behavior, plus generated appbase SDKs when
+  Rust code calls appbase HTTP APIs directly.
 - Tauri/native commands are host adapters. They may call backend services through approved boundaries, but they must not become a parallel hidden HTTP API surface.
 
 ## 10. Verification
@@ -379,8 +406,13 @@ Every web backend change should verify the relevant subset:
 - [ ] Rust route crates follow `sdkwork-router-<capability>-<surface>` and emit or feed `sdkwork.route.manifest`.
 - [ ] Route/controller changes materialize into the owner-only API authority and derived SDK input.
 - [ ] SDK generation uses the canonical SDKWork generator and generated output remains untouched.
-- [ ] Handlers consume typed request context and do not parse raw credentials, request IDs, tenant IDs, or user IDs.
-- [ ] Authenticated typed context includes tenant, organization, login scope, user, session, app, environment, deployment mode, auth level, data scope, and permission scope from verified token/session context, with no demo/default/mock fallback.
+- [ ] Every HTTP `*-api` runtime or module follows `WEB_FRAMEWORK_SPEC.md`; Rust HTTP runtimes integrate `sdkwork-web-framework`.
+- [ ] Route manifests declare `requestContext: WebRequestContext` and `apiSurface` for every operation, and materialized OpenAPI preserves the corresponding extensions.
+- [ ] Handlers consume typed `WebRequestContext` and do not parse raw credentials, request IDs, tenant IDs, or user IDs.
+- [ ] Authenticated typed context includes tenant, organization, login scope,
+  user, session, app, environment, deployment profile, runtime target, auth
+  level, data scope, and permission scope from verified token/session context,
+  with no demo/default/mock fallback.
 - [ ] Services own business rules, authorization, transaction boundaries, idempotency, events, and cache invalidation.
 - [ ] Repositories are tenant/data-scope safe for tenant-owned data.
 - [ ] Dependency-owned appbase, Drive, provider, or shared-module routes are consumed through dependencies, not copied into the application-owned API authority.

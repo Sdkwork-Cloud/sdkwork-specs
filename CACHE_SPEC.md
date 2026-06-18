@@ -4,13 +4,15 @@
 - Scope: cache runtime abstraction, local cache, Redis cache, namespace policy, admin cache management, QR/login temporary state, cache observability
 - Related: `APPLICATION_SPEC.md`, `API_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines the framework-level cache contract for SDKWork applications. Cache is a runtime capability, not an ad hoc business helper. Product modules must use the cache abstraction and namespace policy model instead of reading Redis, process memory, browser storage, or deployment mode flags directly.
+This standard defines the framework-level cache contract for SDKWork applications. Cache is a runtime capability, not an ad hoc business helper. Product modules must use the cache abstraction and namespace policy model instead of reading Redis, process memory, browser storage, deployment profile flags, or runtime target flags directly.
 
 ## 1. Design Goals
 
-- One cache API for local desktop mode and distributed service mode.
+- One cache API for desktop user-data targets and distributed service targets.
 - Desktop packaged mode defaults to local in-process cache and must not require Redis.
-- Server, container, SaaS, and private service modes use Redis for shared cache state unless a capability explicitly declares local-only behavior.
+- Cloud deployments and standalone server/container targets use Redis for
+  shared cache state unless a capability explicitly declares desktop-only or
+  single-process behavior.
 - Cache entries are derived or temporary state. Cache must not be the only fact source for durable business data.
 - Every cache namespace has an explicit owner, TTL, sensitivity, consistency level, failure mode, and management capability.
 - Admin cache management can inspect high-level runtime state, refresh supported instances, delete namespaces, and delete single keys without exposing sensitive values.
@@ -25,7 +27,7 @@ This standard defines the framework-level cache contract for SDKWork application
 | Namespace policy | A logical namespace contract that binds business use to a cache instance and policy fields. |
 | Cache key | Caller-supplied identifier within a namespace. Runtime code constructs the physical key from instance prefix, namespace, and key. |
 | Local cache | In-process bounded cache for desktop and test usage. It is not shared across processes. |
-| Redis cache | Shared service cache for server/container/SaaS/private service deployments. |
+| Redis cache | Shared service cache for cloud deployments and standalone server/container deployments. |
 | Admin cache management | `backend-admin` API and UI surface for operator cache diagnostics and safe invalidation. |
 
 ## 3. Provider Kinds
@@ -35,25 +37,27 @@ The standard provider identifiers are:
 | Provider kind | Use |
 | --- | --- |
 | `local_cache` | Desktop packaged mode, isolated tests, single-process local development. |
-| `redis_cache` | Server, container, SaaS, private service deployments, and any feature requiring shared state. |
+| `redis_cache` | Cloud deployments, standalone server/container deployments, and any feature requiring shared state. |
 
 Rules:
 
 - Provider identifiers are stable API contract values and must not include implementation names such as `local_process`.
-- A deployment mode may expose multiple cache instances only when each instance has a distinct non-overlapping key prefix and documented purpose.
+- A deployment profile/runtime target may expose multiple cache instances only
+  when each instance has a distinct non-overlapping key prefix and documented
+  purpose.
 - Business modules must not branch on provider kind. They call the cache manager by namespace.
 - Redis adapter construction belongs to bootstrap/runtime wiring. Business modules must not create Redis clients directly.
 
-## 4. Deployment Mode Rules
+## 4. Deployment Profile And Runtime Target Rules
 
-| Deployment mode | Cache requirement |
-| --- | --- |
-| Desktop packaged | MUST use `local_cache` by default. Redis MUST NOT be required for QR login, sessions, auth prompts, or basic admin UI. |
-| Local development | SHOULD use `local_cache` unless testing Redis-specific behavior. |
-| Test | SHOULD use `local_cache` or deterministic fake backends through the same cache manager contract. |
-| Server | MUST use `redis_cache` for runtime cache namespaces. Startup MUST fail fast when Redis is required but not configured. |
-| Container | MUST use external Redis or managed Redis-compatible service for shared cache. |
-| SaaS/private service | MUST use Redis or an approved distributed cache adapter. |
+| Deployment profile | Runtime target | Cache requirement |
+| --- | --- | --- |
+| `standalone` | `desktop` | MUST use `local_cache` by default. Redis MUST NOT be required for QR login, sessions, auth prompts, or basic admin UI. |
+| `standalone` | local development target | SHOULD use `local_cache` unless testing Redis-specific behavior. |
+| `standalone` or `cloud` | `test-runner` | SHOULD use `local_cache` or deterministic fake backends through the same cache manager contract. |
+| `standalone` | `server` | MUST use `redis_cache` for runtime cache namespaces when the app declares shared state. Startup MUST fail fast when Redis is required but not configured. |
+| `standalone` or `cloud` | `container` | MUST use external Redis or managed Redis-compatible service for shared cache when shared state is declared. |
+| `cloud` | `server` or `container` | MUST use Redis or an approved distributed cache adapter for shared runtime state. |
 
 Rules:
 
@@ -263,7 +267,7 @@ Rules:
 
 Minimum tests for cache framework changes:
 
-- Runtime validation for deployment mode provider requirements.
+- Runtime validation for deployment-profile/runtime-target provider requirements.
 - Local cache `maxEntries` enforcement.
 - Namespace TTL and TTL jitter behavior.
 - Duplicate namespace and invalid policy enum rejection.
@@ -282,7 +286,7 @@ Rules:
 
 ## 14. Acceptance Checklist
 
-- [ ] Deployment mode selects `local_cache` for desktop and `redis_cache` for service/server/container/SaaS/private service modes.
+- [ ] Deployment profile and runtime target select `local_cache` for desktop user-data targets and `redis_cache` for cloud or standalone server/container targets that require shared state.
 - [ ] All cache namespaces have complete policy fields.
 - [ ] Runtime validates instances, namespaces, enum values, key prefixes, Redis profile, and local capacity.
 - [ ] Runtime executes namespace TTL and jitter.

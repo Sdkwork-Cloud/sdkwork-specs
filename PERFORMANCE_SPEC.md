@@ -4,7 +4,7 @@
 - Scope: API latency, frontend responsiveness, database query budgets, SDK behavior, rate limits, capacity planning
 - Related: `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `DATABASE_SPEC.md`, `FRONTEND_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines minimum performance discipline for reusable modules and shared APIs. Performance requirements must be explicit enough to test, monitor, and preserve across SaaS Java and Rust local/private implementations.
+This standard defines minimum performance discipline for reusable modules and shared APIs. Performance requirements must be explicit enough to test, monitor, and preserve across Java/Rust implementations, standalone/cloud deployment profiles, and supported runtime targets.
 
 ## 1. Performance Classes
 

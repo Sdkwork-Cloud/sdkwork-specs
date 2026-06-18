@@ -143,7 +143,9 @@ Rules:
 - Provider credentials must be stored by reference and resolved only inside trusted Drive runtime composition.
 - Provider-native errors must be normalized to Drive error kinds before crossing Drive service boundaries.
 - Business services must not depend on provider-specific SDKs, provider bucket names, provider endpoints, or provider headers.
-- Local filesystem storage is a Drive provider adapter for local/private mode. It is not a reason for app modules to write files directly.
+- Local filesystem storage is a Drive provider adapter for approved standalone
+  desktop or server runtime targets. It is not a reason for app modules to
+  write files directly.
 - Presigned URLs are grants, not identity. They must expire and must never become persisted business state.
 
 ## 5. Database Contract
@@ -268,7 +270,7 @@ Required route contract:
 
 | OperationId | Method and path | Purpose |
 | --- | --- | --- |
-| `uploader.uploads.prepare` | `POST /app/v3/api/drive/uploader/uploads` | Prepare or resume an upload task with tenant, actor, app/resource, profile, file metadata, retention, and target-space policy. |
+| `uploader.uploads.prepare` | `POST /app/v3/api/drive/uploader/uploads` | Prepare or resume an upload task with token-derived tenant/actor context, app/resource, profile, file metadata, retention, and target-space policy. |
 | `uploader.uploads.parts.markUploaded` | `PUT /app/v3/api/drive/uploader/uploads/{uploadItemId}/parts/{partNo}` | Record that a part was uploaded to the Drive-granted provider target. |
 | `uploadSessions.parts.presign` | `PUT /app/v3/api/drive/upload_sessions/{uploadSessionId}/parts/{partNo}` | Return or refresh the short-lived upload grant for one part. |
 | `uploadSessions.complete` | `POST /app/v3/api/drive/upload_sessions/{uploadSessionId}/complete` | Complete the Drive upload session and return stable Drive resource identity. |
@@ -276,7 +278,7 @@ Required route contract:
 Rules:
 
 - Drive App API handlers `MUST` delegate to the Drive server-side uploader service or equivalent Drive-owned application service. They must not reimplement upload-space resolution, object-key planning, retention cleanup, part validation, or statistic recording in route code.
-- The prepare request `MUST` carry enough attribution for Drive statistics: `tenantId`, optional `organizationId`, user or anonymous/system actor, `appId`, `appResourceType`, `appResourceId`, optional `scene`, optional `source`, `uploadProfileCode`, content metadata, target policy, and retention.
+- The prepare request `MUST` carry enough business attribution for Drive statistics: `appId`, `appResourceType`, `appResourceId`, optional `scene`, optional `source`, `uploadProfileCode`, content metadata, target policy, and retention. Tenant, organization, and authenticated user attribution `MUST` come from `WebRequestContext`, API key context, or an approved anonymous/share context, not from generated SDK method inputs such as `tenantId`.
 - Raw `shareToken` is allowed only on prepare requests that target an explicit shared Drive folder. Drive must hash or otherwise protect the token before lookup and must not store or return the raw token.
 - Business APIs that need an uploaded file `MUST` receive a Drive reference, Drive-backed `MediaResource`, or business relation id. They must not expose `/upload`, `/presign`, `/complete`, or file-part endpoints that duplicate Drive Uploader.
 - Server-side Rust code in the same trusted backend should call the Drive server-side uploader service directly instead of calling these App API routes over HTTP.
@@ -401,7 +403,7 @@ Rules:
 - Cache keys for persisted file/media resources should use `drive_uri`, `drive_node_id`, or `MediaResource.id`, not signed delivery URLs.
 - Browser code must not construct provider object keys or call S3/OSS/MinIO SDKs directly.
 - Feature code must not call raw `fetch`, `axios`, or generic request helpers against `/app/v3/api/drive/uploader/*`, `/app/v3/api/drive/upload_sessions/*`, S3, OSS, MinIO, or local object-storage endpoints. The only expected raw byte upload in browser/mobile code is the Drive SDK composed uploader's internal call to the short-lived provider upload URL returned by Drive.
-- Service layers, not UI components, must supply upload attribution: `tenantId`, optional `organizationId`, current `userId` or allowed `anonymousId`, `appId`, `appResourceType`, `appResourceId`, optional `scene`, optional `source`, `uploadProfileCode`, and retention. UI components may select files and display progress, but they do not invent statistic dimensions.
+- Service layers, not UI components, must supply upload business attribution: `appId`, `appResourceType`, `appResourceId`, optional `scene`, optional `source`, `uploadProfileCode`, and retention. They must not pass `tenantId`, `organizationId`, current `userId`, or equivalent authenticated identity as generated SDK method inputs. UI components may select files and display progress, but they do not invent statistic dimensions.
 - The SDK may persist local resumable state such as fingerprint, task id, progress, and completed parts for acceleration. Drive server state remains authoritative and must be queried during prepare/resume.
 
 ### 9.1 Server-Side Rust Upload

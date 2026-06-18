@@ -53,6 +53,7 @@ Rules:
 | Shared Harmony native package | `sdkwork-<capability>-harmony-native` | `sdkwork-order-harmony-native` |
 | Backend/admin React package | `@sdkwork/react-backend-<domain>` | `@sdkwork/react-backend-commerce` |
 | Route crate package | `sdkwork-router-<capability>-<surface>` | `sdkwork-router-product-app-api` |
+| Web framework crate | `sdkwork-web-<capability>` | `sdkwork-web-context`, `sdkwork-web-axum`, `sdkwork-web-bootstrap` |
 | Rust service crate | `sdkwork-<domain>-<capability>-service` | `sdkwork-drive-node-service` |
 | Rust SQLx repository crate | `sdkwork-<domain>-<capability>-repository-sqlx` | `sdkwork-drive-node-repository-sqlx` |
 | Rust API server crate | `sdkwork-<app>-api-server` | `sdkwork-drive-api-server` |
@@ -180,6 +181,9 @@ Rules:
   repository port.
 - `sdkwork-router-<capability>-<surface>` owns HTTP route adaptation for one capability and one
   surface. `<surface>` is normally `open-api`, `app-api`, or `backend-api`.
+- `sdkwork-web-<capability>` owns HTTP framework integration code only and lives in the
+  `sdkwork-web-framework` repository. Business repositories must not create local `sdkwork-web-*`
+  crates.
 - `sdkwork-<app>-api-server` owns an HTTP server process that mounts route crates and listens on
   HTTP.
 - `sdkwork-<app>-service-host` owns an in-process service container and must not mount HTTP routes.

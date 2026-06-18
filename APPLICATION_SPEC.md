@@ -1,12 +1,12 @@
 # Application Module Standard
 
 - Version: 1.0
-- Scope: all SDKWork SaaS, private, local, desktop, web, and mobile applications
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `DOMAIN_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `APP_MANIFEST_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_SPEC.md`, `IAM_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md`
+- Scope: all SDKWork standalone/cloud, desktop, web, and mobile applications
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `DOMAIN_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `APP_MANIFEST_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_SPEC.md`, `IAM_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how applications are assembled from reusable modules. The goal is to make applications thin composition layers and keep shared capabilities reusable across SaaS Java backends, Rust local/private backends, and different frontend architectures.
+This standard defines how applications are assembled from reusable modules. The goal is to make applications thin composition layers and keep shared capabilities reusable across standalone/cloud backends, Rust-enabled runtimes, and different frontend architectures.
 
-Use `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` for cross-client package taxonomy, route identity, component boundaries, dependency direction, host adapter boundaries, and SDK/IAM/runtime alignment. Use `APP_SDK_INTEGRATION_SPEC.md` for cross-architecture generated SDK wiring, dependency SDK composition, appbase IAM runtime, global TokenManager, and Rust backend composition. Use `APP_PC_ARCHITECTURE_SPEC.md` for PC browser/desktop application roots, `APP_H5_ARCHITECTURE_SPEC.md` for H5/Capacitor application roots, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` for Flutter mobile roots, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` for mini program roots, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` for native Android roots, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` for native iOS roots, and `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` for native HarmonyOS roots. Use the matching UI/package standard for detailed UI package rules, including `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, and `APP_MINI_PROGRAM_UI_SPEC.md` for their package-local UI rules. Use `MODULE_SPEC.md` for reusable package contracts, `FRONTEND_SPEC.md` for architecture-neutral UI-service-SDK rules, `WEB_BACKEND_SPEC.md` for Java/Rust web backend implementation boundaries, `CONFIG_SPEC.md` for environment and SDK client bootstrap, and `APP_MANIFEST_SPEC.md` for `sdkwork.app.config.json`.
+Use `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` for cross-client package taxonomy, route identity, component boundaries, dependency direction, host adapter boundaries, and SDK/IAM/runtime alignment. Use `APP_SDK_INTEGRATION_SPEC.md` for cross-architecture generated SDK wiring, dependency SDK composition, appbase IAM runtime, global TokenManager, and Rust backend composition. Use `APP_PC_ARCHITECTURE_SPEC.md` for PC browser/desktop application roots, `APP_H5_ARCHITECTURE_SPEC.md` for H5/Capacitor application roots, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` for Flutter mobile roots, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` for mini program roots, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` for native Android roots, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` for native iOS roots, and `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` for native HarmonyOS roots. Use the matching UI/package standard for detailed UI package rules, including `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, and `APP_MINI_PROGRAM_UI_SPEC.md` for their package-local UI rules. Use `MODULE_SPEC.md` for reusable package contracts, `FRONTEND_SPEC.md` for architecture-neutral UI-service-SDK rules, `WEB_FRAMEWORK_SPEC.md` for mandatory SDKWork HTTP `*-api` framework integration, `WEB_BACKEND_SPEC.md` for Java/Rust web backend implementation boundaries, `CONFIG_SPEC.md` for environment and SDK client bootstrap, and `APP_MANIFEST_SPEC.md` for `sdkwork.app.config.json`.
 
 Every application root `MUST` contain the source-controlled `.sdkwork/` workspace required by `SDKWORK_WORKSPACE_SPEC.md`, including `.sdkwork/skills/` and `.sdkwork/plugins/`. This directory stores local development knowledge and repository/application extensions; it is separate from generated SDK output `.sdkwork/` control-plane files and user-private runtime `~/.sdkwork/<app>` directories.
 
@@ -54,7 +54,10 @@ Rules:
 - Every package outside an explicit `backend-admin` boundary `MUST` consume SDKWork remote capabilities through generated app SDKs or approved app SDK wrappers. Non-admin packages `MUST NOT` import, export, construct, proxy, or route through backend SDK packages, appbase backend SDK clients, backend wrapper functions, backend generated SDK clients, or backend base URL resolvers.
 - Packages without a `console` or `admin` role segment are default app/user packages. `console` packages are user-facing management console modules built on the same app-side architecture and app-api/app SDK boundary. `admin` packages are internal operator modules mapped to `backend-admin` and backend-api/backend SDK boundaries.
 - Every SDKWork application root `MUST` have `.sdkwork/README.md`, `.sdkwork/skills/README.md`, and `.sdkwork/plugins/README.md`.
-- Independent application repositories under `apps/` that include Rust local/private services, Tauri hosts, native/Tauri host crates, route crates, repository crates, service crates, or worker crates `MUST` declare `sdkwork-appbase` as a foundation dependency.
+- Independent application repositories under `apps/` that include Rust backend
+  services, Tauri hosts, native/Tauri host crates, route crates, repository
+  crates, service crates, or worker crates `MUST` declare `sdkwork-appbase` as
+  a foundation dependency.
 - Those Rust-enabled independent apps `MUST` integrate the relevant appbase Rust crates and generated appbase SDK families, including appbase app SDKs for user-facing app-api capabilities and appbase backend SDKs for `backend-admin` capabilities when those surfaces are used.
 - Applications `MUST NOT` copy, fork, or regenerate appbase-owned IAM, session, workspace, bootstrap, tenant, organization, user, verification, or backend management APIs into the application repository. They consume appbase through dependencies and approved composed wrappers.
 - UI packages from different architecture families must not import each other's pages, components, routes, host adapters, or runtime globals.
@@ -90,9 +93,10 @@ Rules:
 - H5 mobile, Flutter mobile, mini program, native Android, native iOS, and native HarmonyOS app shells `MUST` follow `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` and their root architecture standards for package taxonomy, route identity, host adapters, and renderer/platform packaging boundaries.
 - Rust-enabled independent app shells `MUST` compose `sdkwork-appbase` Rust runtime crates and appbase generated SDK clients before application-owned domain modules so login/session/context/bootstrap behavior stays shared.
 - App shells `MUST` follow `APP_SDK_INTEGRATION_SPEC.md` when wiring generated SDK clients, dependency SDKs, appbase IAM runtime, API key providers, host adapters, and global token/session state.
+- Application shells and modules that own, serve, develop, proxy, or compose `open-api`, `app-api`, `backend-api`, or any SDKWork HTTP `*-api` surface `MUST` follow `WEB_FRAMEWORK_SPEC.md` before route/controller implementation. Rust HTTP runtimes `MUST` integrate `sdkwork-web-framework`; Java/Spring runtimes `MUST` preserve the same typed `WebRequestContext`, interceptor, route metadata, and problem-detail semantics.
 - Applications `MUST` compose other applications and reusable capabilities through generated SDK packages, declared `sdkDependencies`, component specs, package root exports, service ports, or approved composed facades.
 - Applications `MUST NOT` copy another app's private `src` files, generated SDK output, DTO shims, route constants, auth UI, token stores, or appbase-owned API routes.
-- Web backend application shells `MUST` compose Rust route crates, Java controllers, authority OpenAPI materialization, and generated SDK families through `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, and the SDK standards. They `MUST NOT` let UI packages or service facades depend directly on route crate internals.
+- Web backend application shells `MUST` compose Rust route crates, Java controllers, authority OpenAPI materialization, and generated SDK families through `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, and the SDK standards. They `MUST NOT` let UI packages or service facades depend directly on route crate internals.
 - Shared business behavior `MUST` live in reusable packages, not app-local pages.
 - UI packages `MUST NOT` build raw HTTP requests or auth headers.
 - Services `MUST` receive SDK clients by dependency injection.
@@ -116,7 +120,7 @@ Different app architectures share capabilities through SDKs and service ports, n
 | iOS native app | Swift app SDKs and iOS host adapters | generated Swift appbase SDK or approved appbase iOS wrapper with one global token-manager equivalent |
 | Harmony native app | ArkTS/TypeScript app SDKs adapted for Harmony runtime and HarmonyOS host adapters | appbase Harmony wrapper or approved appbase ArkTS adapter with one global token-manager equivalent |
 | Desktop/Tauri renderer | TypeScript app SDKs injected by renderer bootstrap | appbase IAM runtime; native storage only through host adapters |
-| Rust local/private backend | Rust SDKs, route crates, service traits | appbase Rust context/auth/bootstrap crates and generated appbase SDKs when calling appbase APIs |
+| Rust backend/runtime | Rust SDKs, route crates, service traits | appbase Rust context/auth/bootstrap crates and generated appbase SDKs when calling appbase APIs |
 | Backend/admin React | TypeScript backend SDKs for `backend-admin` | appbase backend SDK for IAM administration, no app login session creation |
 
 Rules:
@@ -125,7 +129,9 @@ Rules:
 - A React package `MUST NOT` import Flutter, Android, iOS, or Harmony SDK/UI implementations; Flutter packages `MUST NOT` import TypeScript React wrappers; native Android/iOS/Harmony packages `MUST NOT` import another client architecture's UI/runtime wrappers.
 - Rust services `MUST NOT` embed frontend SDK wrappers. Rust code that calls HTTP APIs directly uses Rust SDKs or approved Rust service clients.
 - App-api SDK clients and explicit `backend-admin` backend-api SDK clients `MUST` share the authenticated TokenManager created by the application runtime. Protected open-api SDK clients use their declared API key provider unless the contract explicitly declares a different mode.
-- Independent `apps/` repositories with Rust, Tauri, native runtime, or local/private backend capability `MUST` declare `sdkwork-appbase` before publishing application-owned SDK families.
+- Independent `apps/` repositories with Rust, Tauri, native runtime, or
+  backend capability `MUST` declare `sdkwork-appbase` before publishing
+  application-owned SDK families.
 
 ### 1.1 Web Backend API Composition
 
@@ -159,7 +165,9 @@ sdkwork-router-order-app-api
 Rules:
 
 - Rust route crates that define SDKWork HTTP routes `MUST` follow `API_SPEC.md` and be named `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
+- Every application repository or module that develops any SDKWork HTTP `*-api` surface `MUST` integrate the framework architecture from `WEB_FRAMEWORK_SPEC.md`; application-local route/controller frameworks are not allowed to replace it.
 - Web backend implementation layers, including controller/router, handler, service/use-case, repository, provider adapter, request context, and route materialization boundaries, `MUST` follow `WEB_BACKEND_SPEC.md`.
+- Every API operation exposed by an application module `MUST` consume or project `WebRequestContext`: route manifests declare `requestContext: WebRequestContext` and `apiSurface`, materialized OpenAPI declares `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface`, and handlers/controllers consume the typed context before service code.
 - Route crates own route/path configuration for one capability and one API surface. They do not own SDK package names, generated SDK output, frontend service ports, or final OpenAPI authority names.
 - The application or backend shell owns route aggregation. It combines same-surface, same-owner route manifests into the project/domain authority such as `sdkwork-commerce-app-api` or `sdkwork-commerce-backend-api`.
 - Applications consume generated application-owned SDK families such as `sdkwork-commerce-app-sdk` and `sdkwork-commerce-backend-sdk`. UI and service modules `MUST NOT` import route crates or build requests from route constants.
@@ -227,13 +235,15 @@ export interface AppModuleRuntime<TAppClient, TBackendClient> {
   appClient: TAppClient;
   backendClient?: TBackendClient;
   environment: "development" | "test" | "staging" | "production";
-  deploymentMode: "saas" | "private" | "local";
+  deploymentProfile: "standalone" | "cloud";
+  runtimeTarget?: "browser" | "desktop" | "server" | "container" | "test-runner" | string;
 }
 ```
 
 Rules:
 
-- No shared module may hard-code a SaaS base URL, local port, tenant ID, token, or generated SDK package.
+- No shared module may hard-code a cloud base URL, loopback port, tenant ID,
+  token, or generated SDK package.
 - Environment differences belong in bootstrap/config.
 - Runtime inputs `SHOULD` be serializable where they cross host/native boundaries.
 - Feature flags `SHOULD` be capability-scoped.
@@ -269,5 +279,5 @@ Rules:
 - [ ] SDK clients are injected at initialization.
 - [ ] Runtime config and SDK construction follow `CONFIG_SPEC.md`.
 - [ ] No raw HTTP or manual auth headers in business UI modules.
-- [ ] SaaS/private/local differences are isolated in bootstrap.
+- [ ] Standalone/cloud differences and runtime-target differences are isolated in bootstrap.
 - [ ] Tests cover service contract and module integration.

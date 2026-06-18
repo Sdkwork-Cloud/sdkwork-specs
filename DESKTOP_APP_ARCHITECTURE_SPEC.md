@@ -79,8 +79,9 @@ Rules:
   `pnpm desktop:dev` and `pnpm tauri:dev`, must keep product server startup on
   explicit server commands.
 - The desktop shell must not infer that the service database is SQLite just
-  because the deployment mode is `desktop`. The deployment mode describes shell
-  behavior; the launched service profile describes backend persistence.
+  because the runtime target is `desktop`. The deployment profile remains
+  `standalone` or `cloud`; the launched service profile describes backend
+  persistence.
 - SQLite development entrypoints are allowed only as explicit local-data or
   regression profiles, such as `pnpm server:dev:sqlite` or a documented
   desktop-local validation command; they must not replace the default explicit
@@ -210,26 +211,29 @@ Desktop apps normally support more than one runtime mode.
 | `desktop` | Installed desktop app with native shell and user-private runtime files. |
 | `tablet-ipados` | iPadOS native package using the PC renderer and Tauri iOS target. |
 | `tablet-android` | Android tablet native package using the PC renderer and Tauri Android target. |
-| `local` | Local development or local-only runtime, often using localhost services. |
-| `private` | Private deployment using configured server endpoints. |
-| `saas` | Public hosted deployment using public server endpoints. |
-| `web` | Browser-hosted build without native host APIs. |
+| `standalone` | Self-contained application deployment profile. |
+| `cloud` | Cloud/service deployment profile using managed ingress and dependencies. |
+| `browser` | Browser runtime target without native host APIs. |
 
 Rules:
 
 - Environment variables and runtime config follow `ENVIRONMENT_SPEC.md` and `CONFIG_SPEC.md`.
-- Lifecycle environment, profile alias, deployment mode, build mode, and runtime target `MUST` be modeled separately. Tauri target, Vite mode, or Spring profile must not be used as the entire runtime decision.
+- Lifecycle environment, profile alias, deployment profile, build mode, and runtime target `MUST` be modeled separately. Tauri target, Vite mode, or Spring profile must not be used as the entire runtime decision.
 - Runtime directories, logs, cache, user-private files, and local database paths follow `RUNTIME_DIRECTORY_SPEC.md`.
 - Desktop-local data uses SQLite by default, tablet-local data uses SQLite or approved platform-local encrypted storage, while the backend service launched
   by desktop development commands uses the PostgreSQL dev profile unless an
   explicit SQLite command is selected.
-- Installed desktop config uses `environment = "production"`, `deployment_mode = "desktop"`, and `runtime_target = "desktop"` by default unless the installer is explicitly producing a private/local appliance profile.
+- Installed desktop config uses `environment = "production"`,
+  `deployment_profile = "standalone"`, and `runtime_target = "desktop"` by
+  default unless the installer is explicitly producing a cloud-managed desktop
+  profile.
 - Desktop development config uses `environment = "development"` and `runtime_target = "desktop"` for the native shell, while any launched backend service uses a separate `runtime_target = "server"` config.
 - Desktop and tablet test config uses `environment = "test"` and isolates SQLite files, logs, cache, temp files, local service ports, and backend test databases.
 - Release builds `MUST NOT` hard-code localhost API or websocket endpoints.
 - Development defaults may use localhost only in development-prunable branches or explicit local profiles.
 - Local runtime bridges `MUST` expose stable API contracts and must be replaceable by remote services without UI rewrites.
-- Feature packages `MUST NOT` read deployment mode directly unless they own a true platform-specific concern.
+- Feature packages `MUST NOT` read deployment profile or runtime target directly
+  unless they own a true platform-specific concern.
 
 Standard desktop/native config files:
 
@@ -266,7 +270,9 @@ apps/<product>-pc/
 Rules:
 
 - `config/desktop/*.toml.example` describes installed desktop/tablet runtime defaults: local host mode, secure storage provider, local service lifecycle, user-private directories, and SQLite or encrypted local storage.
-- `config/server/*.toml.example` describes backend/service defaults used by `pnpm dev:server`, desktop-started services, service releases, and private deployments.
+- `config/server/*.toml.example` describes backend/service defaults used by
+  `pnpm dev:server`, desktop-started services, service releases, and
+  customer-owned or cloud deployments.
 - `config/tauri/*` or `src-tauri/tauri.*.conf.json` describes platform packaging metadata: bundle identifier, package name, window metadata, permissions, capabilities, icons, mobile/tablet target metadata, updater metadata, and signing references.
 - Tauri config may contain signing key references, keychain names, environment variable names, or CI secret identifiers. It must not contain signing private keys, auth tokens, refresh tokens, database passwords, API keys, or private endpoints.
 - Tauri platform-specific config files may override target-specific packaging values and permissions. They must not override app/console/admin route ownership, generated SDK packages, API path contracts, TokenManager wiring, or appbase IAM behavior.

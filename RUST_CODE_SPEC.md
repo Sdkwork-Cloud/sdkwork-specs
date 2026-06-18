@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: Rust crates, workspaces, route crates, Tauri/native Rust, Rust services, Rust SDK facades, and Rust tests
-- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`
+- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`
 
 This standard applies only when Rust source, Cargo manifests, Rust route crates, Tauri Rust code, or Rust RPC code is touched.
 
@@ -27,7 +27,7 @@ Allowed authored Rust crate families:
 | SQLx repository implementation | `sdkwork-<domain>-<capability>-repository-sqlx` | database schema constants, row mapping, SQLx queries, repository trait implementation |
 | HTTP route/API adapter | `sdkwork-router-<capability>-<surface>` | paths, routes, handlers, route manifest, API/service mapping |
 | HTTP API server process | `sdkwork-<app>-api-server` | config loading, dependency construction, route mounting, HTTP listener, preflight |
-| In-process service host | `sdkwork-<app>-service-host` | local/private/native service container, no HTTP route mounting |
+| In-process service host | `sdkwork-<app>-service-host` | standalone/native service container, no HTTP route mounting |
 | Native/Tauri host | `sdkwork-<app>-native-host` or `sdkwork-<app>-tauri-host` | native commands, host state, platform adapters |
 | Background job process | `sdkwork-<domain>-<capability>-worker` | jobs, scheduling, queues, retries, cursors, locks |
 | API gateway/proxy | `sdkwork-<app>-gateway` | upstream routing, route precedence, dependency API surface proxying |
@@ -185,6 +185,7 @@ Rules:
 
 - API server crates are runnable HTTP processes. They mount route crates, construct services,
   inject repository/adapters, run preflight checks, and start the listener.
+- API server crates `MUST` assemble the HTTP runtime through `sdkwork-web-bootstrap` or an equivalent documented bootstrap API from `sdkwork-web-framework` according to `WEB_FRAMEWORK_SPEC.md`.
 - API server crates `MUST NOT` define core business rules, SQL queries, OpenAPI authority, or
   generated SDK ownership.
 - API server crates may depend on route crates, service crates, repository implementation crates,
@@ -221,7 +222,8 @@ crates/sdkwork-<app>-service-host/
 
 Rules:
 
-- Service host crates provide a Rust in-process service container for local/private/native use.
+- Service host crates provide a Rust in-process service container for
+  standalone/native use.
 - Service host crates `MUST NOT` mount HTTP routes or start an HTTP listener.
 - Service host crates `MUST NOT` replace service crates as the owner of business rules.
 
@@ -339,7 +341,7 @@ Rules:
 
 ## 2. Route Crates
 
-Rust HTTP route crates follow `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, and `SDK_WORKSPACE_GENERATION_SPEC.md`.
+Rust HTTP route crates follow `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, and `SDK_WORKSPACE_GENERATION_SPEC.md`.
 
 Required route crate shape:
 
@@ -363,15 +365,16 @@ crates/sdkwork-router-<capability>-<surface>/
 Rules:
 
 - `paths.rs` owns path constants.
-- `routes.rs` owns framework router composition.
-- `handlers.rs` owns HTTP decoding/response mapping and delegates business logic.
-- `manifest.rs` owns deterministic route manifest projection.
+- `routes.rs` owns framework router composition through `sdkwork-web-framework` helpers.
+- `handlers.rs` owns HTTP decoding/response mapping, declares `WebRequestContext` on every handler, and delegates business logic.
+- `manifest.rs` owns deterministic route manifest projection, including `requestContext: WebRequestContext` and route-level `apiSurface` for every route.
 - `mapper/` owns request DTO to service command mapping, service result to response DTO mapping,
   and problem-detail mapping.
 - Business rules live in services, not handlers.
 - Route crates must call service traits or service structs and must not depend on concrete SQLx
   repository implementation crates.
 - Route crates must not depend on generated SDKs for the same API authority.
+- Route crates `MUST NOT` parse raw credential or tenant headers in handlers; context comes from `WebRequestContext` injected by the framework.
 
 ## 3. Surface Integration Entrypoints
 

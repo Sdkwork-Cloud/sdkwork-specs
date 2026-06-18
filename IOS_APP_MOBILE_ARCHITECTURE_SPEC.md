@@ -254,7 +254,8 @@ Rules:
 
 Rules:
 
-- iOS root config separates lifecycle environment, build mode, deployment mode, and runtime target according to `CONFIG_SPEC.md`.
+- iOS root config separates lifecycle environment, build mode, deployment
+  profile, and runtime target according to `CONFIG_SPEC.md`.
 - `config/app/` and `config/host/` examples must be safe checked-in templates only.
 - iOS bundle id, minimum supported iOS version, entitlements, permissions, associated domains, universal links, push environment, signing reference names, Apple team/profile references, and store profile references belong to host config or Xcode project templates.
 - Host config must not contain signing private keys, auth tokens, refresh tokens, API keys, database credentials, private service endpoints, SDK ownership, or business route constants.

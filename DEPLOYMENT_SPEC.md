@@ -1,28 +1,87 @@
 # Deployment And Runtime Standard
 
 - Version: 1.0
-- Scope: SaaS, private, local, Java Spring, Rust local backend, HTTP/RPC runtime bootstrap, frontend bootstrap, environment config
+- Scope: standalone/cloud application deployment profiles, Java Spring, Rust backend, HTTP/RPC runtime bootstrap, frontend bootstrap, environment config
 - Related: `APPLICATION_SPEC.md`, `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`
 
-SDKWork applications must switch between SaaS cloud mode and local/private mode without changing shared module APIs.
+SDKWork applications must deploy through one of two standardized application deployment profiles: `standalone` or `cloud`. Shared module APIs, route contracts, generated SDKs, IAM request context, and runtime bootstrap must remain the same across both profiles.
 
 Use `CONFIG_SPEC.md` for typed runtime config, SDK client construction, token storage adapters, and feature flags.
 
-## 1. Deployment Modes
+## 1. Deployment Profiles
 
-| Mode | Backend | Use case |
+`deploymentProfile` is the canonical application deployment architecture field.
+All SDKWork applications `MUST` declare exactly one active deployment profile at
+runtime and in release/package metadata.
+
+| Profile | Architecture | Use case |
 | --- | --- | --- |
-| `saas` | Java Spring `legacy-java-plus-workspace` | Cloud hosted SDKWork services |
-| `private` | Java Spring or Rust service | Customer-controlled deployment |
-| `local` | Rust local backend or embedded runtime | Desktop/local-first usage |
-| `test` | Mock, fixture, or local test server | Automated tests |
+| `standalone` | Self-contained application unit with one public application ingress and application-owned runtime config | Desktop, local development, demos, private appliance/server install, single-node service, single-container package |
+| `cloud` | Cloud/service deployment with split services, managed dependencies, explicit ingress, environment-scoped secrets, release orchestration, and independent scaling | SDKWork hosted SaaS, customer VPC/private cloud, Kubernetes or equivalent orchestration |
 
 Rules:
 
-- Shared API contracts `MUST` remain identical across `saas`, `private`, and `local`.
-- Differences in storage, process model, or token issuer `MUST` be hidden behind SDK client initialization.
-- Local-only native capabilities may have local host APIs, but common IAM/API contracts must remain compatible.
+- `deploymentProfile` values are only `standalone` and `cloud`.
+- Old values such as `saas`, `private`, `local`, `test`, `server`,
+  `container`, `desktop`, and `web` `MUST NOT` be used as deployment profile
+  values.
+- SaaS, customer-private, local, and test are environment, ownership, tenancy,
+  release, or test-fixture concerns. They must be represented through
+  environment, release metadata, runtime target, topology profile, or test
+  fixture config, not through a third deployment profile.
+- Shared API contracts `MUST` remain identical across `standalone` and `cloud`.
+- Differences in storage, process model, topology, dependency availability, or token issuer `MUST` be hidden behind SDK client initialization and `WebRequestContext` construction.
+- Local-only native capabilities may have local host APIs, but common IAM/API contracts must remain compatible and must not leak local-only parameters into generated SDK inputs.
 - Runtime config and SDK client bootstrap `MUST` follow `CONFIG_SPEC.md`.
+
+### 1.1 Standalone Profile
+
+Rules:
+
+- `standalone` deployments `MUST` expose one public application ingress for
+  SDKWork HTTP `*-api` surfaces unless the app is a pure client package.
+- All application-owned `open-api`, `app-api`, `backend-api`, route crates,
+  controller modules, gateways, and API servers in a standalone deployment
+  `MUST` integrate `sdkwork-web-framework` or the language-equivalent profile
+  defined by `WEB_FRAMEWORK_SPEC.md`.
+- Every route/operation served in standalone `MUST` receive
+  `WebRequestContext`; tenant and organization context come from auth/access
+  token validation, API key records, or server-side request context, not from
+  generated `tenant_id` or `tenantId` SDK inputs.
+- Dependency APIs may be embedded, mounted same-origin, proxied, or consumed by
+  generated dependency SDK clients only when `dependencyApiSurfaces` declares
+  the mode and verification evidence required by `CONFIG_SPEC.md` and
+  `SDK_SPEC.md`.
+- Standalone server packages default to PostgreSQL. Standalone desktop
+  user-data runtime targets may default to SQLite under the SDKWork
+  user-private directory.
+- Redis is required only when the application profile declares shared runtime
+  state, realtime fanout, rate limiting, queueing, or cache behavior that
+  requires Redis.
+- Standalone release artifacts may be archives, OS services, desktop
+  installers, or single-container packages, but all of them remain one
+  application deployment unit.
+
+### 1.2 Cloud Profile
+
+Rules:
+
+- `cloud` deployments `MUST` use split services for production unless an
+  approved architecture decision documents why the app remains a single service
+  behind cloud ingress.
+- `cloud` deployments `MUST` declare public ingress, service discovery or
+  upstreams, managed secrets, persistent data stores, readiness/liveness checks,
+  observability, rollback, and release environment binding.
+- Platform capabilities such as IAM, appbase, Drive, shared agent services, and
+  cross-product SDKs `MUST` be reached through declared platform/application
+  surfaces or dependency SDK base URLs. They must not be hidden behind ad hoc
+  localhost defaults.
+- Cloud browser/runtime config `SHOULD` start from one public SDK root when a
+  gateway serves all SDK surfaces, and `MUST` support explicit per-surface or
+  per-dependency base URL overrides for split deployments.
+- Cloud release artifacts are container images, charts/manifests, deployment
+  bundles, or provider-specific deployment packages with SBOM, provenance,
+  checksums, signing, rollout, and rollback evidence.
 
 ## 2. Environment Names
 
@@ -37,7 +96,7 @@ production
 
 Rules:
 
-- Environment-specific base URLs, tokens, feature flags, and deployment mode belong in bootstrap config.
+- Environment-specific base URLs, feature flags, deployment profile, and runtime target belong in bootstrap config.
 - Shared packages `MUST NOT` hard-code environment URLs.
 - Config keys `SHOULD` be capability-scoped and documented.
 
@@ -48,8 +107,8 @@ Bootstrap owns:
 - SDK client construction.
 - Base URL selection.
 - Token storage adapter selection.
-- IAM login/session integration and Rust AppContext validation follow `IAM_LOGIN_INTEGRATION_SPEC.md` in SaaS, private, local, and desktop modes.
-- Deployment mode selection.
+- IAM login/session integration and Rust AppContext validation follow `IAM_LOGIN_INTEGRATION_SPEC.md` in standalone, cloud, desktop, server, container, browser, mobile, and test runner targets.
+- Deployment profile and runtime target selection.
 - Feature flag provider.
 - Host/native adapter injection.
 
@@ -64,19 +123,19 @@ Shared modules own:
 
 Rules:
 
-- Java SaaS and Rust local implementations `MUST` expose the same OpenAPI contract for shared domains.
-- Java SaaS and Rust local/private implementations that expose shared RPC services `MUST` preserve the proto contract and operationId mapping defined by `RPC_SPEC.md`.
+- Cloud and standalone implementations `MUST` expose the same OpenAPI contract for shared domains.
+- Java, Rust, or other runtime implementations that expose shared RPC services `MUST` preserve the proto contract and operationId mapping defined by `RPC_SPEC.md`.
 - Database schemas for shared domains `MUST` map to `DATABASE_SPEC.md`.
 - Contract tests `SHOULD` run against both Java and Rust implementations.
-- If a Rust local API cannot support a cloud capability, the standard contract must define an explicit unavailable capability response, not a different schema.
+- If a standalone runtime cannot support a cloud-only capability, the standard contract must define an explicit unavailable capability response, not a different schema.
 
 ## 4.1 RPC Deployment Parity
 
 Rules:
 
 - RPC servers MUST be enabled by explicit runtime config; adding a proto contract does not automatically publish a network endpoint.
-- Local desktop mode MAY bind RPC to loopback without TLS when documented as local-only.
-- Private and SaaS production RPC endpoints SHOULD use TLS; service-to-service production RPC SHOULD use mTLS.
+- Standalone desktop runtime MAY bind RPC to loopback without TLS when documented as local-only.
+- Standalone service and cloud production RPC endpoints SHOULD use TLS; service-to-service production RPC SHOULD use mTLS.
 - Public app RPC endpoints must pass through approved ingress, auth, rate limit, observability, and reflection controls.
 - Reflection MUST be disabled or access-controlled for public production endpoints.
 - Health checks MAY be exposed to private operators, but must not leak tenant data, schema details, secrets, or internal dependency names.
@@ -84,39 +143,48 @@ Rules:
 
 ## 5. SdkWork Claw Router Release Deployment Standard
 
-SdkWork Claw Router release packages must support fast installation on Linux, Windows, and macOS across `x64` and `arm64` architectures. Archive, service, and container packages use the server runtime profile. Desktop packages use the desktop runtime profile.
+SdkWork Claw Router release packages must support fast installation on Linux,
+Windows, and macOS across `x64` and `arm64` architectures. Archive, service,
+single-container, and desktop packages use the `standalone` deployment profile.
+Cloud container images and orchestration bundles use the `cloud` deployment
+profile.
 
 ### 5.1 Runtime Profile Defaults
 
-| Package mode | Runtime profile | Database default | Startup behavior |
-| --- | --- | --- | --- |
-| Archive | `server` | PostgreSQL | Initialize missing config, then run with structured PostgreSQL configuration. |
-| Service | `server` | PostgreSQL | Initialize missing config, install service integration, then run after PostgreSQL is configured. |
-| Container | `server` | PostgreSQL | Use mounted config, platform secrets, and a mounted writable data directory. |
-| Desktop | `desktop` | SQLite | Initialize user config and user-data SQLite automatically. |
+| Package mode | Deployment profile | Runtime target | Database default | Startup behavior |
+| --- | --- | --- | --- | --- |
+| Archive | `standalone` | `server` | PostgreSQL | Initialize missing config, then run with structured PostgreSQL configuration. |
+| Service | `standalone` | `server` | PostgreSQL | Initialize missing config, install service integration, then run after PostgreSQL is configured. |
+| Single container | `standalone` | `container` | PostgreSQL | Use mounted config, protected secrets, and a mounted writable data directory as one application unit. |
+| Cloud image/bundle | `cloud` | `container` | Managed PostgreSQL | Use orchestrator-injected config, platform secrets, managed dependencies, probes, rollout, and rollback policy. |
+| Desktop | `standalone` | `desktop` | SQLite | Initialize user config and user-data SQLite automatically. |
 
-Server and container deployments default to PostgreSQL. Desktop deployments
-default to SQLite.
+Standalone server/container and cloud container deployments default to
+PostgreSQL. Desktop runtime targets default to SQLite.
 
 Desktop packages must keep local user data on SQLite by default. For SDKWork
-Claw Router, `pnpm dev`, `pnpm desktop:dev`, and `pnpm tauri:dev` are
-sdkwork-api-gateway-backed client commands and must not start the product
-backend service. The PostgreSQL development profile used by explicit product
-server commands such as `pnpm server:dev`, `pnpm server:dev:postgres`, or
+Claw Router, `pnpm clawrouter:dev` (aliases `pnpm dev`, `pnpm server:dev`)
+start the integrated product server with PostgreSQL by default.
+Gateway-backed client commands such as `pnpm clawrouter:dev:desktop`,
+`pnpm desktop:dev`, and `pnpm tauri:dev` must not start the product backend
+service. The PostgreSQL development profile used by explicit product server
+commands such as `pnpm server:dev:postgres`, `pnpm clawrouter:dev:postgres`, or
 server integration tests belongs to the launched backend service runtime. It
 must not change the desktop package default or the desktop user data location.
 
-Redis is enabled and required by default for server and container deployments.
-Release packages must include the `[redis]` section and password-file paths, and
-startup must fail fast when server deployments do not provide Redis
-configuration. Desktop deployments keep Redis optional and disabled by default.
+Redis is enabled and required by default for cloud deployments and standalone
+server/container packages that declare shared runtime state. Release packages
+must include the `[redis]` section and password-file paths when Redis is
+required, and startup must fail fast when required Redis configuration is
+missing. Desktop runtime targets keep Redis optional and disabled by default.
 
 ### 5.2 Required Runtime Env
 
 Private process variables:
 
 ```text
-SDKWORK_CLAW_DEPLOYMENT_MODE=server
+SDKWORK_CLAW_DEPLOYMENT_PROFILE=standalone
+SDKWORK_CLAW_RUNTIME_TARGET=server
 SDKWORK_CLAW_CONFIG_FILE=/etc/sdkwork/router/clawrouter.toml
 SDKWORK_CLAW_DATABASE_ENGINE=postgresql
 SDKWORK_CLAW_DATABASE_HOST=db.example.com
@@ -155,7 +223,16 @@ PORTAL_PUBLIC_BACKEND_API_BASE_URL=/backend/v3/api
 Rules:
 
 - `SDKWORK_CLAW_CONFIG_FILE` overrides the canonical TOML path defined by `RUNTIME_DIRECTORY_SPEC.md`.
-- `SDKWORK_CLAW_DEPLOYMENT_MODE` must be `server` for service/container/archive releases and `desktop` for desktop installers.
+- `SDKWORK_CLAW_DEPLOYMENT_PROFILE` must be `standalone` for archive, service,
+  single-container, and desktop releases, and `cloud` for cloud image/bundle
+  releases.
+- `SDKWORK_CLAW_RUNTIME_TARGET` must be `server` for archive/service releases,
+  `container` for container images, and `desktop` for desktop installers.
+- `SDKWORK_CLAW_DEPLOYMENT_MODE` is retired. New application startup,
+  checked-in examples, release env files, workflow config, app manifests, and
+  runtime TOML must reject it. Migration tools may read it only outside
+  application startup and must normalize it into `SDKWORK_CLAW_DEPLOYMENT_PROFILE`
+  plus `SDKWORK_CLAW_RUNTIME_TARGET` before application code sees the config.
 - Server runtime TOML and private process env must declare PostgreSQL through
   structured fields: `SDKWORK_<APP>_DATABASE_ENGINE`,
   `SDKWORK_<APP>_DATABASE_HOST`, `SDKWORK_<APP>_DATABASE_PORT`,
@@ -166,7 +243,13 @@ Rules:
   not be accepted by new SDKWork applications.
 - `SDKWORK_CLAW_DATABASE_URL` remains an explicit private override and must not be exposed through `PORTAL_PUBLIC_*` or any browser runtime script.
 - `SDKWORK_CLAW_REDIS_HOST`, `SDKWORK_CLAW_REDIS_PORT`, `SDKWORK_CLAW_REDIS_DATABASE`, `SDKWORK_CLAW_REDIS_USERNAME`, `SDKWORK_CLAW_REDIS_URL`, `SDKWORK_CLAW_REDIS_PASSWORD_FILE`, `SDKWORK_CLAW_REDIS_PASSWORD`, `SDKWORK_CLAW_REDIS_KEY_PREFIX`, `SDKWORK_CLAW_REDIS_TLS`, `SDKWORK_CLAW_REDIS_MAX_CONNECTIONS`, `SDKWORK_CLAW_REDIS_CONNECT_TIMEOUT_MILLIS`, `SDKWORK_CLAW_REDIS_COMMAND_TIMEOUT_MILLIS`, and `SDKWORK_CLAW_REDIS_POOL_IDLE_TIMEOUT_SECONDS` are private Redis overrides and must not be exposed through browser runtime script.
-- `[redis].enabled` defaults to `true` for server/container releases and `false` for desktop. Server deployments must configure `[redis].host`, `[redis].port`, `[redis].database`, and protected password handling before first startup. Use `[redis].url` only as an advanced managed-endpoint override; use separate `tls`, pool, timeout, and `key_prefix` fields for standard deployments.
+- `[redis].enabled` defaults to `true` for cloud releases and standalone
+  server/container releases that declare shared runtime state; it defaults to
+  `false` for desktop. Deployments that require Redis must configure
+  `[redis].host`, `[redis].port`, `[redis].database`, and protected password
+  handling before first startup. Use `[redis].url` only as an advanced
+  managed-endpoint override; use separate `tls`, pool, timeout, and
+  `key_prefix` fields for standard deployments.
 - `PORTAL_PUBLIC_APP_API_BASE_URL` and `PORTAL_PUBLIC_BACKEND_API_BASE_URL` must remain independently configurable because split deployments may route them to different hosts.
 - SDKWork open-api, OpenAI-compatible, or generic API configuration should use `PORTAL_PUBLIC_OPEN_API_BASE_URL` or `PORTAL_PUBLIC_API_BASE_URL`, not an ambiguous gateway env name. A `/v1` value is valid only for an explicitly documented OpenAI-compatible compatibility API; SDKWork-owned business open-api domains must use their approved non-app/non-backend prefix from `API_SPEC.md`, for example `/im/v3/api`.
 
@@ -255,9 +338,10 @@ Claw Router upstream is `http://127.0.0.1:3900`, and certificate material uses
 
 ## 6. Acceptance Checklist
 
-- [ ] Deployment mode is explicit.
+- [ ] Deployment profile is explicit and is either `standalone` or `cloud`.
+- [ ] Runtime target is explicit and separate from deployment profile.
 - [ ] SDK construction is isolated in bootstrap.
 - [ ] Shared modules do not hard-code backend type.
-- [ ] Java/Rust API parity is tested.
-- [ ] Java/Rust RPC parity is tested when shared proto services are exposed.
+- [ ] Standalone/cloud API parity is tested.
+- [ ] Standalone/cloud RPC parity is tested when shared proto services are exposed.
 - [ ] Environment config is documented and typed.

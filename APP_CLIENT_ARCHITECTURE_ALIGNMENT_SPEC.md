@@ -300,7 +300,8 @@ Rules:
 
 ## 10. Config Alignment
 
-All client roots separate lifecycle environment, profile alias, build mode, deployment mode, and runtime target.
+All client roots separate lifecycle environment, profile alias, build mode,
+deployment profile, and runtime target.
 
 Rules:
 

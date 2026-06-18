@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: authentication, authorization, token use, API/RPC security, frontend handling, logging, secrets
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
 
 Security is a cross-cutting requirement. It must be enforced by backend services and reflected in OpenAPI contracts, SDK behavior, frontend service boundaries, and tests.
 
@@ -94,9 +94,9 @@ Rules:
 - Idempotency and replay protection `SHOULD` be applied to payment-like or retriable commands.
 - Security events `MUST` be emitted for login failures, suspicious token use, permission changes, key creation, key revocation, and tenant changes.
 
-## 5.1 Appbase API Security Interceptor Baseline
+## 5.1 SDKWork HTTP Framework Security Interceptor Baseline
 
-All appbase HTTP frameworks `MUST` provide the following interceptor positions in the standard request chain.
+All SDKWork HTTP frameworks for open-api, app-api, and backend-api `MUST` provide the following interceptor positions in the standard request chain. The standard Rust implementation is owned by `sdkwork-web-framework`; Java runtimes must preserve equivalent semantics according to `WEB_FRAMEWORK_SPEC.md`.
 
 | Interceptor | Purpose | Baseline requirement |
 | --- | --- | --- |
@@ -109,7 +109,7 @@ All appbase HTTP frameworks `MUST` provide the following interceptor positions i
 | Request size limit | Reject oversized requests before business logic. | Required for JSON APIs and stricter for upload/session endpoints. |
 | Rate limit | Throttle abuse-sensitive operations. | Required for auth, key, verification, and mutation hot paths. |
 | Idempotency | Enforce retry safety for commands. | Required for payment-like, purchase-like, and retryable mutation commands. |
-| Request context resolution | Resolve `AppRequestContext`. | Required before protected handlers. |
+| Request context resolution | Resolve `WebRequestContext`. | Required before protected handlers. |
 | Authentication | Verify required credential mode is present and valid. | Required for protected surfaces. |
 | Authorization | Enforce permission and policy decisions. | Required for every protected operation. |
 | Tenant isolation | Enforce tenant, organization, owner, and data-scope boundaries. | Required before data access. |
@@ -162,7 +162,7 @@ Rules:
 - [ ] Tenant-bound token signing or equivalent server-side validation prevents cross-tenant token reuse.
 - [ ] Multi-organization login uses a continuation challenge and validates selected membership before issuing business tokens.
 - [ ] API key open-api validation resolves a server-side API key record before context injection.
-- [ ] Protected appbase routers run the standard interceptor chain or a stricter documented superset.
+- [ ] Protected HTTP routers for open-api, app-api, and backend-api run the standard interceptor chain through `sdkwork-web-framework` (Rust) or an equivalent framework (Java), or a stricter documented superset.
 - [ ] Generated RPC SDK clients support metadata providers for auth, access token, trace, idempotency, and request hash metadata.
 - [ ] RPC SDK examples use metadata providers and do not hard-code live tokens.
 - [ ] RPC reflection and mTLS exposure are controlled by deployment policy.

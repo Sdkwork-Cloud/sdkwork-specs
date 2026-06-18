@@ -4,7 +4,9 @@
 - Scope: environment config, SDK client initialization, secrets, feature flags, typed runtime config, dev/test/staging/prod profiles, desktop/server/container/web/H5/Flutter/mini-program/native Android/native iOS/native Harmony switching
 - Related: `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`
 
-This standard defines how applications select environment, deployment mode, base URLs, SDK clients, token storage, and feature flags without leaking those decisions into reusable modules.
+This standard defines how applications select environment, deployment profile,
+runtime target, base URLs, SDK clients, token storage, and feature flags without
+leaking those decisions into reusable modules.
 
 ## 1. Configuration Sources
 
@@ -24,8 +26,12 @@ Rules:
 - Shared modules `MUST NOT` read process env, `.env` files, local storage, registry, or native config directly.
 - Shared modules receive typed config from runtime/bootstrap.
 - Secrets `MUST NOT` be stored in app manifests or committed config files.
-- SaaS/private/local differences `MUST` be represented as typed deployment mode, not scattered conditionals.
-- Lifecycle environment, deployment mode, and runtime target `MUST` be represented as separate typed fields. A single `NODE_ENV`, Vite mode, Spring profile, or Tauri target must not be used as the whole runtime decision model.
+- Standalone/cloud differences `MUST` be represented as typed
+  `deploymentProfile`, not scattered conditionals.
+- Lifecycle environment, deployment profile, and runtime target `MUST` be
+  represented as separate typed fields. A single `NODE_ENV`, Vite mode, Spring
+  profile, Tauri target, or container image name must not be used as the whole
+  runtime decision model.
 - Source/build dependency paths in package, workspace, SDK, or tool config `MUST` follow `DEPENDENCY_MANAGEMENT_SPEC.md` and must not use machine-specific absolute paths.
 
 ## 2. Standard Runtime Config
@@ -34,38 +40,7 @@ Rules:
 export type SdkworkEnvironment = "development" | "test" | "staging" | "production";
 export type SdkworkConfigProfile = "dev" | "test" | "staging" | "prod";
 export type SdkworkBuildMode = "development" | "test" | "staging" | "production";
-export type SdkworkDeploymentMode =
-  | "web"
-  | "h5"
-  | "h5-weixin"
-  | "desktop"
-  | "tablet-ipados"
-  | "tablet-android"
-  | "capacitor-ios"
-  | "capacitor-android"
-  | "flutter-ios"
-  | "flutter-android"
-  | "android-native"
-  | "ios-native"
-  | "harmony-native"
-  | "mini-program"
-  | "mp-weixin"
-  | "mp-alipay"
-  | "mp-baidu"
-  | "mp-toutiao"
-  | "mp-lark"
-  | "mp-qq"
-  | "mp-kuaishou"
-  | "mp-jd"
-  | "mp-360"
-  | "mp-dingtalk"
-  | "mp-ali"
-  | "server"
-  | "container"
-  | "saas"
-  | "private"
-  | "local"
-  | "test";
+export type SdkworkDeploymentProfile = "standalone" | "cloud";
 export type SdkworkRuntimeTarget =
   | "browser"
   | "desktop"
@@ -87,7 +62,7 @@ export interface SdkworkRuntimeConfig {
   environment: SdkworkEnvironment;
   configProfile?: SdkworkConfigProfile;
   buildMode?: SdkworkBuildMode;
-  deploymentMode: SdkworkDeploymentMode;
+  deploymentProfile: SdkworkDeploymentProfile;
   runtimeTarget: SdkworkRuntimeTarget;
   openApiBaseUrl?: string;
   appApiBaseUrl: string;
@@ -107,8 +82,6 @@ export interface SdkworkRuntimeConfig {
   database?: SdkworkDatabaseConfig;
   redis?: SdkworkRedisConfig;
   appKey: string;
-  tenantId?: string;
-  organizationId?: string;
   featureFlags?: Record<string, boolean | string | number>;
 }
 
@@ -284,7 +257,8 @@ Rules:
 - `environment` describes lifecycle stage.
 - `configProfile` is a file/profile alias used by scripts and config file names. `dev` maps to `development`; `prod` maps to `production`. Application code should normalize to `environment`.
 - `buildMode` describes the bundler/build tool mode. It is useful for Vite or native package scripts, but it is not the lifecycle authority for runtime behavior.
-- `deploymentMode` describes deployment topology or packaging shape.
+- `deploymentProfile` describes application deployment architecture and is only
+  `standalone` or `cloud`.
 - `runtimeTarget` describes where this config is consumed: browser renderer, desktop host, tablet host, Capacitor host, Flutter host, mini program runtime, server process, container process, or test runner.
 - `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` are resolved before SDK clients are created, but backend SDK clients may be constructed only after the SDK inventory classifies the runtime as `backend-admin`.
 - `openApiBaseUrl` is optional because not every application consumes an open-api SDK. When present for a SDKWork-owned business open-api, it `MUST` use that domain's approved non-app/non-backend prefix from `API_SPEC.md`, for example `/im/v3/api`. It does not require a literal `/open` path segment. `/v1` is valid only for explicitly documented compatibility APIs such as OpenAI-compatible AI API.
@@ -309,9 +283,11 @@ Rules:
   are configured.
 - `auth` config describes how the runtime obtains and stores credentials. It must not contain actual `authToken`, `accessToken`, `refreshToken`, API key values, or session DTOs.
 - `i18n` config describes locale selection, supported locale list, fallback locale, and catalog loading strategy only. It must not contain translated message content, product copy, validation copy, or generated catalog bundles.
-- `tenantId` and `organizationId` in config are defaults only; token context is authoritative after authentication.
+- Runtime config `MUST NOT` define `tenantId` or `organizationId` as API/SDK call defaults. Tenant and organization context after authentication is resolved from tokens, API key records, or server-side request context. Pre-auth tenant or organization selection must use IAM login/selection flows, not SDK config or per-call options.
 - Config objects crossing host/native boundaries `SHOULD` be serializable.
-- `publicRuntime` is browser-visible and may contain only non-secret values. Browser bundles must not read private process config.
+- `publicRuntime` is browser-visible and may contain only non-secret values such
+  as normalized `deploymentProfile`, `runtimeTarget`, public SDK base URLs, and
+  feature flags. Browser bundles must not read private process config.
 - `server` owns process bind, public URL, reverse-proxy trust, and service profile config. It must not own renderer-only build settings.
 - `desktop` owns native host, user config, local service lifecycle, and secure storage provider. It must not own remote business API contracts.
 - `tablet` owns iPadOS/Android tablet package identity and platform config references. It must not own phone-first H5 behavior or business SDK bypasses.
@@ -319,9 +295,9 @@ Rules:
 - `miniProgram` owns mini program platform identity, app id references, platform config file references, and page/subpackage strategy. It must not own platform private keys, business API contracts, generated SDK ownership, or feature-local auth behavior.
 - `paths` resolves the canonical directories defined by `RUNTIME_DIRECTORY_SPEC.md`.
 - `database` resolves the structured database fields defined by `RUNTIME_DIRECTORY_SPEC.md` and `DATABASE_SPEC.md`.
-- Server and container deployments should use structured PostgreSQL fields.
+- Standalone server/container and cloud runtime targets should use structured PostgreSQL fields.
   `url` is a private explicit override, not the primary production contract.
-- Desktop and local-only deployments may use SQLite with `file` under the
+- Desktop runtime targets may use SQLite with `file` under the
   SDKWork user private data directory.
 - Desktop runtime config should resolve `database.engine` to `sqlite` and
   `database.file` to the user private data directory by default.
@@ -607,7 +583,7 @@ Rules:
 
 - [ ] Runtime config is typed.
 - [ ] Shared modules do not read env/global config directly.
-- [ ] Lifecycle environment, profile alias, deployment mode, build mode, and runtime target are normalized separately.
+- [ ] Lifecycle environment, profile alias, deployment profile, build mode, and runtime target are normalized separately.
 - [ ] Dev/test/staging/prod example files are checked in only as safe templates, and local overrides are ignored.
 - [ ] Browser public runtime config, desktop user config, H5/Capacitor config, Flutter config, mini program config, native Android config, native iOS config, native Harmony config, server config, container config, and Tauri platform config are separated.
 - [ ] Database env parsing maps `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE` to typed config and rejects `DATABASE_PROVIDER`/`DATABASE_SSLMODE`.
@@ -628,7 +604,7 @@ Rules:
   resolves through Cargo metadata instead of a separate gateway catalog.
 - [ ] Application runtime defaults route shared foundation API upstreams through the declared gateway
   common SDK root or managed gateway process; direct dependency module URLs are explicit overrides.
-- [ ] Deployment mode and environment are explicit.
+- [ ] Deployment profile and environment are explicit.
 - [ ] Desktop installed config defaults to user-private SQLite, while desktop-started backend service config uses the server PostgreSQL dev profile unless an explicit SQLite profile is selected.
 - [ ] Test config isolates database/schema, Redis key prefix, logs, cache, and temp directories from development and production.
 - [ ] Secrets are isolated from manifests and committed files.

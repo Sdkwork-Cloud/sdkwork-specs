@@ -39,7 +39,7 @@ Rules:
 - The workflow `SHOULD` support these standard triggers:
   - tag push for release packaging.
   - `release.published` for release packaging and configured deployments.
-  - `workflow_dispatch` for manual platform/profile/architecture/format selection.
+  - `workflow_dispatch` for manual deployment-profile/platform/profile/architecture/format selection.
 - Manual dispatch inputs `MUST` use event-safe expressions such as `github.event.inputs.*` with tag and release fallbacks for non-manual events.
 - Production deployments `MUST` use GitHub Environments for approval rules and environment-scoped secrets.
 - Application workflows `MUST NOT` request broader GitHub permissions than the reusable framework requires unless the exception is documented and reviewed.
@@ -81,7 +81,12 @@ Rules:
 - Package version resolution `MUST` be consistent across matrix planning, lifecycle steps, and changelog rendering. Explicit `package_version` input wins; when it is omitted, the framework `MUST` derive the package version from the release tag or tag ref by stripping `refs/tags/` and a leading `v` before falling back to `release.defaultVersion`.
 - Toolchain version fields such as `node`, `pnpm`, `python`, `java`, `go`, `rust`, `flutter`, `dotnet`, and `wix` `MUST` be strings. Boolean toolchain toggles such as `android` and `xcode` `MUST` be booleans.
 - Paths such as `app.sourcePath`, `app.configPath`, dependency checkout paths, lifecycle working directories, and output globs `MUST` be safe relative paths. They must not be absolute, escape the repository with `..`, or use platform-specific backslash traversal.
-- Package target identifiers and optional `packageId` values `MUST` be stable because they appear in artifact names, deployment selection, and lifecycle environment variables.
+- Package target identifiers and optional `packageId` values `MUST` be stable
+  because they appear in artifact names, deployment selection, and lifecycle
+  environment variables.
+- Deployable package targets `MUST` declare `deploymentProfile` as either
+  `standalone` or `cloud`, and `runtimeTarget` separately from the package
+  `profile`.
 - `publish` and `security` fields `MUST` be consumed by the reusable workflow, not only stored as documentation.
 
 ## 4. Lifecycle Steps
@@ -111,7 +116,8 @@ Rules:
 - Step `env` values `MUST` be strings.
 - Step `workingDirectory` values `MUST` be safe relative paths.
 - Lifecycle execution `MUST` stop on the first failed step.
-- The framework `MUST` provide standard environment variables to every lifecycle step:
+- The framework `MUST` provide standard environment variables to every package
+  target lifecycle step:
   - `SDKWORK_APP_ID`
   - `SDKWORK_APP_REPOSITORY`
   - `SDKWORK_APP_SOURCE_PATH`
@@ -119,6 +125,8 @@ Rules:
   - `SDKWORK_PACKAGE_VERSION`
   - `SDKWORK_PACKAGE_TARGET_ID`
   - `SDKWORK_PACKAGE_ID`
+  - `SDKWORK_DEPLOYMENT_PROFILE`
+  - `SDKWORK_RUNTIME_TARGET`
   - `SDKWORK_PACKAGE_PROFILE`
   - `SDKWORK_PACKAGE_PLATFORM`
   - `SDKWORK_PACKAGE_ARCHITECTURE`
@@ -126,6 +134,8 @@ Rules:
 - Linux native `deb` and `rpm` package lifecycle steps `MUST` also receive `SDKWORK_PACKAGE_DISTRIBUTION`.
 - Package targets with `targets[].variant` `MUST` also receive `SDKWORK_PACKAGE_VARIANT`.
 - Deployment lifecycle steps `MUST` also receive:
+  - `SDKWORK_DEPLOYMENT_PROFILE`
+  - `SDKWORK_RUNTIME_TARGET`
   - `SDKWORK_DEPLOY_ENVIRONMENT`
   - `SDKWORK_DEPLOY_URL` when configured.
   - `SDKWORK_DEPLOY_LIFECYCLE`
@@ -139,53 +149,64 @@ Rules:
   - `SDKWORK_PACKAGE_FORMAT=zip`
   - `SDKWORK_AGGREGATE_ARTIFACT_PATH`
   - `SDKWORK_AGGREGATE_UPLOAD_GLOBS`
+- Aggregate publish steps are not deployable target contexts and `MUST NOT`
+  synthesize a non-standard `deploymentProfile` or `runtimeTarget` value.
 
 ## 5. Targets And Matrix Planning
 
 Rules:
 
 - Matrix planning `MUST` be deterministic and implemented in tested code, not duplicated YAML expressions.
-- `targets[]` `MUST` declare profile, platform, architecture, formats, runner, and output globs.
+- `targets[]` `MUST` declare deploymentProfile, runtimeTarget, profile,
+  platform, architecture, formats, runner, and output globs.
 - `targets` `MUST` contain at least one target.
+- `targets[].deploymentProfile` `MUST` be `standalone` or `cloud` for every
+  deployable target.
+- `targets[].runtimeTarget` `MUST` describe where the package runs using the
+  runtime target vocabulary from `CONFIG_SPEC.md`, such as `server`,
+  `container`, `desktop`, `browser`, `android-native`, `ios-native`,
+  `harmony-native`, `mini-program`, or `test-runner`. It must not be used as a
+  deployment profile.
 - `targets[].formats` `MUST` contain unique format values so one target cannot emit duplicate package jobs or duplicate artifact names.
-- Selecting no targets for a requested platform/profile/architecture/format `MUST` fail before package jobs run.
-- Every matrix package item `MUST` have a canonical `packageId` using `<platform>-<architecture>-<profile>-<format-token>`.
-- Linux native `deb` and `rpm` package items `MUST` use `linux-<distribution>-<architecture>-<profile>-<format-token>`.
-- Package targets with a real package variant `MUST` insert the lowercase kebab `variant` segment before the format token: `<platform>-<architecture>-<profile>-<variant>-<format-token>`. Linux native package variants use `linux-<distribution>-<architecture>-<profile>-<variant>-<format-token>`.
+- Selecting no targets for a requested deployment profile/platform/profile/architecture/format `MUST` fail before package jobs run.
+- Every matrix package item `MUST` have a canonical `packageId` using `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>`.
+- Linux native `deb` and `rpm` package items `MUST` use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<format-token>`.
+- Package targets with a real package variant `MUST` insert the lowercase kebab `variant` segment before the format token: `<platform>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>`. Linux native package variants use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>`.
 - Use `targets[].variant` only when two or more releasable artifacts would otherwise share the same platform, architecture, profile, and format. Common examples are container or deployment packages split by `cpu`, `nvidia-cuda`, or `amd-rocm`.
 - `format-token` `MUST` be lowercase kebab-case. Format values with separators normalize those separators to hyphens; for example `tar.gz` becomes `tar-gz`.
 - GitHub workflow artifact names `MUST` use `<release.artifactPrefix>-<packageId>`.
 - Multi-format targets `MUST` produce distinct package ids and artifact names for each format.
-- Single-format `targets[].id` `MUST` equal the canonical package id. Multi-format `targets[].id` `MUST` equal `<platform>-<architecture>-<profile>` and omit the format token.
+- Single-format `targets[].id` `MUST` equal the canonical package id. Multi-format `targets[].id` `MUST` equal `<platform>-<architecture>-<deployment-profile>-<profile>` and omit the format token.
 - Explicit `targets[].packageId`, when present, `MUST` equal the canonical package id for a single-format target. Multi-format targets `MUST` omit `packageId` so the planner can generate one package id per format.
-- Targets with format-specific output globs `SHOULD` be split into separate single-format targets. Windows desktop packages that produce both `.msi` and `.exe` installers SHOULD use `windows-x64-desktop-msi` and `windows-x64-desktop-exe` as separate targets unless one lifecycle command deliberately emits only the active `SDKWORK_PACKAGE_FORMAT`.
+- Targets with format-specific output globs `SHOULD` be split into separate single-format targets. Windows desktop packages that produce both `.msi` and `.exe` installers SHOULD use `windows-x64-standalone-desktop-msi` and `windows-x64-standalone-desktop-exe` as separate targets unless one lifecycle command deliberately emits only the active `SDKWORK_PACKAGE_FORMAT`.
 - `targets[].distribution` is required for `platform: linux` with `formats: ["deb"]` or `formats: ["rpm"]`, and it is invalid for generic Linux archive formats such as `tar.gz`.
 - `targets[].variant`, when present, `MUST` be lowercase kebab-case and `MUST` be part of `targets[].id`, generated `packageId`, artifact names, lifecycle environment, and deployment selection.
 - `deb` targets `MUST` use `distribution: debian` or `distribution: ubuntu`.
 - `rpm` targets `MUST` use `distribution: rhel`, `distribution: centos`, `distribution: fedora`, `distribution: opensuse`, or `distribution: suse`.
 - Linux native `deb` and `rpm` targets `MUST` be single-format targets. Do not mix `deb` or `rpm` with generic formats in one target because native Linux package metadata is distribution-specific while archives are generic.
-- Do not use `service` as a server package alias. The package profile segment is `server`.
+- Do not use `service` as a server package alias. The package profile segment is
+  `server`; the deployment profile segment remains `standalone` or `cloud`.
 - Tablet packages are first-class package targets when the app supports large-screen tablet behavior. Use profile `tablet` with platforms such as `ipados`, `android-tablet`, or `windows-tablet`.
 
 Examples:
 
 | App surface | Platform | Distribution | Architecture | Format | Package id |
 | --- | --- | --- | --- | --- | --- |
-| Server Debian package | `linux` | `debian` | `x64` | `deb` | `linux-debian-x64-server-deb` |
-| Server Ubuntu package | `linux` | `ubuntu` | `arm64` | `deb` | `linux-ubuntu-arm64-server-deb` |
-| Server RHEL package | `linux` | `rhel` | `x64` | `rpm` | `linux-rhel-x64-server-rpm` |
-| Desktop Fedora package | `linux` | `fedora` | `x64` | `rpm` | `linux-fedora-x64-desktop-rpm` |
-| Server Linux archive | `linux` | omitted | `x64` | `tar.gz` | `linux-x64-server-tar-gz` |
-| Server container | `container` | omitted | `arm64` | `oci` | `container-arm64-server-oci` |
-| CPU container bundle | `container` | omitted | `x64` | `tar.gz` | `container-x64-server-cpu-tar-gz` |
-| NVIDIA CUDA container bundle | `container` | omitted | `x64` | `tar.gz` | `container-x64-server-nvidia-cuda-tar-gz` |
-| PC desktop | `windows` | omitted | `x64` | `msi` | `windows-x64-desktop-msi` |
-| PC desktop | `windows` | omitted | `x64` | `exe` | `windows-x64-desktop-exe` |
-| PC desktop | `macos` | omitted | `arm64` | `dmg` | `macos-arm64-desktop-dmg` |
-| Mobile phone | `android` | omitted | `arm64` | `aab` | `android-arm64-mobile-aab` |
-| Mobile phone | `ios` | omitted | `universal` | `ipa` | `ios-universal-mobile-ipa` |
-| Tablet | `ipados` | omitted | `universal` | `ipa` | `ipados-universal-tablet-ipa` |
-| Tablet | `windows-tablet` | omitted | `x64` | `msix` | `windows-tablet-x64-tablet-msix` |
+| Standalone server Debian package | `linux` | `debian` | `x64` | `deb` | `linux-debian-x64-standalone-server-deb` |
+| Standalone server Ubuntu package | `linux` | `ubuntu` | `arm64` | `deb` | `linux-ubuntu-arm64-standalone-server-deb` |
+| Standalone server RHEL package | `linux` | `rhel` | `x64` | `rpm` | `linux-rhel-x64-standalone-server-rpm` |
+| Standalone desktop Fedora package | `linux` | `fedora` | `x64` | `rpm` | `linux-fedora-x64-standalone-desktop-rpm` |
+| Standalone server Linux archive | `linux` | omitted | `x64` | `tar.gz` | `linux-x64-standalone-server-tar-gz` |
+| Standalone container | `container` | omitted | `arm64` | `oci` | `container-arm64-standalone-container-oci` |
+| Cloud CPU container bundle | `container` | omitted | `x64` | `tar.gz` | `container-x64-cloud-container-cpu-tar-gz` |
+| Cloud NVIDIA CUDA container bundle | `container` | omitted | `x64` | `tar.gz` | `container-x64-cloud-container-nvidia-cuda-tar-gz` |
+| Standalone PC desktop | `windows` | omitted | `x64` | `msi` | `windows-x64-standalone-desktop-msi` |
+| Standalone PC desktop | `windows` | omitted | `x64` | `exe` | `windows-x64-standalone-desktop-exe` |
+| Standalone PC desktop | `macos` | omitted | `arm64` | `dmg` | `macos-arm64-standalone-desktop-dmg` |
+| Standalone mobile phone | `android` | omitted | `arm64` | `aab` | `android-arm64-standalone-mobile-aab` |
+| Standalone mobile phone | `ios` | omitted | `universal` | `ipa` | `ios-universal-standalone-mobile-ipa` |
+| Standalone tablet | `ipados` | omitted | `universal` | `ipa` | `ipados-universal-standalone-tablet-ipa` |
+| Standalone tablet | `windows-tablet` | omitted | `x64` | `msix` | `windows-tablet-x64-standalone-tablet-msix` |
 
 ## 6. Dependency Checkout
 
@@ -237,7 +258,9 @@ Rules:
 Rules:
 
 - Deployment targets are declared under `deployments[]`.
-- Deployment matrix items `MUST` bind to selected package targets through profile, platform, architecture, variant, format, target id, or package id selectors.
+- Deployment matrix items `MUST` bind to selected package targets through
+  deploymentProfile, runtimeTarget, profile, platform, architecture, variant,
+  format, target id, or package id selectors.
 - Each configured deployment `MUST` match at least one package target in the full application workflow config. Selector typos must fail validation instead of silently producing no deployment jobs.
 - Deployment jobs `MUST` bind to GitHub Environments using the configured environment name and URL when present.
 - Deployment lifecycle jobs `MUST` explicitly pass deployment environment, URL, and lifecycle values to the lifecycle runner.
@@ -248,7 +271,16 @@ Rules:
 Rules:
 
 - `sdkwork-github-workflow` `MUST` have `AGENTS.md`, `CLAUDE.md` when compatibility is required, and a source-controlled `.sdkwork/` workspace according to `SDKWORK_WORKSPACE_SPEC.md`.
-- The framework `init-app` generator `MUST` emit canonical package targets for each requested profile. Server starter targets `MUST` include `linux-debian-x64-server-deb`, `linux-rhel-x64-server-rpm`, and `linux-x64-server-tar-gz`. Desktop starter targets `MUST` include `windows-x64-desktop-msi`, `windows-x64-desktop-exe`, and `macos-arm64-desktop-dmg`.
+- The framework `init-app` generator `MUST` emit canonical package targets for
+  each requested deployment profile and package profile. Standalone server
+  starter targets `MUST` include `linux-debian-x64-standalone-server-deb`,
+  `linux-rhel-x64-standalone-server-rpm`, and
+  `linux-x64-standalone-server-tar-gz`. Standalone desktop starter targets
+  `MUST` include `windows-x64-standalone-desktop-msi`,
+  `windows-x64-standalone-desktop-exe`, and
+  `macos-arm64-standalone-desktop-dmg`. Cloud starter targets `MUST` include a
+  `cloud` deployment profile segment, such as
+  `container-x64-cloud-container-oci`.
 - The framework `init-app` generator `MUST` emit a default `release.changelog.source: auto` configuration so new applications publish Release notes from the app manifest, `CHANGELOG.md`, or git commit subjects without local workflow YAML.
 - Generated lifecycle placeholder steps `MUST` be shell-neutral across Linux, Windows, and macOS runners. Placeholders SHOULD use the planner-supported `node` shell and read SDKWork values through `process.env` instead of Bash-only `$SDKWORK_*` or PowerShell-only `$env:SDKWORK_*` syntax.
 - The framework `MUST` keep the application workflow template as a single source of truth for generator output.
@@ -267,8 +299,11 @@ Application integration verification `MUST` check:
 - `sdkwork.workflow.json` validates with the framework planner.
 - `.github/workflows/package.yml` calls the standard reusable workflow.
 - Application workflow inputs use event-safe expressions for manual, tag push, and release events.
-- Matrix selection works for all declared target profiles, platforms, architectures, variants, and formats.
-- Package ids and artifact names follow `<platform>-<architecture>-<profile>-<format-token>` and `<artifactPrefix>-<packageId>` for generic server, PC desktop, mobile, tablet, and multi-format targets, Linux native `deb`/`rpm` package ids include the `distribution` segment, and variant targets insert `<variant>` before `<format-token>`.
+- Matrix selection works for all declared deployment profiles, runtime targets,
+  target profiles, platforms, architectures, variants, and formats.
+- Package ids and artifact names follow `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>` and `<artifactPrefix>-<packageId>` for generic server, PC desktop, mobile, tablet, container, and multi-format targets, Linux native `deb`/`rpm` package ids include the `distribution` segment, and variant targets insert `<variant>` before `<format-token>`.
+- Lifecycle steps receive `SDKWORK_DEPLOYMENT_PROFILE` and
+  `SDKWORK_RUNTIME_TARGET` for package and deployment jobs.
 - Linux native package lifecycle and deployment lifecycle receive `SDKWORK_PACKAGE_DISTRIBUTION`.
 - Variant package lifecycle and deployment lifecycle receive `SDKWORK_PACKAGE_VARIANT`.
 - Lifecycle steps receive the standard package and deployment environment variables.
@@ -281,7 +316,7 @@ Application integration verification `MUST` check:
 
 Framework verification `MUST` check:
 
-- Planner validation rejects unknown fields, schema-declared type violations, empty target lists, duplicate target formats, unsafe paths, dependency checkout path overlaps, unsafe Git refs, unsupported token secrets, dynamic lifecycle `uses`, invalid lifecycle env values, duplicate target ids, deployment selectors that match no package target, and unsupported enum values.
+- Planner validation rejects unknown fields, schema-declared type violations, empty target lists, duplicate target formats, unsafe paths, dependency checkout path overlaps, unsafe Git refs, unsupported token secrets, dynamic lifecycle `uses`, invalid lifecycle env values, duplicate target ids, missing or invalid deployment profiles, deployment selectors that match no package target, and unsupported enum values.
 - Planner validation rejects non-canonical target ids, non-canonical explicit package ids, multi-format target package ids, missing Linux native package distributions, distribution/format mismatches, malformed package variants, and Linux native package targets that mix `deb` or `rpm` with generic formats.
 - JSON Schema stays aligned with planner validation.
 - The generated application workflow matches the checked-in application template.
@@ -303,7 +338,7 @@ Framework verification `MUST` check:
 - [ ] Application has a thin `.github/workflows/package.yml` reusable workflow call.
 - [ ] Application workflow uses a pinned framework ref.
 - [ ] Config validates against the framework planner and schema.
-- [ ] Package targets cover the required profiles, platforms, architectures, formats, runners, and output globs.
+- [ ] Package targets cover the required deployment profiles, runtime targets, package profiles, platforms, architectures, formats, runners, and output globs.
 - [ ] Lifecycle steps use safe paths, supported shells, string env values, and `run` commands only.
 - [ ] Dependency refs and checkout paths are safe.
 - [ ] Signing, SBOM, attestation, artifact upload, Release upload, and deployment policies are declared and enforced.
