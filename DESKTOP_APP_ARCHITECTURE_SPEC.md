@@ -136,7 +136,7 @@ apps/<product>-pc/
 Rules:
 
 - The root PC app package owns web bootstrap and web build scripts.
-- Repositories that include a desktop app `MUST` expose top-level launch commands: `pnpm dev` starts the default PC renderer, and `pnpm tauri:dev` starts the default Tauri desktop shell.
+- Repositories that include a desktop app `MUST` expose top-level launch commands that follow `PNPM_SCRIPT_SPEC.md`: `pnpm dev` starts the default PC renderer or documented default development workflow, and `pnpm dev:desktop` starts the default desktop shell. `pnpm tauri:dev` may remain a package-local Tauri command or a thin root platform-tool alias, but cross-application automation uses `pnpm dev:desktop`.
 - The PC renderer dev command `MUST` use the same host and port as the Tauri `devUrl`, and it `MUST` fail on port conflicts instead of silently falling back to another port.
 - Existing backend or application server development commands `MUST` remain available under explicit names such as `pnpm dev:server`, `pnpm dev:postgres`, or `pnpm dev:sqlite` when `pnpm dev` is assigned to the desktop renderer.
 - The desktop package owns Tauri CLI, Tauri config, Rust shell code, icons, permissions, and native bundle scripts.
@@ -281,27 +281,27 @@ Rules:
 Recommended commands:
 
 ```text
-pnpm tauri:dev
-pnpm tauri:dev:server
-pnpm tauri:dev:sqlite
+pnpm dev:desktop
+pnpm dev:desktop:server
+pnpm dev:desktop:sqlite
 pnpm tauri:test
 pnpm tauri:test:config
-pnpm tauri:build
-pnpm tauri:build:staging
-pnpm tauri:build:prod
+pnpm build:desktop
+pnpm build:desktop:staging
+pnpm build:desktop:prod
 pnpm tauri:ios:build:prod
 pnpm tauri:android:build:prod
 ```
 
 Command rules:
 
-- `tauri:dev` uses the desktop development profile. It may remain client-only
+- `dev:desktop` uses the desktop development profile. It may remain client-only
   when the application standard assigns default API serving to a shared
   gateway.
-- `tauri:dev:server` or an equivalent explicit server command makes the backend
+- `dev:desktop:server` or an equivalent explicit server command makes the backend
   service profile explicit when contributors need to debug the desktop plus
   service integration path.
-- `tauri:dev:sqlite`, `server:dev:sqlite`, or an equivalent documented command
+- `dev:desktop:sqlite`, `dev:server:sqlite`, or an equivalent documented command
   is the explicit local SQLite regression profile. It must not become the
   default server integration command.
 - `tauri:test:config` validates platform config merge, profile normalization, desktop/server split, secret absence, local path resolution, and test isolation.
@@ -368,7 +368,7 @@ Suggested commands depend on the app, but every desktop app should define equiva
 
 ```text
 pnpm dev
-pnpm tauri:dev
+pnpm dev:desktop
 pnpm tauri:ios:dev
 pnpm tauri:android:dev
 pnpm --dir apps/<product>-pc lint
@@ -384,7 +384,7 @@ pnpm --filter <product>-pc-desktop tauri:android:build
 ## 11. Acceptance Checklist
 
 - [ ] Desktop/tablet native architecture was considered separately from app PC UI architecture.
-- [ ] Repository top-level `pnpm dev` and `pnpm tauri:dev` can start the default PC renderer and Tauri desktop shell.
+- [ ] Repository top-level `pnpm dev` and `pnpm dev:desktop` can start the default PC renderer/default development workflow and desktop shell.
 - [ ] App shell is thin and does not own reusable business workflows.
 - [ ] UI-service-SDK layering follows `FRONTEND_SPEC.md` and `APP_PC_REACT_UI_SPEC.md`.
 - [ ] Remote business calls use generated SDK clients or approved wrappers.

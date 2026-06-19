@@ -12,6 +12,7 @@ No standard is complete until it is executable.
 | --- | --- |
 | Agent entrypoints | Repository/application `AGENTS.md` presence, tool compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` where required, required sections, relative `sdkwork-specs` path checks, `SOUL.md`/`AGENTS_SPEC.md` references, and no duplicated root spec bodies |
 | Repository workspace | Git repository root and application root standard top-level directory dictionary checks, `.sdkwork/` presence checks, tracked `skills/` and `plugins/` placeholders, skill/plugin manifest checks, static scans for forbidden secrets/runtime/generated SDK files |
+| pnpm scripts | Validate `PNPM_SCRIPT_SPEC.md`: required root scripts, product-prefix retirement, allowed public namespaces, canonical gateway command order, retired deployment word rejection, and package-local script scans |
 | Code style and naming | `CODE_STYLE_SPEC.md` and `NAMING_SPEC.md` checks for focused entrypoints, public exports, generated-code boundaries, canonical names, and no catch-all implementation files |
 | Language-specific code | On-demand Rust, Java, TypeScript, and frontend checks only when those languages/frameworks are touched |
 | Requirements | Validate `REQUIREMENTS_SPEC.md`: requirement id, owner, status, priority, acceptance criteria, non-functional requirements when relevant, traceability to affected specs/components, and verification evidence |
@@ -208,6 +209,34 @@ Rules:
 ## 2.0.1 Code Style And Naming Tests
 
 Code style tests make `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, and language specs executable.
+
+## 2.0.2 pnpm Script Tests
+
+pnpm script tests make `PNPM_SCRIPT_SPEC.md` executable.
+
+Rules:
+
+- Every SDKWork application repository root that uses `package.json#scripts`
+  `MUST` expose `dev`, `build`, `test`, `check`, `verify`, and `clean`.
+- Tests `MUST` fail when repository root public script names start with product
+  tokens such as `drive`, `im`, `clawrouter`, or the application-specific
+  product code.
+- Tests `MUST` fail when root public script names contain retired deployment
+  words such as `self-hosted`, `cloud-hosted`, `hosting`, or
+  `deploymentMode`.
+- Tests `MUST` fail when gateway scripts use deployment profile before action,
+  such as `gateway:cloud:bundle` or `gateway:standalone:pack`. Use
+  `gateway:package:cloud` and `gateway:package:standalone`.
+- Tests `MUST` verify new root API/SDK command families use `api:*` and
+  `sdk:*` public namespaces for cross-application automation.
+- Tests `MUST` scan app surface and package-local `package.json#scripts` for
+  retired deployment words while ignoring generated SDK package manifests under
+  generated output.
+- Application repositories may call the canonical validator with:
+
+```text
+node ../sdkwork-specs/tools/check-pnpm-script-standard.mjs --root . --product-prefix <product-token>
+```
 
 Rules:
 

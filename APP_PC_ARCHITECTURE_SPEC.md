@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: SDKWork PC application roots that support PC browser web, desktop, and large-screen tablet native packaging, including app modules, user-facing console modules, internal admin modules, shared renderer packages, Tauri/native host packages, and iPadOS/Android tablet runtime/package targets
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `APPLICATION_SPEC.md`, `NAMING_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `APPLICATION_SPEC.md`, `NAMING_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the application-root architecture for SDKWork PC applications. A PC application is one product application root that can run as a browser web application and, when required, as a desktop or large-screen tablet native application through a host such as Tauri.
 
@@ -168,7 +168,7 @@ Rules:
 - `pnpm dev` starts the browser renderer with browser public runtime config.
 - `pnpm dev:server` starts the backend service with `config/server/<product>.development.toml.example` copied or materialized into a host-local dev config.
 - `pnpm test` uses an isolated test profile and must not share development or production database/schema, Redis prefix, logs, cache, runtime, or temp directories.
-- `pnpm tauri:dev` starts the desktop host. If it launches a backend service, that service uses the server development profile; installed desktop config remains the desktop profile with user-private SQLite by default.
+- `pnpm dev:desktop` starts the desktop host. If it launches a backend service, that service uses the server development profile; installed desktop config remains the desktop profile with user-private SQLite by default. `pnpm tauri:dev` may remain package-local or a thin platform-tool alias, but cross-application automation uses `pnpm dev:desktop`.
 - Browser SDK base URLs must be loaded from public runtime config before SDK client construction. Vite `VITE_*` variables are public non-secret build/dev inputs only.
 - Release builds must fail preflight if production profiles contain localhost service endpoints, development secrets, test database names, writable developer directories, or unresolved placeholders.
 
@@ -415,7 +415,7 @@ PC browser, desktop, and tablet native modes share the renderer.
 Rules:
 
 - `pnpm dev` should start the default PC browser renderer for the application root.
-- `pnpm tauri:dev` should start the default desktop host when `sdkwork-<product>-pc-desktop` exists.
+- `pnpm dev:desktop` should start the default desktop host when `sdkwork-<product>-pc-desktop` exists.
 - `pnpm tauri:ios:dev` should start the iOS/iPadOS Tauri development target when tablet packaging is enabled.
 - `pnpm tauri:android:dev` should start the Android tablet Tauri development target when tablet packaging is enabled.
 - Tauri `devUrl` `MUST` point to the renderer dev server, and `frontendDist` `MUST` point to the renderer build output.
@@ -460,6 +460,7 @@ Every PC application root should provide these command equivalents:
 pnpm install
 pnpm dev
 pnpm dev:server
+pnpm dev:desktop
 pnpm build
 pnpm build:staging
 pnpm build:prod
@@ -472,7 +473,7 @@ pnpm lint
 Desktop-enabled roots should also provide:
 
 ```text
-pnpm tauri:dev
+pnpm dev:desktop
 pnpm tauri:build
 pnpm tauri:build:prod
 ```

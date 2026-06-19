@@ -108,15 +108,17 @@ Rules:
 6. Health-check required surfaces before starting Vite, Tauri, backend, workers, or clients.
 7. Inject client env keys from profile; never hardcode `127.0.0.1:*` in orchestrator except as profile defaults in checked-in topology env examples.
 
-CLI naming:
+CLI naming follows `PNPM_SCRIPT_SPEC.md`:
 
 ```bash
-pnpm drive:dev              # standalone.unified-process.development
-pnpm drive:dev:cloud        # cloud.split-services.development
-pnpm im:dev                 # standalone.split-services.development
-pnpm im:dev:cloud           # cloud.split-services.development
-pnpm im:dev:smoke           # standalone.unified-process.development
+pnpm dev                                      # default development profile
+pnpm dev:browser:postgres:unified-process:standalone
+pnpm dev:browser:postgres:split-services:cloud
+pnpm dev:desktop
+pnpm verify:smoke
 ```
+
+Product-prefixed public commands such as `drive:dev` and `im:dev` are retired.
 
 ## 7. Client Runtime
 

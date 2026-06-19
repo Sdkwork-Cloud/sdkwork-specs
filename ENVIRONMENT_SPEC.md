@@ -401,22 +401,19 @@ Rules:
   SQLite by default. They must create the SQLite file under the SDKWork user
   private data directory, not under server data directories and not in
   PostgreSQL, unless the user explicitly configures an external database.
-- For SDKWork Claw Router, `pnpm clawrouter:dev` (aliases `pnpm dev`,
-  `pnpm server:dev`) start the integrated Claw Router product server with
-  PostgreSQL by default. Gateway-backed client commands such as
-  `pnpm clawrouter:dev:desktop`, `pnpm desktop:dev`, and `pnpm tauri:dev` must
-  not start the Claw Router application backend service. Explicit application
-  server development commands, such as `pnpm server:dev:postgres` and
-  `pnpm clawrouter:dev:postgres`, use PostgreSQL for backend service integration.
-  This PostgreSQL profile belongs to the launched service runtime and must not
-  be treated as the desktop-local data store.
+- SDKWork application root commands follow `PNPM_SCRIPT_SPEC.md`. `pnpm dev`
+  starts the default development workflow, `pnpm dev:server:postgres` starts
+  the explicit server PostgreSQL integration profile, and `pnpm dev:desktop`
+  starts the desktop shell/profile. Product-prefixed public commands such as
+  `clawrouter:dev`, `drive:dev`, and `im:dev` are retired. The PostgreSQL
+  profile belongs to the launched service runtime and must not be treated as
+  the desktop-local data store.
 - Explicit application server SQLite development commands, such as
-  `pnpm server:dev:sqlite` and `pnpm clawrouter:dev:sqlite` (alias
-  `pnpm dev:sqlite`), must be named clearly and used only when validating
-  local SQLite behavior for the application server runtime. Desktop client
-  aliases such as `pnpm desktop:dev:sqlite` or `pnpm tauri:dev:sqlite` must
-  remain gateway-backed client commands when the application standard assigns
-  default API serving to sdkwork-api-gateway.
+  `pnpm dev:server:sqlite`, must be named clearly and used only when
+  validating local SQLite behavior for the application server runtime. Desktop
+  client commands such as `pnpm dev:desktop:sqlite` must remain gateway-backed
+  client commands when the application standard assigns default API serving to
+  sdkwork-api-gateway.
 - PostgreSQL secrets should use `password_file` or a platform secret; direct `password` is allowed only when the runtime config file is protected as a secret-bearing file.
 - Development PostgreSQL profiles must use a checked-in `.env.postgres.example`
   file with local-only placeholder values and an ignored `.env.postgres`

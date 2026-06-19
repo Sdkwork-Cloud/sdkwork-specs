@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: standard project root directory dictionary and source-controlled `.sdkwork/` workspace metadata at every git repository root and every SDKWork application root
-- Related: `README.md`, `SOUL.md`, `AGENTS_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `README.md`, `SOUL.md`, `AGENTS_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the repository/application root directory dictionary and the `.sdkwork/` directory. `.sdkwork/` is the local knowledge and extension workspace for SDKWork development. It stores reusable skills, repository-local plugins, and optional machine-readable workspace manifests that help agents, developers, and CI use the same standards.
 
@@ -245,8 +245,11 @@ Boundary rules:
   and non-Rust job packages. Rust worker implementations belong in
   `crates/sdkwork-<domain>-<capability>-worker/`; `jobs/` may reference those crates but must not
   duplicate their implementation.
-- `scripts/` contains thin command entrypoints. Reusable logic, parsers, generators, validators,
-  CLIs, and operator utilities belong in `tools/` or in a proper package/crate.
+- `scripts/` contains thin command entrypoints. Public `package.json#scripts`
+  names follow `PNPM_SCRIPT_SPEC.md`; product-specific runner file names may
+  remain internal implementation details only. Reusable logic, parsers,
+  generators, validators, CLIs, and operator utilities belong in `tools/` or
+  in a proper package/crate.
 - `plugins/` stores application/runtime plugin source. Repository/application agent plugins remain
   under `.sdkwork/plugins/` and follow this standard's plugin workspace rules.
 - `configs/` stores source-controlled safe config templates, schemas, profile examples, and
