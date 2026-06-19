@@ -308,7 +308,7 @@ Rules:
   a runtime target or deployment profile value.
 - `pnpm dev` for a PC root starts the browser renderer unless the local app spec says otherwise.
 - `pnpm dev:server` starts the server process with the development server config profile.
-- `pnpm tauri:dev` starts the desktop shell and may also start a server process, but the server process reads the server development profile, not the installed desktop profile.
+- `pnpm dev:desktop` starts the desktop shell and may also start a server process, but the server process reads the server development profile, not the installed desktop profile.
 - Installed desktop packages use `deployment_profile = "standalone"` and `runtime_target = "desktop"` by default.
 - Standalone server packages use `deployment_profile = "standalone"` and `runtime_target = "server"` by default.
 - Standalone single-container packages use `deployment_profile = "standalone"` and `runtime_target = "container"` by default.
@@ -385,6 +385,11 @@ remains SQLite by default. Desktop/Tauri development commands that start a
 backend service use PostgreSQL to exercise server behavior, but that does not
 change the desktop package database default. `SDKWORK_<APP>_DATABASE_URL` is an
 explicit operator override, not the primary production configuration path.
+Application root `pnpm dev:browser` and `pnpm dev:desktop` are development
+orchestration defaults, not installer defaults: both must select the
+PostgreSQL development profile, `serviceLayout = unified-process`, and
+`deploymentProfile = standalone` unless an explicit suffixed command selects
+SQLite, split-services, or cloud.
 
 | Deployment profile | Runtime target | Default database | Requirement |
 | --- | --- | --- | --- |
@@ -402,12 +407,12 @@ Rules:
   private data directory, not under server data directories and not in
   PostgreSQL, unless the user explicitly configures an external database.
 - SDKWork application root commands follow `PNPM_SCRIPT_SPEC.md`. `pnpm dev`
-  starts the default development workflow, `pnpm dev:server:postgres` starts
-  the explicit server PostgreSQL integration profile, and `pnpm dev:desktop`
-  starts the desktop shell/profile. Product-prefixed public commands such as
-  `clawrouter:dev`, `drive:dev`, and `im:dev` are retired. The PostgreSQL
-  profile belongs to the launched service runtime and must not be treated as
-  the desktop-local data store.
+  starts the default development workflow. `pnpm dev:browser` and
+  `pnpm dev:desktop` default to PostgreSQL, `unified-process`, and standalone.
+  Product-prefixed public commands such as `clawrouter:dev`, `drive:dev`, and
+  `im:dev` are retired. The PostgreSQL development profile belongs to dev
+  orchestration and any launched service runtime; it must not be treated as the
+  installed desktop-local data store.
 - Explicit application server SQLite development commands, such as
   `pnpm dev:server:sqlite`, must be named clearly and used only when
   validating local SQLite behavior for the application server runtime. Desktop

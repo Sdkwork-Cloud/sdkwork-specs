@@ -332,7 +332,7 @@ Rules:
   prefixes, the gateway contract `MUST` declare route precedence and the application `MUST` rely on
   that contract instead of mounting the same foundation APIs locally. More specific dependency
   routes and fixed IAM/provider routes resolve before broad fallback surfaces.
-- `pnpm tauri:dev`, a local server launcher, or any host command starting a backend process does not
+- `pnpm dev:desktop`, a local server launcher, or any host command starting a backend process does not
   by itself prove that dependency APIs are served. The launched runtime must either configure the
   dependency surface as an external service or mount the executable dependency integration entrypoint.
 - Application roots that do not mount the dependency executable router `MUST` configure dependency

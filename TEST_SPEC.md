@@ -12,7 +12,7 @@ No standard is complete until it is executable.
 | --- | --- |
 | Agent entrypoints | Repository/application `AGENTS.md` presence, tool compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` where required, required sections, relative `sdkwork-specs` path checks, `SOUL.md`/`AGENTS_SPEC.md` references, and no duplicated root spec bodies |
 | Repository workspace | Git repository root and application root standard top-level directory dictionary checks, `.sdkwork/` presence checks, tracked `skills/` and `plugins/` placeholders, skill/plugin manifest checks, static scans for forbidden secrets/runtime/generated SDK files |
-| pnpm scripts | Validate `PNPM_SCRIPT_SPEC.md`: required root scripts, product-prefix retirement, allowed public namespaces, canonical gateway command order, retired deployment word rejection, and package-local script scans |
+| pnpm scripts | Validate `PNPM_SCRIPT_SPEC.md`: required root scripts, product-prefix retirement, allowed public namespaces, action-first runtime target command names, canonical gateway command order, retired deployment word rejection, package-local script scans, documentation/config command examples, and active runner-script `pnpm` invocation scans |
 | Code style and naming | `CODE_STYLE_SPEC.md` and `NAMING_SPEC.md` checks for focused entrypoints, public exports, generated-code boundaries, canonical names, and no catch-all implementation files |
 | Language-specific code | On-demand Rust, Java, TypeScript, and frontend checks only when those languages/frameworks are touched |
 | Requirements | Validate `REQUIREMENTS_SPEC.md`: requirement id, owner, status, priority, acceptance criteria, non-functional requirements when relevant, traceability to affected specs/components, and verification evidence |
@@ -49,7 +49,7 @@ No standard is complete until it is executable.
 | Frontend | Service tests with injected SDK client, UI integration tests |
 | UI architecture | Static/package scan that the package family matches `UI_ARCHITECTURE_SPEC.md` plus the relevant root architecture spec and exactly one detailed UI/package spec such as `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, or `BACKEND_UI_SPEC.md` |
 | Deployment | Standalone/cloud parity tests, topology profile validation, deployment profile and runtime target separation |
-| GitHub workflow | `GITHUB_WORKFLOW_SPEC.md` checks for `sdkwork.workflow.json`, thin reusable workflow entrypoint, planner/schema alignment, deploymentProfile/runtimeTarget target metadata, safe refs and paths, lifecycle env, release policy, publication policy gates, supply-chain policy, attestation policy, deployment environment binding, and repository validation |
+| GitHub workflow | `GITHUB_WORKFLOW_SPEC.md` checks for `sdkwork.workflow.json`, thin reusable workflow entrypoint, planner/schema alignment, dependency `refInput` dispatch inputs and `dependency_refs_json` passthrough, deploymentProfile/runtimeTarget target metadata, safe refs and paths, lifecycle env, release policy, publication policy gates, supply-chain policy, attestation policy, deployment environment binding, and repository validation |
 | Events | Schema compatibility, idempotent consumer, replay behavior |
 | Performance | Pagination, latency budget, retry, rate-limit behavior |
 | Documentation | README/examples match public contracts |
@@ -224,14 +224,41 @@ Rules:
 - Tests `MUST` fail when root public script names contain retired deployment
   words such as `self-hosted`, `cloud-hosted`, `hosting`, or
   `deploymentMode`.
+- Tests `MUST` fail when root or package-local script command values, standard
+  command examples, or active command-bearing JSON use retired deployment
+  flags or values such as `--hosting`, `self-hosted`, `cloud-hosted`, or
+  `deploymentMode`.
+- Tests `MUST` fail when runtime target scripts are exposed as
+  platform/tool-first names such as `browser:*`, `desktop:*`, `tauri:*`,
+  `docker:*`, `android:*`, `ios:*`, `harmony:*`, `flutter:*`, or
+  `mini-program:*`. Public scripts use action-first names such as
+  `dev:browser`, `dev:desktop`, `build:desktop`, `build:container`,
+  `build:android-native`, and `build:mini-program`.
+- Tests `MUST` fail when Tauri is used as a public runtime target suffix such
+  as `dev:tauri`; Tauri is a tool/runtime implementation detail behind the
+  canonical `desktop` runtime target.
 - Tests `MUST` fail when gateway scripts use deployment profile before action,
   such as `gateway:cloud:bundle` or `gateway:standalone:pack`. Use
   `gateway:package:cloud` and `gateway:package:standalone`.
+- Tests `MUST` fail when root `dev:browser` or `dev:desktop` defaults resolve
+  to SQLite, cloud, split hidden topology, or retired `--hosting` flags. These
+  defaults must resolve through their direct command value or root-script
+  delegation chain to PostgreSQL, `unified-process`, and `standalone`; explicit
+  alternatives use suffixed scripts such as `dev:desktop:sqlite` or
+  `dev:browser:postgres:split-services:cloud`.
 - Tests `MUST` verify new root API/SDK command families use `api:*` and
   `sdk:*` public namespaces for cross-application automation.
 - Tests `MUST` scan app surface and package-local `package.json#scripts` for
-  retired deployment words while ignoring generated SDK package manifests under
-  generated output.
+  retired deployment words, retired public namespaces such as `server:*`,
+  `service:*`, `portal:*`, `product:*`, `alignment:*`, `apis:*`, `file-sdk:*`,
+  and `prepare:*`, and platform/tool-first runtime aliases such as `browser:*`,
+  `desktop:*`, `tauri:*`, `docker:*`, `android:*`, `ios:*`, `harmony:*`,
+  `flutter:*`, `mini-program:*`, and `*:tauri`, while ignoring generated SDK
+  package manifests under generated output.
+- Tests `MUST` scan active command-bearing JSON such as `sdkwork.app.config.json`,
+  `sdkwork.workflow.json`, active `specs/*.json`, and Tauri config command hooks
+  for the same product-prefix, action-first runtime target, and gateway command
+  order rules, plus retired deployment flags and values.
 - Application repositories may call the canonical validator with:
 
 ```text
@@ -278,6 +305,16 @@ Rules:
 - Application workflow tests `MUST` verify `sdkwork.workflow.json` exists when the application is packaged, released, or deployed through GitHub Actions.
 - Application workflow tests `MUST` verify `.github/workflows/package.yml` is a thin reusable workflow call to `Sdkwork-Cloud/sdkwork-github-workflow/.github/workflows/sdkwork-package.yml@<pinned-ref>`.
 - Application workflow tests `MUST` fail when large framework workflow bodies, dependency checkout scripts, matrix planning, release upload logic, or attestation logic are copied into application repositories.
+- Application repositories may call the canonical entrypoint validator with:
+
+```text
+node ../sdkwork-specs/tools/check-agent-workflow-standard.mjs --root .
+```
+
+The validator covers application packaging workflow entrypoints, target
+`deploymentProfile`/`runtimeTarget` metadata, copied release workflow drift,
+repository/application `AGENTS.md` dynamic progressive loading, compatibility
+shims, and relative `sdkwork-specs` path resolution.
 - Framework planner tests `MUST` reject unknown config properties, schema-declared type violations, empty target lists, duplicate target ids, non-canonical target ids, duplicate target formats, unsupported enum values, missing or mismatched Linux native package distributions, mixed Linux native/generic formats, dynamic lifecycle `uses`, unsafe relative paths, dependency checkout path overlaps, unsafe dependency refs, unsupported dependency token secret names, deployment selectors that match no package target, and non-string lifecycle `env` values.
 - Framework planner tests `MUST` prove JSON Schema, planner validation, example configs, generated bootstrap output, and reusable workflow policy consumption remain aligned.
 - Package naming tests `MUST` prove package ids use `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>` for generic packages, Linux native `deb`/`rpm` package ids use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<format-token>`, variant packages use `<platform>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>` or `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>`, artifact names use `<artifactPrefix>-<packageId>`, `tar.gz` becomes `tar-gz`, server packages do not use `service` aliases, Windows desktop targets cover both `msi` and `exe` when both installers are configured, and browser, H5, server, PC desktop, Capacitor, Flutter, native mobile, tablet, mini program, container, variant, and multi-format targets remain unique.
@@ -691,6 +728,10 @@ Rules:
   and `SDKWORK_RUNTIME_TARGET` into package/deployment lifecycle steps, and
   generate package ids with the deployment profile segment required by
   `GITHUB_WORKFLOW_SPEC.md`.
+- GitHub workflow entrypoint tests `MUST` prove every
+  `dependencies[].refInput` and `verificationDependencies[].refInput` in
+  `sdkwork.workflow.json` is exposed by the thin package workflow through a
+  matching `workflow_dispatch` input and `dependency_refs_json` entry.
 - GitHub workflow planner tests `MUST` fail when `docker`, `mobile`, `native`,
   or `web` is used as a deployment profile or non-canonical runtime target.
 - Runtime target matrix tests `MUST` prove browser, desktop, tablet,

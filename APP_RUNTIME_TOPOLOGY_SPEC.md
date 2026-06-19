@@ -167,6 +167,13 @@ Dev scripts `MUST`:
 5. Print the resolved `deploymentProfile`, `serviceLayout`, `environment`, and
    profile id at startup.
 
+Root `dev:browser` and `dev:desktop` are default dev orchestration commands.
+They `MUST` resolve to `standalone.unified-process.development` and the
+PostgreSQL dev database profile unless the command name explicitly selects
+SQLite, split-services, or cloud. New dev scripts `MUST NOT` accept or emit
+retired deployment flags such as `--hosting self-hosted` or
+`--hosting cloud-hosted`.
+
 For `standalone.unified-process.*` profiles, orchestration `MUST` start only
 the application ingress process for application-plane HTTP APIs. Internal route
 crates may be embedded in that ingress process, and dev/runtime contracts `MUST

@@ -81,6 +81,22 @@ Canonical SDKWORK specs path from this repository:
 
 Local files may narrow the task, but root `sdkwork-specs` remain authoritative.
 
+Rules:
+
+- Loading is dynamic and progressive. Agents `MUST` load the nearest
+  `AGENTS.md` and dictionary entries first, then only the root specs required
+  by the current task.
+- Agents `MUST NOT` eagerly load all language, runtime, UI, deployment, or SDK
+  specs for unrelated work.
+- `sdkwork.app.config.json`, local `specs/`, and local `.sdkwork/` are loaded
+  when the task touches the application identity, component contract, local
+  skills/plugins, runtime, SDK wiring, release, or packaging behavior they
+  govern. They are not a reason to scan the entire repository first.
+- Durable local rules belong in local `specs/`, README/runbooks, manifests, or
+  task-specific documentation. `AGENTS.md` `MUST NOT` keep an "Existing Local
+  Guidance" block or preserved legacy command list that competes with root
+  SDKWork standards.
+
 ## 5. Required Specs By Task Type
 
 `AGENTS.md` must map common task types to the minimum specs agents read before editing.
@@ -182,4 +198,16 @@ Validation should check:
 - Relative `sdkwork-specs` paths resolve.
 - Required sections are present.
 - Required task-to-spec mappings include language-on-demand behavior.
+- `AGENTS.md` states dynamic progressive loading and does not require loading
+  every language/framework spec for unrelated tasks.
+- `AGENTS.md` references `PNPM_SCRIPT_SPEC.md` and `GITHUB_WORKFLOW_SPEC.md`
+  when command or GitHub packaging workflows exist in the repository.
+- `AGENTS.md` does not retain "Existing Local Guidance" or legacy preserved
+  rule blocks; durable local rules are moved to local specs or linked docs.
 - `AGENTS.md` does not duplicate root spec bodies or embed secrets.
+
+Application repositories may call the canonical validator with:
+
+```text
+node ../sdkwork-specs/tools/check-agent-workflow-standard.mjs --root .
+```

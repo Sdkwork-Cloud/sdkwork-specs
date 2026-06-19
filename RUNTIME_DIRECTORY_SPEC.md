@@ -468,9 +468,9 @@ Rules:
 - Desktop package local user data must stay on SQLite by default even when the
   repository's integrated development command uses `.env.postgres.example` and
   PostgreSQL. The PostgreSQL dev profile exercises backend service behavior for
-  `pnpm clawrouter:dev`, `pnpm dev`, or `pnpm server:dev`; it is not the desktop
-  data persistence default. Gateway-backed desktop commands such as
-  `pnpm desktop:dev` or `pnpm tauri:dev` do not start that backend profile.
+  `pnpm dev`, `pnpm dev:browser`, `pnpm dev:desktop`, or `pnpm dev:server`; it
+  is not the desktop data persistence default. Desktop host runner commands
+  remain internal implementation details behind `pnpm dev:desktop`.
 - Production startup must fail closed if the database config still contains
   placeholder values.
 - Migration and seed behavior must be controlled by explicit typed fields or

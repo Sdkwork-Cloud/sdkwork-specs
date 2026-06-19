@@ -109,14 +109,6 @@ topology
 workflow
 sbom
 nginx
-docker
-desktop
-tauri
-android
-ios
-harmony
-flutter
-mini-program
 docs
 perf
 migrate
@@ -133,8 +125,26 @@ Rules:
 
 - Use `api`, not `apis`, for new root scripts.
 - Use `sdk`, not product-specific SDK prefixes such as `file-sdk`, for cross-application SDK generation and verification commands. Domain-specific package commands may keep narrower names inside the owning package.
-- `docker` may be a tooling namespace, but Docker-compatible runtime artifacts `MUST` map to `runtimeTarget = container`.
-- `tauri`, `android`, `ios`, `harmony`, `flutter`, and `mini-program` may be platform-tool namespaces, but repository root automation should also expose `dev:<runtimeTarget>` or `build:<runtimeTarget>` where a cross-application script needs that target.
+- Runtime targets `MUST` be exposed through action-first scripts such as `dev:browser`,
+  `dev:desktop`, `build:desktop`, `build:container`, `build:android-native`,
+  `build:ios-native`, `dev:flutter-android`, and `release:package:mini-program`.
+- Root `dev:browser` and `dev:desktop` are normalized development defaults.
+  When present, each `MUST` resolve to `database = postgres`,
+  `serviceLayout = unified-process`, and `deploymentProfile = standalone`,
+  either by delegating to `dev:<target>:postgres:unified-process:standalone`
+  or by passing equivalent explicit flags such as `--database postgres`,
+  `--service-layout unified-process`, and `--deployment-profile standalone`.
+  SQLite, split-services, or cloud development variants must use explicit
+  suffixed scripts such as `dev:browser:sqlite`,
+  `dev:desktop:sqlite`, or `dev:browser:postgres:split-services:cloud`.
+- Tool or platform names such as `browser:*`, `desktop:*`, `tauri:*`, `docker:*`,
+  `android:*`, `ios:*`, `harmony:*`, `flutter:*`, and `mini-program:*` `MUST NOT`
+  be public root, app surface, or package-local script names when they represent
+  a runtime target. The tool remains an internal runner detail behind the
+  standard action-first script.
+- `tauri` `MUST NOT` appear as a public script runtime target suffix such as `dev:tauri`; use `dev:desktop` or `build:desktop` instead.
+- Docker-compatible runtime artifacts `MUST` map to `runtimeTarget = container`,
+  not to a public `docker:*` command family.
 
 ## 5. Axis Values
 
@@ -201,6 +211,10 @@ docker
 Rules:
 
 - `self-hosted`, `cloud-hosted`, `hosting`, and `deploymentMode` `MUST NOT` appear in new public script names or standard command examples.
+- Root default dev scripts `dev:browser` and `dev:desktop` `MUST NOT` pass
+  retired topology flags such as `--hosting self-hosted` or
+  `--hosting cloud-hosted`; use `--deployment-profile standalone|cloud` plus
+  `--service-layout unified-process|split-services`.
 - `web`, `mobile`, `native`, and `docker` `MUST NOT` be used as deployment profile or runtime-target aliases.
 - `dev`, `test`, `staging`, and `prod` may appear only as script/file profile aliases. Runtime config must normalize them to `development`, `test`, `staging`, and `production`.
 
@@ -233,6 +247,17 @@ Migration examples:
 | `clawrouter:dev` | `dev` |
 | `clawrouter:dev:postgres` | `dev:server:postgres` or `dev:browser:postgres` based on the orchestrated target |
 | `clawrouter:dev:cloud:split` | `dev:browser:postgres:split-services:cloud` |
+| `browser:dev` | `dev:browser` |
+| `desktop:dev` | `dev:desktop` |
+| `desktop:build` | `build:desktop` |
+| `tauri:dev` | `dev:desktop` |
+| `dev:tauri` | `dev:desktop` |
+| `docker:build` | `build:container` |
+| `android:build` | `build:android-native` |
+| `ios:build` | `build:ios-native` |
+| `harmony:dev` | `dev:harmony-native` |
+| `flutter:dev` | `dev:flutter-android` or `dev:flutter-ios` based on the selected target |
+| `mini-program:build` | `build:mini-program` |
 | `im:dev` | `dev` |
 | `im:dev:desktop` | `dev:desktop` |
 
@@ -321,12 +346,33 @@ pnpm script validation `MUST` check:
 
 - Required repository root commands exist.
 - Product-prefixed public root scripts are absent.
-- Retired deployment words are absent from new script names.
+- Retired deployment words and flags are absent from new script names, script
+  command values, standard command examples, and command-bearing manifests.
 - New root scripts use allowed first segments.
 - `api:*` is preferred over new `apis:*` root scripts.
 - `gateway:*` commands use action before deployment profile.
-- App surface and package scripts use standard local names where applicable.
-- Standards and README examples do not introduce product-prefixed public root commands.
+- Runtime target command aliases use action-first names; `browser:*`, `desktop:*`,
+  `tauri:*`, `docker:*`, `android:*`, `ios:*`, `harmony:*`, `flutter:*`,
+  `mini-program:*`, and `*:tauri` are absent from root, app surface, and
+  package-local scripts.
+- App surface and package scripts use standard local names where applicable, and do not keep
+  retired public namespaces such as `server:*`, `service:*`, `portal:*`, `product:*`,
+  `alignment:*`, `apis:*`, `file-sdk:*`, or `prepare:*`.
+- Standards, `README.md`, `AGENTS.md`, active runbook examples, `sdkwork.app.config.json`,
+  `sdkwork.workflow.json`, active `specs/*.json`, and Tauri config command hooks do not
+  introduce product-prefixed public root commands, platform/tool-first runtime aliases,
+  retired deployment flags such as `--hosting self-hosted`, or retired command
+  order such as `gateway:cloud:bundle`.
+- Active runner scripts under `scripts/` and `tools/` do not invoke or
+  document retired public `pnpm` commands such as `browser:dev`,
+  `desktop:dev`, `server:dev`, `tauri:dev`, `dev:tauri`,
+  `dev:portal`, or `dev:service`; internal implementation may still call
+  native tools such as Vite, Tauri, Cargo, Docker, Flutter, Gradle, Xcode, or
+  hvigor behind the standard action-first `pnpm` surface.
+- Root `dev:browser` and `dev:desktop` resolve through their direct command
+  value or root-script delegation chain to PostgreSQL, `unified-process`, and
+  standalone defaults, and fail when they resolve to SQLite, split-services,
+  cloud, or retired `--hosting` flags.
 
 Validation SHOULD provide a migration suggestion for every rejected script name.
 
@@ -335,6 +381,10 @@ Validation SHOULD provide a migration suggestion for every rejected script name.
 - [ ] Repository root exposes `dev`, `build`, `test`, `check`, `verify`, and `clean`.
 - [ ] Capability-specific root commands exist for release, deploy, API, SDK, database, gateway, topology, and supply-chain workflows when those capabilities exist.
 - [ ] No repository root public script starts with a product prefix such as `drive`, `im`, or `clawrouter`.
+- [ ] Runtime-target commands are action-first, for example `dev:browser`, `dev:desktop`, `build:desktop`, `build:container`, `build:android-native`, `build:ios-native`, and `build:mini-program`; no public script uses platform/tool-first aliases such as `browser:*`, `desktop:*`, `tauri:*`, `docker:*`, `android:*`, `ios:*`, `harmony:*`, `flutter:*`, `mini-program:*`, or `*:tauri`.
+- [ ] Root `dev:browser` and `dev:desktop` default to
+      `postgres:unified-process:standalone`; SQLite, split-services, and cloud
+      variants are explicit suffixed commands.
 - [ ] Script suffixes use canonical runtime target, database, service layout, deployment profile, and tier values.
 - [ ] Gateway commands use `gateway:<action>[:deploymentProfile]`.
 - [ ] Root public scripts call a standard dispatcher or thin wrapper.

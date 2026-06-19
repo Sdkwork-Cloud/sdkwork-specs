@@ -75,15 +75,14 @@ Rules:
 - Desktop/Tauri development commands that start the product service runtime
   `MUST` use the server PostgreSQL development profile for the service/backend
   process. Applications whose default desktop development commands are
-  gateway-backed client commands, such as SDKWork Claw Router
-  `pnpm desktop:dev` and `pnpm tauri:dev`, must keep product server startup on
-  explicit server commands.
+  gateway-backed client commands, such as SDKWork Claw Router `pnpm dev:desktop`,
+  must keep product server startup on explicit server commands.
 - The desktop shell must not infer that the service database is SQLite just
   because the runtime target is `desktop`. The deployment profile remains
   `standalone` or `cloud`; the launched service profile describes backend
   persistence.
 - SQLite development entrypoints are allowed only as explicit local-data or
-  regression profiles, such as `pnpm server:dev:sqlite` or a documented
+  regression profiles, such as `pnpm dev:server:sqlite` or a documented
   desktop-local validation command; they must not replace the default explicit
   service/runtime PostgreSQL profile.
 - Feature UI and host adapters `MUST NOT` access either SQLite or PostgreSQL
@@ -136,7 +135,7 @@ apps/<product>-pc/
 Rules:
 
 - The root PC app package owns web bootstrap and web build scripts.
-- Repositories that include a desktop app `MUST` expose top-level launch commands that follow `PNPM_SCRIPT_SPEC.md`: `pnpm dev` starts the default PC renderer or documented default development workflow, and `pnpm dev:desktop` starts the default desktop shell. `pnpm tauri:dev` may remain a package-local Tauri command or a thin root platform-tool alias, but cross-application automation uses `pnpm dev:desktop`.
+- Repositories that include a desktop app `MUST` expose top-level launch commands that follow `PNPM_SCRIPT_SPEC.md`: `pnpm dev` starts the default PC renderer or documented default development workflow, and `pnpm dev:desktop` starts the default desktop shell. Tauri CLI commands remain implementation details behind action-first public scripts.
 - The PC renderer dev command `MUST` use the same host and port as the Tauri `devUrl`, and it `MUST` fail on port conflicts instead of silently falling back to another port.
 - Existing backend or application server development commands `MUST` remain available under explicit names such as `pnpm dev:server`, `pnpm dev:postgres`, or `pnpm dev:sqlite` when `pnpm dev` is assigned to the desktop renderer.
 - The desktop package owns Tauri CLI, Tauri config, Rust shell code, icons, permissions, and native bundle scripts.
@@ -182,7 +181,7 @@ Rules:
 - iPadOS and Android tablet targets `MUST` reuse the PC renderer, package taxonomy, SDK clients, appbase IAM runtime, and global TokenManager defined by `APP_PC_ARCHITECTURE_SPEC.md`.
 - iPadOS target configuration `MUST` document bundle id, Apple team, provisioning profile, signing certificate, entitlements, minimum OS version, icons, launch assets, and distribution path.
 - Android tablet target configuration `MUST` document package name, min/target SDK, signing key handling, ABI targets, icons, adaptive icon assets, APK/AAB outputs, and distribution path.
-- Tablet target commands `SHOULD` be exposed as `pnpm tauri:ios:dev`, `pnpm tauri:ios:build`, `pnpm tauri:android:dev`, and `pnpm tauri:android:build`.
+- Tablet target commands `SHOULD` be exposed as `pnpm dev:tablet-ipados`, `pnpm build:tablet-ipados`, `pnpm dev:tablet-android`, and `pnpm build:tablet-android`.
 - iOS/iPadOS builds require macOS with Apple tooling. Android tablet builds require Android tooling. CI pipelines `MUST` record which runner image satisfies each target.
 - Tablet UI `MUST` handle safe areas, orientation, split view or multi-window where supported, pointer/keyboard input, touch/stylus input, virtual keyboard, and foreground/background lifecycle transitions.
 - Tablet targets `MUST NOT` introduce phone-first navigation, mobile-only SDK wrappers, copied auth stores, or divergent route ownership inside the PC root.
@@ -284,28 +283,30 @@ Recommended commands:
 pnpm dev:desktop
 pnpm dev:desktop:server
 pnpm dev:desktop:sqlite
-pnpm tauri:test
-pnpm tauri:test:config
+pnpm test:desktop
+pnpm check:tauri-config
 pnpm build:desktop
 pnpm build:desktop:staging
 pnpm build:desktop:prod
-pnpm tauri:ios:build:prod
-pnpm tauri:android:build:prod
+pnpm build:tablet-ipados:prod
+pnpm build:tablet-android:prod
 ```
 
 Command rules:
 
-- `dev:desktop` uses the desktop development profile. It may remain client-only
-  when the application standard assigns default API serving to a shared
-  gateway.
+- `dev:desktop` uses the default desktop development orchestration profile and
+  must resolve to PostgreSQL, `unified-process`, and standalone by default. It
+  may remain client-only when the application standard assigns default API
+  serving to a shared gateway, but the selected dev topology/database profile
+  is still `postgres:unified-process:standalone`.
 - `dev:desktop:server` or an equivalent explicit server command makes the backend
   service profile explicit when contributors need to debug the desktop plus
   service integration path.
 - `dev:desktop:sqlite`, `dev:server:sqlite`, or an equivalent documented command
   is the explicit local SQLite regression profile. It must not become the
   default server integration command.
-- `tauri:test:config` validates platform config merge, profile normalization, desktop/server split, secret absence, local path resolution, and test isolation.
-- `tauri:build:prod`, `tauri:ios:build:prod`, and `tauri:android:build:prod` must run release preflight before packaging.
+- `check:tauri-config` validates platform config merge, profile normalization, desktop/server split, secret absence, local path resolution, and test isolation.
+- `build:desktop:prod`, `build:tablet-ipados:prod`, and `build:tablet-android:prod` must run release preflight before packaging.
 
 ## 8. Native Capability Boundary
 
@@ -369,16 +370,16 @@ Suggested commands depend on the app, but every desktop app should define equiva
 ```text
 pnpm dev
 pnpm dev:desktop
-pnpm tauri:ios:dev
-pnpm tauri:android:dev
+pnpm dev:tablet-ipados
+pnpm dev:tablet-android
 pnpm --dir apps/<product>-pc lint
 pnpm --dir apps/<product>-pc build
 pnpm --dir apps/<product>-pc test:config
 pnpm --dir apps/<product>-pc exec <architecture-contract-tests>
-pnpm --filter <product>-pc-desktop desktop:build:local
-pnpm --filter <product>-pc-desktop tauri:test:config
-pnpm --filter <product>-pc-desktop tauri:ios:build
-pnpm --filter <product>-pc-desktop tauri:android:build
+pnpm --filter <product>-pc-desktop build:desktop:local
+pnpm --filter <product>-pc-desktop check:tauri-config
+pnpm --filter <product>-pc-desktop build:tablet-ipados
+pnpm --filter <product>-pc-desktop build:tablet-android
 ```
 
 ## 11. Acceptance Checklist

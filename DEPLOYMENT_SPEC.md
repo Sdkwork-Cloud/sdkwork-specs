@@ -198,15 +198,16 @@ profile.
 Standalone server/container and cloud container deployments default to
 PostgreSQL. Desktop runtime targets default to SQLite.
 
-Desktop packages must keep local user data on SQLite by default. For SDKWork
-Claw Router, `pnpm clawrouter:dev` (aliases `pnpm dev`, `pnpm server:dev`)
-start the integrated product server with PostgreSQL by default.
-Gateway-backed client commands such as `pnpm clawrouter:dev:desktop`,
-`pnpm desktop:dev`, and `pnpm tauri:dev` must not start the product backend
-service. The PostgreSQL development profile used by explicit product server
-commands such as `pnpm server:dev:postgres`, `pnpm clawrouter:dev:postgres`, or
-server integration tests belongs to the launched backend service runtime. It
-must not change the desktop package default or the desktop user data location.
+Desktop packages must keep local user data on SQLite by default. Development
+orchestration is stricter: SDKWork application root `pnpm dev:browser` and
+`pnpm dev:desktop` default to PostgreSQL, `serviceLayout = unified-process`,
+and `deploymentProfile = standalone`. Explicit SQLite, split-services, or
+cloud development paths must use suffixed commands such as
+`pnpm dev:desktop:sqlite` or
+`pnpm dev:browser:postgres:split-services:cloud`. The PostgreSQL development
+profile belongs to dev orchestration and any launched backend service runtime;
+it must not change the installed desktop package default or the desktop user
+data location.
 
 Redis is enabled and required by default for cloud deployments and standalone
 server/container packages that declare shared runtime state. Release packages

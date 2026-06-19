@@ -43,6 +43,11 @@ Rules:
 - Manual dispatch inputs `MUST` use event-safe expressions such as `github.event.inputs.*` with tag and release fallbacks for non-manual events.
 - Production deployments `MUST` use GitHub Environments for approval rules and environment-scoped secrets.
 - Application workflows `MUST NOT` request broader GitHub permissions than the reusable framework requires unless the exception is documented and reviewed.
+- Application repositories `MUST NOT` keep copied packaging/release workflow
+  files such as `.github/workflows/release-package.yml` or
+  `.github/workflows/package-release.yml`. Package, release upload,
+  dependency checkout, changelog, attestation, and deployment packaging logic
+  belongs in the reusable framework plus `sdkwork.workflow.json`.
 
 ## 3. Configuration Contract
 
@@ -256,6 +261,12 @@ Rules:
   build, package, API, SDK, or release dependency past dependency management
   checks.
 - Dependency refs may come from a fixed `ref` or from a declared `refInput` supplied through workflow variables.
+- Every dependency or verification dependency with `refInput` in
+  `sdkwork.workflow.json` `MUST` be exposed by the thin package workflow as a
+  matching `workflow_dispatch` input and passed through `dependency_refs_json`
+  to the reusable workflow. For example `SDKWORK_WEB_FRAMEWORK_REF` maps to
+  `github.event.inputs.sdkwork_web_framework_ref` with a
+  `vars.SDKWORK_WEB_FRAMEWORK_REF` fallback.
 - Every dependency ref `MUST` be validated as a safe Git ref before checkout. Unsafe refs with control characters, whitespace, path traversal, option-like prefixes, ref lock suffixes, or Git ref metacharacters must fail.
 - The v1 framework supports `SDKWORK_RELEASE_TOKEN` as the dependency checkout token. Other per-dependency token secret names are not valid unless a future framework version adds a documented token map.
 - Checkout implementations `MUST NOT` put tokens in clone URLs. Use Git credential headers or first-party checkout actions so tokens are masked and not persisted in remote URLs.
@@ -359,6 +370,16 @@ Application integration verification `MUST` check:
 - GitHub Release notes are rendered by framework changelog planning from `release.changelog`, manifest `release.notes[]`, a declared changelog file, or git commit subjects.
 - Aggregate Release publication, when configured, downloads workflow artifacts, runs final `lifecycle.publish` in aggregate context, renders framework Release notes, and uploads configured aggregate assets only once.
 - Output globs resolve to the expected release artifacts during package validation.
+
+Application repositories may call the canonical entrypoint validator with:
+
+```text
+node ../sdkwork-specs/tools/check-agent-workflow-standard.mjs --root .
+```
+
+The validator checks the thin packaging workflow, pinned reusable workflow ref,
+`sdkwork.workflow.json` target metadata, absence of copied release workflow
+bodies, and the repository/application `AGENTS.md` dynamic loading contract.
 
 Framework verification `MUST` check:
 

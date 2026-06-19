@@ -301,10 +301,12 @@ Rules:
   SDKWork user private data directory.
 - Desktop runtime config should resolve `database.engine` to `sqlite` and
   `database.file` to the user private data directory by default.
-- Desktop/Tauri development commands that start backend services should resolve
-  the service database through the PostgreSQL dev profile. That service config
-  is separate from the desktop-local SQLite config and must not change the
-  installed desktop package default.
+- Application root `dev:browser` and `dev:desktop` commands are development
+  orchestration defaults. They should resolve `database.engine = "postgresql"`
+  `serviceLayout = "unified-process"`, and `deploymentProfile = "standalone"`
+  unless an explicit suffixed command selects SQLite, split-services, or cloud.
+  This development service config is separate from the desktop-local SQLite
+  config and must not change the installed desktop package default.
 - Environment parsing for `database` must map
   `SDKWORK_<APP>_DATABASE_ENGINE` to `engine` and
   `SDKWORK_<APP>_DATABASE_SSL_MODE` to `sslMode`. New applications must reject

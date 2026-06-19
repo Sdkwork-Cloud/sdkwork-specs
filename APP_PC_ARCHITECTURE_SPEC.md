@@ -168,7 +168,13 @@ Rules:
 - `pnpm dev` starts the browser renderer with browser public runtime config.
 - `pnpm dev:server` starts the backend service with `config/server/<product>.development.toml.example` copied or materialized into a host-local dev config.
 - `pnpm test` uses an isolated test profile and must not share development or production database/schema, Redis prefix, logs, cache, runtime, or temp directories.
-- `pnpm dev:desktop` starts the desktop host. If it launches a backend service, that service uses the server development profile; installed desktop config remains the desktop profile with user-private SQLite by default. `pnpm tauri:dev` may remain package-local or a thin platform-tool alias, but cross-application automation uses `pnpm dev:desktop`.
+- `pnpm dev:desktop` starts the desktop host through the standard development
+  orchestration profile. It defaults to PostgreSQL, `unified-process`, and
+  standalone, even when the desktop process itself remains client-only behind a
+  shared gateway. Installed desktop config remains the desktop profile with
+  user-private SQLite by default. Tauri remains an internal runner detail;
+  public pnpm commands follow `PNPM_SCRIPT_SPEC.md` action-first runtime target
+  names.
 - Browser SDK base URLs must be loaded from public runtime config before SDK client construction. Vite `VITE_*` variables are public non-secret build/dev inputs only.
 - Release builds must fail preflight if production profiles contain localhost service endpoints, development secrets, test database names, writable developer directories, or unresolved placeholders.
 
@@ -416,8 +422,8 @@ Rules:
 
 - `pnpm dev` should start the default PC browser renderer for the application root.
 - `pnpm dev:desktop` should start the default desktop host when `sdkwork-<product>-pc-desktop` exists.
-- `pnpm tauri:ios:dev` should start the iOS/iPadOS Tauri development target when tablet packaging is enabled.
-- `pnpm tauri:android:dev` should start the Android tablet Tauri development target when tablet packaging is enabled.
+- `pnpm dev:tablet-ipados` should start the iOS/iPadOS Tauri development target when tablet packaging is enabled.
+- `pnpm dev:tablet-android` should start the Android tablet Tauri development target when tablet packaging is enabled.
 - Tauri `devUrl` `MUST` point to the renderer dev server, and `frontendDist` `MUST` point to the renderer build output.
 - Mobile/tablet Tauri development `MUST` configure the renderer dev server for `TAURI_DEV_HOST` when required by physical iOS/iPadOS devices.
 - Browser web mode `MUST` degrade gracefully when native host adapters are unavailable.
@@ -474,19 +480,19 @@ Desktop-enabled roots should also provide:
 
 ```text
 pnpm dev:desktop
-pnpm tauri:build
-pnpm tauri:build:prod
+pnpm build:desktop
+pnpm build:desktop:prod
 ```
 
 Tablet-enabled roots should also provide:
 
 ```text
-pnpm tauri:ios:dev
-pnpm tauri:ios:build
-pnpm tauri:ios:build:prod
-pnpm tauri:android:dev
-pnpm tauri:android:build
-pnpm tauri:android:build:prod
+pnpm dev:tablet-ipados
+pnpm build:tablet-ipados
+pnpm build:tablet-ipados:prod
+pnpm dev:tablet-android
+pnpm build:tablet-android
+pnpm build:tablet-android:prod
 ```
 
 Package filters should be stable:
@@ -495,9 +501,9 @@ Package filters should be stable:
 pnpm --filter @sdkwork/<product>-pc-core typecheck
 pnpm --filter @sdkwork/<product>-pc-console-settings test
 pnpm --filter @sdkwork/<product>-pc-admin-monitor test
-pnpm --filter @sdkwork/<product>-pc-desktop tauri:build
-pnpm --filter @sdkwork/<product>-pc-desktop tauri:ios:build
-pnpm --filter @sdkwork/<product>-pc-desktop tauri:android:build
+pnpm --filter @sdkwork/<product>-pc-desktop build:desktop
+pnpm --filter @sdkwork/<product>-pc-desktop build:tablet-ipados
+pnpm --filter @sdkwork/<product>-pc-desktop build:tablet-android
 ```
 
 Rules:
@@ -509,7 +515,7 @@ Rules:
 - `pnpm dev:server` should bind the backend/server process to the development server profile.
 - `pnpm build:staging` and `pnpm build:prod` must run config preflight for browser public runtime, server/container runtime templates, desktop runtime templates, and Tauri platform config before packaging.
 - `pnpm test:config` must validate dev/test/staging/prod profile normalization, public/private separation, desktop/server separation, and test isolation.
-- `tauri:ios:*` and `tauri:android:*` package scripts are SDKWork script aliases. They `MUST` call the corresponding Tauri CLI commands such as `tauri ios dev`, `tauri ios build`, `tauri android dev`, and `tauri android build`.
+- Tablet package scripts use action-first runtime target names such as `dev:tablet-ipados`, `build:tablet-ipados`, `dev:tablet-android`, and `build:tablet-android`. They `MUST` call the corresponding Tauri CLI commands such as `tauri ios dev`, `tauri ios build`, `tauri android dev`, and `tauri android build`.
 - Tablet release scripts `MUST` record output artifacts: IPA for iPadOS/iOS targets and APK/AAB for Android tablet targets.
 
 ## 11. Migration Notes
