@@ -21,6 +21,7 @@ SDKWork distinguishes these dependency concerns:
 | --- | --- | --- |
 | Language/package dependency | Packages, crates, modules, SDK packages, generated client packages, and shared build inputs consumed by code | Native build-tool files such as `pnpm-workspace.yaml`, root `package.json`, `Cargo.toml`, `pubspec.yaml`, `settings.gradle.kts`, `libs.versions.toml`, parent `pom.xml`, `pyproject.toml`, and lockfiles |
 | SDKWork release dependency | Git repository and ref that must be checked out or otherwise resolved for packaging, release, or reproducible CI | `sdkwork.workflow.json` and the reusable SDKWork workflow framework |
+| SDKWork verification dependency | Git repository and ref that must be checked out only for CI, migration, or boundary verification and is not consumed by runtime, package, API, SDK, or release artifacts | `sdkwork.workflow.json` `verificationDependencies[]` and the reusable SDKWork workflow framework |
 | SDK/API ownership dependency | Dependency-owned APIs, SDK families, and composed wrappers consumed by an app | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, SDK assembly metadata, and component specs |
 | Runtime SDK dependency surface | Base URLs, credential modes, same-origin mount proof, and SDK client bootstrap for dependency SDKs | `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md` |
 | Runtime install path | Deployed binary, config, cache, database, service, or user-state path | `DEPLOYMENT_SPEC.md`, install package plans, runtime config |
@@ -134,6 +135,16 @@ Release and CI dependency refs must be reproducible, but release checkout layout
 Rules:
 
 - SDKWork application release dependencies `MUST` be declared in `sdkwork.workflow.json` when packaging or release requires checking out another SDKWork repository.
+- SDKWork verification-only dependencies `MAY` be declared in
+  `sdkwork.workflow.json` `verificationDependencies[]` when CI must check out a
+  sibling repository solely to prove a boundary, migration, or compatibility
+  contract.
+- `verificationDependencies[]` entries `MUST` follow the same repository, ref,
+  token, submodule, and checkout path safety rules as `dependencies[]`.
+- `verificationDependencies[]` `MUST NOT` be used for repositories consumed by
+  packaged artifacts, runtime code, SDK/API generation, or application build
+  output. Such repositories belong in native build-tool files and, when release
+  checkout is required, in `dependencies[]`.
 - Release dependencies `MUST` declare stable `id`, `repository`, `ref` or `refInput`, and `tokenSecret`.
 - `repository` `MUST` use the `owner/repo` form.
 - `tokenSecret` for v1 SDKWork release checkout `MUST` be `SDKWORK_RELEASE_TOKEN`.
@@ -164,6 +175,9 @@ SDKWork checks bridge native build tools and release dependency refs.
 Rules:
 
 - If native build-tool files consume an external SDKWork repository and the application is packaged or released, `sdkwork.workflow.json` `MUST` declare a matching release dependency for that repository unless the dependency is resolved from a registry with separate supply-chain evidence.
+- A repository declared only in `verificationDependencies[]` does not satisfy
+  the matching release dependency requirement for native build-tool
+  consumption.
 - The same SDKWork source dependency `MUST` appear **exactly once** in the consuming workspace: pnpm at `pnpm-workspace.yaml packages:`, Cargo at `[workspace.dependencies]`, Flutter/Dart at the root `pubspec.yaml dependency_overrides`. Member packages consume the entry by protocol (`workspace:*`, `{ workspace = true }`, package name) and never redeclare the path.
 - If `sdkwork.workflow.json` declares a release dependency, native build-tool files or build scripts `MUST` consume that dependency through a documented package, crate, module, SDK family, generated SDK output, composed facade, or release-only build step.
 - The release-time materialization of a `sdkwork.workflow.json` dependency `MUST` place the checkout where the consuming workspace root expects it: the path declared in `pnpm-workspace.yaml packages:` or `Cargo.toml [workspace.dependencies]` MUST resolve to the checkout root used by the workflow. When the workflow checkout path differs from the local sibling path, the framework `MUST` redirect the workspace root's declared path to the checkout (symlink, junction, or workspace-root path rewrite); consumer `package.json` / `Cargo.toml` files do not need to be edited.

@@ -59,6 +59,7 @@ Supported top-level optional fields:
 
 - `$schema`
 - `dependencies`
+- `verificationDependencies`
 - `toolchains`
 - `lifecycle`
 - `security`
@@ -243,6 +244,17 @@ Dependency relationship policy, native build-tool dependency management, cross-p
 Rules:
 
 - Dependencies `MUST` be declared in `sdkwork.workflow.json`, not hidden in application YAML.
+- Runtime, build, package, or release dependencies `MUST` use `dependencies[]`.
+- CI-only or boundary-test-only repositories `MAY` use
+  `verificationDependencies[]` when the repository must be checked out for
+  verification but is not a runtime, package, source, SDK/API ownership, or
+  release dependency.
+- `verificationDependencies[]` entries follow the same repository, ref,
+  token, submodule, and safe checkout path rules as `dependencies[]`, and
+  `SHOULD` declare `purpose`.
+- `verificationDependencies[]` `MUST NOT` be used to smuggle a stale runtime,
+  build, package, API, SDK, or release dependency past dependency management
+  checks.
 - Dependency refs may come from a fixed `ref` or from a declared `refInput` supplied through workflow variables.
 - Every dependency ref `MUST` be validated as a safe Git ref before checkout. Unsafe refs with control characters, whitespace, path traversal, option-like prefixes, ref lock suffixes, or Git ref metacharacters must fail.
 - The v1 framework supports `SDKWORK_RELEASE_TOKEN` as the dependency checkout token. Other per-dependency token secret names are not valid unless a future framework version adds a documented token map.
@@ -339,6 +351,9 @@ Application integration verification `MUST` check:
 - Variant package lifecycle and deployment lifecycle receive `SDKWORK_PACKAGE_VARIANT`.
 - Lifecycle steps receive the standard package and deployment environment variables.
 - Signing, SBOM, attestation, workflow artifact, GitHub Release, dependency checkout, and deployment policies are enforced by executable tests or framework validation.
+- Runtime dependencies and verification-only dependencies are both checked out
+  by the framework, but dependency plans preserve their dependency type so
+  release evidence and API/runtime ownership checks do not confuse the two.
 - Release gate evidence from `QUALITY_GATE_SPEC.md` and `RELEASE_SPEC.md` is available before publishing release artifacts.
 - Supply-chain evidence from `SUPPLY_CHAIN_SECURITY_SPEC.md` is available for published artifacts, including dependency integrity, build integrity, SBOM/provenance/signing/checksum/attestation evidence required by the target policy.
 - GitHub Release notes are rendered by framework changelog planning from `release.changelog`, manifest `release.notes[]`, a declared changelog file, or git commit subjects.
@@ -348,6 +363,9 @@ Application integration verification `MUST` check:
 Framework verification `MUST` check:
 
 - Planner validation rejects unknown fields, schema-declared type violations, empty target lists, duplicate target formats, unsafe paths, dependency checkout path overlaps, unsafe Git refs, unsupported token secrets, dynamic lifecycle `uses`, invalid lifecycle env values, duplicate target ids, missing or invalid deployment profiles, deployment selectors that match no package target, and unsupported enum values.
+- Planner validation allows `verificationDependencies[]` only with the same safe
+  ref, checkout, token, and submodule contract as `dependencies[]`, and
+  dependency checkout plans expose `dependencyType` for each item.
 - Planner validation rejects non-canonical target ids, non-canonical explicit
   package ids, multi-format target package ids, missing Linux native package
   distributions, distribution/format mismatches, malformed package variants,
