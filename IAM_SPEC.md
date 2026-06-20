@@ -155,13 +155,17 @@ IAM uses two tokens for protected operations:
 Rules:
 
 - Protected APIs `MUST` require both tokens unless a documented machine/API-key mode is explicitly selected.
+- Protected app-api and backend-api clients `MUST` send `Access-Token: <access_token>` on every protected request when an access token is available from bootstrap or authenticated session state.
+- Protected app-api and backend-api clients `MUST` send `Authorization: Bearer <auth_token>` on every protected request when an auth token is available from bootstrap or authenticated session state.
 - `Access-Token` is the canonical SDKWork access isolation header for v3 contracts.
 - `auth_token` parsers `MUST` validate principal identity, session identity, tenant identity, organization identity, login scope, auth strength, expiry, issuer, and revocation.
 - `access_token` parsers `MUST` validate principal identity, session identity,
   tenant identity, organization identity, login scope, app, environment,
   deployment profile, runtime target, data scope, permission scope, expiry,
   issuer, audience, and revocation.
-- If both tokens include the same tenant, organization, user, session, or app claim, the values `MUST` match.
+- If both tokens include the same principal or tenancy claim, the framework `MUST` resolve that claim from `auth_token` when both tokens are present.
+- If `access_token` includes an overlapping principal or tenancy claim that contradicts `auth_token` after normalization, validation `MUST` reject the request.
+- Access-isolation-only claims that exist only on `access_token`, such as `data_scope`, `permission_scope`, deployment profile, runtime target, and sharding hints, remain authoritative from `access_token`.
 - App API session creation returns `authToken`, `accessToken`, optional `refreshToken`, session metadata, user summary, and AppContext.
 - Refresh token handling `MUST` be server-controlled, revocable, rotated where possible, and unavailable to normal business operation handlers.
 - Passwords, verification codes, recovery secrets, private tokens, API key raw values, and MFA secrets `MUST` be write-only and never appear in response schemas.
@@ -211,6 +215,21 @@ Rules:
 - Token headers `SHOULD` include a `kid` that maps to one tenant signing key. Validation `MUST` prove that the key used to verify the token belongs to the same `tenant_id` carried by the verified claims.
 - Tenant signing keys `MUST` support rotation with overlapping validation windows. Revoked or expired keys `MUST NOT` sign new tokens.
 - Signing material `MUST` be stored encrypted or in an approved secret manager/KMS. It `MUST NOT` be logged, returned by APIs, embedded in public runtime config, or stored in generated SDK output.
+
+### 5.2.1 Bootstrap Env Credential
+
+Application roots that call protected app-api or backend-api surfaces `MUST`
+document `SDKWORK_ACCESS_TOKEN` in private env templates. The value `MUST`
+be a signed `access_token` whose claims define ambient `tenant_id`,
+`organization_id`, `app_id`, environment, deployment profile, runtime target,
+and scope metadata.
+
+Rules:
+
+- Service-context runtimes (`server`, `container`, `test-runner`, and approved desktop service contexts) `SHOULD` configure `SDKWORK_ACCESS_TOKEN` before interactive login.
+- `auth_token`, `refresh_token`, and API keys `MUST NOT` be configured in environment variables.
+- Browser/renderer runtimes `MUST` obtain session tokens from appbase IAM login flows and TokenManager storage. They `MUST NOT` read live tokens from `VITE_*` or `PORTAL_PUBLIC_*`.
+- Login, registration, refresh, current-session bootstrap, and organization-selection completion `MUST` replace bootstrap env credentials with appbase-issued session tokens.
 
 ## 5.3 API Key Context Resolution (Open-api)
 

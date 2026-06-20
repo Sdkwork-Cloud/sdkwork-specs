@@ -454,6 +454,9 @@ Rules:
 
 - SDKs that consume protected app-api or backend-api operations `MUST` support `Authorization: Bearer <auth_token>`.
 - SDKs that consume protected app-api or backend-api operations `MUST` support `Access-Token: <access_token>`.
+- Generated app-api and backend-api SDK transports `MUST` attach `Access-Token` on every protected request when the bound TokenManager or credential provider exposes an `accessToken`.
+- Generated app-api and backend-api SDK transports `MUST` attach `Authorization: Bearer <auth_token>` on every protected request when the bound TokenManager or credential provider exposes an `authToken`.
+- Application bootstrap `MAY` seed the global TokenManager from private env bootstrap credential `SDKWORK_ACCESS_TOKEN` before interactive login. After login/session bootstrap, session tokens `MUST` replace bootstrap credentials. `auth_token`, `refresh_token`, and API keys `MUST NOT` be configured in environment variables.
 - SDKs that consume protected open-api operations `MUST` support the credential transport declared by the open-api contract: `X-API-Key` for `api-key` mode, `Authorization: Bearer <token>` for `oauth` mode, or both for `open-api-flexible` mode.
 - New v3 app-api and backend-api SDKs `MUST` use `Access-Token` as the canonical access token header.
 - Generated app-api and backend-api SDKs `MUST` expose a language-idiomatic global token manager hook, for example `setTokenManager(manager)` or constructor `tokenManager`, that can provide `authToken`, `accessToken`, and `refreshToken` for protected app/backend requests without per-call manual headers.
@@ -481,7 +484,7 @@ Rules:
 - Logout and refresh failure `MUST` clear the global token manager, central session store, context store, realtime/session bridges, sensitive caches, and UI/controller authenticated state through finally-owned clearing paths.
 - Direct setters such as `setAuthToken` or `setAccessToken`, when generated for low-level SDK bootstrap or tests, `MUST NOT` be used by application login orchestration when a token manager is available.
 - API key mode, if supported, must be mutually exclusive with dual-token mode.
-- SDKs `MUST NOT` parse tokens to derive tenant, organization, or user context. Context parsing is a server framework responsibility.
+- SDKs `MUST NOT` parse tokens to derive tenant, organization, or user context for authorization decisions. Context parsing is a server framework responsibility. SDKs `MAY` read returned `AppContext` from appbase session APIs only.
 
 ## 4.1 Request Identity And Idempotency
 

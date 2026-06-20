@@ -148,6 +148,8 @@ Rules:
 - Credential scheme detection for open-api `MUST` be header-driven. When `Access-Token` is present, the request `MUST NOT` be classified as open-api OAuth bearer; app-api/backend-api dual-token rules take precedence on those surfaces.
 - `OpenApiFlexible` default preference when both `X-Api-Key` and OAuth bearer are present is API key first. Applications `MAY` override `OpenApiCredentialSchemeDetector` through framework runtime assembly.
 - Open-api credential modes and app-api/backend-api dual-token mode `MUST` be mutually exclusive for one request.
+- Dual-token resolution on app-api/backend-api surfaces `MUST` require both `Authorization` and `Access-Token` when the route declares `dual-token` mode and the client runtime has both credentials available.
+- When both tokens are present, overlapping principal and tenancy claims `MUST` be resolved from `auth_token` first. Contradictory overlapping values in `access_token` `MUST` fail validation.
 - Production and production-like profiles `MUST` resolve API keys and OAuth bearer tokens through server-side lookup services. Dev-only inline claim-string resolvers are allowed only in local/private profiles documented by the owning repository.
 - IAM standard adapter: `sdkwork-iam-web-adapter` implements `IamOpenApiWebRequestContextResolver` (`IamDatabaseWebRequestContextResolver`) with `IamApiKeyLookupService` and `IamOAuthTokenLookupService`. Product repositories `SHOULD` reuse this adapter instead of forking open-api credential resolution.
 - L1 trait signatures, detector defaults, and Axum extractors: `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`, `../sdkwork-web-framework/docs/03-web-request-context.md`, and `../sdkwork-web-framework/docs/15-extension-points-registry.md`.
@@ -174,7 +176,7 @@ Rules:
 
 ## 8. Mandatory Interceptor Chain
 
-All protected SDKWork HTTP routers `MUST` run the standard API call chain defined in `API_SPEC.md` section 10.2 and `SECURITY_SPEC.md` section 5.1.
+All protected SDKWork HTTP routers `MUST` run the standard API call chain defined in `API_SPEC.md` section 10.3 and `SECURITY_SPEC.md` section 5.1.
 
 Rust protected routers `MUST` use `WebCallInterceptorChain::standard()` from `sdkwork-web-framework` or a documented strict superset. Business code `MUST NOT` bypass context resolution, authentication, authorization, tenant isolation, or context injection stages.
 

@@ -188,6 +188,9 @@ Rules:
 - Login/session-creation requests `MUST NOT` send existing credentials or SDKWork context-projection headers to select tenant or organization. Login starts anonymous and receives tenant/organization context only from the appbase login response.
 - Appbase login, registration, OAuth session creation, QR auth session creation, QR auth password completion, password reset request, and password reset completion OpenAPI operations `MUST` declare `security: []`, `x-sdkwork-auth-mode: anonymous`, and `x-sdkwork-forbid-credential-headers: true`. Generated appbase SDKs `MUST` skip automatic TokenManager credential injection for these operations, and appbase servers `MUST` reject inbound credential or SDKWork context headers for them.
 - `authToken` and `accessToken` returned by appbase login/session APIs `MUST` both carry `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims. Client-side code may decode token claims for diagnostics only; authorization and routing decisions `MUST` rely on appbase session validation and returned `AppContext`.
+- Protected SDK clients `MUST` send `Access-Token` on every protected app-api/backend-api request when an access token is available from bootstrap or authenticated session state.
+- Protected SDK clients `MUST` send `Authorization: Bearer <auth_token>` on every protected app-api/backend-api request when an auth token is available from bootstrap or authenticated session state.
+- When both `authToken` and `accessToken` are present, server-side dual-token resolution `MUST` treat overlapping principal and tenancy claims from `authToken` as authoritative. Client runtimes `MUST` keep both tokens in sync through the single TokenManager and `MUST NOT` override token-derived scope with request fields.
 - Runtime session normalization `MUST` reject complete-looking sessions whose
   `authToken`, `accessToken`, and returned `AppContext` disagree on tenant,
   organization, user, session, app, environment, deployment profile, runtime
@@ -205,6 +208,7 @@ Rules:
 - The global token manager is the app-api SDK and explicit `backend-admin` backend-api SDK login-retention standard. Product/dependency app SDKs and explicit `backend-admin` backend SDKs `MUST NOT` maintain independent token stores, independent TokenManagers, or refresh flows. Product open-api SDKs manage credentials through their declared open-api credential provider and `MUST NOT` treat API keys or OAuth bearer tokens as app login sessions.
 - Frontend code outside SDK/bootstrap `MUST NOT` set `Authorization`, `Access-Token`, `X-Sdkwork-*`, or equivalent auth headers manually.
 - `authToken`, `accessToken`, and `refreshToken` `MUST NOT` be logged, copied into URLs, exposed in UI, or saved in product feature state.
+- Application roots `MUST` document private bootstrap `SDKWORK_ACCESS_TOKEN` in env templates when protected app-api or backend-api surfaces are consumed. Service-context runtimes `SHOULD` configure it before interactive login. Browser/renderer runtimes `MUST` obtain session tokens from appbase IAM and TokenManager storage instead of public env.
 - Token refresh failure `MUST` clear the global token manager, session store, context store, realtime/session bridges, sensitive caches, and route to login through a single runtime clearing path.
 - Logout `MUST` call `@sdkwork/appbase-app-sdk` `client.auth.sessions.current.delete()` when possible, then clear local state in a `finally` path even when the remote delete fails.
 
@@ -343,6 +347,7 @@ Forbidden runtime identity bootstrap variables include, but are not limited to:
 Rules:
 
 - `tenant_id`, `organization_id`, `user_id`, `session_id`, and current app scope `MUST` be read from `authToken` and `accessToken` claims or from a trusted server-side token/session lookup after login.
+- When both `authToken` and `accessToken` are present, overlapping principal and tenancy claims `MUST` be resolved from `authToken` first. Contradictory overlapping values in `accessToken` `MUST` fail validation.
 - Application IAM runtime metadata such as compile-time manifest `app.key` or an equivalent static application identifier `MAY` identify the product client to appbase before login, but it `MUST NOT` replace token-derived tenant, organization, user, or session scope.
 - Dev auth form prefill variables such as `VITE_*_AUTH_DEV_DEFAULT_*` `MAY` exist only as optional login-form convenience. They `MUST NOT` seed IAM directory data, issue tokens, or override JWT claims.
 - `SDKWORK_IAM_DEV_FIXED_VERIFY_CODE` and equivalent dev-only verification bypass variables `MAY` exist only for deterministic verification-code flows in local/private development. They `MUST NOT` carry tenant, organization, app, or user identity.

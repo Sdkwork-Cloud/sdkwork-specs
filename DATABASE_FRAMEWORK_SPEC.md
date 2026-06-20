@@ -495,7 +495,7 @@ Backend services `SHOULD` expose read-only ops endpoints through `backend-api`:
 Rules:
 
 - Endpoints `MUST` require backend/admin authorization per `SECURITY_SPEC.md`.
-- Reference implementation: `DatabaseOpsAuth` in `sdkwork-database-ops-http`; bearer token via `SDKWORK_OPS_DATABASE_AUTH_TOKEN`.
+- Reference implementation: `DatabaseOpsAuth` in `sdkwork-database-ops-http`; private bootstrap bearer via unified `SDKWORK_ACCESS_TOKEN` (never app-scoped or browser-visible env names).
 - Responses `MUST NOT` expose connection secrets, raw credentials, or business row data.
 - Production exposure `SHOULD` be internal or gateway-restricted.
 - Drift refresh `SHOULD` be rate-limited to protect database metadata queries.

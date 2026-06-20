@@ -737,7 +737,22 @@ Rules:
 - Production token validation `MUST` use tenant-bound signing keys or a server-side session lookup that proves tenant binding. A global shared tenant signing secret is forbidden for production and production-like profiles.
 - Local Rust deployment `MUST` enforce the same logical token and tenant checks even if tokens are issued locally.
 
-Recommended token claims:
+### 10.0 Bootstrap Access Credential
+
+Every application root that consumes protected app-api or backend-api surfaces
+`MUST` document a private bootstrap access credential in its env template.
+Service-context runtimes `SHOULD` configure `SDKWORK_ACCESS_TOKEN` before
+interactive login.
+
+Rules:
+
+- `SDKWORK_ACCESS_TOKEN` `MUST` contain a signed SDKWork `access_token` whose claims carry the ambient request context: at minimum `tenant_id`, `organization_id`, `app_id`, `environment`, `deployment_profile`, `runtime_target`, and applicable scope metadata.
+- `auth_token`, `refresh_token`, and API keys `MUST NOT` be configured through environment variables. They are obtained only from appbase IAM login, refresh, and current-session flows.
+- Bootstrap env credentials seed the global TokenManager or service-context credential provider only. They `MUST NOT` be copied into browser public runtime config, URLs, logs, UI, or feature state.
+- Login, registration, refresh, current-session bootstrap, and organization-selection completion `MUST` replace bootstrap credentials with appbase-issued session tokens.
+- Client request bodies, query parameters, path parameters, and SDKWork context-projection headers `MUST NOT` select current tenant, organization, user, session, or app scope when token claims already define that scope.
+
+### 10.1 Recommended Token Claims
 
 ```json
 {
@@ -756,7 +771,7 @@ Recommended token claims:
 }
 ```
 
-### 10.1 SDKWork Request Context Framework
+### 10.2 SDKWork Request Context Framework
 
 All SDKWork HTTP implementations for open-api, app-api, and backend-api `MUST` expose a unified `WebRequestContext` before protected business handlers run. The standard Rust framework is `sdkwork-web-framework`; Java and other runtimes must preserve the same behavior and vocabulary. Integration rules are defined in `WEB_FRAMEWORK_SPEC.md`; IAM and domain projections are implemented by appbase or product adapters through framework extension traits.
 
@@ -810,8 +825,12 @@ Rules:
 - API key lookup `MUST` be abstracted behind a service/interface. Implementations may use `iam_api_key`, tenant-local API key tables, encrypted secret stores, caches, or remote IAM services.
 - OAuth bearer lookup `MUST` be abstracted behind a service/interface. Implementations may validate access-token hashes against `iam_session`, OAuth JWT claims with tenant-bound signing keys, or product-specific token stores.
 - API key records `MUST` provide the principal user id, tenant id, organization id when applicable, app id, data scope, permission scope, key id, and revocation/expiry state.
-- Dual-token resolution `MUST` reject conflicting tenant, organization, user, session, or app claims when both tokens carry the same field.
+- Protected app-api and backend-api requests `MUST` include `Access-Token: <access_token>` whenever the client runtime has an access token from bootstrap or authenticated session state.
+- Protected app-api and backend-api requests `MUST` include `Authorization: Bearer <auth_token>` whenever the client runtime has an auth token from bootstrap or authenticated session state.
+- Dual-token resolution `MUST` treat overlapping principal and tenancy claims from `auth_token` as authoritative when both tokens are present. Overlapping fields are `sub`/`user_id`, `sid`/`session_id`, `tenant_id`, `organization_id`, `login_scope`, and `auth_level`.
+- Dual-token resolution `MUST` reject requests where `access_token` carries an overlapping claim that contradicts the authoritative `auth_token` value after normalization.
 - Dual-token resolution `MUST` reject missing or conflicting `login_scope` claims and any `TENANT`/`ORGANIZATION` claim mismatch with `organization_id`.
+- Access-isolation claims that exist only on `access_token`, such as `data_scope`, `permission_scope`, deployment profile, runtime target, and sharding hints, `MUST` be resolved from `access_token` even when `auth_token` is present.
 - Context values from request body, query, path, or frontend state `MUST NOT` override the resolved context.
 
 Forbidden client identity headers:
@@ -827,7 +846,7 @@ Forbidden client identity headers:
 - Gateways `MUST NOT` require callers to supply those headers for protected app-api/backend-api traffic. When a gateway terminates TLS and re-issues service calls, it `MUST` forward only the standard dual-token credentials or an internal service identity, not caller-supplied tenant/user metadata.
 - Servers `MUST` ignore or reject identity projection headers that conflict with verified token-derived context.
 
-### 10.2 API Call Chain And Interceptor Standard
+### 10.3 API Call Chain And Interceptor Standard
 
 All SDKWork HTTP routers for open-api, app-api, and backend-api `MUST` run protected requests through an ordered API call chain. The chain is the standard place for cross-cutting policy, security, observability, and context injection. The standard Rust implementation is owned by `sdkwork-web-framework` (`WebCallInterceptorChain::standard()`); Java runtimes must preserve equivalent semantics.
 

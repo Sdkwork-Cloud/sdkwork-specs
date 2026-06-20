@@ -113,7 +113,9 @@ Rules:
 - Use `SDK_BASE_URL` only for the common SDK root that can derive multiple SDK surfaces. Do not use generic names such as `GATEWAY_API_BASE_URL` when the consuming SDK surface is more specific. Prefer `OPEN_API_BASE_URL`, `APP_API_BASE_URL`, or `BACKEND_API_BASE_URL` for resolved surface overrides.
 - Dependency SDK base URL override variables must include a stable dependency SDK family or dependency app code segment, for example `SDKWORK_<APP>_APPBASE_APP_API_BASE_URL`, `SDKWORK_<APP>_DRIVE_APP_API_BASE_URL`, or `PORTAL_PUBLIC_IM_OPEN_API_BASE_URL`.
 - Do not put secrets in names prefixed with `PORTAL_PUBLIC_`, `VITE_`, `PUBLIC_`, `NEXT_PUBLIC_`, or any variable that is exposed to browser code.
-- Do not define env variables that carry live session credentials, such as `SDKWORK_<APP>_AUTH_TOKEN`, `SDKWORK_<APP>_ACCESS_TOKEN`, `SDKWORK_<APP>_REFRESH_TOKEN`, `PORTAL_PUBLIC_ACCESS_TOKEN`, or `VITE_*_TOKEN`. Tokens are runtime session state owned by appbase IAM and the global TokenManager.
+- `SDKWORK_ACCESS_TOKEN` is the unified private bootstrap access credential for every application root. It `MUST` appear in checked-in private env templates such as `.env.example` when the application calls protected app-api or backend-api surfaces. It `MUST NOT` use an app-prefixed name such as `SDKWORK_<APP>_ACCESS_TOKEN`. It `MUST NOT` be exposed through `VITE_*`, `PORTAL_PUBLIC_*`, or other browser-visible runtime config.
+- `SDKWORK_AUTH_TOKEN`, `SDKWORK_REFRESH_TOKEN`, `SDKWORK_API_KEY`, app-prefixed credential env names, and `VITE_*_TOKEN` remain forbidden as live credential inputs. `auth_token`, `refresh_token`, and API keys `MUST` come from login, refresh, or approved runtime credential providers—not environment variables.
+- After appbase login, registration, refresh, or current-session bootstrap succeeds, runtime session tokens from the global TokenManager `MUST` supersede env bootstrap credentials for outbound protected SDK calls. Env bootstrap credentials `MUST NOT` be merged with or override authenticated session tokens.
 - Boolean variables must accept only `true`, `false`, `1`, or `0` after normalization.
 - URL variables must reject query strings, fragments, control characters, protocol-relative URLs, and non-HTTP schemes unless the specific setting is documented as a database URL.
 
@@ -141,8 +143,9 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_<APP>_<DEPENDENCY>_BACKEND_API_BASE_URL` | private | MAY | Dependency backend-api SDK base URL keyed by dependency SDK family/app code. |
 | `SDKWORK_<APP>_TOKEN_MANAGER_MODE` | private | MAY | Credential strategy: `appbase-global`, `service-context`, or `test`. It configures behavior only; it must not contain token values. |
 | `SDKWORK_<APP>_TOKEN_STORAGE` | private | MAY | Token storage strategy: `memory`, `browser-session`, `browser-local`, `os-secure-storage`, or `server-context`. Browser strategies must pass security review. |
-| `SDKWORK_<APP>_ACCESS_TOKEN_HEADER` | private | MAY | Must be `Access-Token` for SDKWork v3 app-api/backend-api. Present only for compatibility validation, not customization. |
-| `SDKWORK_<APP>_AUTH_TOKEN_HEADER` | private | MAY | Must be `Authorization` for SDKWork v3 bearer auth. Present only for compatibility validation, not customization. |
+| `SDKWORK_ACCESS_TOKEN` | secret | SHOULD when protected app-api/backend-api is called before interactive login | Unified private bootstrap `access_token` used to seed the global TokenManager or service-context credential provider for SaaS deployment tenant isolation. It `MUST` be a signed SDKWork access token whose claims carry current `tenant_id`, `organization_id`, `app_id`, environment, deployment profile, runtime target, and scope metadata. It `MUST NOT` use an app-prefixed env name. It `MUST NOT` be exposed to browser public runtime config. After login/session bootstrap, runtime session `accessToken` replaces this value. |
+| `SDKWORK_ACCESS_TOKEN_HEADER` | private | MAY | Must be `Access-Token` for SDKWork v3 app-api/backend-api. Present only for compatibility validation, not customization. |
+| `SDKWORK_AUTH_TOKEN_HEADER` | private | MAY | Must be `Authorization` for SDKWork v3 bearer auth. Present only for compatibility validation, not customization. |
 | `SDKWORK_<APP>_DEFAULT_LOCALE` | private/public | MAY | Default BCP 47 locale such as `en-US` or `zh-CN`. This configures selection only; translated messages stay in i18n catalog fragments. |
 | `SDKWORK_<APP>_SUPPORTED_LOCALES` | private/public | MAY | Comma-separated supported locale list. It must not contain translated message content. |
 | `SDKWORK_<APP>_FALLBACK_LOCALE` | private/public | MAY | Explicit fallback locale, normally `en-US` for first-party SDKWork apps unless a product spec narrows it. |
@@ -355,28 +358,44 @@ Rules:
 - Absolute HTTP/HTTPS origins must be added to the production Content Security Policy `connect-src`.
 - Generated SDK examples must not hard-code tenant-specific hosts.
 - Base URL values must not include query strings, fragments, embedded credentials, API keys, tokens, or tenant-specific secret material.
-- Environment variable names ending in `_AUTH_TOKEN`, `_ACCESS_TOKEN`, `_REFRESH_TOKEN`, `_TOKEN`, or `_API_KEY` are forbidden as live browser/runtime session credential inputs unless a spec explicitly marks the variable as a test-only fixture. Production and browser configs must fail validation when such values are present.
+- Environment variable names ending in `_REFRESH_TOKEN`, `_AUTH_TOKEN`, `_API_KEY`, or browser/public `*_TOKEN` are forbidden as live credential inputs unless a spec explicitly marks the variable as a test-only fixture. `SDKWORK_ACCESS_TOKEN` is the only allowed private bootstrap access credential according to section 6.1. Production browser configs must fail validation when bootstrap or session token values are exposed through `VITE_*` or `PORTAL_PUBLIC_*`.
 
 ### 6.1 Access Token And Credential Configuration
 
-`Access-Token` is not an environment-provided credential. It is runtime session
-state produced by appbase IAM login/session flows and stored through the global
-TokenManager.
+Every SDKWork application that consumes protected app-api or backend-api surfaces
+`MUST` treat `Access-Token` as a mandatory outbound credential whenever a
+credential is available. Tenant, organization, app, environment, deployment
+profile, runtime target, and scope context `MUST` be carried inside signed token
+claims, not in client-writable request fields or SDKWork context-projection
+headers.
+
+Credential sources:
+
+| Phase | `access_token` source | `auth_token` source | Rule |
+| --- | --- | --- | --- |
+| Service/bootstrap | `SDKWORK_ACCESS_TOKEN` in private env or secret manager | Appbase IAM login/registration/refresh/current-session only | Used only before interactive login or for approved service-context runtimes (`server`, `container`, `test-runner`, and documented desktop service contexts). |
+| Interactive session | Appbase IAM login/registration/refresh/current-session response | Same appbase IAM response | Replaces bootstrap credentials in TokenManager, session store, and context store. |
+| Browser/renderer | TokenManager session storage after login | TokenManager session storage after login | `MUST NOT` read live tokens from `VITE_*`, `PORTAL_PUBLIC_*`, or public runtime config. |
 
 | Credential | Source | Header | Env/config rule |
 | --- | --- | --- | --- |
-| Auth token | Appbase IAM session/login/refresh/current-session | `Authorization: Bearer <auth_token>` | Not allowed in env, `.env`, public runtime config, app manifest, or feature flags. |
-| Access token | Appbase IAM session/login/refresh/current-session | `Access-Token: <access_token>` | Not allowed in env, `.env`, public runtime config, app manifest, or feature flags. |
+| Auth token | Appbase IAM session/login/refresh/current-session only | `Authorization: Bearer <auth_token>` | Forbidden in environment variables. Forbidden in browser public runtime config. |
+| Access token | Appbase IAM session/login/refresh/current-session, or private bootstrap `SDKWORK_ACCESS_TOKEN` before login | `Access-Token: <access_token>` | `SDKWORK_ACCESS_TOKEN` `SHOULD` be configured for every application root that calls protected APIs. Forbidden in browser public runtime config. Superseded by session tokens after login. |
 | Refresh token | Appbase IAM refresh flow only | Not sent on business API requests | Not allowed in env or browser public runtime config. Storage is controlled by appbase IAM runtime. |
-| API key | Open-api credential provider for `api-key` or `open-api-flexible` mode | `X-API-Key` or declared scheme | Raw value may exist only in protected secret manager, server-side config, OS secure storage, or test fixture. Never in browser public runtime config. |
+| API key | Open-api credential provider for `api-key` or `open-api-flexible` mode | `X-API-Key` or declared scheme | Not allowed in environment variables. Raw value may exist only in protected secret manager, server-side non-env config, OS secure storage, or test fixture. Never in browser public runtime config. |
 | OAuth bearer | Open-api credential provider for `oauth` or `open-api-flexible` mode | `Authorization: Bearer <token>` | Raw value may exist only in protected secret manager, server-side config, OS secure storage, or test fixture. Never in browser public runtime config. |
 
 Rules:
 
-- App-api and backend-api SDK clients must obtain both auth token and access token through the global TokenManager or language-equivalent credential provider.
+- Protected app-api and backend-api SDK requests `MUST` send `Access-Token: <access_token>` whenever the runtime has an access token available from bootstrap or session state.
+- Protected app-api and backend-api SDK requests `MUST` send `Authorization: Bearer <auth_token>` whenever the runtime has an auth token available from bootstrap or session state.
+- App-api and backend-api SDK clients must obtain runtime session tokens through the global TokenManager or language-equivalent credential provider. Service/bootstrap runtimes may seed that provider from `SDKWORK_ACCESS_TOKEN` only.
+- When both bootstrap/session `auth_token` and `access_token` are present, frameworks and runtimes `MUST` treat overlapping principal and tenancy claims from `auth_token` as authoritative. Overlapping fields are: `sub`/`user_id`, `sid`/`session_id`, `tenant_id`, `organization_id`, `login_scope`, and `auth_level`. Access-isolation-only fields such as `data_scope`, `permission_scope`, deployment profile, runtime target, and sharding hints remain authoritative from `access_token`.
+- If `access_token` carries an overlapping claim that contradicts the authoritative `auth_token` value after normalization, the request `MUST` be rejected.
 - TokenManager config may be controlled by `SDKWORK_<APP>_TOKEN_MANAGER_MODE` and `SDKWORK_<APP>_TOKEN_STORAGE`, but those variables describe behavior only and must never contain token values.
-- `SDKWORK_<APP>_ACCESS_TOKEN_HEADER` may exist only to assert that the runtime uses `Access-Token`; SDKWork v3 applications must reject any value other than `Access-Token`.
-- `SDKWORK_<APP>_AUTH_TOKEN_HEADER` may exist only to assert that the runtime uses `Authorization`; SDKWork v3 applications must reject any value other than `Authorization`.
+- TokenManager config may be controlled by `SDKWORK_<APP>_TOKEN_MANAGER_MODE` and `SDKWORK_<APP>_TOKEN_STORAGE`, but those variables describe behavior only and must never contain token values.
+- `SDKWORK_ACCESS_TOKEN_HEADER` may exist only to assert that the runtime uses `Access-Token`; SDKWork v3 applications must reject any value other than `Access-Token`.
+- `SDKWORK_AUTH_TOKEN_HEADER` may exist only to assert that the runtime uses `Authorization`; SDKWork v3 applications must reject any value other than `Authorization`.
 - Browser public runtime config must never include token manager state, token storage contents, refresh tokens, API keys, or generated `getAuthHeaders()` output.
 - Desktop apps should store tokens through OS secure storage or approved encrypted storage. Server-side service contexts should use typed request context or trusted service credentials, not `.env` session tokens.
 - Test fixtures may contain fake token strings only when the file is clearly test-only, excluded from production bundles, and covered by static scans that prevent reuse in release config.

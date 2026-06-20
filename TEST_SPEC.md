@@ -549,7 +549,7 @@ Rules:
   common gateway root or managed `sdkwork-api-gateway` process, application-owned app/backend/open
   API base URLs remain application-owned, and per-module foundation upstream env vars are explicit
   overrides rather than default materialized config.
-- Credential config tests `MUST` prove `AUTH_TOKEN`, `ACCESS_TOKEN`, `REFRESH_TOKEN`, `VITE_*_TOKEN`, `PORTAL_PUBLIC_*_TOKEN`, and equivalent live credential env variables are rejected outside explicitly marked test fixtures.
+- Credential config tests `MUST` prove private bootstrap `SDKWORK_ACCESS_TOKEN` is documented for application roots that call protected APIs, is rejected from `VITE_*` and `PORTAL_PUBLIC_*`, and is superseded by appbase session tokens after login. `AUTH_TOKEN`, `REFRESH_TOKEN`, `API_KEY`, `VITE_*_TOKEN`, and `PORTAL_PUBLIC_*_TOKEN` remain rejected in environment configuration outside explicitly marked test fixtures.
 - Access token header tests `MUST` prove SDKWork v3 app-api/backend-api clients use `Access-Token` exactly and reject aliases such as `X-Access-Token` or query-string access tokens.
 - Test-profile tests `MUST` prove database/schema, Redis key prefix, logs, cache, runtime, and temp directories are isolated from development and production.
 - Release preflight tests `MUST` fail when production PC/desktop/server config contains localhost service endpoints, development secrets, test database names, writable developer directories, unresolved placeholders, or source-controlled secret files.
@@ -783,11 +783,11 @@ Rules:
 
 Rules:
 
-- Protected app-api and backend-api operations `MUST` test missing auth token, missing access token, invalid token, expired token, wrong tenant, wrong tenant signing key, conflicting auth/access token tenant, invalid login scope, and insufficient permission.
+- Protected app-api and backend-api operations `MUST` test missing auth token, missing access token, invalid token, expired token, wrong tenant, wrong tenant signing key, contradictory overlapping auth/access token tenant claims, auth-token precedence on overlapping claims, invalid login scope, and insufficient permission.
 - Protected open-api operations `MUST` test missing API key, invalid API key, expired/revoked API key, missing OAuth bearer, invalid OAuth bearer, expired/revoked OAuth bearer, wrong tenant/app binding, insufficient permission scope, flexible mode scheme selection when both headers are present, and the absence of app login token fallback.
 - IAM login integration `MUST` test the checks required by `IAM_LOGIN_INTEGRATION_SPEC.md`: appbase boundary, SDK token wiring, route guard, logout clearing, forbidden application-local auth routes, Rust dual-token guard, AppContext safety, anonymous login request behavior, tenant resolution from real IAM data, and organization-selection continuation behavior.
 - IAM login tests `MUST` prove login requests do not trust inbound credentials or SDKWork context-projection headers as tenant/user/organization context.
-- IAM token tests `MUST` prove `authToken` and `accessToken` both include matching tenant, organization, login scope, user, and session claims, and reject contradictory claims.
+- IAM token tests `MUST` prove `authToken` and `accessToken` both include tenant, organization, login scope, user, and session claims, that overlapping claims resolve from `authToken` when both tokens are present, and that contradictory overlapping `accessToken` claims are rejected.
 - IAM tenant signing tests `MUST` prove different tenants use different signing keys or key references, `kid` resolves to the expected tenant key, and a token signed with another tenant's key fails validation.
 - IAM organization login tests `MUST` cover zero organization membership as tenant-level login, one active organization membership as automatic organization login, multiple active memberships as an organization-selection challenge, and final selection membership validation before token issuance.
 - Static or contract tests `MUST` fail when authenticated backend code fills request context from demo tenants, hard-coded tenants, mock users, email-normalized user ids, or raw request context headers instead of verified token/session context.
