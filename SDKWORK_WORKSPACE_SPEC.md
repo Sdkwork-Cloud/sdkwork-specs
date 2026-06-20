@@ -147,6 +147,35 @@ Recommended initial skeleton:
     sdkwork-<domain>-sdk/
     sdkwork-<domain>-app-sdk/
     sdkwork-<domain>-backend-sdk/
+  database/
+    README.md
+    database.manifest.json
+    contract/
+      schema.yaml
+      prefix-registry.json
+      table-registry.json
+    ddl/
+      baseline/
+        postgres/
+        sqlite/
+      generated/
+    migrations/
+      postgres/
+      sqlite/
+    seeds/
+      seed.manifest.json
+      common/
+      locales/
+        zh-CN/
+        en-US/
+        ja-JP/
+        de-DE/
+        fr-FR/
+        ru-RU/
+        ko-KR/
+    drift/
+      policy.yaml
+    fixtures/
   jobs/
     README.md
     schedules/
@@ -215,6 +244,7 @@ Capability activation signals:
 | `apps/` | More than one app surface exists, an app surface lives below a larger workspace, or runnable demos/app shells are part of the repository |
 | `crates/` | A Cargo workspace member or Rust source crate is authored |
 | `sdks/` | A SDK family is owned, generated, assembled, inspected, or published |
+| `database/` | A relational database lifecycle module is owned: contract, migrations, seeds, drift policy, or bootstrap assets |
 | `jobs/` | A cron schedule, queue consumer binding, batch job, maintenance task, or job runbook is owned |
 | `tools/` | Reusable validators, generators, migration tools, parsers, CLIs, or operator utilities are authored |
 | `plugins/` | Application/runtime installable extension source is authored |
@@ -238,6 +268,11 @@ Boundary rules:
   `SDK_WORKSPACE_GENERATION_SPEC.md`. `apis/` may feed `sdks/`, but `apis/` must not contain
   generated transport packages, generated SDK control-plane `.sdkwork/` files, or SDK family
   directories.
+- `database/` is the canonical source directory for application database lifecycle assets governed
+  by `DATABASE_FRAMEWORK_SPEC.md`. It stores contracts, migrations, seeds, drift policy, and
+  bootstrap fixtures. SQLx repository implementations remain in
+  `crates/sdkwork-<domain>-<capability>-repository-sqlx/`; crate-local `migrations/` directories
+  are legacy and must converge into `database/migrations/` during adoption.
 - A single-application repository may make the repository root the primary app root. Its `apps/`
   directory still `SHOULD` exist as a tracked placeholder explaining that the root is the primary app
   surface and listing any secondary app surfaces, shells, or demos.

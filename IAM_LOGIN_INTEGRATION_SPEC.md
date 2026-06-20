@@ -328,6 +328,27 @@ Rules:
 - Permission checks use token claims, server-side permission lookup, or a typed policy service. Legacy scope headers `MUST NOT` grant permissions.
 - Context values in request body, path, query, mutable frontend state, or custom metadata are hints only and never override token-derived context.
 
+## 7.1 Forbidden IAM Bootstrap Environment Variables
+
+Runtime identity scope `MUST` come from verified dual-token JWT claims after register/login, refresh, or current-session validation. Applications, IAM authorities, SDK bootstrap code, dev wrappers, and documentation `MUST NOT` inject fixed tenant, organization, app, user, or owner credentials through environment variables or public runtime config.
+
+Forbidden runtime identity bootstrap variables include, but are not limited to:
+
+- `SDKWORK_IAM_BOOTSTRAP_*`
+- `SDKWORK_IAM_LOCAL_*`
+- `SDKWORK_USER_CENTER_BOOTSTRAP_*`
+- `SDKWORK_APP_ID`, `VITE_SDKWORK_APP_ID`, `VITE_APP_ID`, and equivalent runtime env keys used to override current tenant, organization, user, session, or app scope
+- `SDKWORK_IAM_BOOTSTRAP_TENANT_ID`, `SDKWORK_IAM_BOOTSTRAP_ORGANIZATION_ID`, `SDKWORK_IAM_BOOTSTRAP_EMAIL`, `SDKWORK_IAM_BOOTSTRAP_PASSWORD`, and equivalent fixed owner or directory seed variables
+
+Rules:
+
+- `tenant_id`, `organization_id`, `user_id`, `session_id`, and current app scope `MUST` be read from `authToken` and `accessToken` claims or from a trusted server-side token/session lookup after login.
+- Application IAM runtime metadata such as compile-time manifest `app.key` or an equivalent static application identifier `MAY` identify the product client to appbase before login, but it `MUST NOT` replace token-derived tenant, organization, user, or session scope.
+- Dev auth form prefill variables such as `VITE_*_AUTH_DEV_DEFAULT_*` `MAY` exist only as optional login-form convenience. They `MUST NOT` seed IAM directory data, issue tokens, or override JWT claims.
+- `SDKWORK_IAM_DEV_FIXED_VERIFY_CODE` and equivalent dev-only verification bypass variables `MAY` exist only for deterministic verification-code flows in local/private development. They `MUST NOT` carry tenant, organization, app, or user identity.
+- Release, CI, and manifest tooling `MAY` use `SDKWORK_APP_ID` only as build/release metadata. That usage `MUST NOT` be consumed by live IAM runtime, TokenManager, or protected SDK client scope resolution.
+- Local `.env`, tracked `.env.example`, bootstrap overlays, runtime TOML, and public runtime config `MUST NOT` require fixed tenant, organization, app, email, password, or owner credentials to start authenticated development.
+
 ## 8. Rust Local/Private IAM Authority
 
 Only an IAM authority implementation may expose app-api login/session routes in Rust.
@@ -416,6 +437,7 @@ rg -n "/app/v3/api/auth|/api/.*/auth|user-center/session" services crates
 - [ ] Login requests are anonymous; tenant and organization context are returned only by appbase after credential validation and real IAM tenant/organization membership lookup.
 - [ ] Login-like appbase OpenAPI operations are marked `x-sdkwork-auth-mode: anonymous` and `x-sdkwork-forbid-credential-headers: true`, generated SDKs skip auth injection, and appbase backends reject inbound credential/context headers.
 - [ ] Multi-organization login uses the appbase organization-selection continuation protocol and does not commit normal session state until final dual tokens are returned.
+- [ ] Runtime env, tracked `.env.example`, bootstrap overlays, and public runtime config do not inject fixed tenant, organization, user, owner, or session scope through `SDKWORK_IAM_BOOTSTRAP_*`, runtime `SDKWORK_APP_ID`, `VITE_SDKWORK_APP_ID`, or equivalent bootstrap variables.
 - [ ] Both tokens and persisted AppContext agree on tenant, organization, login scope, user, session, app, environment, deployment profile, and runtime target.
 - [ ] Reusable auth packages use `commitSession(session, options?)`, never `persistSession`, and controller logout clears local authenticated state in a `finally` path.
 - [ ] Runtime/bootstrap builds an SDK inventory and passes every downstream authenticated application/dependency app-api/backend-api client and approved composed wrapper through `clients.sdkClients` or the language-equivalent token-manager-aware SDK list.

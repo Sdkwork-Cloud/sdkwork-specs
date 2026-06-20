@@ -43,7 +43,7 @@ No standard is complete until it is executable.
 | Native mobile UI | Validate `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, or `APP_HARMONY_NATIVE_UI_SPEC.md`: package-local screens/pages/components/services/state/i18n/routes, host adapter contracts, app/user-console SDK boundary, UI states, and lifecycle/security checks |
 | Internationalization | Validate `I18N_SPEC.md`: package-local catalog fragments, thin aggregators, duplicate-key checks, missing-key checks, fallback behavior, and no authored app/root/package locale monoliths |
 | Environment/config | Validate `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`: lifecycle environment, profile alias, deployment profile, build mode, runtime target, dev/test/staging/prod files, browser/desktop/H5/Capacitor/Flutter/mini-program/native Android/native iOS/native Harmony/server/container/Tauri config separation, public/private/secret boundaries |
-| Database | Schema lint, migration test, tenant/index checks |
+| Database | Schema lint, migration test, tenant/index checks, and `DATABASE_FRAMEWORK_SPEC.md` lifecycle asset checks when `database/` exists |
 | Drive | Drive API/SDK contract tests, Drive Uploader App SDK tests, Rust `DriveUploaderService` tests, upload-session idempotency, resumable part tests, attribution/statistic tests, retention cleanup tests, provider capability tests, business-module scans for forbidden app-local storage lifecycle |
 | IAM/security | Token validation, permission denial, tenant isolation, audit event, appbase login integration, logout clearing, Rust AppContext guard |
 | Frontend | Service tests with injected SDK client, UI integration tests |
@@ -295,6 +295,29 @@ Rules:
 - Frontend code scans `MUST` verify UI components do not construct SDK clients or raw HTTP requests.
 - I18n scans `MUST` fail when authored locale resources collapse a whole app, client root, backend/admin root, or package into one locale file instead of package-local fragments defined by `I18N_SPEC.md`.
 - Generated-code scans `MUST` fail when generated SDK transport output is hand-edited outside approved `custom/` roots or composed facades.
+
+## 2.0.2.1 Database Framework Tests
+
+Database framework tests make `DATABASE_FRAMEWORK_SPEC.md` executable.
+
+Rules:
+
+- Application repositories that own a `database/` directory `MUST` provide `tests/contract/database-framework.contract.test.*` or call the canonical validator.
+- Database framework tests `MUST` verify `database/database.manifest.json`, `database/contract/schema.yaml`, `database/seeds/seed.manifest.json`, required locale directories, and drift policy presence.
+- Database framework tests `MUST` verify root `db:validate`, `db:migrate`, and `db:status` scripts exist when database lifecycle is active.
+- Database framework tests `MUST` fail when crate-local `migrations/` remain the only migration source without an approved exception or adoption plan.
+- Application repositories may call the canonical validator with:
+
+```text
+node ../sdkwork-specs/tools/check-database-framework-standard.mjs --root .
+```
+
+- Migration smoke tests `MUST` bootstrap an empty database to the latest schema on each supported engine.
+- Seed smoke tests `MUST` prove `seeds/common` plus default locale `zh-CN` are idempotent.
+- Drift tests `MUST` prove a fresh bootstrap yields zero error-level drift.
+- Drift tests `MUST` cover constraint/index diffs (`missing_constraint`, `extra_index`) and column nullability mismatches under `type_mismatch`.
+- Checksum immutability tests `MUST` prove modified applied migration files fail migrate/plan with `checksum_mismatch`.
+- Layout validation `MUST` fail when a numbered `.up.sql` migration lacks its paired `.down.sql`.
 
 ## 2.0.2 GitHub Workflow Tests
 
@@ -787,6 +810,7 @@ Rules:
 - Static SDK/bootstrap scans MUST fail when the same application runtime/session context creates more than one live `TokenManager`, creates per-domain/per-package/per-service TokenManagers, or constructs an authenticated app SDK client or explicit `backend-admin` backend SDK client without joining the global TokenManager closure.
 - Static SDK/bootstrap scans MUST fail when application packages import `@sdkwork/iam-sdk-adapter`, call `createIamAppSdkAdapter(...)`, call `createIamBackendSdkAdapter(...)`, or wire `createIamRuntime(...)` directly for appbase login instead of using the approved high-level appbase runtime/factory.
 - Static env/config scans MUST fail when `.env`, runtime TOML examples, `/runtime-env.js`, `PORTAL_PUBLIC_*`, or `VITE_*` contain live auth tokens, access tokens, refresh tokens, API keys, generated auth headers, or SDK credential DTOs.
+- Static env/config scans MUST fail when application runtime source, IAM runtime bootstrap, tracked `.env.example`, or public runtime config reads `SDKWORK_IAM_BOOTSTRAP_*`, `SDKWORK_IAM_LOCAL_*`, `SDKWORK_USER_CENTER_BOOTSTRAP_*`, runtime `SDKWORK_APP_ID`, `VITE_SDKWORK_APP_ID`, or equivalent fixed tenant/organization/user/owner bootstrap variables for current IAM scope. Tenant, organization, user, session, and app scope MUST be asserted through dual-token claim tests instead.
 - Static frontend/service scans MUST fail when UI packages or service facades manually assemble auth/API key headers such as `Authorization`, `Access-Token`, or `X-API-Key` instead of using SDK credential APIs.
 - Static frontend/service scans MUST fail when UI packages or service facades import Rust route crates such as `sdkwork-router-*-app-api` or assemble URLs from route constants instead of calling generated SDK clients.
 - Static frontend scans MUST fail when browser or service code uses raw object-storage provider SDKs, persists presigned URLs as business identity, or bypasses generated Drive SDK methods for SDKWork-owned uploads/downloads.

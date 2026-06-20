@@ -389,9 +389,9 @@ runtime_directory = "/run/sdkwork/router"
 engine = "postgresql"
 host = "db.internal"
 port = 5432
-database = "sdkwork_ai_prod"
+database = "sdkwork"
 schema = "public"
-username = "sdkworkprod@2026++"
+username = "sdkwork"
 password_file = "/etc/sdkwork/router/database.secret"
 ssl_mode = "require"
 max_connections = 16
@@ -496,27 +496,28 @@ Recommended env override mapping:
 Standard PostgreSQL development example shape:
 
 ```env
-SDKWORK_<APP>_DATABASE_ENGINE=postgresql
-SDKWORK_<APP>_DATABASE_HOST=127.0.0.1
-SDKWORK_<APP>_DATABASE_PORT=5432
-SDKWORK_<APP>_DATABASE_NAME=<app>_dev
-SDKWORK_<APP>_DATABASE_SCHEMA=<app>_dev
-SDKWORK_<APP>_DATABASE_USERNAME=<app>dev
-SDKWORK_<APP>_DATABASE_PASSWORD=local_dev_password
-SDKWORK_<APP>_DATABASE_SSL_MODE=disable
-SDKWORK_<APP>_DATABASE_MAX_CONNECTIONS=10
+# Unified workspace profile. See ENVIRONMENT_SPEC.md §7.1 and sdkwork-specs/templates/env.postgres.example
+SDKWORK_CLAW_DATABASE_ENGINE=postgresql
+SDKWORK_CLAW_DATABASE_HOST=127.0.0.1
+SDKWORK_CLAW_DATABASE_PORT=5432
+SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_dev
+SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_dev
+SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_dev
+SDKWORK_CLAW_DATABASE_PASSWORD=sdkworkdev123
+SDKWORK_CLAW_DATABASE_SSL_MODE=disable
+SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=10
 
-SDKWORK_<APP>_DATABASE_ADMIN_HOST=127.0.0.1
-SDKWORK_<APP>_DATABASE_ADMIN_PORT=5432
-SDKWORK_<APP>_DATABASE_ADMIN_USERNAME=postgres
-SDKWORK_<APP>_DATABASE_ADMIN_PASSWORD=postgres_admin_pass
-SDKWORK_<APP>_DATABASE_ADMIN_DATABASE=postgres
-SDKWORK_<APP>_DATABASE_ADMIN_SSL_MODE=disable
+SDKWORK_CLAW_DATABASE_ADMIN_HOST=127.0.0.1
+SDKWORK_CLAW_DATABASE_ADMIN_PORT=5432
+SDKWORK_CLAW_DATABASE_ADMIN_USERNAME=postgres
+SDKWORK_CLAW_DATABASE_ADMIN_PASSWORD=postgres_admin_pass
+SDKWORK_CLAW_DATABASE_ADMIN_DATABASE=postgres
+SDKWORK_CLAW_DATABASE_ADMIN_SSL_MODE=disable
 ```
 
 Rules:
 
-- `.env.postgres.example` is checked in and contains local-only placeholders.
+- `.env.postgres.example` is checked in and contains local-only placeholders using `SDKWORK_CLAW_DATABASE_*` only.
 - `.env.postgres` is a developer override and must be ignored by source
   control.
 - `DATABASE_PROVIDER` and `DATABASE_SSLMODE` are not standard names. New apps

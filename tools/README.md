@@ -16,4 +16,7 @@ Rules:
   `sdkwork-specs` links, `sdkwork.workflow.json` package target metadata, and
   thin `.github/workflows/package.yml` reusable workflow integration against
   `AGENTS_SPEC.md` and `GITHUB_WORKFLOW_SPEC.md`.
+- `check-database-framework-standard.mjs` validates application-root `database/`
+  lifecycle assets, locale directories, manifests, and required `db:*` scripts
+  against `DATABASE_FRAMEWORK_SPEC.md`.
 - Tools must not embed application-specific secrets, local paths, or product behavior.

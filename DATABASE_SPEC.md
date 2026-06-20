@@ -3037,3 +3037,15 @@ let query = Query::new()
 ### 36.4 内联迁移定义
 
 对于小型项目，可以使用内联迁移宏定义迁移。
+
+## 37. 数据库生命周期框架规范
+
+应用侧数据库初始化、升级、种子数据、漂移观测和生命周期 SPI 的完整规范见 `DATABASE_FRAMEWORK_SPEC.md`。
+
+规则摘要：
+
+- 拥有关系型数据库的应用 `MUST` 在应用根提供标准 `database/` 目录，并遵循其中的 manifest、contract、migrations、seeds、drift 资产字典。
+- 生命周期编排 `MUST` 通过 `sdkwork-database` 提供的 SPI 与 orchestrator 完成；应用 `MUST NOT` 维护 competing lifecycle engine。
+- 连接池、Repository 和表语义仍遵循本文第 33–36 节；生命周期标准不重复定义字段和命名规则。
+- 标准 pnpm 命令遵循 `PNPM_SCRIPT_SPEC.md` 中的 `db:*` 命令族。
+- L1 可执行 profile 见 `../sdkwork-database/specs/DATABASE_FRAMEWORK_STANDARD.md`。
