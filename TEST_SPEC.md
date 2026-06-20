@@ -1,4 +1,4 @@
-# Test And Verification Standard
+﻿# Test And Verification Standard
 
 - Version: 1.0
 - Scope: contract tests, SDK/RPC generation tests, backend tests, frontend tests, parity tests, security tests
@@ -312,6 +312,18 @@ Rules:
 node ../sdkwork-specs/tools/check-database-framework-standard.mjs --root .
 ```
 
+- Workspace maintainers `MAY` audit all `sdkwork-*` repositories with:
+
+```text
+node ../sdkwork-specs/tools/audit-database-framework-workspace.mjs --workspace ..
+```
+
+- New database modules `SHOULD` be scaffolded from `templates/database/` with:
+
+```text
+node ../sdkwork-specs/tools/bootstrap-database-module.mjs --repo <repo-name>
+```
+
 - Migration smoke tests `MUST` bootstrap an empty database to the latest schema on each supported engine.
 - Seed smoke tests `MUST` prove `seeds/common` plus default locale `zh-CN` are idempotent.
 - Drift tests `MUST` prove a fresh bootstrap yields zero error-level drift.
@@ -617,7 +629,7 @@ Mini program UI tests make `APP_MINI_PROGRAM_UI_SPEC.md` executable.
 
 Rules:
 
-- Mini program UI package tests `MUST` verify package placement under `apps/<product>-mini-program/packages/sdkwork-<product>-mp-*`, `apps/<product>-mini-program/packages/sdkwork-<product>-mp-console-*`, `apps/<product>-mini-program/packages/sdkwork-<product>-mp-admin-*`, or approved `packages/mini-program/<domain>/sdkwork-<capability>-mini-program` shared packages.
+- Mini program UI package tests `MUST` verify package placement under `apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-*`, `apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-console-*`, `apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-admin-*`, or approved `packages/mini-program/<domain>/sdkwork-<capability>-mini-program` shared packages.
 - Package-local boundary tests `MUST` prove `pages`, `components`, `services`, `state`, `i18n`, `routes`, `navigation`, `host`, and `types` responsibilities remain visible when those concerns exist.
 - I18n tests `MUST` prove mini program locale resources are package-local fragments and that platform page/subpackage resource aggregates are generated or thin assemblies, not hand-authored app-wide locale files.
 - Route contribution tests `MUST` prove every route declares `id`, `surface`, `domain`, `capability`, `screen`, `titleKey`, `auth`, and mini program placement metadata without API URLs or SDK method names.
@@ -681,7 +693,7 @@ Native mobile UI tests make `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_
 
 Rules:
 
-- Native UI package tests `MUST` verify package placement under the selected root family, including default app packages, user console packages, and admin packages such as `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-*`, `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-console-*`, `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-admin-*`, `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-*`, `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-console-*`, `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-admin-*`, `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-*`, `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-console-*`, or `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-admin-*`.
+- Native UI package tests `MUST` verify package placement under the selected root family, including default app packages, user console packages, and admin packages such as `apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-*`, `apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-console-*`, `apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-admin-*`, `apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-*`, `apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-console-*`, `apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-admin-*`, `apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-*`, `apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-console-*`, or `apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-admin-*`.
 - Package-local boundary tests `MUST` prove screens/pages, components/views, presentation/view models/controllers, services, state, i18n/resources, routes/navigation, host adapter contracts, and models remain visible when those concerns exist.
 - I18n/resource tests `MUST` prove platform resource aggregates are generated or assembled from package-local fragments and that authored resources do not collapse whole-root copy into one file.
 - SDK tests `MUST` prove app and user console services receive generated app SDK clients or approved wrappers through injection, admin services receive generated backend SDK clients or approved backend wrappers through injection, and no UI service uses raw HTTP/request APIs or manual auth headers.

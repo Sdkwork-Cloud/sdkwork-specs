@@ -19,4 +19,8 @@ Rules:
 - `check-database-framework-standard.mjs` validates application-root `database/`
   lifecycle assets, locale directories, manifests, and required `db:*` scripts
   against `DATABASE_FRAMEWORK_SPEC.md`.
+- `audit-database-framework-workspace.mjs` scans all `sdkwork-*` repositories under
+  a workspace root and reports database framework compliance tiers.
+- `bootstrap-database-module.mjs` scaffolds a standard `database/` module from
+  `templates/database/` using `database-module-registry.json`.
 - Tools must not embed application-specific secrets, local paths, or product behavior.

@@ -1,4 +1,4 @@
-# App Client Architecture Alignment Standard
+﻿# App Client Architecture Alignment Standard
 
 - Version: 1.0
 - Scope: cross-client application architecture alignment for SDKWork PC, H5/mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, backend/admin UI, and future client roots
@@ -38,16 +38,17 @@ SDKWork client roots use stable architecture identifiers.
 
 | Client architecture | Application root | Package segment | Root standard |
 | --- | --- | --- | --- |
-| PC browser/desktop/large-screen tablet | `apps/<product>-pc` | `pc` | `APP_PC_ARCHITECTURE_SPEC.md` |
-| H5 mobile plus Capacitor iOS/Android | `apps/<product>-h5` | `h5` | `APP_H5_ARCHITECTURE_SPEC.md` |
-| Flutter mobile app | `apps/<product>-flutter-mobile` | `flutter-mobile` root segment; `flutter_mobile` Dart package segment | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| Mini program | `apps/<product>-mini-program` | `mp` unless a platform-specific profile is approved | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` |
-| Native Android mobile app | `apps/<product>-android-mobile` | `android-mobile` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| Native iOS mobile app | `apps/<product>-ios-mobile` | `ios-mobile` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| Native HarmonyOS mobile app | `apps/<product>-harmony-mobile` | `harmony-mobile` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| PC browser/desktop/large-screen tablet | `apps/sdkwork-<product>-pc` | `pc` | `APP_PC_ARCHITECTURE_SPEC.md` |
+| H5 mobile plus Capacitor iOS/Android | `apps/sdkwork-<product>-h5` | `h5` | `APP_H5_ARCHITECTURE_SPEC.md` |
+| Flutter mobile app | `apps/sdkwork-<product>-flutter-mobile` | `flutter-mobile` root segment; `flutter_mobile` Dart package segment | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| Mini program | `apps/sdkwork-<product>-mini-program` | `mp` unless a platform-specific profile is approved | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` |
+| Native Android mobile app | `apps/sdkwork-<product>-android-mobile` | `android-mobile` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| Native iOS mobile app | `apps/sdkwork-<product>-ios-mobile` | `ios-mobile` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| Native HarmonyOS mobile app | `apps/sdkwork-<product>-harmony-mobile` | `harmony-mobile` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` |
 
 Rules:
 
+- `apps/` is the application-root collection under a larger repository or workspace. Each child directory is the root of one runnable application surface for a selected language and architecture, such as PC React/Tauri, H5 React/Capacitor, Flutter, mini program, native Android, native iOS, or native HarmonyOS. Do not treat `apps/` itself as the source root for one language or collapse multiple architecture roots into one child directory.
 - New application roots `MUST` use the root naming in this table unless `GOVERNANCE_SPEC.md` records an exception.
 - The package segment `MUST` appear in every app-root package name owned by that architecture.
 - Architecture standards may define language-specific package naming, such as lower snake case for Dart packages.
@@ -58,7 +59,7 @@ Rules:
 Every client root should align to this logical structure. Architecture standards may rename entry files to match the language, but responsibilities must remain equivalent.
 
 ```text
-apps/<product>-<client-arch>/
+apps/sdkwork-<product>-<client-arch>/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/

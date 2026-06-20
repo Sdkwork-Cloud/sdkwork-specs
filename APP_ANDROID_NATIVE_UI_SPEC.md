@@ -1,4 +1,4 @@
-# App Android Native UI Standard
+﻿# App Android Native UI Standard
 
 - Version: 1.0
 - Scope: app/user-facing and Android user-console native packages, Jetpack Compose or Android View UI, generated Kotlin/Java app SDK integration, Android host adapters, mobile interaction, and package-local state
@@ -11,7 +11,7 @@ This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to 
 Canonical app-root Android package shape:
 
 ```text
-apps/<product>-android-mobile/
+apps/sdkwork-<product>-android-mobile/
   packages/
     sdkwork-<product>-android-mobile-core/
     sdkwork-<product>-android-mobile-commons/
@@ -37,8 +37,8 @@ packages/android-native/
 
 Rules:
 
-- Android app UI `MUST` live in normalized Android application packages such as `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>` or approved shared Android package families such as `packages/android-native/<domain>/<package>`.
-- Android user-console UI `MUST` live in `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Android app UI `MUST` live in normalized Android application packages such as `apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>` or approved shared Android package families such as `packages/android-native/<domain>/<package>`.
+- Android user-console UI `MUST` live in `apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - Android app and user-console UI `MUST` consume `/app/v3/api` through generated Kotlin/Java app SDK clients or approved wrappers.
 - Android app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, Flutter packages, iOS packages, or Harmony packages for user-facing workflows.
 - Operator/admin screens require a separately approved Android admin package family classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
@@ -67,7 +67,7 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>/
+apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>/
   build.gradle.kts
   src/
     main/

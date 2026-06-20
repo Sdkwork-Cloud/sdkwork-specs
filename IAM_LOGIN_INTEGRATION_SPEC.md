@@ -59,7 +59,7 @@ Use the smallest package set needed for the target UI architecture.
 | IAM contracts | `@sdkwork/iam-contracts` | token header names, IAM route constants, context contracts |
 | IAM SDK ports | `@sdkwork/iam-sdk-ports` | generated SDK client shapes without app-specific constructors |
 | IAM SDK adapter | `@sdkwork/iam-sdk-adapter` | strict envelope/call-shape adapter over standard appbase app/backend SDK resources |
-| Product core package | `packages/<product>-pc-core` or equivalent | SDK bootstrap, session store, auth service facade, IAM runtime bridge |
+| Product core package | `packages/sdkwork-<product>-pc-core` or equivalent | SDK bootstrap, session store, auth service facade, IAM runtime bridge |
 | Appbase app SDK | `@sdkwork/appbase-app-sdk` | canonical login, session, runtime metadata, OAuth, QR auth, password reset, and current-user transport |
 | Messaging app SDK | generated `sdkwork-messaging-app-sdk` surface | verification-code delivery and verification through `messaging.verificationCodes.*` |
 | Appbase backend SDK | `@sdkwork/appbase-backend-sdk` | canonical `backend-admin` IAM management transport |
@@ -94,12 +94,12 @@ Minimum app-side steps:
 Standard PC React shape:
 
 ```text
-apps/<product>-pc/
+apps/sdkwork-<product>-pc/
   src/
     App.tsx
     AuthGate.tsx
   packages/
-    <product>-pc-core/
+    sdkwork-<product>-pc-core/
       src/sdk/session.ts
       src/sdk/appSdkClient.ts
       src/sdk/appAuthService.ts
@@ -417,10 +417,10 @@ Required checks for IAM login integration:
 Suggested command categories:
 
 ```text
-pnpm --dir apps/<product>-pc test
+pnpm --dir apps/sdkwork-<product>-pc test
 pnpm --dir apps/sdkwork-appbase test:iam-standard-contracts
 cargo test -p <rust-service> --test <auth_or_context_test>
-rg -n "fetch\\(|axios\\.|Authorization|Access-Token" apps/<product>-pc/packages
+rg -n "fetch\\(|axios\\.|Authorization|Access-Token" apps/sdkwork-<product>-pc/packages
 rg -n "/app/v3/api/auth|/api/.*/auth|user-center/session" services crates
 ```
 

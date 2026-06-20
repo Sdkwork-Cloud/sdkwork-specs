@@ -33,7 +33,7 @@ Rules:
 ## 2. Standard Root Layout
 
 ```text
-apps/<product>-flutter-mobile/
+apps/sdkwork-<product>-flutter-mobile/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -99,7 +99,7 @@ apps/<product>-flutter-mobile/
 
 Rules:
 
-- The root name `apps/<product>-flutter-mobile` is canonical for Flutter mobile roots.
+- The root name `apps/sdkwork-<product>-flutter-mobile` is canonical for Flutter mobile roots. New Flutter mobile roots `MUST NOT` use the shorter `apps/<product>-flutter-mobile/` form.
 - Dart package names `MUST` use lower snake case and include `flutter_mobile`.
 - `config/app/` owns non-secret runtime templates consumed by the Flutter app bootstrap.
 - `config/host/` owns platform packaging metadata, permission references, bundle/package ids, app links/universal links, and signing reference names.
@@ -287,7 +287,7 @@ Required verification for Flutter mobile architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves `.sdkwork/`, `config/app`, `config/host`, `lib/bootstrap`, `packages/`, `sdks/`, `scripts/`, and tests exist. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-flutter-mobile/` and `.sdkwork/`, `config/app`, `config/host`, `lib/bootstrap`, `packages/`, `sdks/`, `scripts/`, and tests exist. |
 | Package naming | Static check proves Dart packages use `sdkwork_<product>_flutter_mobile_*` and lower snake case. |
 | Package boundary | Static scan proves root `lib/` is thin and features live in packages. |
 | SDK boundary | Static scan proves generated Dart SDK clients are injected and no raw `http`, manual auth headers, TypeScript wrapper imports, or generated SDK edits were introduced. |
@@ -299,7 +299,7 @@ Required verification for Flutter mobile architecture changes:
 
 Acceptance checklist:
 
-- [ ] Flutter root follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
+- [ ] Flutter root uses `apps/sdkwork-<product>-flutter-mobile/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
 - [ ] Root `lib/` remains thin.
 - [ ] Packages are split by core, commons, shell, capability, optional console/admin, and host roles.
 - [ ] Generated Dart SDKs and appbase Flutter IAM runtime/wrapper are injected from bootstrap/core.

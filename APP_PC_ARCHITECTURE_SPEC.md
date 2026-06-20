@@ -40,10 +40,14 @@ Rules:
 
 ## 2. Standard Root Layout
 
-Every new PC application root `MUST` start from this layout unless an exception is recorded through `GOVERNANCE_SPEC.md`.
+Every new PC application root `MUST` use the directory name `apps/sdkwork-<product>-pc/`
+and start from this layout unless an exception is recorded through
+`GOVERNANCE_SPEC.md`. The root directory name carries the SDKWork namespace,
+product identity, and PC architecture segment together; new roots `MUST NOT`
+use the shorter `apps/<product>-pc/` form.
 
 ```text
-apps/<product>-pc/
+apps/sdkwork-<product>-pc/
   .sdkwork/
     README.md
     skills/
@@ -544,7 +548,7 @@ Required verification for PC application architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves `.sdkwork/`, `src/`, `packages/`, `sdks/`, `scripts/`, and required metadata exist for application roots. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-pc/` and `.sdkwork/`, `src/`, `packages/`, `sdks/`, `scripts/`, and required metadata exist for application roots. |
 | Package naming | Static check proves new packages use `sdkwork-<product>-pc-*`, `sdkwork-<product>-pc-console-*`, or `sdkwork-<product>-pc-admin-*`. |
 | Surface split | Static scan proves app, console, and admin packages do not deep import each other or share hidden route/service internals. |
 | SDK boundary | Static scan proves app/console use app SDKs, `backend-admin` packages use backend SDKs, protected open-api uses declared open-api credential provider, and no raw HTTP/manual auth headers were introduced. |
@@ -558,7 +562,7 @@ Required verification for PC application architecture changes:
 
 Acceptance checklist:
 
-- [ ] PC application root follows the standard root layout or has a documented exception.
+- [ ] PC application root uses `apps/sdkwork-<product>-pc/` and follows the standard root layout or has a documented exception.
 - [ ] New package names include the `pc` segment.
 - [ ] Packages without `pc-console` or `pc-admin` are treated as user-facing app packages.
 - [ ] Console packages are user-facing management console packages, not internal admin packages.

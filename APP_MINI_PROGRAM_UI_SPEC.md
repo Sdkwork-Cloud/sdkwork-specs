@@ -1,4 +1,4 @@
-# App Mini Program UI Standard
+﻿# App Mini Program UI Standard
 
 - Version: 1.0
 - Scope: app/user-facing and mini program user-console UI packages, source pages/components, route projection inputs, generated app SDK integration, mini program host adapters, and package-size-aware interaction rules
@@ -11,7 +11,7 @@ SDKWork source packages and platform pages/subpackages remain separate. This fil
 Canonical app-root mini program package shape:
 
 ```text
-apps/<product>-mini-program/
+apps/sdkwork-<product>-mini-program/
   packages/
     sdkwork-<product>-mp-core/
     sdkwork-<product>-mp-commons/
@@ -38,8 +38,8 @@ packages/
 
 Rules:
 
-- Mini program app UI `MUST` live in normalized mini program application packages such as `apps/<product>-mini-program/packages/sdkwork-<product>-mp-<capability>` or approved shared mini program package families such as `packages/mini-program/<domain>/<package>`.
-- Mini program user-console UI `MUST` live in `apps/<product>-mini-program/packages/sdkwork-<product>-mp-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Mini program app UI `MUST` live in normalized mini program application packages such as `apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-<capability>` or approved shared mini program package families such as `packages/mini-program/<domain>/<package>`.
+- Mini program user-console UI `MUST` live in `apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - Mini program app and user-console UI `MUST` consume `/app/v3/api` through generated TypeScript app SDK clients or approved appbase mini program wrappers.
 - Mini program app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, or backend UI service facades for user-facing workflows.
 - Operator/admin screens require separately approved mini program admin package families classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
@@ -70,7 +70,7 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/<product>-mini-program/packages/sdkwork-<product>-mp-<capability>/
+apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-<capability>/
   package.json
   README.md
   src/

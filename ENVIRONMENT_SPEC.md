@@ -238,7 +238,7 @@ PC browser/desktop/tablet roots should use this grouped config layout when the
 application supports multiple runtime targets:
 
 ```text
-apps/<product>-pc/
+apps/sdkwork-<product>-pc/
   config/
     browser/
       runtime-env.development.example.json

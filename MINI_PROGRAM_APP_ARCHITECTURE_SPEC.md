@@ -34,7 +34,7 @@ Rules:
 ## 2. Standard Root Layout
 
 ```text
-apps/<product>-mini-program/
+apps/sdkwork-<product>-mini-program/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -105,7 +105,7 @@ apps/<product>-mini-program/
 
 Rules:
 
-- The root name `apps/<product>-mini-program` is canonical for mini program roots.
+- The root name `apps/sdkwork-<product>-mini-program` is canonical for mini program roots. New mini program roots `MUST NOT` use the shorter `apps/<product>-mini-program/` form.
 - The package segment `mp` is canonical for cross-platform mini program SDKWork packages.
 - Platform-specific behavior belongs in host/profile adapters, for example `mp-weixin` config and `sdkwork-<product>-mp-host/src/weixin/`.
 - Business packages should not be named `mp-weixin-*` unless the capability is truly platform-exclusive and approved in a component spec.
@@ -330,7 +330,7 @@ Required verification for mini program architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves `.sdkwork/`, `config/mini-program`, `config/host`, `src/bootstrap`, `packages/`, route projection targets, `sdks/`, scripts, and tests exist. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-mini-program/` and `.sdkwork/`, `config/mini-program`, `config/host`, `src/bootstrap`, `packages/`, route projection targets, `sdks/`, scripts, and tests exist. |
 | Package naming | Static check proves packages use `sdkwork-<product>-mp-*` and reserved console/admin/host forms. |
 | Package/subpackage boundary | Static check proves business code lives in SDKWork packages and platform pages/subpackages are projections or thin wrappers. |
 | Route projection | Tests prove route contributions generate or assemble `app.json` pages/subpackages deterministically. |
@@ -343,6 +343,7 @@ Required verification for mini program architecture changes:
 
 Acceptance checklist:
 
+- [ ] Mini program root uses `apps/sdkwork-<product>-mini-program/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
 - [ ] SDKWork packages, not platform subpackages, define the source architecture.
 - [ ] Platform pages/subpackages are generated or assembled from route contributions.
 - [ ] Package names use the `mp` segment unless a platform-specific exception is approved.

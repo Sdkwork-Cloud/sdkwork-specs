@@ -1,4 +1,4 @@
-# Frontend and UI Service Standard
+﻿# Frontend and UI Service Standard
 
 - Version: 1.0
 - Scope: architecture-neutral UI-service-SDK layering, reusable UI modules, service facades, state, routing, accessibility, frontend tests
@@ -109,29 +109,29 @@ packages/<architecture>/<domain>/<package>/
   tests/
 
 PC application packages:
-apps/<product>-pc/packages/sdkwork-<product>-pc-<capability>/
-apps/<product>-pc/packages/sdkwork-<product>-pc-console-<capability>/
-apps/<product>-pc/packages/sdkwork-<product>-pc-admin-<capability>/
+apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-<capability>/
+apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-console-<capability>/
+apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-admin-<capability>/
 
 Client app-root package roles:
-apps/<product>-h5/packages/sdkwork-<product>-h5-<capability>/
-apps/<product>-h5/packages/sdkwork-<product>-h5-console-<capability>/
-apps/<product>-h5/packages/sdkwork-<product>-h5-admin-<capability>/
-apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>/
-apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_console_<capability>/
-apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_admin_<capability>/
-apps/<product>-mini-program/packages/sdkwork-<product>-mp-<capability>/
-apps/<product>-mini-program/packages/sdkwork-<product>-mp-console-<capability>/
-apps/<product>-mini-program/packages/sdkwork-<product>-mp-admin-<capability>/
-apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>/
-apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-console-<capability>/
-apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-admin-<capability>/
-apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>/
-apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-console-<capability>/
-apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-admin-<capability>/
-apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>/
-apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-console-<capability>/
-apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-admin-<capability>/
+apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-<capability>/
+apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-console-<capability>/
+apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-admin-<capability>/
+apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>/
+apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_console_<capability>/
+apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_admin_<capability>/
+apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-<capability>/
+apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-console-<capability>/
+apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-admin-<capability>/
+apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>/
+apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-console-<capability>/
+apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-admin-<capability>/
+apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>/
+apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-console-<capability>/
+apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-admin-<capability>/
+apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>/
+apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-console-<capability>/
+apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-admin-<capability>/
 
 Standalone backend/admin packages:
 apps/sdkwork-backend-react-web/packages/sdkwork-react-backend-<domain>/

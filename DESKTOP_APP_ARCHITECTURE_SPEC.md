@@ -93,7 +93,7 @@ Rules:
 Recommended shape:
 
 ```text
-apps/<product>-pc/
+apps/sdkwork-<product>-pc/
   package.json
   vite.config.ts
   config/
@@ -237,7 +237,7 @@ Rules:
 Standard desktop/native config files:
 
 ```text
-apps/<product>-pc/
+apps/sdkwork-<product>-pc/
   config/
     desktop/
       <product>.development.toml.example
@@ -372,14 +372,14 @@ pnpm dev
 pnpm dev:desktop
 pnpm dev:tablet-ipados
 pnpm dev:tablet-android
-pnpm --dir apps/<product>-pc lint
-pnpm --dir apps/<product>-pc build
-pnpm --dir apps/<product>-pc test:config
-pnpm --dir apps/<product>-pc exec <architecture-contract-tests>
-pnpm --filter <product>-pc-desktop build:desktop:local
-pnpm --filter <product>-pc-desktop check:tauri-config
-pnpm --filter <product>-pc-desktop build:tablet-ipados
-pnpm --filter <product>-pc-desktop build:tablet-android
+pnpm --dir apps/sdkwork-<product>-pc lint
+pnpm --dir apps/sdkwork-<product>-pc build
+pnpm --dir apps/sdkwork-<product>-pc test:config
+pnpm --dir apps/sdkwork-<product>-pc exec <architecture-contract-tests>
+pnpm --filter @sdkwork/<product>-pc-desktop build:desktop:local
+pnpm --filter @sdkwork/<product>-pc-desktop check:tauri-config
+pnpm --filter @sdkwork/<product>-pc-desktop build:tablet-ipados
+pnpm --filter @sdkwork/<product>-pc-desktop build:tablet-android
 ```
 
 ## 11. Acceptance Checklist

@@ -1,4 +1,4 @@
-# Reusable Module Standard
+﻿# Reusable Module Standard
 
 - Version: 1.0
 - Scope: reusable frontend/backend modules, appbase packages, service facades, extension points, module composition
@@ -181,15 +181,15 @@ Deprecated `openchat` sources `MUST NOT` be used for new appbase modules.
 
 | Architecture | Canonical package family | Required spec |
 | --- | --- | --- |
-| App PC React | `packages/pc-react/<domain>/sdkwork-<capability>-pc-react` or `apps/<product>-pc/packages/sdkwork-<product>-pc-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
-| PC user console React | `apps/<product>-pc/packages/sdkwork-<product>-pc-console-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
-| PC internal admin React | `apps/<product>-pc/packages/sdkwork-<product>-pc-admin-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` |
-| H5 mobile React | `apps/<product>-h5/packages/sdkwork-<product>-h5-<capability>` or `packages/mobile-react/<domain>/sdkwork-<capability>-mobile-react` | `APP_H5_ARCHITECTURE_SPEC.md`, then `APP_MOBILE_REACT_UI_SPEC.md` |
-| App Flutter | `apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>` or `packages/mobile-flutter/<domain>/sdkwork_<capability>_flutter` | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_FLUTTER_UI_SPEC.md` |
-| Mini program app | `apps/<product>-mini-program/packages/sdkwork-<product>-mp-<capability>` or `packages/mini-program/<domain>/sdkwork-<capability>-mini-program` | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md` |
-| Android native app | `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>` or `packages/android-native/<domain>/sdkwork-<capability>-android-native` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md` |
-| iOS native app | `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>` or `packages/ios-native/<domain>/sdkwork-<capability>-ios-native` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md` |
-| Harmony native app | `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>` or `packages/harmony-native/<domain>/sdkwork-<capability>-harmony-native` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md` |
+| App PC React | `packages/pc-react/<domain>/sdkwork-<capability>-pc-react` or `apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
+| PC user console React | `apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-console-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
+| PC internal admin React | `apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-admin-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` |
+| H5 mobile React | `apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-<capability>` or `packages/mobile-react/<domain>/sdkwork-<capability>-mobile-react` | `APP_H5_ARCHITECTURE_SPEC.md`, then `APP_MOBILE_REACT_UI_SPEC.md` |
+| App Flutter | `apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>` or `packages/mobile-flutter/<domain>/sdkwork_<capability>_flutter` | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_FLUTTER_UI_SPEC.md` |
+| Mini program app | `apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-<capability>` or `packages/mini-program/<domain>/sdkwork-<capability>-mini-program` | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md` |
+| Android native app | `apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>` or `packages/android-native/<domain>/sdkwork-<capability>-android-native` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md` |
+| iOS native app | `apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>` or `packages/ios-native/<domain>/sdkwork-<capability>-ios-native` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md` |
+| Harmony native app | `apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>` or `packages/harmony-native/<domain>/sdkwork-<capability>-harmony-native` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md` |
 | Standalone backend/admin React | `apps/sdkwork-backend-react-web/packages/sdkwork-react-backend-<domain>` | `BACKEND_UI_SPEC.md` |
 
 Rules:

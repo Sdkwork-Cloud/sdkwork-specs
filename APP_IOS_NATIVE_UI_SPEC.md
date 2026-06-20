@@ -1,4 +1,4 @@
-# App iOS Native UI Standard
+﻿# App iOS Native UI Standard
 
 - Version: 1.0
 - Scope: app/user-facing and iOS user-console native packages, SwiftUI or UIKit UI, generated Swift app SDK integration, iOS host adapters, mobile interaction, and package-local state
@@ -11,7 +11,7 @@ This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to 
 Canonical app-root iOS package shape:
 
 ```text
-apps/<product>-ios-mobile/
+apps/sdkwork-<product>-ios-mobile/
   packages/
     sdkwork-<product>-ios-mobile-core/
     sdkwork-<product>-ios-mobile-commons/
@@ -37,8 +37,8 @@ packages/ios-native/
 
 Rules:
 
-- iOS app UI `MUST` live in normalized iOS application packages such as `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>` or approved shared iOS package families such as `packages/ios-native/<domain>/<package>`.
-- iOS user-console UI `MUST` live in `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- iOS app UI `MUST` live in normalized iOS application packages such as `apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>` or approved shared iOS package families such as `packages/ios-native/<domain>/<package>`.
+- iOS user-console UI `MUST` live in `apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - iOS app and user-console UI `MUST` consume `/app/v3/api` through generated Swift app SDK clients or approved wrappers.
 - iOS app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, Flutter packages, Android packages, or Harmony packages for user-facing workflows.
 - Operator/admin screens require a separately approved iOS admin package family classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
@@ -67,7 +67,7 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>/
+apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>/
   Package.swift
   Sources/
     Sdkwork<Product>IosMobile<Capability>/

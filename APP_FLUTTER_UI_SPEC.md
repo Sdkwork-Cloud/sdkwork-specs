@@ -1,4 +1,4 @@
-# App Flutter UI Standard
+﻿# App Flutter UI Standard
 
 - Version: 1.0
 - Scope: app/user-facing and Flutter user-console packages, Flutter mobile app packages, generated app SDK integration, platform adapters
@@ -11,7 +11,7 @@ This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to 
 Canonical app-root Flutter mobile package shape:
 
 ```text
-apps/<product>-flutter-mobile/
+apps/sdkwork-<product>-flutter-mobile/
   packages/
     sdkwork_<product>_flutter_mobile_core/
     sdkwork_<product>_flutter_mobile_commons/
@@ -39,8 +39,8 @@ apps/sdkwork-appbase/
 
 Rules:
 
-- Flutter app UI `MUST` live in normalized Flutter application packages such as `apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>` or shared Flutter package families such as `packages/mobile-flutter/<domain>/<package>`.
-- Flutter user-console UI `MUST` live in `apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_console_<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Flutter app UI `MUST` live in normalized Flutter application packages such as `apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>` or shared Flutter package families such as `packages/mobile-flutter/<domain>/<package>`.
+- Flutter user-console UI `MUST` live in `apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_console_<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - Flutter app and user-console UI `MUST` consume `/app/v3/api` through generated Dart/Flutter app SDK clients or approved wrappers.
 - Flutter app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDKs, backend React packages, or backend UI service facades.
 - App login, registration, OAuth, verification-code login, password reset, QR login, and current user flows belong to Flutter app UI when implemented in Flutter.
@@ -69,7 +69,7 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>/
+apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>/
   pubspec.yaml
   lib/
     sdkwork_<product>_flutter_mobile_<capability>.dart

@@ -1,4 +1,4 @@
-# App Harmony Native UI Standard
+﻿# App Harmony Native UI Standard
 
 - Version: 1.0
 - Scope: app/user-facing and Harmony user-console native packages, ArkTS/ArkUI UI, generated ArkTS/TypeScript app SDK integration, HarmonyOS host adapters, mobile interaction, and package-local state
@@ -11,7 +11,7 @@ This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to 
 Canonical app-root Harmony package shape:
 
 ```text
-apps/<product>-harmony-mobile/
+apps/sdkwork-<product>-harmony-mobile/
   packages/
     sdkwork-<product>-harmony-mobile-core/
     sdkwork-<product>-harmony-mobile-commons/
@@ -37,8 +37,8 @@ packages/harmony-native/
 
 Rules:
 
-- Harmony app UI `MUST` live in normalized Harmony application packages such as `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>` or approved shared Harmony package families such as `packages/harmony-native/<domain>/<package>`.
-- Harmony user-console UI `MUST` live in `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Harmony app UI `MUST` live in normalized Harmony application packages such as `apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>` or approved shared Harmony package families such as `packages/harmony-native/<domain>/<package>`.
+- Harmony user-console UI `MUST` live in `apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - Harmony app and user-console UI `MUST` consume `/app/v3/api` through generated ArkTS/TypeScript app SDK clients adapted for Harmony runtime or approved wrappers.
 - Harmony app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, Flutter packages, Android packages, or iOS packages for user-facing workflows.
 - Operator/admin screens require a separately approved Harmony admin package family classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
@@ -67,7 +67,7 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>/
+apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>/
   oh-package.json5
   src/
     main/

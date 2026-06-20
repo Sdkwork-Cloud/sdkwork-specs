@@ -21,6 +21,13 @@ Rules:
 | Concept | Pattern | Example |
 | --- | --- | --- |
 | Product repository | `sdkwork-<product>` | `sdkwork-drive` |
+| PC app root | `apps/sdkwork-<product>-pc/` | `apps/sdkwork-commerce-pc/` |
+| H5 app root | `apps/sdkwork-<product>-h5/` | `apps/sdkwork-commerce-h5/` |
+| Flutter mobile app root | `apps/sdkwork-<product>-flutter-mobile/` | `apps/sdkwork-commerce-flutter-mobile/` |
+| Mini program app root | `apps/sdkwork-<product>-mini-program/` | `apps/sdkwork-commerce-mini-program/` |
+| Android native app root | `apps/sdkwork-<product>-android-mobile/` | `apps/sdkwork-commerce-android-mobile/` |
+| iOS native app root | `apps/sdkwork-<product>-ios-mobile/` | `apps/sdkwork-commerce-ios-mobile/` |
+| Harmony native app root | `apps/sdkwork-<product>-harmony-mobile/` | `apps/sdkwork-commerce-harmony-mobile/` |
 | PC app package | `sdkwork-<product>-pc-<capability>` | `sdkwork-commerce-pc-product` |
 | PC user console package | `sdkwork-<product>-pc-console-<capability>` | `sdkwork-commerce-pc-console-order` |
 | PC internal admin package | `sdkwork-<product>-pc-admin-<capability>` | `sdkwork-commerce-pc-admin-audit` |
@@ -69,7 +76,7 @@ Rules:
 | Backend SDK family | `sdkwork-<sdk-family-stem>-backend-sdk` | `sdkwork-im-backend-sdk` |
 | RPC SDK family | `sdkwork-<sdk-family-stem>-rpc-sdk` | `sdkwork-im-rpc-sdk` |
 | Component spec | `specs/component.spec.json` | `packages/foo/specs/component.spec.json` |
-| App manifest | `sdkwork.app.config.json` | `apps/foo/sdkwork.app.config.json` |
+| App manifest | `sdkwork.app.config.json` | `apps/sdkwork-drive-pc/sdkwork.app.config.json` |
 | GitHub package id | `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>`; Linux native packages use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<format-token>`; variant packages insert `<variant>` before `<format-token>` | `windows-x64-standalone-desktop-msi`, `linux-debian-x64-standalone-server-deb`, `container-x64-cloud-container-nvidia-cuda-tar-gz` |
 | GitHub artifact name | `<artifact-prefix>-<package-id>` | `sdkwork-drive-android-arm64-standalone-mobile-aab` |
 | Agent entrypoint | `AGENTS.md` | `AGENTS.md` |

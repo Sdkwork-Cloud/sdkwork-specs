@@ -34,7 +34,7 @@ Rules:
 ## 2. Standard Root Layout
 
 ```text
-apps/<product>-ios-mobile/
+apps/sdkwork-<product>-ios-mobile/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -104,7 +104,7 @@ apps/<product>-ios-mobile/
 
 Rules:
 
-- The root name `apps/<product>-ios-mobile` and package segment `ios-mobile` are canonical for native iOS phone roots.
+- The root name `apps/sdkwork-<product>-ios-mobile` and package segment `ios-mobile` are canonical for native iOS phone roots. New iOS native roots `MUST NOT` use the shorter `apps/<product>-ios-mobile/` form.
 - Package directories use SDKWork kebab-case names such as `sdkwork-<product>-ios-mobile-orders`.
 - Swift target/module names cannot contain hyphens. They should use approved PascalCase target names such as `Sdkwork<Product>IosMobileOrders`, derived from the package directory identity.
 - `config/app/` owns non-secret runtime templates consumed by iOS bootstrap.
@@ -298,7 +298,7 @@ Required verification for iOS native architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves `.sdkwork/`, `config/app`, `config/host`, root `App` bootstrap, `packages/`, `sdks/`, `scripts/`, Xcode/SPM files, and tests exist. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-ios-mobile/` and `.sdkwork/`, `config/app`, `config/host`, root `App` bootstrap, `packages/`, `sdks/`, `scripts/`, Xcode/SPM files, and tests exist. |
 | Package naming | Static check proves iOS packages use `sdkwork-<product>-ios-mobile-*` and reserved console/admin/host forms. |
 | Root thinness | Static scan proves root `App/` owns bootstrap/composition only and business features live in packages. |
 | SDK boundary | Static scan proves generated Swift SDK clients are injected and no raw HTTP, manual auth headers, TypeScript/Flutter/Kotlin/ArkTS wrapper imports, or generated SDK edits were introduced. |
@@ -310,7 +310,7 @@ Required verification for iOS native architecture changes:
 
 Acceptance checklist:
 
-- [ ] iOS root follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
+- [ ] iOS root uses `apps/sdkwork-<product>-ios-mobile/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
 - [ ] Root `App/` remains thin.
 - [ ] Packages are split by core, commons, shell, capability, optional console/admin, and host roles.
 - [ ] Generated Swift SDKs and appbase iOS IAM runtime/wrapper are injected from bootstrap/core.

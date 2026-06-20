@@ -34,7 +34,7 @@ Rules:
 ## 2. Standard Root Layout
 
 ```text
-apps/<product>-android-mobile/
+apps/sdkwork-<product>-android-mobile/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -112,7 +112,7 @@ apps/<product>-android-mobile/
 
 Rules:
 
-- The root name `apps/<product>-android-mobile` and package segment `android-mobile` are canonical for native Android phone roots.
+- The root name `apps/sdkwork-<product>-android-mobile` and package segment `android-mobile` are canonical for native Android phone roots. New Android native roots `MUST NOT` use the shorter `apps/<product>-android-mobile/` form.
 - Package directories use SDKWork kebab-case names such as `sdkwork-<product>-android-mobile-orders`; Gradle module paths should preserve the package directory identity.
 - Android namespaces and Kotlin packages cannot contain hyphens. They should use an approved lowercase dotted namespace such as `com.sdkwork.<product>.android.mobile.<capability>`, with `<product>` and `<capability>` normalized to legal identifiers.
 - `config/app/` owns non-secret runtime templates consumed by Android bootstrap.
@@ -314,7 +314,7 @@ Required verification for Android native architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves `.sdkwork/`, `config/app`, `config/host`, root `app` bootstrap, `packages/`, `sdks/`, `scripts/`, Gradle files, and tests exist. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-android-mobile/` and `.sdkwork/`, `config/app`, `config/host`, root `app` bootstrap, `packages/`, `sdks/`, `scripts/`, Gradle files, and tests exist. |
 | Package naming | Static check proves Android packages use `sdkwork-<product>-android-mobile-*` and reserved console/admin/host forms. |
 | Root thinness | Static scan proves root `app/` owns bootstrap/composition only and business features live in packages. |
 | SDK boundary | Static scan proves generated Kotlin/Java SDK clients are injected and no raw HTTP, manual auth headers, TypeScript/Flutter/Swift/ArkTS wrapper imports, or generated SDK edits were introduced. |
@@ -326,7 +326,7 @@ Required verification for Android native architecture changes:
 
 Acceptance checklist:
 
-- [ ] Android root follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
+- [ ] Android root uses `apps/sdkwork-<product>-android-mobile/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
 - [ ] Root `app/` remains thin.
 - [ ] Packages are split by core, commons, shell, capability, optional console/admin, and host roles.
 - [ ] Generated Kotlin/Java SDKs and appbase Android IAM runtime/wrapper are injected from bootstrap/core.

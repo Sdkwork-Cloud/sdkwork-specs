@@ -1,4 +1,4 @@
-# App Mobile React UI Standard
+﻿# App Mobile React UI Standard
 
 - Version: 1.0
 - Scope: app/user-facing and H5 user-console React mobile packages, H5 mobile web screens, Capacitor mobile renderer packages, app SDK integration
@@ -11,7 +11,7 @@ This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to 
 Canonical app-root H5 mobile package shape:
 
 ```text
-apps/<product>-h5/
+apps/sdkwork-<product>-h5/
   packages/
     sdkwork-<product>-h5-core/
     sdkwork-<product>-h5-commons/
@@ -39,8 +39,8 @@ apps/sdkwork-appbase/
 
 Rules:
 
-- Mobile React app UI `MUST` live in normalized H5 application packages such as `apps/<product>-h5/packages/sdkwork-<product>-h5-<capability>` or shared mobile React package families such as `packages/mobile-react/<domain>/<package>`.
-- H5 user-console UI `MUST` live in `apps/<product>-h5/packages/sdkwork-<product>-h5-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Mobile React app UI `MUST` live in normalized H5 application packages such as `apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-<capability>` or shared mobile React package families such as `packages/mobile-react/<domain>/<package>`.
+- H5 user-console UI `MUST` live in `apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - Mobile React app and user-console UI `MUST` consume `/app/v3/api` through the generated app SDK or approved appbase wrappers.
 - Mobile React app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, or `@sdkwork/react-backend-*` packages.
 - `backend-admin` UI and operator-only workflows are forbidden in mobile React app or user-console packages unless the product is explicitly an admin mobile app with its own approved `backend-admin` package family.
@@ -69,7 +69,7 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/<product>-h5/packages/sdkwork-<product>-h5-<capability>/
+apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-<capability>/
   package.json
   src/
     index.ts

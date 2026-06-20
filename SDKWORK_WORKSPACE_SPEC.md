@@ -36,9 +36,16 @@ SDKWork uses a two-layer source layout:
 
 - `<project-root>/` is the git repository root or independent SDKWork application root governed by
   the standard top-level directory dictionary in this section.
-- `apps/<app-surface-root>/` is an architecture-specific application surface root. It may contain
-  `src/`, `lib/`, `App/`, `entry/`, `packages/`, `config/`, platform files, and other directories
-  required by its selected architecture standard.
+- `apps/sdkwork-<product>-<client-arch>/` is an architecture-specific application surface root.
+  It may contain `src/`, `lib/`, `App/`, `entry/`, `packages/`, `config/`, platform files, and
+  other directories required by its selected architecture standard.
+- `apps/` itself is a collection of application roots, not a language source root. Each direct child
+  under `apps/` represents one selected application language/architecture root, such as
+  `apps/sdkwork-<product>-pc/`, `apps/sdkwork-<product>-h5/`,
+  `apps/sdkwork-<product>-flutter-mobile/`, `apps/sdkwork-<product>-mini-program/`,
+  `apps/sdkwork-<product>-android-mobile/`, `apps/sdkwork-<product>-ios-mobile/`, or
+  `apps/sdkwork-<product>-harmony-mobile/`. Architecture-local `src/`, `lib/`, `App/`,
+  `entry/`, `packages/`, `config/`, and platform directories belong inside that child root.
 
 Top-level `src/`, `packages/`, and `config/` are not generic SDKWork project-root directories. They
 are allowed at the repository root only when the repository root is itself the primary
@@ -77,7 +84,7 @@ Directory meanings:
 | Directory | Purpose | Required when |
 | --- | --- | --- |
 | `apis/` | Author-owned API contracts and API source inputs for all API kinds, including HTTP OpenAPI surfaces, RPC/proto contracts, async/event API manifests, API examples, API changelogs, and API validation inputs | The repository or application defines, owns, reviews, or materializes any API contract |
-| `apps/` | Independently runnable application roots, application surfaces, app shells, demos promoted to runnable apps, or deployable application compositions | The repository contains more than one app root, an app surface below a larger workspace, or runnable app examples |
+| `apps/` | Collection of independently runnable application roots, application surfaces, app shells, demos promoted to runnable apps, or deployable application compositions; each direct child is a selected language/architecture application root | The repository contains more than one app root, an app surface below a larger workspace, or runnable app examples |
 | `crates/` | Rust crates, including route crates, service crates, repository crates, API server/service-host/native-host/Tauri-host/gateway/worker crates, and reusable Rust libraries | Rust source is authored in the repository or application |
 | `sdks/` | SDK family workspaces, SDK generation manifests, authority OpenAPI materialization outputs, derived `sdkgen` inputs, generated SDK language workspaces, and SDK component specs | The repository or application owns or generates SDK families |
 | `jobs/` | Job definitions, schedules, queue bindings, batch descriptors, maintenance runbooks, and non-Rust job packages | Non-request/response jobs are scheduled, configured, operated, or packaged |
@@ -125,7 +132,7 @@ Recommended initial skeleton:
     tests/
   apps/
     README.md
-    <app-surface-root>/
+    sdkwork-<product>-pc/
       README.md
       sdkwork.app.config.json
       src/ | lib/ | App/ | entry/        # selected architecture standard owns this level
@@ -333,11 +340,11 @@ Standard root examples:
   sdkwork.app.config.json
   .sdkwork/
   apis/app-api/<domain>/openapi.yaml
-  apps/<app>-pc/
+  apps/sdkwork-<app>-pc/
     sdkwork.app.config.json
     packages/
     config/
-  apps/<app>-h5/
+  apps/sdkwork-<app>-h5/
     sdkwork.app.config.json
     packages/
     config/

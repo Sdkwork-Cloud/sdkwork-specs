@@ -6,7 +6,7 @@
 
 This standard defines how SDKWork app-side PC React UI is packaged and integrated. PC React app UI is user-facing product UI. It must be independent from `backend-admin` UI packages and must consume app API capabilities through the generated app SDK or approved appbase wrappers.
 
-For a complete PC browser/desktop/tablet application root, first apply `APP_PC_ARCHITECTURE_SPEC.md`. That standard owns `apps/<product>-pc/`, normalized package names such as `sdkwork-<product>-pc-<capability>`, user-facing console package names such as `sdkwork-<product>-pc-console-<capability>`, company-internal admin package names such as `sdkwork-<product>-pc-admin-<capability>`, and the shared web/desktop/tablet renderer boundary. This file owns the detailed app-side React UI rules inside those packages.
+For a complete PC browser/desktop/tablet application root, first apply `APP_PC_ARCHITECTURE_SPEC.md`. That standard owns `apps/sdkwork-<product>-pc/`, normalized package names such as `sdkwork-<product>-pc-<capability>`, user-facing console package names such as `sdkwork-<product>-pc-console-<capability>`, company-internal admin package names such as `sdkwork-<product>-pc-admin-<capability>`, and the shared web/desktop/tablet renderer boundary. This file owns the detailed app-side React UI rules inside those packages.
 
 This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to app/user-facing PC React packages. PC user-facing console packages may reuse these React UI layering rules after `APP_PC_ARCHITECTURE_SPEC.md`, but internal admin packages must also follow `BACKEND_UI_SPEC.md`.
 

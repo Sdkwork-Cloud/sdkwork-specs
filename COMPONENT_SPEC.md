@@ -1,4 +1,4 @@
-# Component Specs Standard
+﻿# Component Specs Standard
 
 - Version: 1.0
 - Scope: local `specs/` directories for apps, reusable packages, language modules, SDK families, services, host adapters, and componentized integration units under `apps/`
@@ -156,23 +156,23 @@ Architecture UI spec selection:
 
 | Component root pattern | Required architecture spec |
 | --- | --- |
-| `apps/<product>-pc/**` | `APP_PC_ARCHITECTURE_SPEC.md` |
-| `apps/<product>-pc/packages/sdkwork-<product>-pc-<capability>` without `pc-console` or `pc-admin` | `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md` |
-| `apps/<product>-pc/packages/sdkwork-<product>-pc-console-*` | `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md` |
-| `apps/<product>-pc/packages/sdkwork-<product>-pc-admin-*` | `APP_PC_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md` |
+| `apps/sdkwork-<product>-pc/**` | `APP_PC_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-<capability>` without `pc-console` or `pc-admin` | `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md` |
+| `apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-console-*` | `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md` |
+| `apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-admin-*` | `APP_PC_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md` |
 | `packages/pc-react/**` | `APP_PC_REACT_UI_SPEC.md` |
-| `apps/<product>-h5/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md` |
-| `apps/<product>-h5/packages/sdkwork-<product>-h5-*` | `APP_H5_ARCHITECTURE_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md` |
-| `apps/<product>-flutter-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| `apps/<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_*` | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_FLUTTER_UI_SPEC.md` |
-| `apps/<product>-mini-program/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` |
-| `apps/<product>-mini-program/packages/sdkwork-<product>-mp-*` | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md` |
-| `apps/<product>-android-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| `apps/<product>-android-mobile/packages/sdkwork-<product>-android-mobile-*` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md` |
-| `apps/<product>-ios-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| `apps/<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-*` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md` |
-| `apps/<product>-harmony-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| `apps/<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-*` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md` |
+| `apps/sdkwork-<product>-h5/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-*` | `APP_H5_ARCHITECTURE_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md` |
+| `apps/sdkwork-<product>-flutter-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_*` | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_FLUTTER_UI_SPEC.md` |
+| `apps/sdkwork-<product>-mini-program/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-*` | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md` |
+| `apps/sdkwork-<product>-android-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-*` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md` |
+| `apps/sdkwork-<product>-ios-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-*` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md` |
+| `apps/sdkwork-<product>-harmony-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-*` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md` |
 | `packages/mobile-react/**` | `APP_MOBILE_REACT_UI_SPEC.md` |
 | `packages/mobile-flutter/**` | `APP_FLUTTER_UI_SPEC.md` |
 | `packages/mini-program/**` | `APP_MINI_PROGRAM_UI_SPEC.md` |

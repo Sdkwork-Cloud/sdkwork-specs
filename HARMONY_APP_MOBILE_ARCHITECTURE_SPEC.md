@@ -34,7 +34,7 @@ Rules:
 ## 2. Standard Root Layout
 
 ```text
-apps/<product>-harmony-mobile/
+apps/sdkwork-<product>-harmony-mobile/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -112,7 +112,7 @@ apps/<product>-harmony-mobile/
 
 Rules:
 
-- The root name `apps/<product>-harmony-mobile` and package segment `harmony-mobile` are canonical for native HarmonyOS phone roots.
+- The root name `apps/sdkwork-<product>-harmony-mobile` and package segment `harmony-mobile` are canonical for native HarmonyOS phone roots. New HarmonyOS native roots `MUST NOT` use the shorter `apps/<product>-harmony-mobile/` form.
 - Package directories use SDKWork kebab-case names such as `sdkwork-<product>-harmony-mobile-orders`.
 - ohpm package ids or import aliases may use an approved registry scope, but they must preserve the `sdkwork-<product>-harmony-mobile-*` identity in package metadata and component specs.
 - ArkTS namespaces and import aliases must use legal identifiers derived from the package directory identity and must not hide the SDKWork package role.
@@ -312,7 +312,7 @@ Required verification for Harmony native architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves `.sdkwork/`, `config/app`, `config/host`, root `entry` bootstrap, `packages/`, `sdks/`, `scripts/`, ohpm/hvigor files, and tests exist. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-harmony-mobile/` and `.sdkwork/`, `config/app`, `config/host`, root `entry` bootstrap, `packages/`, `sdks/`, `scripts/`, ohpm/hvigor files, and tests exist. |
 | Package naming | Static check proves Harmony packages use `sdkwork-<product>-harmony-mobile-*` and reserved console/admin/host forms. |
 | Root thinness | Static scan proves root `entry/` owns bootstrap/composition only and business features live in packages. |
 | SDK boundary | Static scan proves generated ArkTS/TypeScript SDK clients are injected and no raw request APIs, manual auth headers, React/Flutter/Kotlin/Swift wrapper imports, or generated SDK edits were introduced. |
@@ -324,7 +324,7 @@ Required verification for Harmony native architecture changes:
 
 Acceptance checklist:
 
-- [ ] Harmony root follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
+- [ ] Harmony root uses `apps/sdkwork-<product>-harmony-mobile/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
 - [ ] Root `entry/` remains thin.
 - [ ] Packages are split by core, commons, shell, capability, optional console/admin, and host roles.
 - [ ] Generated ArkTS/TypeScript SDKs and appbase Harmony IAM runtime/wrapper are injected from bootstrap/core.

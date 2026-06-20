@@ -1,0 +1,285 @@
+[
+  {
+    "repo": "sdkwork-forum",
+    "moduleId": "forum",
+    "serviceCode": "FORUM",
+    "tablePrefix": "forum_",
+    "ownerTeam": "forum-platform",
+    "engines": ["postgres"]
+  },
+  {
+    "repo": "sdkwork-appbase",
+    "moduleId": "iam",
+    "serviceCode": "IAM",
+    "tablePrefix": "iam_",
+    "ownerTeam": "appbase-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-iam-directory-repository-sqlx/migrations/*.sql",
+      "crates/sdkwork-studio-template-repository-sqlx/migrations/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-appstore",
+    "moduleId": "appstore",
+    "serviceCode": "APPSTORE",
+    "tablePrefix": "appstore_",
+    "ownerTeam": "appstore-platform",
+    "legacySqlGlobs": ["specs/database/migrations/*.sql"]
+  },
+  {
+    "repo": "sdkwork-audio",
+    "moduleId": "audio",
+    "serviceCode": "AUDIO",
+    "tablePrefix": "audio_",
+    "ownerTeam": "media-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-audio-generation-repository-sqlx/migrations/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-birdcoder",
+    "moduleId": "birdcoder",
+    "serviceCode": "BIRDCODER",
+    "tablePrefix": "birdcoder_",
+    "ownerTeam": "birdcoder-platform"
+  },
+  {
+    "repo": "sdkwork-browser",
+    "moduleId": "browser",
+    "serviceCode": "BROWSER",
+    "tablePrefix": "browser_",
+    "ownerTeam": "browser-platform",
+    "engines": ["sqlite"]
+  },
+  {
+    "repo": "sdkwork-claw-router",
+    "moduleId": "clawrouter",
+    "serviceCode": "CLAW_ROUTER",
+    "tablePrefix": "claw_",
+    "ownerTeam": "claw-router-platform",
+    "legacySqlGlobs": ["generated/schema/postgres/schema.sql"]
+  },
+  {
+    "repo": "sdkwork-cms",
+    "moduleId": "cms",
+    "serviceCode": "CMS",
+    "tablePrefix": "cms_",
+    "ownerTeam": "cms-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-content-cms-repository-sqlx/migrations/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-comments",
+    "moduleId": "comments",
+    "serviceCode": "COMMENTS",
+    "tablePrefix": "comments_",
+    "ownerTeam": "comments-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-comments-engagement-repository-sqlx/migrations/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-commerce",
+    "moduleId": "commerce",
+    "serviceCode": "COMMERCE",
+    "tablePrefix": "commerce_",
+    "ownerTeam": "commerce-platform"
+  },
+  {
+    "repo": "sdkwork-community",
+    "moduleId": "community",
+    "serviceCode": "COMMUNITY",
+    "tablePrefix": "community_",
+    "ownerTeam": "community-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-community-storage-sqlx-rust/migrations/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-course",
+    "moduleId": "course",
+    "serviceCode": "COURSE",
+    "tablePrefix": "course_",
+    "ownerTeam": "course-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-content-course-repository-sqlx/migrations/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-deploy-server",
+    "moduleId": "deploy",
+    "serviceCode": "DEPLOY",
+    "tablePrefix": "deploy_",
+    "ownerTeam": "deploy-platform",
+    "legacySqlGlobs": ["migrations/*.sql"]
+  },
+  {
+    "repo": "sdkwork-discovery",
+    "moduleId": "discovery",
+    "serviceCode": "DISCOVERY",
+    "tablePrefix": "discovery_",
+    "ownerTeam": "discovery-platform",
+    "engines": ["postgres", "sqlite"],
+    "legacySqlGlobs": [
+      "crates/sdkwork-discovery-storage-postgres/migrations/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-drive",
+    "moduleId": "drive",
+    "serviceCode": "DRIVE",
+    "tablePrefix": "drive_",
+    "ownerTeam": "drive-platform"
+  },
+  {
+    "repo": "sdkwork-generations",
+    "moduleId": "generations",
+    "serviceCode": "GENERATIONS",
+    "tablePrefix": "generations_",
+    "ownerTeam": "generations-platform"
+  },
+  {
+    "repo": "sdkwork-im",
+    "moduleId": "im",
+    "serviceCode": "IM",
+    "tablePrefix": "im_",
+    "ownerTeam": "im-platform",
+    "legacySqlGlobs": ["deployments/database/postgres/migrations/*.sql"]
+  },
+  {
+    "repo": "sdkwork-image",
+    "moduleId": "image",
+    "serviceCode": "IMAGE",
+    "tablePrefix": "image_",
+    "ownerTeam": "image-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-image-generation-repository-sqlx/migrations/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-knowledgebase",
+    "moduleId": "knowledgebase",
+    "serviceCode": "KNOWLEDGEBASE",
+    "tablePrefix": "kb_",
+    "ownerTeam": "knowledgebase-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-intelligence-knowledgebase-repository-sqlx/migrations/postgres/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-local-router",
+    "moduleId": "localrouter",
+    "serviceCode": "LOCAL_ROUTER",
+    "tablePrefix": "lr_",
+    "ownerTeam": "local-router-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-lr-store/migrations/postgres/*.sql",
+      "crates/sdkwork-lr-store/migrations/sqlite/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-memory",
+    "moduleId": "memory",
+    "serviceCode": "MEMORY",
+    "tablePrefix": "memory_",
+    "ownerTeam": "memory-platform",
+    "legacySqlGlobs": [
+      "plugins/sdkwork-memory-plugin-native-sql/migrations/postgres/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-messaging",
+    "moduleId": "messaging",
+    "serviceCode": "MESSAGING",
+    "tablePrefix": "messaging_",
+    "ownerTeam": "messaging-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-messaging-delivery-repository-sqlx/migrations/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-music",
+    "moduleId": "music",
+    "serviceCode": "MUSIC",
+    "tablePrefix": "music_",
+    "ownerTeam": "music-platform"
+  },
+  {
+    "repo": "sdkwork-news",
+    "moduleId": "news",
+    "serviceCode": "NEWS",
+    "tablePrefix": "news_",
+    "ownerTeam": "news-platform"
+  },
+  {
+    "repo": "sdkwork-notary",
+    "moduleId": "notary",
+    "serviceCode": "NOTARY",
+    "tablePrefix": "notary_",
+    "ownerTeam": "notary-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-notary-case-repository-sqlx/migrations/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-notes",
+    "moduleId": "notes",
+    "serviceCode": "NOTES",
+    "tablePrefix": "notes_",
+    "ownerTeam": "notes-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-notes-pages-repository-sqlx/src/sqlite_core.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-rtc",
+    "moduleId": "rtc",
+    "serviceCode": "RTC",
+    "tablePrefix": "rtc_",
+    "ownerTeam": "rtc-platform"
+  },
+  {
+    "repo": "sdkwork-search",
+    "moduleId": "search",
+    "serviceCode": "SEARCH",
+    "tablePrefix": "search_",
+    "ownerTeam": "search-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-search-storage-sqlx-rust/migrations/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-video-cut",
+    "moduleId": "videocut",
+    "serviceCode": "VIDEO_CUT",
+    "tablePrefix": "videocut_",
+    "ownerTeam": "video-cut-platform",
+    "engines": ["sqlite"]
+  },
+  {
+    "repo": "sdkwork-voice",
+    "moduleId": "voice",
+    "serviceCode": "VOICE",
+    "tablePrefix": "voice_",
+    "ownerTeam": "voice-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-voice-generation-repository-sqlx/migrations/*.sql"
+    ]
+  },
+  {
+    "repo": "sdkwork-web-framework",
+    "moduleId": "webstore",
+    "serviceCode": "WEB_STORE",
+    "tablePrefix": "webstore_",
+    "ownerTeam": "web-framework-platform",
+    "legacySqlGlobs": ["crates/sdkwork-web-store-sqlx/migrations/*.sql"]
+  },
+  {
+    "repo": "sdkwork-aiot",
+    "moduleId": "aiot",
+    "serviceCode": "AIOT_DEVICE",
+    "tablePrefix": "aiot_",
+    "ownerTeam": "aiot-platform"
+  }
+]

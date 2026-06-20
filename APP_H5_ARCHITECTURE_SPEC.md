@@ -42,10 +42,14 @@ Rules:
 
 ## 2. Standard Root Layout
 
-Every new H5 application root `MUST` start from this layout unless an exception is recorded through `GOVERNANCE_SPEC.md`.
+Every new H5 application root `MUST` use the directory name
+`apps/sdkwork-<product>-h5/` and start from this layout unless an exception is
+recorded through `GOVERNANCE_SPEC.md`. The root directory name carries the
+SDKWork namespace, product identity, and H5 architecture segment together; new
+roots `MUST NOT` use the shorter `apps/<product>-h5/` form.
 
 ```text
-apps/<product>-h5/
+apps/sdkwork-<product>-h5/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -128,7 +132,7 @@ apps/<product>-h5/
 
 Directory rules:
 
-- The root name `apps/<product>-h5` and package segment `h5` are canonical for H5/Capacitor application roots.
+- The root name `apps/sdkwork-<product>-h5` and package segment `h5` are canonical for H5/Capacitor application roots.
 - `.sdkwork/` is required by `SDKWORK_WORKSPACE_SPEC.md` for repository/application skills and plugins. It is not generated SDK output and is not user runtime state.
 - `bin/` contains cross-platform operational scripts for build, install, run, diagnostics, and mobile host helper commands when the H5 root is runnable outside a larger workspace.
 - `config/browser/` owns public browser-visible runtime config for H5. It is named `browser` to align with PC and other browser renderers.
@@ -556,7 +560,7 @@ Required verification for H5 application architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves `.sdkwork/`, `config/browser`, `config/host`, `src/bootstrap`, `packages/`, `sdks/`, `scripts/`, and tests exist for application roots. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-h5/` and `.sdkwork/`, `config/browser`, `config/host`, `src/bootstrap`, `packages/`, `sdks/`, `scripts/`, and tests exist for application roots. |
 | Package naming | Static check proves new packages use `sdkwork-<product>-h5-*`, including reserved console/admin/host forms. |
 | Renderer sharing | Tests or static checks prove H5, WebView, iOS, and Android targets reuse the same renderer, route contributions, SDK clients, IAM runtime, and TokenManager. |
 | Surface split | Static scan proves app, console, and admin packages do not deep import each other or share hidden route/service internals. |
@@ -572,7 +576,7 @@ Required verification for H5 application architecture changes:
 
 Acceptance checklist:
 
-- [ ] H5 application root follows the standard root layout or has a documented exception.
+- [ ] H5 application root uses `apps/sdkwork-<product>-h5/` and follows the standard root layout or has a documented exception.
 - [ ] H5 is the baseline runtime and Capacitor is a host/release shape.
 - [ ] H5, WebView, and Capacitor targets share one mobile renderer and one SDK/IAM runtime model.
 - [ ] Root `src/` remains thin.
