@@ -733,12 +733,10 @@ Application roots `MUST` expose standard commands per `PNPM_SCRIPT_SPEC.md`:
 | `db:status` | Print lifecycle/installation state |
 | `db:drift` | Print drift report |
 | `db:drift:check` | Exit non-zero on error-level drift or pending migrations |
-
-Optional convenience alias:
-
-| Command | Purpose |
-| --- | --- |
+| `db:materialize:contract` | Materialize L2 contract registries and manifest fields from baseline DDL |
 | `db:bootstrap` | `db:migrate` then `db:seed` for development/bootstrap flows |
+
+Desktop or Tauri hosts that keep an embedded SQLite driver `MAY` mirror the framework baseline into the package runtime and record `database.manifest.json` metadata at startup. CI and shared environments `MUST` still use `sdkwork-database-cli` against `SDKWORK_{SERVICE}_DATABASE_URL`.
 
 CLI backing implementation `MUST` live in `sdkwork-database-cli` or repository `tools/database/` thin wrappers.
 

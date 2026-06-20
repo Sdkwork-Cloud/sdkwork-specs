@@ -16,6 +16,8 @@ const REQUIRED_DB_SCRIPTS = [
   'db:status',
   'db:drift',
   'db:drift:check',
+  'db:materialize:contract',
+  'db:bootstrap',
 ];
 
 function parseArgs(argv) {

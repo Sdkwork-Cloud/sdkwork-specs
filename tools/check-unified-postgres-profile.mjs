@@ -11,8 +11,8 @@ const WORKSPACE_ROOT = path.resolve(
 );
 
 const CANONICAL_DEV = new Set(['sdkwork_ai_dev', 'postgres']);
-const CANONICAL_PROD = new Set(['sdkwork', 'postgres']);
-const CANONICAL_USER = new Set(['sdkwork_ai_dev', 'sdkwork', 'postgres', 'sdkworktest']);
+const CANONICAL_PROD = new Set(['sdkwork_ai_prod', 'postgres']);
+const CANONICAL_USER = new Set(['sdkwork_ai_dev', 'sdkwork_ai_prod', 'postgres', 'sdkworktest']);
 const ALLOWED_TEST_DB = new Set(['sdkwork_drive_test', 'sdkwork_commerce_pc_test']);
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'target', 'dist', 'artifacts', 'external', '.pnpm', '.runtime']);
@@ -121,6 +121,26 @@ function inspectLine(line, filePath) {
 
   if (/sdkwork_chat_prod|sdkwork_knowledgebase_(dev|prod)|sdkwork_news_dev|sdkwork_forum_dev|sdkwork_discovery"/u.test(trimmed)) {
     return 'legacy per-app database identity';
+  }
+
+  if (/sdkworkprod(@|%40)2026(\+\+|%2B%2B)/u.test(trimmed)) {
+    return 'legacy mistaken password-as-username profile';
+  }
+
+  if (/^SDKWORK_CLAW_DATABASE_(NAME|USERNAME|SCHEMA)=sdkwork$/u.test(trimmed)) {
+    return 'legacy bare sdkwork production identity';
+  }
+
+  if (/^database = "sdkwork"$/u.test(trimmed) || /^username = "sdkwork"$/u.test(trimmed)) {
+    return 'legacy bare sdkwork production identity';
+  }
+
+  if (/^SDKWORK_CLAW_DATABASE_SCHEMA=public$/u.test(trimmed)) {
+    return 'legacy public schema production profile';
+  }
+
+  if (/^schema = "public"$/u.test(trimmed) && /production|\.production\./u.test(filePath)) {
+    return 'legacy public schema production profile';
   }
 
   return null;

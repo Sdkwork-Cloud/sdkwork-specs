@@ -5,7 +5,10 @@
     "serviceCode": "FORUM",
     "tablePrefix": "forum_",
     "ownerTeam": "forum-platform",
-    "engines": ["postgres"]
+    "engines": ["postgres"],
+    "legacySqlGlobs": [
+      "database/ddl/baseline/postgres/0001_forum_baseline.sql"
+    ]
   },
   {
     "repo": "sdkwork-appbase",
@@ -41,7 +44,10 @@
     "moduleId": "birdcoder",
     "serviceCode": "BIRDCODER",
     "tablePrefix": "birdcoder_",
-    "ownerTeam": "birdcoder-platform"
+    "ownerTeam": "birdcoder-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-birdcoder-*/src/db/schema.rs"
+    ]
   },
   {
     "repo": "sdkwork-browser",
@@ -49,7 +55,10 @@
     "serviceCode": "BROWSER",
     "tablePrefix": "browser_",
     "ownerTeam": "browser-platform",
-    "engines": ["sqlite"]
+    "engines": ["sqlite"],
+    "legacySqlGlobs": [
+      "crates/sdkwork-browser-storage-sqlx-rust/migrations/*.sql"
+    ]
   },
   {
     "repo": "sdkwork-claw-router",
@@ -84,7 +93,10 @@
     "moduleId": "commerce",
     "serviceCode": "COMMERCE",
     "tablePrefix": "commerce_",
-    "ownerTeam": "commerce-platform"
+    "ownerTeam": "commerce-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-commerce-storage-repository-sqlx/migrations/*.sql"
+    ]
   },
   {
     "repo": "sdkwork-community",
@@ -122,7 +134,8 @@
     "ownerTeam": "discovery-platform",
     "engines": ["postgres", "sqlite"],
     "legacySqlGlobs": [
-      "crates/sdkwork-discovery-storage-postgres/migrations/*.sql"
+      "crates/sdkwork-discovery-storage-postgres/migrations/*.sql",
+      "crates/sdkwork-discovery-storage-sqlite/migrations/*.sql"
     ]
   },
   {
@@ -130,14 +143,18 @@
     "moduleId": "drive",
     "serviceCode": "DRIVE",
     "tablePrefix": "drive_",
-    "ownerTeam": "drive-platform"
+    "ownerTeam": "drive-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-drive-workspace-service/src/infrastructure/sql/postgres_core.sql"
+    ]
   },
   {
     "repo": "sdkwork-generations",
     "moduleId": "generations",
     "serviceCode": "GENERATIONS",
     "tablePrefix": "generations_",
-    "ownerTeam": "generations-platform"
+    "ownerTeam": "generations-platform",
+    "legacySqlGlobs": ["storage/postgres/generation_core.sql"]
   },
   {
     "repo": "sdkwork-im",
@@ -203,14 +220,20 @@
     "moduleId": "music",
     "serviceCode": "MUSIC",
     "tablePrefix": "music_",
-    "ownerTeam": "music-platform"
+    "ownerTeam": "music-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-music-storage-sqlx-rust/migrations/*.sql"
+    ]
   },
   {
     "repo": "sdkwork-news",
     "moduleId": "news",
     "serviceCode": "NEWS",
     "tablePrefix": "news_",
-    "ownerTeam": "news-platform"
+    "ownerTeam": "news-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-content-news-repository-sqlx/migrations/*.sql"
+    ]
   },
   {
     "repo": "sdkwork-notary",
@@ -237,7 +260,10 @@
     "moduleId": "rtc",
     "serviceCode": "RTC",
     "tablePrefix": "rtc_",
-    "ownerTeam": "rtc-platform"
+    "ownerTeam": "rtc-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-communication-rtc-repository-sqlx/src/schema/postgres_rtc.sql"
+    ]
   },
   {
     "repo": "sdkwork-search",
@@ -255,7 +281,10 @@
     "serviceCode": "VIDEO_CUT",
     "tablePrefix": "videocut_",
     "ownerTeam": "video-cut-platform",
-    "engines": ["sqlite"]
+    "engines": ["sqlite"],
+    "legacySqlGlobs": [
+      "packages/sdkwork-autocut-desktop/src-tauri/database/schema/sqlite/*.sql"
+    ]
   },
   {
     "repo": "sdkwork-voice",
@@ -280,6 +309,9 @@
     "moduleId": "aiot",
     "serviceCode": "AIOT_DEVICE",
     "tablePrefix": "aiot_",
-    "ownerTeam": "aiot-platform"
+    "ownerTeam": "aiot-platform",
+    "legacySqlGlobs": [
+      "crates/sdkwork-aiot-storage-sqlx/src/lib.rs"
+    ]
   }
 ]

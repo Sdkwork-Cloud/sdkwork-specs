@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateDatabaseFramework, validateDatabaseModuleLayout } from './check-database-framework-standard.mjs';
+import { validateDatabaseFramework, validateDatabaseModuleLayout, validateDatabaseModuleContract } from './check-database-framework-standard.mjs';
 
 const toolsDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,7 +29,9 @@ function scaffoldValidDatabaseRoot(rootDir) {
       kind: 'sdkwork.database.module',
       moduleId: 'demo',
       serviceCode: 'DEMO',
-      lifecycle: { activeSeedLocales: ['zh-CN'] },
+      contractVersion: '1.0.0',
+      engines: ['postgres'],
+      lifecycle: { activeSeedLocales: ['zh-CN'], autoMigrate: true },
     },
     rootDir,
   );
@@ -38,8 +40,16 @@ function scaffoldValidDatabaseRoot(rootDir) {
     'schema_version: 1\nkind: sdkwork.database.schema\nmodule_id: demo\ntables: []\n',
     rootDir,
   );
-  writeJson('database/contract/prefix-registry.json', { schemaVersion: 1, prefixes: [] }, rootDir);
-  writeJson('database/contract/table-registry.json', { schemaVersion: 1, tables: [] }, rootDir);
+  writeJson('database/contract/prefix-registry.json', {
+    schemaVersion: 1,
+    kind: 'sdkwork.database.prefix-registry',
+    prefixes: [{ prefix: 'demo_', owner: 'demo-platform', domain: 'demo' }],
+  }, rootDir);
+  writeJson('database/contract/table-registry.json', {
+    schemaVersion: 1,
+    kind: 'sdkwork.database.table-registry',
+    tables: [{ table_name: 'demo_probe', owner: 'demo-platform', compliance_level: 'L2', lifecycle_status: 'active' }],
+  }, rootDir);
   writeJson(
     'database/seeds/seed.manifest.json',
     {
@@ -56,7 +66,7 @@ function scaffoldValidDatabaseRoot(rootDir) {
   writeText('database/migrations/postgres/.gitkeep', '', rootDir);
   writeText('database/migrations/sqlite/.gitkeep', '', rootDir);
   writeText('database/seeds/common/.gitkeep', '', rootDir);
-  writeText('database/ddl/baseline/postgres/.gitkeep', '', rootDir);
+  writeText('database/ddl/baseline/postgres/0001_demo_baseline.sql', 'CREATE TABLE demo_probe (id INTEGER PRIMARY KEY);\n', rootDir);
   writeText('database/ddl/baseline/sqlite/.gitkeep', '', rootDir);
   writeText('database/ddl/generated/.gitkeep', '', rootDir);
   writeText('database/fixtures/.gitkeep', '', rootDir);
@@ -75,6 +85,8 @@ function scaffoldValidDatabaseRoot(rootDir) {
         'db:status': 'echo status',
         'db:drift': 'echo drift',
         'db:drift:check': 'echo drift-check',
+        'db:materialize:contract': 'echo materialize',
+        'db:bootstrap': 'echo bootstrap',
       },
     },
     rootDir,
@@ -109,5 +121,24 @@ assert.ok(
   missingDown.failures.some((item) => item.includes('.down.sql')),
   'failure should mention missing down.sql',
 );
+
+const missingBaselineRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(missingBaselineRoot);
+fs.rmSync(path.join(missingBaselineRoot, 'database/ddl/baseline/postgres/0001_demo_baseline.sql'));
+const missingBaseline = validateDatabaseModuleContract(path.join(missingBaselineRoot, 'database'));
+assert.equal(missingBaseline.ok, false, 'missing postgres baseline should fail L2 contract checks');
+
+const autoMigrateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(autoMigrateRoot);
+const autoMigrateManifest = JSON.parse(
+  fs.readFileSync(path.join(autoMigrateRoot, 'database/database.manifest.json'), 'utf8'),
+);
+autoMigrateManifest.lifecycle.autoMigrate = false;
+fs.writeFileSync(
+  path.join(autoMigrateRoot, 'database/database.manifest.json'),
+  `${JSON.stringify(autoMigrateManifest, null, 2)}\n`,
+);
+const autoMigrate = validateDatabaseModuleContract(path.join(autoMigrateRoot, 'database'));
+assert.equal(autoMigrate.ok, false, 'autoMigrate false should fail L2 contract checks');
 
 process.stdout.write('check-database-framework-standard.test.mjs passed\n');

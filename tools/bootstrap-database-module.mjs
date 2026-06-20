@@ -22,6 +22,14 @@ const DB_SCRIPTS = {
   'db:bootstrap': `${DATABASE_CLI} bootstrap`,
 };
 
+function buildMaterializeScript(moduleConfig) {
+  const engines = moduleConfig.engines?.length ? moduleConfig.engines : ['postgres'];
+  const defaultEngine = engines.includes('postgres') ? 'postgres' : engines[0];
+  const baseline = `database/ddl/baseline/${defaultEngine}/0001_${moduleConfig.moduleId}_legacy_baseline.sql`;
+  const prefixArg = moduleConfig.tablePrefix ? ` --prefixes ${moduleConfig.tablePrefix}` : '';
+  return `node ../sdkwork-specs/tools/materialize-database-contract-from-baseline.mjs --root . --baseline ${baseline} --module-id ${moduleConfig.moduleId} --owner ${moduleConfig.ownerTeam}${prefixArg} --engines ${engines.join(',')}`;
+}
+
 function parseArgs(argv) {
   const args = {
     workspace: WORKSPACE_ROOT,
@@ -183,6 +191,7 @@ function ensurePackageJson(repoRoot, moduleConfig) {
   for (const [name, command] of Object.entries(DB_SCRIPTS)) {
     packageJson.scripts[name] = command;
   }
+  packageJson.scripts['db:materialize:contract'] = buildMaterializeScript(moduleConfig);
   if (!packageJson.scripts.test) {
     packageJson.scripts.test = 'node ../sdkwork-specs/tools/check-database-framework-standard.mjs --root .';
   } else if (!packageJson.scripts.test.includes('check-database-framework-standard')) {
@@ -218,6 +227,7 @@ function writeDatabaseReadme(databaseDir, moduleConfig, legacyCopied) {
     '',
     '```bash',
     'pnpm run db:validate',
+    'pnpm run db:materialize:contract',
     'pnpm run db:plan',
     'pnpm run db:init',
     'pnpm run db:migrate',

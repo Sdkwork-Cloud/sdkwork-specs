@@ -416,7 +416,7 @@ Applications MUST NOT define per-app PostgreSQL database names, usernames, passw
 | Environment | Canonical keys | Database | Schema | Username | Password |
 | --- | --- | --- | --- | --- | --- |
 | Development | `SDKWORK_CLAW_DATABASE_*` | `sdkwork_ai_dev` | `sdkwork_ai_dev` | `sdkwork_ai_dev` | `sdkworkdev123` |
-| Production | `SDKWORK_CLAW_DATABASE_*` | `sdkwork` | `public` | `sdkwork` | secret file or protected env |
+| Production | `SDKWORK_CLAW_DATABASE_*` | `sdkwork_ai_prod` | `sdkwork_ai_prod` | `sdkwork_ai_prod` | secret file or protected env |
 
 Rules:
 
@@ -448,10 +448,10 @@ Canonical production server/container fields:
 SDKWORK_CLAW_DATABASE_ENGINE=postgresql
 SDKWORK_CLAW_DATABASE_HOST=db.example.com
 SDKWORK_CLAW_DATABASE_PORT=5432
-SDKWORK_CLAW_DATABASE_NAME=sdkwork
-SDKWORK_CLAW_DATABASE_SCHEMA=public
-SDKWORK_CLAW_DATABASE_USERNAME=sdkwork
-SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/etc/sdkwork/database.secret
+SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_prod
+SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_prod
+SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_prod
+SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/etc/sdkwork/router/database.secret
 SDKWORK_CLAW_DATABASE_SSL_MODE=require
 SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=20
 ```
@@ -567,8 +567,9 @@ trust_forwarded_headers = true
 engine = "postgresql"
 host = "db.example.com"
 port = 5432
-database = "sdkwork"
-username = "sdkwork"
+database = "sdkwork_ai_prod"
+schema = "sdkwork_ai_prod"
+username = "sdkwork_ai_prod"
 password_file = "/etc/sdkwork/router/database.secret"
 ssl_mode = "require"
 max_connections = 20
@@ -705,10 +706,10 @@ trust_forwarded_headers = true
 engine = "postgresql"
 host = "db.internal"
 port = 5432
-database = "sdkwork"
-schema = "public"
-username = "sdkwork"
-password_file = "/etc/sdkwork/database.secret"
+database = "sdkwork_ai_prod"
+schema = "sdkwork_ai_prod"
+username = "sdkwork_ai_prod"
+password_file = "/etc/sdkwork/router/database.secret"
 ssl_mode = "require"
 max_connections = 20
 
@@ -874,13 +875,13 @@ SDKWORK_<APP>_RUNTIME_TARGET=server
 SDKWORK_CLAW_DATABASE_ENGINE=postgresql
 SDKWORK_CLAW_DATABASE_HOST=db.example.com
 SDKWORK_CLAW_DATABASE_PORT=5432
-SDKWORK_CLAW_DATABASE_NAME=sdkwork
-SDKWORK_CLAW_DATABASE_SCHEMA=public
-SDKWORK_CLAW_DATABASE_USERNAME=sdkwork
-SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/etc/sdkwork/database.secret
+SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_prod
+SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_prod
+SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_prod
+SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/etc/sdkwork/router/database.secret
 SDKWORK_CLAW_DATABASE_SSL_MODE=require
 SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=20
-# SDKWORK_CLAW_DATABASE_URL=postgres://sdkwork:change-me@db.example.com:5432/sdkwork
+# SDKWORK_CLAW_DATABASE_URL=postgresql://sdkwork_ai_prod:change-me@db.example.com:5432/sdkwork_ai_prod
 SDKWORK_<APP>_SERVER_BIND=0.0.0.0:3900
 SDKWORK_<APP>_TRUST_FORWARDED_HEADERS=1
 ```
@@ -908,12 +909,12 @@ SDKWORK_<APP>_RUNTIME_TARGET=container
 SDKWORK_CLAW_DATABASE_ENGINE=postgresql
 SDKWORK_CLAW_DATABASE_HOST=postgres
 SDKWORK_CLAW_DATABASE_PORT=5432
-SDKWORK_CLAW_DATABASE_NAME=sdkwork
-SDKWORK_CLAW_DATABASE_SCHEMA=public
-SDKWORK_CLAW_DATABASE_USERNAME=sdkwork
+SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_prod
+SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_prod
+SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_prod
 SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/run/secrets/sdkwork/database-password
 SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=20
-# SDKWORK_CLAW_DATABASE_URL=postgres://sdkwork:change-me@postgres:5432/sdkwork
+# SDKWORK_CLAW_DATABASE_URL=postgresql://sdkwork_ai_prod:change-me@postgres:5432/sdkwork_ai_prod
 SDKWORK_<APP>_SERVER_BIND=0.0.0.0:3900
 ```
 
@@ -1132,8 +1133,9 @@ config_profile = "prod"
 engine = "postgresql"
 host = "db.internal"
 port = 5432
-database = "sdkwork"
-username = "sdkwork"
+database = "sdkwork_ai_prod"
+schema = "sdkwork_ai_prod"
+username = "sdkwork_ai_prod"
 password_file = "/etc/sdkwork/router/database.secret"
 # password = "real-password"
 ssl_mode = "require"

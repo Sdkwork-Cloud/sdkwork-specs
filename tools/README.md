@@ -17,8 +17,9 @@ Rules:
   thin `.github/workflows/package.yml` reusable workflow integration against
   `AGENTS_SPEC.md` and `GITHUB_WORKFLOW_SPEC.md`.
 - `check-database-framework-standard.mjs` validates application-root `database/`
-  lifecycle assets, locale directories, manifests, and required `db:*` scripts
-  against `DATABASE_FRAMEWORK_SPEC.md`.
+  lifecycle assets, locale directories, manifests, L2 contract registries,
+  per-engine baseline DDL, and required `db:*` scripts against
+  `DATABASE_FRAMEWORK_SPEC.md`.
 - `audit-database-framework-workspace.mjs` scans all `sdkwork-*` repositories under
   a workspace root and reports database framework compliance tiers.
 - `bootstrap-database-module.mjs` scaffolds a standard `database/` module from

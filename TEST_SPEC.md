@@ -304,7 +304,8 @@ Rules:
 
 - Application repositories that own a `database/` directory `MUST` provide `tests/contract/database-framework.contract.test.*` or call the canonical validator.
 - Database framework tests `MUST` verify `database/database.manifest.json`, `database/contract/schema.yaml`, `database/seeds/seed.manifest.json`, required locale directories, and drift policy presence.
-- Database framework tests `MUST` verify root `db:validate`, `db:migrate`, and `db:status` scripts exist when database lifecycle is active.
+- Database framework tests `MUST` verify L2 contract fields: `contractVersion: "1.0.0"`, `lifecycle.autoMigrate: true`, non-empty prefix/table registries, and at least one baseline `.sql` file under `database/ddl/baseline/<engine>/` for every engine declared in `database.manifest.json`.
+- Database framework tests `MUST` verify root `db:validate`, `db:migrate`, `db:status`, `db:materialize:contract`, and `db:bootstrap` scripts exist when database lifecycle is active.
 - Database framework tests `MUST` fail when crate-local `migrations/` remain the only migration source without an approved exception or adoption plan.
 - Application repositories may call the canonical validator with:
 

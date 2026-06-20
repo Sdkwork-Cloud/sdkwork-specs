@@ -14,6 +14,8 @@ const REQUIRED_DB_SCRIPTS = [
   'db:drift',
   'db:drift:check',
 ];
+const L2_DB_SCRIPTS = ['db:materialize:contract', 'db:bootstrap'];
+const L2_CONTRACT_VERSION = '1.0.0';
 
 function parseArgs(argv) {
   const args = { root: process.cwd(), layout: 'application' };
@@ -37,6 +39,70 @@ function existsAt(baseDir, relativePath) {
 function readJsonAt(baseDir, relativePath) {
   const absolutePath = path.join(baseDir, relativePath);
   return JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+}
+
+function listBaselineSqlFiles(moduleRootDir, engine) {
+  const baselineDir = path.join(moduleRootDir, 'ddl/baseline', engine);
+  if (!fs.existsSync(baselineDir)) {
+    return [];
+  }
+  return fs
+    .readdirSync(baselineDir)
+    .filter((entry) => entry.endsWith('.sql'))
+    .sort();
+}
+
+export function validateDatabaseModuleContract(moduleRootDir) {
+  const failures = [];
+
+  function fail(message) {
+    failures.push(message);
+  }
+
+  let manifest;
+  try {
+    manifest = readJsonAt(moduleRootDir, 'database.manifest.json');
+  } catch (error) {
+    fail(`database.manifest.json must be valid JSON (${error.message})`);
+    return { ok: false, failures };
+  }
+
+  if (manifest.contractVersion !== L2_CONTRACT_VERSION) {
+    fail(
+      `database.manifest.json contractVersion must be ${L2_CONTRACT_VERSION} (found ${manifest.contractVersion ?? 'missing'})`,
+    );
+  }
+  if (manifest.lifecycle?.autoMigrate !== true) {
+    fail('database.manifest.json lifecycle.autoMigrate must be true for L2 modules');
+  }
+
+  const engines = manifest.engines?.length ? manifest.engines : ['postgres'];
+  for (const engine of engines) {
+    const baselineFiles = listBaselineSqlFiles(moduleRootDir, engine);
+    if (baselineFiles.length === 0) {
+      fail(`ddl/baseline/${engine} must contain at least one .sql baseline file`);
+    }
+  }
+
+  try {
+    const prefixRegistry = readJsonAt(moduleRootDir, 'contract/prefix-registry.json');
+    if (!Array.isArray(prefixRegistry.prefixes) || prefixRegistry.prefixes.length === 0) {
+      fail('contract/prefix-registry.json prefixes must be non-empty for L2 modules');
+    }
+  } catch (error) {
+    fail(`contract/prefix-registry.json must be valid JSON (${error.message})`);
+  }
+
+  try {
+    const tableRegistry = readJsonAt(moduleRootDir, 'contract/table-registry.json');
+    if (!Array.isArray(tableRegistry.tables) || tableRegistry.tables.length === 0) {
+      fail('contract/table-registry.json tables must be non-empty for L2 modules');
+    }
+  } catch (error) {
+    fail(`contract/table-registry.json must be valid JSON (${error.message})`);
+  }
+
+  return { ok: failures.length === 0, failures };
 }
 
 export function validateDatabaseModuleLayout(moduleRootDir) {
@@ -82,7 +148,7 @@ export function validateDatabaseModuleLayout(moduleRootDir) {
       continue;
     }
     for (const entry of fs.readdirSync(migrationDir)) {
-      if (!entry.endsWith('.sql')) {
+      if (!entry.endsWith('.up.sql')) {
         continue;
       }
       if (!/^\d{4}_[a-z0-9_]+\.up\.sql$/.test(entry)) {
@@ -132,7 +198,8 @@ export function validateDatabaseFramework(rootDir) {
   }
 
   const moduleResult = validateDatabaseModuleLayout(path.join(rootDir, 'database'));
-  const failures = [...moduleResult.failures];
+  const contractResult = validateDatabaseModuleContract(path.join(rootDir, 'database'));
+  const failures = [...moduleResult.failures, ...contractResult.failures];
   const packageJsonPath = path.join(rootDir, 'package.json');
   if (fs.existsSync(packageJsonPath)) {
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
@@ -140,6 +207,11 @@ export function validateDatabaseFramework(rootDir) {
     for (const scriptName of REQUIRED_DB_SCRIPTS) {
       if (!scripts[scriptName]) {
         failures.push(`package.json scripts must define ${scriptName}`);
+      }
+    }
+    for (const scriptName of L2_DB_SCRIPTS) {
+      if (!scripts[scriptName]) {
+        failures.push(`package.json scripts must define ${scriptName} for L2 database modules`);
       }
     }
   }

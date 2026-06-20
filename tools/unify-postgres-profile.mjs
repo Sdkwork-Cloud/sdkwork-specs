@@ -11,29 +11,27 @@ const WORKSPACE_ROOT = path.resolve(
 );
 
 const TEXT_REPLACEMENTS = [
-  ['sdkwork_chat_prod', 'sdkwork'],
+  ['sdkwork_chat_prod', 'sdkwork_ai_prod'],
   ['sdkwork_knowledgebase_dev', 'sdkwork_ai_dev'],
-  ['sdkwork_knowledgebase_prod', 'sdkwork'],
+  ['sdkwork_knowledgebase_prod', 'sdkwork_ai_prod'],
   ['sdkwork_news_dev', 'sdkwork_ai_dev'],
   ['sdkwork_forum_dev', 'sdkwork_ai_dev'],
   ['sdkwork_drive_dev', 'sdkwork_ai_dev'],
-  ['sdkwork_drive_prod', 'sdkwork'],
-  ['sdkwork_drive_staging', 'sdkwork'],
+  ['sdkwork_drive_prod', 'sdkwork_ai_prod'],
+  ['sdkwork_drive_staging', 'sdkwork_ai_prod'],
   ['sdkwork_commerce_pc_dev', 'sdkwork_ai_dev'],
-  ['sdkwork_commerce_pc_prod', 'sdkwork'],
-  ['sdkwork_commerce_pc_staging', 'sdkwork'],
-  ['sdkwork_video_prod', 'sdkwork'],
-  ['sdkwork_terminal_production', 'sdkwork'],
-  ['sdkwork_ai_prod', 'sdkwork'],
-  ['sdkworkprod@2026++', 'sdkwork'],
+  ['sdkwork_commerce_pc_prod', 'sdkwork_ai_prod'],
+  ['sdkwork_commerce_pc_staging', 'sdkwork_ai_prod'],
+  ['sdkwork_video_prod', 'sdkwork_ai_prod'],
+  ['sdkwork_terminal_production', 'sdkwork_ai_prod'],
   ['username = "sdkworkdev"', 'username = "sdkwork_ai_dev"'],
-  ['username = "sdkworkdrive"', 'username = "sdkwork"'],
-  ['username = "sdkworkcommerce"', 'username = "sdkwork"'],
+  ['username = "sdkworkdrive"', 'username = "sdkwork_ai_prod"'],
+  ['username = "sdkworkcommerce"', 'username = "sdkwork_ai_prod"'],
   ['database = "sdkwork_discovery"', 'database = "sdkwork_ai_dev"'],
   ['username = "sdkwork_discovery"', 'username = "sdkwork_ai_dev"'],
-  ['SDKWORK_IM_DATABASE_NAME=sdkwork', 'SDKWORK_CLAW_DATABASE_NAME=sdkwork'],
-  ['SDKWORK_IM_DATABASE_SCHEMA=sdkwork', 'SDKWORK_CLAW_DATABASE_SCHEMA=public'],
-  ['SDKWORK_IM_DATABASE_USERNAME=sdkwork', 'SDKWORK_CLAW_DATABASE_USERNAME=sdkwork'],
+  ['SDKWORK_IM_DATABASE_NAME=sdkwork', 'SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_prod'],
+  ['SDKWORK_IM_DATABASE_SCHEMA=public', 'SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_prod'],
+  ['SDKWORK_IM_DATABASE_USERNAME=sdkwork', 'SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_prod'],
   ['SDKWORK_IM_DATABASE_NAME=sdkwork_ai_dev', 'SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_dev'],
   ['SDKWORK_IM_DATABASE_SCHEMA=sdkwork_ai_dev', 'SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_dev'],
   ['SDKWORK_IM_DATABASE_USERNAME=sdkwork_ai_dev', 'SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_dev'],
@@ -43,14 +41,18 @@ const TEXT_REPLACEMENTS = [
   ['SDKWORK_NEWS_DATABASE_NAME=sdkwork_ai_dev', 'SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_dev'],
   ['SDKWORK_NEWS_DATABASE_USERNAME=sdkwork_ai_dev', 'SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_dev'],
   ['SDKWORK_NEWS_DATABASE_PASSWORD=sdkworknews123', 'SDKWORK_CLAW_DATABASE_PASSWORD=sdkworkdev123'],
-  ['schema = "sdkwork"', 'schema = "public"'],
-  ['schema: sdkwork', 'schema: public'],
-  ['CREATE SCHEMA IF NOT EXISTS sdkwork AUTHORIZATION "sdkwork"', 'CREATE SCHEMA IF NOT EXISTS public AUTHORIZATION "sdkwork"'],
-  ['GRANT USAGE, CREATE ON SCHEMA sdkwork TO "sdkwork"', 'GRANT USAGE, CREATE ON SCHEMA public TO "sdkwork"'],
-  ['ALTER DEFAULT PRIVILEGES IN SCHEMA sdkwork', 'ALTER DEFAULT PRIVILEGES IN SCHEMA public'],
-  ['ALTER ROLE "sdkwork" SET search_path TO sdkwork, public', 'ALTER ROLE "sdkwork" SET search_path TO public'],
-  ['url = "postgres://prod-db:5432/sdkwork_terminal_production"', 'url = "postgresql://sdkwork@db.example.com:5432/sdkwork?sslmode=require"'],
-  ['url = "postgresql://prod-host:5432/sdkwork"', 'url = "postgresql://sdkwork@db.example.com:5432/sdkwork?sslmode=require"'],
+  ['SDKWORK_CLAW_DATABASE_NAME=sdkwork', 'SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_prod'],
+  ['SDKWORK_CLAW_DATABASE_SCHEMA=public', 'SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_prod'],
+  ['SDKWORK_CLAW_DATABASE_USERNAME=sdkwork', 'SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_prod'],
+  ['database = "sdkwork"', 'database = "sdkwork_ai_prod"'],
+  ['username = "sdkwork"', 'username = "sdkwork_ai_prod"'],
+  ['schema = "public"', 'schema = "sdkwork_ai_prod"'],
+  ['SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/etc/sdkwork/database.secret', 'SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/etc/sdkwork/router/database.secret'],
+  ['password_file = "/etc/sdkwork/database.secret"', 'password_file = "/etc/sdkwork/router/database.secret"'],
+  ['url = "postgres://prod-db:5432/sdkwork_terminal_production"', 'url = "postgresql://sdkwork_ai_prod@db.example.com:5432/sdkwork_ai_prod?sslmode=require"'],
+  ['url = "postgresql://prod-host:5432/sdkwork"', 'url = "postgresql://sdkwork_ai_prod@db.example.com:5432/sdkwork_ai_prod?sslmode=require"'],
+  ['postgresql://sdkworkprod%402026%2B%2B:', 'postgresql://sdkwork_ai_prod:'],
+  ['postgresql://sdkworkprod@2026++:', 'postgresql://sdkwork_ai_prod:'],
 ];
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'target', 'dist', 'artifacts', 'external', '.pnpm']);
@@ -96,21 +98,14 @@ function collectFiles(dir, files = []) {
   return files;
 }
 
-function normalizeProductionSchema(content, filePath) {
-  if (!/(production|staging)/u.test(filePath)) {
-    return content;
-  }
-  return content.replace(/database = "sdkwork"\r?\nschema = "sdkwork_ai_dev"/g, 'database = "sdkwork"\nschema = "public"');
-}
-
-function applyReplacements(content, filePath) {
+function applyReplacements(content) {
   let next = content;
   for (const [from, to] of TEXT_REPLACEMENTS) {
     if (from !== to) {
       next = next.split(from).join(to);
     }
   }
-  return normalizeProductionSchema(next, filePath);
+  return next;
 }
 
 function main() {
@@ -124,7 +119,7 @@ function main() {
     }
     for (const filePath of collectFiles(path.join(WORKSPACE_ROOT, entry.name))) {
       const original = fs.readFileSync(filePath, 'utf8');
-      const updated = applyReplacements(original, filePath);
+      const updated = applyReplacements(original);
       if (updated !== original) {
         fs.writeFileSync(filePath, updated, 'utf8');
         changed.push(path.relative(WORKSPACE_ROOT, filePath));
