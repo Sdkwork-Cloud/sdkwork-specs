@@ -334,6 +334,23 @@ node ../sdkwork-specs/tools/bootstrap-database-module.mjs --repo <repo-name>
 - Checksum immutability tests `MUST` prove modified applied migration files fail migrate/plan with `checksum_mismatch`.
 - Layout validation `MUST` fail when a numbered `.up.sql` migration lacks its paired `.down.sql`.
 
+## 2.0.2.2 IAM Application Bootstrap Tests
+
+IAM application bootstrap tests make `IAM_APPLICATION_BOOTSTRAP_SPEC.md` executable.
+
+Rules:
+
+- Application repositories that declare `sdkwork.app.config.json` or own `scripts/bootstrap/*` `MUST` depend on `@sdkwork/iam-application-bootstrap`.
+- Bootstrap scripts `MUST NOT` embed raw bootstrap HTTP paths.
+- Application repositories with IAM bootstrap `MUST` expose `admin:bootstrap:app` and `check:iam-application-bootstrap` (or `test:contract:iam-application-bootstrap`).
+- Application repositories may call the canonical validator with:
+
+```text
+node ../sdkwork-specs/tools/check-iam-application-bootstrap-standard.mjs --root .
+```
+
+- Repositories that own `@sdkwork/iam-application-bootstrap` `MUST` run its package contract tests in IAM standard verification.
+
 ## 2.0.2 GitHub Workflow Tests
 
 GitHub workflow tests make `GITHUB_WORKFLOW_SPEC.md` executable.

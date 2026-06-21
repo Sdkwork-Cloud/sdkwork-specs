@@ -71,6 +71,7 @@ When the capability exists, the repository root `MUST` expose the matching comma
 | API materialization | `api:materialize`, `api:materialize:check`, `api:check` |
 | SDK generation | `sdk:generate`, `sdk:generate:check`, `sdk:check` |
 | Database operations | `db:plan`, `db:init`, `db:migrate`, `db:seed`, `db:status`, `db:validate`, `db:materialize:contract`, `db:bootstrap`, `db:drift`, `db:drift:check` |
+| IAM application bootstrap | `admin:bootstrap:app`, `check:iam-application-bootstrap`, `test:contract:iam-application-bootstrap` when bootstrap tooling exists |
 | Gateway operations | `gateway:run`, `gateway:plan`, `gateway:build`, `gateway:package`, `gateway:validate`, `gateway:matrix` |
 | Topology | `topology:validate`, `topology:plan` as applicable |
 | Supply-chain evidence | `sbom:generate`, `sbom:check` as applicable |

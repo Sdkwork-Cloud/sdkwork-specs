@@ -246,6 +246,7 @@ Rules:
 
 - Every authenticated application runtime `MUST` create exactly one global `TokenManager` or language-equivalent token manager per authenticated session context.
 - Application bootstrap `MUST` consume the approved high-level appbase auth runtime/factory for its architecture when one exists, for example `createSdkworkAppbasePcAuthRuntime(...)` for PC React.
+- IAM application registration and tenant runtime provisioning `MUST` use `@sdkwork/iam-application-bootstrap` per `IAM_APPLICATION_BOOTSTRAP_SPEC.md`. Application code `MUST NOT` hand-craft raw HTTP to `/backend/v3/api/iam/applications/register`, `/backend/v3/api/iam/tenant_applications`, or `/backend/v3/api/iam/access_credentials`.
 - Application bootstrap `MUST NOT` import `@sdkwork/iam-sdk-adapter`, call `createIamAppSdkAdapter(...)`, call `createIamBackendSdkAdapter(...)`, or locally wire appbase SDK resources into IAM ports when an appbase high-level runtime/factory can do that wiring.
 - Application bootstrap `MUST NOT` call `createIamRuntime(...)` directly except inside an approved appbase-owned wrapper package that exposes the same high-level inputs.
 - Runtime/bootstrap `MUST` resolve SDK base URLs from `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md` before creating generated SDK clients.
@@ -435,6 +436,7 @@ rg -n "createTokenManager\\(|new .*TokenManager|setAuthToken|setAccessToken" app
   common SDK root or gateway runtime embedding, instead of directly composing foundation runtime
   crates in each application.
 - [ ] Runtime/bootstrap uses the approved high-level appbase auth runtime/factory for the architecture and does not locally wire low-level IAM SDK adapters in application code.
+- [ ] IAM application bootstrap uses `@sdkwork/iam-application-bootstrap` and passes `check-iam-application-bootstrap-standard.mjs`.
 - [ ] Runtime/bootstrap creates exactly one global `TokenManager` per authenticated session context.
 - [ ] Appbase app SDK, every application/dependency app SDK, explicit `backend-admin` appbase backend/application backend/dependency backend SDKs, and every approved composed wrapper backed by those SDKs share that same `TokenManager`.
 - [ ] Protected open-api SDKs use a separate open-api credential provider matching their declared auth mode and are not placed in app/backend TokenManager client lists.

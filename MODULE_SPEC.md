@@ -77,7 +77,7 @@ Rules:
 | `iam-permission` | Roles, permissions, policies, authorization hints |
 | `iam-security` | Security events, audit timeline, devices, API keys |
 | `platform-app` | App manifest, app registry, environment, release/update metadata |
-| `runtime-bootstrap` | SDK client creation, deployment profile, runtime target, token storage, host adapter injection |
+| `runtime-bootstrap` | SDK client creation, deployment profile, runtime target, token storage, host adapter injection, IAM application bootstrap orchestration through `@sdkwork/iam-application-bootstrap` |
 
 Rules:
 
@@ -242,6 +242,7 @@ Each reusable module `MUST` include:
 - [ ] Dependencies flow in the allowed direction.
 - [ ] SDK clients are injected and typed.
 - [ ] Concrete SDK constructors stay in runtime/bootstrap or application adapters.
+- [ ] IAM application bootstrap stays in `@sdkwork/iam-application-bootstrap`; scripts remain thin wrappers.
 - [ ] Standalone/cloud variation and runtime-target variation are hidden behind runtime/bootstrap.
 - [ ] Extension points are explicit.
 - [ ] Module tests use fake or generated SDK clients.

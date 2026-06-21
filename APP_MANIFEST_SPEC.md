@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: app registration, app manifest, release metadata, install packages, media assets, PlusApp projection
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `CONFIG_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_SPEC.md`, `IAM_APPLICATION_BOOTSTRAP_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `CONFIG_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 SDKWork App Manifest Standard v3 defines the canonical app configuration used by new applications under `apps/`. The standard is intentionally strict: new apps do not carry legacy compatibility branches, and every field is designed to map cleanly into `PlusApp` while retaining enough metadata for professional multi-platform release operations.
 
@@ -573,5 +573,8 @@ Schema and examples must stay aligned with validator behavior:
 - [ ] Add checksums for every direct package.
 - [ ] Add package metadata for signing, OS requirements, and server health checks.
 - [ ] Add at least one current release note and one default channel.
+- [ ] Declare non-empty `backend.accessTokenPermissionScope` for IAM bootstrap.
 - [ ] Run the validator.
-- [ ] Register the generated PlusApp payload only after validation passes.
+- [ ] Register the application template and provision the tenant application through `@sdkwork/iam-application-bootstrap` per `IAM_APPLICATION_BOOTSTRAP_SPEC.md`.
+- [ ] Expose `admin:bootstrap:app` (or approved equivalent) and keep bootstrap scripts thin.
+- [ ] Run `check-iam-application-bootstrap-standard.mjs` before merge.

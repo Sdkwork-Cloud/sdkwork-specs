@@ -80,6 +80,9 @@ Rules:
 | API key | `iam_api_key` | `/iam/api_keys` |
 | Security event | `iam_security_event` | `/iam/security_events` |
 | Audit event | `iam_audit_event` | `/iam/audit_events` |
+| Application template | `iam_application_template` | `/iam/applications/register` |
+| Application template package | `iam_application_template_package` | projected from manifest packages |
+| Tenant application | `iam_tenant_application` | `/iam/tenant_applications` |
 
 Minimum shared IAM persistence contract:
 
@@ -103,6 +106,9 @@ iam_role_binding
 iam_api_key
 iam_security_event
 iam_audit_event
+iam_application_template
+iam_application_template_package
+iam_tenant_application
 ```
 
 Rules:
@@ -115,6 +121,7 @@ Rules:
 - `iam_user` or the canonical tenant membership relation `MUST` provide the user's tenant binding used by login. Login implementations `MUST NOT` invent tenant ids from usernames, emails, request bodies, headers, or local default values.
 - `iam_organization_membership` `MUST` provide the organization memberships used by login organization selection and authorization. A missing organization membership means tenant-level login only; it does not authorize organization-scoped data.
 - `iam_session` `MUST` store token hashes, context fields, sharding fields, data scope, permission scope, expiry, revocation, and audit timestamps.
+- Application registration, tenant application provisioning, enablement, and bootstrap access credential issuance `MUST` follow `IAM_APPLICATION_BOOTSTRAP_SPEC.md`. Do not introduce `plus_*`, `studio_*`, or a separate IAM deployment table for this flow.
 - Tenant token signing material `MUST` be tenant-bound. Implementations may store encrypted HMAC secrets, tenant key references, or asymmetric key metadata in `iam_tenant_signing_key`, but every active signing key `MUST` resolve to exactly one tenant and key id (`kid`).
 
 ## 4. AppContext And ShardingContext
@@ -315,6 +322,11 @@ Minimum backend-api resources:
 | `iam.apiKeys` | `apiKeys.list`, `apiKeys.revoke` |
 | `iam.securityEvents` | `securityEvents.list` |
 | `iam.auditEvents` | `auditEvents.list` |
+| `iam.applications` | `applications.register` |
+| `iam.tenantApplications` | `tenantApplications.provision`, `tenantApplications.update`, `tenantApplications.enable` |
+| `iam.accessCredentials` | `accessCredentials.create` |
+
+Bootstrap backend operations `MUST` use body-based super-admin auth, not dual-token headers. Application onboarding `MUST` consume `@sdkwork/iam-application-bootstrap` instead of raw bootstrap HTTP. See `IAM_APPLICATION_BOOTSTRAP_SPEC.md`.
 
 ## 7. Authorization
 
@@ -360,6 +372,8 @@ Rules:
 - [ ] API key operations resolve a server-side API key record and never trust raw key claims alone in production.
 - [ ] OAuth bearer open-api operations resolve a server-side token/session record and never trust raw bearer claim strings alone in production.
 - [ ] Open-api IAM ingress uses `IamOpenApiWebRequestContextResolver` with route-manifest auth modes instead of handler-local credential parsing.
+- [ ] Application bootstrap uses `@sdkwork/iam-application-bootstrap` and backend resources `iam.applications.register`, `iam.tenantApplications.*`, and `iam.accessCredentials.create`.
+- [ ] No `plus_*`, `studio_*`, or separate IAM deployment table remains in bootstrap ownership.
 - [ ] AppContext and ShardingContext are derived from verified token context.
 - [ ] Appbase HTTP handlers consume typed `WebRequestContext`/`AppContext` and do not reparse credentials.
 - [ ] Tenant and organization isolation is enforced in Java and Rust.
