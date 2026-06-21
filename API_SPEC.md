@@ -758,9 +758,9 @@ Rules:
 {
   "sub": "user_01",
   "sid": "session_01",
-  "tenant_id": "10001",
-  "organization_id": "20001",
-  "login_scope": "ORGANIZATION",
+  "tenant_id": "100001",
+  "organization_id": "0",
+  "login_scope": "TENANT",
   "token_type": "access",
   "app_id": "sdkwork_router",
   "environment": "prod",

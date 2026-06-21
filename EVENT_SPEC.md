@@ -25,7 +25,7 @@ Rules:
   "source": "iam-service",
   "specversion": "1.0",
   "time": "2026-05-11T00:00:00Z",
-  "tenantId": "10001",
+  "tenantId": "100001",
   "organizationId": "0",
   "subject": "user_01",
   "data": {}

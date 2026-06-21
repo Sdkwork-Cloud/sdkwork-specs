@@ -29,6 +29,7 @@ IAM does not own:
 - Content/resource ownership beyond generic owner references and authorization claims.
 - Native host secret storage internals.
 - Product-specific permission catalogs outside their registered permission codes.
+- Product permission and role seed catalogs must be declared through IMF manifests (`IAM_MODULE_MANIFEST_SPEC.md`) and materialized by `sdkwork-iam-module-registry`; `sdkwork-appbase-iam-bootstrap` owns only `iam-kernel` catalog seeds.
 
 ## 2. Canonical Package Boundary
 

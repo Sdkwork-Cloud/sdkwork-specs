@@ -89,7 +89,20 @@ UI `can()` checks are hints only. Server enforcement is mandatory.
 
 - Tenants may define custom roles (`standard = false`)
 - Custom role grants cannot exceed assigner's effective `permissionScope`
-- Product permissions register under `{product}.{resource}.{action}`
+- Product permissions register under `{product}.{resource}.{action}` through `IAM_MODULE_MANIFEST_SPEC.md` and IMF discovery
+- Platform kernel permissions remain in `iam-kernel`; product domains must not be seeded from `sdkwork-appbase-iam-bootstrap` monolith catalogs
+
+## IMF Commands
+
+Application roots with IAM Module Federation enabled must run:
+
+```bash
+pnpm run iam:modules:validate
+```
+
+Materialization is performed by `sdkwork-iam-module-registry` during database bootstrap and `import_postgres_default_iam_seed`.
+
+Related: `IAM_RBAC_FEDERATION_SPEC.md`, `IAM_CATALOG_GOVERNANCE_SPEC.md`
 
 ## Acceptance
 
