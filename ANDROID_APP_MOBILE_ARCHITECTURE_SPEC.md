@@ -34,7 +34,7 @@ Rules:
 ## 2. Standard Root Layout
 
 ```text
-apps/sdkwork-<product>-android-mobile/
+apps/sdkwork-<application-code>-android-mobile/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -55,15 +55,15 @@ apps/sdkwork-<product>-android-mobile/
       android.staging.example.json
       android.production.example.json
     server/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     container/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
   docs/
   scripts/
   sdks/
@@ -74,7 +74,7 @@ apps/sdkwork-<product>-android-mobile/
       main/
         AndroidManifest.xml
         kotlin/
-          com/sdkwork/<product>/android/mobile/
+          com/sdkwork/<application-code>/android/mobile/
             MainApplication.kt
             MainActivity.kt
             bootstrap/
@@ -90,17 +90,17 @@ apps/sdkwork-<product>-android-mobile/
       androidTest/
       test/
   packages/
-    sdkwork-<product>-android-mobile-core/
-    sdkwork-<product>-android-mobile-commons/
-    sdkwork-<product>-android-mobile-shell/
-    sdkwork-<product>-android-mobile-<capability>/
-    sdkwork-<product>-android-mobile-console-core/
-    sdkwork-<product>-android-mobile-console-shell/
-    sdkwork-<product>-android-mobile-console-<capability>/
-    sdkwork-<product>-android-mobile-admin-core/
-    sdkwork-<product>-android-mobile-admin-shell/
-    sdkwork-<product>-android-mobile-admin-<capability>/
-    sdkwork-<product>-android-mobile-host/
+    sdkwork-<application-code>-android-mobile-core/
+    sdkwork-<application-code>-android-mobile-commons/
+    sdkwork-<application-code>-android-mobile-shell/
+    sdkwork-<application-code>-android-mobile-<capability>/
+    sdkwork-<application-code>-android-mobile-console-core/
+    sdkwork-<application-code>-android-mobile-console-shell/
+    sdkwork-<application-code>-android-mobile-console-<capability>/
+    sdkwork-<application-code>-android-mobile-admin-core/
+    sdkwork-<application-code>-android-mobile-admin-shell/
+    sdkwork-<application-code>-android-mobile-admin-<capability>/
+    sdkwork-<application-code>-android-mobile-host/
   tests/
   build.gradle.kts
   settings.gradle.kts
@@ -112,9 +112,9 @@ apps/sdkwork-<product>-android-mobile/
 
 Rules:
 
-- The root name `apps/sdkwork-<product>-android-mobile` and package segment `android-mobile` are canonical for native Android phone roots. New Android native roots `MUST NOT` use the shorter `apps/<product>-android-mobile/` form.
-- Package directories use SDKWork kebab-case names such as `sdkwork-<product>-android-mobile-orders`; Gradle module paths should preserve the package directory identity.
-- Android namespaces and Kotlin packages cannot contain hyphens. They should use an approved lowercase dotted namespace such as `com.sdkwork.<product>.android.mobile.<capability>`, with `<product>` and `<capability>` normalized to legal identifiers.
+- The root name `apps/sdkwork-<application-code>-android-mobile` and package segment `android-mobile` are canonical for native Android phone roots. New Android native roots `MUST NOT` use the shorter `apps/<application-code>-android-mobile/` form.
+- Package directories use SDKWork kebab-case names such as `sdkwork-<application-code>-android-mobile-orders`; Gradle module paths should preserve the package directory identity.
+- Android namespaces and Kotlin packages cannot contain hyphens. They should use an approved lowercase dotted namespace such as `com.sdkwork.<application-code>.android.mobile.<capability>`, with `<application-code>` and `<capability>` normalized to legal identifiers.
 - `config/app/` owns non-secret runtime templates consumed by Android bootstrap.
 - `config/host/` owns Android package id, min/target SDK references, permission references, app links, push profile references, signing reference names, store profile references, and release metadata. It must not contain signing private keys or secrets.
 - The root `app/` module is the installable Android application and composition module. It must not own product business workflows.
@@ -126,36 +126,36 @@ Rules:
 
 | Package family | Owns | Must not own |
 | --- | --- | --- |
-| `sdkwork-<product>-android-mobile-core` | runtime config, SDK factories, token-manager equivalent, appbase IAM runtime/wrapper, session/context stores, route registry, host adapter contracts | screens, composables, business workflows |
-| `sdkwork-<product>-android-mobile-commons` | domain-neutral Compose components/views, theme adapters, design tokens, form/list/error primitives, i18n/resource helpers | business screens, SDK construction |
-| `sdkwork-<product>-android-mobile-shell` | app shell, navigation graph assembly, AuthGate integration, app route composition | business services |
-| `sdkwork-<product>-android-mobile-<capability>` | screens, composables/views, view models/controllers, services, repositories, state, resources/i18n, route contributions, view models | concrete SDK construction, unrelated capabilities |
-| `sdkwork-<product>-android-mobile-console-*` | approved user-facing mobile console workflows through app-api | internal operator workflows |
-| `sdkwork-<product>-android-mobile-admin-*` | approved internal operator workflows through backend-api | app user login/session creation |
-| `sdkwork-<product>-android-mobile-host` | Android platform adapters for camera, QR, secure storage, push, deep links, files, lifecycle, device features | business API transport, business authorization |
+| `sdkwork-<application-code>-android-mobile-core` | runtime config, SDK factories, token-manager equivalent, appbase IAM runtime/wrapper, session/context stores, route registry, host adapter contracts | screens, composables, business workflows |
+| `sdkwork-<application-code>-android-mobile-commons` | domain-neutral Compose components/views, theme adapters, design tokens, form/list/error primitives, i18n/resource helpers | business screens, SDK construction |
+| `sdkwork-<application-code>-android-mobile-shell` | app shell, navigation graph assembly, AuthGate integration, app route composition | business services |
+| `sdkwork-<application-code>-android-mobile-<capability>` | screens, composables/views, view models/controllers, services, repositories, state, resources/i18n, route contributions, view models | concrete SDK construction, unrelated capabilities |
+| `sdkwork-<application-code>-android-mobile-console-*` | approved user-facing mobile console workflows through app-api | internal operator workflows |
+| `sdkwork-<application-code>-android-mobile-admin-*` | approved internal operator workflows through backend-api | app user login/session creation |
+| `sdkwork-<application-code>-android-mobile-host` | Android platform adapters for camera, QR, secure storage, push, deep links, files, lifecycle, device features | business API transport, business authorization |
 
 Rules:
 
 - New Android packages `MUST` be split by domain/capability and must not become catch-all mobile business modules.
 - Packages without `android-mobile-console` or `android-mobile-admin` are default Android app/user packages.
-- `sdkwork-<product>-android-mobile-console-<capability>` packages are the user-facing Android management console family. They follow the same package-internal shape as default Android capability packages and consume app-api through generated Kotlin/Java app SDK clients or approved Android appbase wrappers.
-- `sdkwork-<product>-android-mobile-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated Kotlin/Java backend SDK clients or approved backend wrappers.
+- `sdkwork-<application-code>-android-mobile-console-<capability>` packages are the user-facing Android management console family. They follow the same package-internal shape as default Android capability packages and consume app-api through generated Kotlin/Java app SDK clients or approved Android appbase wrappers.
+- `sdkwork-<application-code>-android-mobile-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated Kotlin/Java backend SDK clients or approved backend wrappers.
 - The `<capability>` segment is the concrete business module token. It `MUST` use lower kebab-case in SDKWork package directories, normalize to legal Android identifiers for Kotlin namespaces, and `MUST NOT` be a placeholder such as `console`, `admin`, `manager`, `backend`, `common`, or `misc`.
-- Console and admin package families are optional. Mobile admin packages require explicit product approval, `backend-admin` surface classification, and backend SDK boundary verification.
+- Console and admin package families are optional. Mobile admin packages require explicit governance approval, `backend-admin` surface classification, and backend SDK boundary verification.
 - Shared UI primitives remain domain-neutral unless they live inside the owning capability package.
 - Android packages may share route ids, i18n keys, design tokens, SDK port contracts, and service contracts with other client roots, but must not import another architecture's UI/runtime implementation.
 
 ## 4. Package Internal Shape
 
 ```text
-packages/sdkwork-<product>-android-mobile-<capability>/
+packages/sdkwork-<application-code>-android-mobile-<capability>/
   build.gradle.kts
   README.md
   src/
     main/
       AndroidManifest.xml
       kotlin/
-        com/sdkwork/<product>/android/mobile/<capability>/
+        com/sdkwork/<application-code>/android/mobile/<capability>/
           PublicApi.kt
           ui/
             screens/
@@ -314,8 +314,8 @@ Required verification for Android native architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-android-mobile/` and `.sdkwork/`, `config/app`, `config/host`, root `app` bootstrap, `packages/`, `sdks/`, `scripts/`, Gradle files, and tests exist. |
-| Package naming | Static check proves Android packages use `sdkwork-<product>-android-mobile-*` and reserved console/admin/host forms. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<application-code>-android-mobile/` and `.sdkwork/`, `config/app`, `config/host`, root `app` bootstrap, `packages/`, `sdks/`, `scripts/`, Gradle files, and tests exist. |
+| Package naming | Static check proves Android packages use `sdkwork-<application-code>-android-mobile-*` and reserved console/admin/host forms. |
 | Root thinness | Static scan proves root `app/` owns bootstrap/composition only and business features live in packages. |
 | SDK boundary | Static scan proves generated Kotlin/Java SDK clients are injected and no raw HTTP, manual auth headers, TypeScript/Flutter/Swift/ArkTS wrapper imports, or generated SDK edits were introduced. |
 | IAM clearing | Tests prove token manager, context store, secure storage, sensitive state, and realtime/session bridges clear on logout and refresh failure. |
@@ -326,7 +326,7 @@ Required verification for Android native architecture changes:
 
 Acceptance checklist:
 
-- [ ] Android root uses `apps/sdkwork-<product>-android-mobile/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
+- [ ] Android root uses `apps/sdkwork-<application-code>-android-mobile/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
 - [ ] Root `app/` remains thin.
 - [ ] Packages are split by core, commons, shell, capability, optional console/admin, and host roles.
 - [ ] Generated Kotlin/Java SDKs and appbase Android IAM runtime/wrapper are injected from bootstrap/core.

@@ -34,7 +34,7 @@ Rules:
 ## 2. Standard Root Layout
 
 ```text
-apps/sdkwork-<product>-ios-mobile/
+apps/sdkwork-<application-code>-ios-mobile/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -55,15 +55,15 @@ apps/sdkwork-<product>-ios-mobile/
       ios.staging.example.json
       ios.production.example.json
     server/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     container/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
   docs/
   scripts/
   sdks/
@@ -85,17 +85,17 @@ apps/sdkwork-<product>-ios-mobile/
       Assets.xcassets/
       Localizable.xcstrings
   packages/
-    sdkwork-<product>-ios-mobile-core/
-    sdkwork-<product>-ios-mobile-commons/
-    sdkwork-<product>-ios-mobile-shell/
-    sdkwork-<product>-ios-mobile-<capability>/
-    sdkwork-<product>-ios-mobile-console-core/
-    sdkwork-<product>-ios-mobile-console-shell/
-    sdkwork-<product>-ios-mobile-console-<capability>/
-    sdkwork-<product>-ios-mobile-admin-core/
-    sdkwork-<product>-ios-mobile-admin-shell/
-    sdkwork-<product>-ios-mobile-admin-<capability>/
-    sdkwork-<product>-ios-mobile-host/
+    sdkwork-<application-code>-ios-mobile-core/
+    sdkwork-<application-code>-ios-mobile-commons/
+    sdkwork-<application-code>-ios-mobile-shell/
+    sdkwork-<application-code>-ios-mobile-<capability>/
+    sdkwork-<application-code>-ios-mobile-console-core/
+    sdkwork-<application-code>-ios-mobile-console-shell/
+    sdkwork-<application-code>-ios-mobile-console-<capability>/
+    sdkwork-<application-code>-ios-mobile-admin-core/
+    sdkwork-<application-code>-ios-mobile-admin-shell/
+    sdkwork-<application-code>-ios-mobile-admin-<capability>/
+    sdkwork-<application-code>-ios-mobile-host/
   Tests/
   Package.swift
   <Product>.xcodeproj/
@@ -104,8 +104,8 @@ apps/sdkwork-<product>-ios-mobile/
 
 Rules:
 
-- The root name `apps/sdkwork-<product>-ios-mobile` and package segment `ios-mobile` are canonical for native iOS phone roots. New iOS native roots `MUST NOT` use the shorter `apps/<product>-ios-mobile/` form.
-- Package directories use SDKWork kebab-case names such as `sdkwork-<product>-ios-mobile-orders`.
+- The root name `apps/sdkwork-<application-code>-ios-mobile` and package segment `ios-mobile` are canonical for native iOS phone roots. New iOS native roots `MUST NOT` use the shorter `apps/<application-code>-ios-mobile/` form.
+- Package directories use SDKWork kebab-case names such as `sdkwork-<application-code>-ios-mobile-orders`.
 - Swift target/module names cannot contain hyphens. They should use approved PascalCase target names such as `Sdkwork<Product>IosMobileOrders`, derived from the package directory identity.
 - `config/app/` owns non-secret runtime templates consumed by iOS bootstrap.
 - `config/host/` owns bundle id, minimum iOS version, entitlements references, associated domains, universal links, push profile references, signing reference names, Apple team/profile references, store profile references, and release metadata. It must not contain signing private keys or secrets.
@@ -118,29 +118,29 @@ Rules:
 
 | Package family | Owns | Must not own |
 | --- | --- | --- |
-| `sdkwork-<product>-ios-mobile-core` | runtime config, SDK factories, token-manager equivalent, appbase IAM runtime/wrapper, session/context stores, route registry, host adapter contracts | screens, views, business workflows |
-| `sdkwork-<product>-ios-mobile-commons` | domain-neutral SwiftUI/UIKit primitives, theme adapters, design tokens, form/list/error primitives, localization helpers | business screens, SDK construction |
-| `sdkwork-<product>-ios-mobile-shell` | app shell, navigation stack/tab/sheet assembly, AuthGate integration, app route composition | business services |
-| `sdkwork-<product>-ios-mobile-<capability>` | screens, views, view models/controllers, services, repositories, state, localization, route contributions, models | concrete SDK construction, unrelated capabilities |
-| `sdkwork-<product>-ios-mobile-console-*` | approved user-facing mobile console workflows through app-api | internal operator workflows |
-| `sdkwork-<product>-ios-mobile-admin-*` | approved internal operator workflows through backend-api | app user login/session creation |
-| `sdkwork-<product>-ios-mobile-host` | iOS platform adapters for camera, QR, keychain, push, deep links, files, lifecycle, device features | business API transport, business authorization |
+| `sdkwork-<application-code>-ios-mobile-core` | runtime config, SDK factories, token-manager equivalent, appbase IAM runtime/wrapper, session/context stores, route registry, host adapter contracts | screens, views, business workflows |
+| `sdkwork-<application-code>-ios-mobile-commons` | domain-neutral SwiftUI/UIKit primitives, theme adapters, design tokens, form/list/error primitives, localization helpers | business screens, SDK construction |
+| `sdkwork-<application-code>-ios-mobile-shell` | app shell, navigation stack/tab/sheet assembly, AuthGate integration, app route composition | business services |
+| `sdkwork-<application-code>-ios-mobile-<capability>` | screens, views, view models/controllers, services, repositories, state, localization, route contributions, models | concrete SDK construction, unrelated capabilities |
+| `sdkwork-<application-code>-ios-mobile-console-*` | approved user-facing mobile console workflows through app-api | internal operator workflows |
+| `sdkwork-<application-code>-ios-mobile-admin-*` | approved internal operator workflows through backend-api | app user login/session creation |
+| `sdkwork-<application-code>-ios-mobile-host` | iOS platform adapters for camera, QR, keychain, push, deep links, files, lifecycle, device features | business API transport, business authorization |
 
 Rules:
 
 - New iOS packages `MUST` be split by domain/capability and must not become catch-all mobile business modules.
 - Packages without `ios-mobile-console` or `ios-mobile-admin` are default iOS app/user packages.
-- `sdkwork-<product>-ios-mobile-console-<capability>` packages are the user-facing iOS management console family. They follow the same package-internal shape as default iOS capability packages and consume app-api through generated Swift app SDK clients or approved iOS appbase wrappers.
-- `sdkwork-<product>-ios-mobile-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated Swift backend SDK clients or approved backend wrappers.
+- `sdkwork-<application-code>-ios-mobile-console-<capability>` packages are the user-facing iOS management console family. They follow the same package-internal shape as default iOS capability packages and consume app-api through generated Swift app SDK clients or approved iOS appbase wrappers.
+- `sdkwork-<application-code>-ios-mobile-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated Swift backend SDK clients or approved backend wrappers.
 - The `<capability>` segment is the concrete business module token. It `MUST` use lower kebab-case in SDKWork package directories, derive legal Swift target/module names, and `MUST NOT` be a placeholder such as `console`, `admin`, `manager`, `backend`, `common`, or `misc`.
-- Console and admin package families are optional. Mobile admin packages require explicit product approval, `backend-admin` surface classification, and backend SDK boundary verification.
+- Console and admin package families are optional. Mobile admin packages require explicit governance approval, `backend-admin` surface classification, and backend SDK boundary verification.
 - Shared UI primitives remain domain-neutral unless they live inside the owning capability package.
 - iOS packages may share route ids, i18n keys, design tokens, SDK port contracts, and service contracts with other client roots, but must not import another architecture's UI/runtime implementation.
 
 ## 4. Package Internal Shape
 
 ```text
-packages/sdkwork-<product>-ios-mobile-<capability>/
+packages/sdkwork-<application-code>-ios-mobile-<capability>/
   Package.swift
   README.md
   Sources/
@@ -298,8 +298,8 @@ Required verification for iOS native architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-ios-mobile/` and `.sdkwork/`, `config/app`, `config/host`, root `App` bootstrap, `packages/`, `sdks/`, `scripts/`, Xcode/SPM files, and tests exist. |
-| Package naming | Static check proves iOS packages use `sdkwork-<product>-ios-mobile-*` and reserved console/admin/host forms. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<application-code>-ios-mobile/` and `.sdkwork/`, `config/app`, `config/host`, root `App` bootstrap, `packages/`, `sdks/`, `scripts/`, Xcode/SPM files, and tests exist. |
+| Package naming | Static check proves iOS packages use `sdkwork-<application-code>-ios-mobile-*` and reserved console/admin/host forms. |
 | Root thinness | Static scan proves root `App/` owns bootstrap/composition only and business features live in packages. |
 | SDK boundary | Static scan proves generated Swift SDK clients are injected and no raw HTTP, manual auth headers, TypeScript/Flutter/Kotlin/ArkTS wrapper imports, or generated SDK edits were introduced. |
 | IAM clearing | Tests prove token manager, context store, keychain/secure storage, sensitive state, and realtime/session bridges clear on logout and refresh failure. |
@@ -310,7 +310,7 @@ Required verification for iOS native architecture changes:
 
 Acceptance checklist:
 
-- [ ] iOS root uses `apps/sdkwork-<product>-ios-mobile/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
+- [ ] iOS root uses `apps/sdkwork-<application-code>-ios-mobile/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
 - [ ] Root `App/` remains thin.
 - [ ] Packages are split by core, commons, shell, capability, optional console/admin, and host roles.
 - [ ] Generated Swift SDKs and appbase iOS IAM runtime/wrapper are injected from bootstrap/core.

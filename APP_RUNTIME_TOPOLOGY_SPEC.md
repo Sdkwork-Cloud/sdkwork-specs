@@ -56,7 +56,7 @@ Rules:
 
 | Plane | Owner | Protocols | Terminated by |
 | --- | --- | --- | --- |
-| `application` | Application repository | `http`, `ws`, future `sse` | Application public ingress (`sdkwork-<app>-server` or equivalent) |
+| `application` | Application repository | `http`, `ws`, future `sse` | Application public ingress (`sdkwork-<application-code>-api-server` or equivalent) |
 | `platform` | Shared SDKWork platform | `http` | `sdkwork-api-gateway` or an approved embedded standalone adapter |
 | `operations` | Application operator APIs | `http` | Operations control ingress |
 | `edge` | Device or edge gateway | `ws`, `mqtt`, `udp`, device `http` | Edge device ingress |
@@ -145,7 +145,7 @@ Implementation: `@sdkwork/app-topology` (`../sdkwork-app-topology`).
 - IAM login uses `platform.api-gateway` when the platform plane is external.
 - Embedded standalone IAM adapters must preserve the same SDK contract,
   credential rules, and `WebRequestContext` behavior.
-- Product open-api and app-api SDKs use `application.public-ingress` HTTP URL.
+- Application open-api and app-api SDKs use `application.public-ingress` HTTP URL.
 - Realtime SDKs use `application.public-ingress` WebSocket URL.
 - Client env keys mirror server keys with the configured browser prefix.
 
@@ -224,7 +224,7 @@ cloud-application-public-ingress
 Rules:
 
 - Surface roles may be appended for deployable config bundles.
-- Ambiguous product-prefixed gateway names are forbidden.
+- Ambiguous application-code-prefixed gateway names are forbidden.
 - Matrix planners must pass `SDKWORK_DEPLOYMENT_PROFILE` to lifecycle steps.
 
 ## 11. Verification

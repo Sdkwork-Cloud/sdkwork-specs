@@ -16,7 +16,7 @@ There are three different SDKWork path families that must not be mixed:
 | --- | --- | --- | --- |
 | `<repo-or-application-root>/.sdkwork/` | repository/application maintainers | Source-controlled workspace metadata, common skills, local plugins, optional manifests | this file |
 | `<generated-sdk-output>/.sdkwork/sdkwork-generator-*.json` | `sdkgen` | Generated SDK control-plane reports and manifests; required for HTTP/OpenAPI output and optional for RPC release, CI, audit, or migration evidence | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md` |
-| `~/.sdkwork/<app>` or `%USERPROFILE%\.sdkwork\<app>` | runtime user/process | User-private runtime config, data, cache, logs, secrets, temp files | `RUNTIME_DIRECTORY_SPEC.md` |
+| `~/.sdkwork/<application-code>` or `%USERPROFILE%\.sdkwork\<application-code>` | runtime user/process | User-private runtime config, data, cache, logs, secrets, temp files | `RUNTIME_DIRECTORY_SPEC.md` |
 
 In addition, SDKWork source dependency paths declared in `pnpm-workspace.yaml`, root `Cargo.toml`, and root `pubspec.yaml` are workspace-root owned. Sibling SDKWork repositories are consumed through these native build-tool mechanisms; the workspace root is the single source of truth for those paths, and member packages consume them by protocol (`workspace:*`, `{ workspace = true }`, package name).
 
@@ -24,7 +24,7 @@ Rules:
 
 - Root/application `.sdkwork/` is source workspace metadata. It is not runtime state.
 - Generated SDK output `.sdkwork/` directories are generator-owned. Do not add repository skills, plugins, or hand-authored workspace manifests there.
-- Runtime `~/.sdkwork/<app>` directories are user-private. Do not commit them, mirror them into source, or use them as source standards.
+- Runtime `~/.sdkwork/<application-code>` directories are user-private. Do not commit them, mirror them into source, or use them as source standards.
 - Local/private source workspace state may exist only under ignored paths such as `.sdkwork/local/`, `.sdkwork/tmp/`, `.sdkwork/cache/`, or `.sdkwork/secrets/`.
 - Multi-repository SDKWork workspaces `MUST` declare sibling SDKWork source paths in native build-tool workspace roots (`pnpm-workspace.yaml packages:`, `Cargo.toml [workspace.dependencies]`, or root `pubspec.yaml dependency_overrides`), not in `.sdkwork/`.
 - A member package `MUST NOT` redeclare a sibling SDKWork source path; it consumes the workspace root entry by native protocol.
@@ -36,15 +36,15 @@ SDKWork uses a two-layer source layout:
 
 - `<project-root>/` is the git repository root or independent SDKWork application root governed by
   the standard top-level directory dictionary in this section.
-- `apps/sdkwork-<product>-<client-arch>/` is an architecture-specific application surface root.
+- `apps/sdkwork-<application-code>-<client-arch>/` is an architecture-specific application surface root.
   It may contain `src/`, `lib/`, `App/`, `entry/`, `packages/`, `config/`, platform files, and
   other directories required by its selected architecture standard.
 - `apps/` itself is a collection of application roots, not a language source root. Each direct child
   under `apps/` represents one selected application language/architecture root, such as
-  `apps/sdkwork-<product>-pc/`, `apps/sdkwork-<product>-h5/`,
-  `apps/sdkwork-<product>-flutter-mobile/`, `apps/sdkwork-<product>-mini-program/`,
-  `apps/sdkwork-<product>-android-mobile/`, `apps/sdkwork-<product>-ios-mobile/`, or
-  `apps/sdkwork-<product>-harmony-mobile/`. Architecture-local `src/`, `lib/`, `App/`,
+  `apps/sdkwork-<application-code>-pc/`, `apps/sdkwork-<application-code>-h5/`,
+  `apps/sdkwork-<application-code>-flutter-mobile/`, `apps/sdkwork-<application-code>-mini-program/`,
+  `apps/sdkwork-<application-code>-android-mobile/`, `apps/sdkwork-<application-code>-ios-mobile/`, or
+  `apps/sdkwork-<application-code>-harmony-mobile/`. Architecture-local `src/`, `lib/`, `App/`,
   `entry/`, `packages/`, `config/`, and platform directories belong inside that child root.
 
 Top-level `src/`, `packages/`, and `config/` are not generic SDKWork project-root directories. They
@@ -132,7 +132,7 @@ Recommended initial skeleton:
     tests/
   apps/
     README.md
-    sdkwork-<product>-pc/
+    sdkwork-<application-code>-pc/
       README.md
       sdkwork.app.config.json
       src/ | lib/ | App/ | entry/        # selected architecture standard owns this level
@@ -143,12 +143,12 @@ Recommended initial skeleton:
     sdkwork-router-<capability>-<surface>/
     sdkwork-<domain>-<capability>-service/
     sdkwork-<domain>-<capability>-repository-sqlx/
-    sdkwork-<app>-api-server/
-    sdkwork-<app>-service-host/
-    sdkwork-<app>-native-host/
-    sdkwork-<app>-tauri-host/
+    sdkwork-<application-code>-api-server/
+    sdkwork-<application-code>-service-host/
+    sdkwork-<application-code>-native-host/
+    sdkwork-<application-code>-tauri-host/
     sdkwork-<domain>-<capability>-worker/
-    sdkwork-<app>-gateway/
+    sdkwork-<application-code>-gateway/
   sdks/
     README.md
     sdkwork-<domain>-sdk/
@@ -288,7 +288,7 @@ Boundary rules:
   `crates/sdkwork-<domain>-<capability>-worker/`; `jobs/` may reference those crates but must not
   duplicate their implementation.
 - `scripts/` contains thin command entrypoints. Public `package.json#scripts`
-  names follow `PNPM_SCRIPT_SPEC.md`; product-specific runner file names may
+  names follow `PNPM_SCRIPT_SPEC.md`; application-specific runner file names may
   remain internal implementation details only. Reusable logic, parsers,
   generators, validators, CLIs, and operator utilities belong in `tools/` or
   in a proper package/crate.
@@ -340,11 +340,11 @@ Standard root examples:
   sdkwork.app.config.json
   .sdkwork/
   apis/app-api/<domain>/openapi.yaml
-  apps/sdkwork-<app>-pc/
+  apps/sdkwork-<application-code>-pc/
     sdkwork.app.config.json
     packages/
     config/
-  apps/sdkwork-<app>-h5/
+  apps/sdkwork-<application-code>-h5/
     sdkwork.app.config.json
     packages/
     config/
@@ -369,8 +369,8 @@ Standard root examples:
   crates/sdkwork-router-<capability>-app-api/
   crates/sdkwork-<domain>-<capability>-service/
   crates/sdkwork-<domain>-<capability>-repository-sqlx/
-  crates/sdkwork-<app>-api-server/
-  crates/sdkwork-<app>-service-host/
+  crates/sdkwork-<application-code>-api-server/
+  crates/sdkwork-<application-code>-service-host/
   crates/sdkwork-<domain>-<capability>-worker/
   sdks/sdkwork-<domain>-app-sdk/
   jobs/schedules/
@@ -587,7 +587,7 @@ Repository/application workspace verification `MUST` check:
 - Installable plugins have `.sdkwork/plugins/<plugin-name>/.codex-plugin/plugin.json`.
 - `.sdkwork/` does not contain obvious secret-bearing files, runtime database files, generated SDK transport outputs, or `sdkgen` generated control-plane reports outside generated SDK output.
 - Generated SDK output `.sdkwork/sdkwork-generator-*.json` remains under generated SDK output and is not treated as a repository/application workspace.
-- Runtime `~/.sdkwork/<app>` directories are not copied into source.
+- Runtime `~/.sdkwork/<application-code>` directories are not copied into source.
 - Multi-repository SDKWork source dependency paths are declared only in `pnpm-workspace.yaml packages:`, root `Cargo.toml [workspace.dependencies]`, or root `pubspec.yaml dependency_overrides`; member packages do not redeclare sibling source paths.
 - `.sdkwork/manifests/*.json` does not contain SDKWork source dependency paths when native build-tool workspace roots are the declared source of truth.
 - Active top-level capabilities use the reserved project root directory names from section 1.1. Competing top-level names such as `api/`, `sdk/`, `package/`, `packages/`, `config/`, `deploy/`, `deployment/`, or `tooling/` are rejected unless `packages/` or `config/` is explicitly architecture-local for the selected app surface root.

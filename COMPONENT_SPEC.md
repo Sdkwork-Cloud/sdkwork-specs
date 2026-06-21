@@ -92,7 +92,7 @@ Rules:
   backend service, host/native, or generated SDK infrastructure.
 - `component.surface: "backend-admin"` is the machine-readable backend/admin UI boundary. PC React
   internal admin packages named with the `pc-admin` segment, such as
-  `sdkwork-<product>-pc-admin-<capability>`, `MUST` declare this surface before importing product
+  `sdkwork-<application-code>-pc-admin-<capability>`, `MUST` declare this surface before importing product
   backend SDKs or appbase backend SDKs.
 - Route paths, menu groups, page titles, and navigation labels are not component surfaces. A route
   under `/admin` is still non-admin unless its owning package/component declares the backend-admin
@@ -130,7 +130,7 @@ Rules:
 
 | Type | Description | Required root specs |
 | --- | --- | --- |
-| `react-app`, `react-tauri-app`, `pc-app`, `h5-app`, `flutter-app`, `mini-program-app`, `android-native-app`, `ios-native-app`, `harmony-native-app`, `app` | Product app or app shell | `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` for client roots, matching root architecture spec, architecture UI spec when applicable, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md` |
+| `react-app`, `react-tauri-app`, `pc-app`, `h5-app`, `flutter-app`, `mini-program-app`, `android-native-app`, `ios-native-app`, `harmony-native-app`, `app` | Application shell or client app root | `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` for client roots, matching root architecture spec, architecture UI spec when applicable, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md` |
 | `react-package`, `react-tauri-package`, `flutter-package`, `dart-package`, `android-native-package`, `ios-native-package`, `harmony-native-package`, `node-package` | Frontend or reusable UI/service package | `MODULE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, architecture UI spec when UI is present, `SDK_SPEC.md`, `I18N_SPEC.md` when user-facing |
 | `rust-route-crate` | Rust HTTP route/path source package named `sdkwork-router-<capability>-<surface>` | `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `SDK_SPEC.md`, `DOMAIN_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md` |
 | `web-backend-service` | Java/Rust HTTP backend service, controller module, handler/service/repository package, or runtime API composition unit | `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `DOMAIN_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md` when persistent, `SDK_SPEC.md`, `TEST_SPEC.md` |
@@ -156,23 +156,23 @@ Architecture UI spec selection:
 
 | Component root pattern | Required architecture spec |
 | --- | --- |
-| `apps/sdkwork-<product>-pc/**` | `APP_PC_ARCHITECTURE_SPEC.md` |
-| `apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-<capability>` without `pc-console` or `pc-admin` | `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md` |
-| `apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-console-*` | `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md` |
-| `apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-admin-*` | `APP_PC_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md` |
+| `apps/sdkwork-<application-code>-pc/**` | `APP_PC_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<application-code>-pc/packages/sdkwork-<application-code>-pc-<capability>` without `pc-console` or `pc-admin` | `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md` |
+| `apps/sdkwork-<application-code>-pc/packages/sdkwork-<application-code>-pc-console-*` | `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md` |
+| `apps/sdkwork-<application-code>-pc/packages/sdkwork-<application-code>-pc-admin-*` | `APP_PC_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md` |
 | `packages/pc-react/**` | `APP_PC_REACT_UI_SPEC.md` |
-| `apps/sdkwork-<product>-h5/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md` |
-| `apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-*` | `APP_H5_ARCHITECTURE_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md` |
-| `apps/sdkwork-<product>-flutter-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| `apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_*` | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_FLUTTER_UI_SPEC.md` |
-| `apps/sdkwork-<product>-mini-program/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` |
-| `apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-*` | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md` |
-| `apps/sdkwork-<product>-android-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| `apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-*` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md` |
-| `apps/sdkwork-<product>-ios-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| `apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-*` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md` |
-| `apps/sdkwork-<product>-harmony-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| `apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-*` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md` |
+| `apps/sdkwork-<application-code>-h5/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<application-code>-h5/packages/sdkwork-<application-code>-h5-*` | `APP_H5_ARCHITECTURE_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md` |
+| `apps/sdkwork-<application-code>-flutter-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<application-code>-flutter-mobile/packages/sdkwork_<application_code>_flutter_mobile_*` | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_FLUTTER_UI_SPEC.md` |
+| `apps/sdkwork-<application-code>-mini-program/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<application-code>-mini-program/packages/sdkwork-<application-code>-mp-*` | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md` |
+| `apps/sdkwork-<application-code>-android-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<application-code>-android-mobile/packages/sdkwork-<application-code>-android-mobile-*` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md` |
+| `apps/sdkwork-<application-code>-ios-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<application-code>-ios-mobile/packages/sdkwork-<application-code>-ios-mobile-*` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md` |
+| `apps/sdkwork-<application-code>-harmony-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| `apps/sdkwork-<application-code>-harmony-mobile/packages/sdkwork-<application-code>-harmony-mobile-*` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md` |
 | `packages/mobile-react/**` | `APP_MOBILE_REACT_UI_SPEC.md` |
 | `packages/mobile-flutter/**` | `APP_FLUTTER_UI_SPEC.md` |
 | `packages/mini-program/**` | `APP_MINI_PROGRAM_UI_SPEC.md` |
@@ -184,14 +184,14 @@ Architecture UI spec selection:
 Rules:
 
 - A UI component manifest `MUST` include `UI_ARCHITECTURE_SPEC.md` and the matching architecture UI spec in `canonicalSpecs`.
-- PC user console component manifests `MUST` use `sdkwork-<product>-pc-console-<capability>` and must not declare internal admin ownership.
-- PC internal admin component manifests `MUST` use `sdkwork-<product>-pc-admin-<capability>` and must include `BACKEND_UI_SPEC.md`.
-- H5 component manifests under app roots `MUST` use `sdkwork-<product>-h5-<capability>` or the reserved H5 mobile package roles from `APP_H5_ARCHITECTURE_SPEC.md`.
-- Flutter mobile component manifests under app roots `MUST` use lower snake case Dart package names such as `sdkwork_<product>_flutter_mobile_<capability>`.
-- Mini program component manifests under app roots `MUST` use SDKWork source packages such as `sdkwork-<product>-mp-<capability>` and include `APP_MINI_PROGRAM_UI_SPEC.md` when they own pages, components, services, state, or route projection inputs. They must not treat platform `pages` or `subpackages` as the source component boundary.
-- Android native component manifests under app roots `MUST` use SDKWork source packages such as `sdkwork-<product>-android-mobile-<capability>` and include `APP_ANDROID_NATIVE_UI_SPEC.md` when they own screens, components, view models/controllers, services, state, or route inputs.
-- iOS native component manifests under app roots `MUST` use SDKWork source packages such as `sdkwork-<product>-ios-mobile-<capability>` and include `APP_IOS_NATIVE_UI_SPEC.md` when they own screens, views, view models/controllers, services, state, or route inputs.
-- Harmony native component manifests under app roots `MUST` use SDKWork source packages such as `sdkwork-<product>-harmony-mobile-<capability>` and include `APP_HARMONY_NATIVE_UI_SPEC.md` when they own pages, components, view models/controllers, services, state, or route inputs.
+- PC user console component manifests `MUST` use `sdkwork-<application-code>-pc-console-<capability>` and must not declare internal admin ownership.
+- PC internal admin component manifests `MUST` use `sdkwork-<application-code>-pc-admin-<capability>` and must include `BACKEND_UI_SPEC.md`.
+- H5 component manifests under app roots `MUST` use `sdkwork-<application-code>-h5-<capability>` or the reserved H5 mobile package roles from `APP_H5_ARCHITECTURE_SPEC.md`.
+- Flutter mobile component manifests under app roots `MUST` use lower snake case Dart package names such as `sdkwork_<application_code>_flutter_mobile_<capability>`.
+- Mini program component manifests under app roots `MUST` use SDKWork source packages such as `sdkwork-<application-code>-mp-<capability>` and include `APP_MINI_PROGRAM_UI_SPEC.md` when they own pages, components, services, state, or route projection inputs. They must not treat platform `pages` or `subpackages` as the source component boundary.
+- Android native component manifests under app roots `MUST` use SDKWork source packages such as `sdkwork-<application-code>-android-mobile-<capability>` and include `APP_ANDROID_NATIVE_UI_SPEC.md` when they own screens, components, view models/controllers, services, state, or route inputs.
+- iOS native component manifests under app roots `MUST` use SDKWork source packages such as `sdkwork-<application-code>-ios-mobile-<capability>` and include `APP_IOS_NATIVE_UI_SPEC.md` when they own screens, views, view models/controllers, services, state, or route inputs.
+- Harmony native component manifests under app roots `MUST` use SDKWork source packages such as `sdkwork-<application-code>-harmony-mobile-<capability>` and include `APP_HARMONY_NATIVE_UI_SPEC.md` when they own pages, components, view models/controllers, services, state, or route inputs.
 - Standalone backend/admin UI component manifests `MUST` use a backend domain package root, not a generic all-in-one backend package root.
 - App UI component manifests `MUST` reference app-side package roots and must not declare backend SDK clients for user-facing workflows.
 - A UI component manifest `MUST NOT` list more than one architecture-specific UI spec unless it is an explicit multi-package SDK family root with no UI implementation.
@@ -238,16 +238,17 @@ Rules:
   base URL key. Component specs may summarize those prefixes on the service dependency entry with
   an `apiPrefixes` array, but must not invent prefix-specific service ids that do not correspond to
   a real upstream service boundary.
-- Application component specs that consume shared foundation APIs through a gateway `MUST`
+- Application component specs that consume shared platform foundation APIs through a gateway `MUST`
   identify the gateway application, target mode, common SDK root env key, gateway base URL or bind
   env keys when applicable, and any governed application-local aggregation components pending removal.
   Local launch scripts must be covered by tests that prove the default dependency upstream points to
   the shared gateway root or a managed gateway process; direct dependency module URLs are split-mode
   overrides, not the application integration standard.
 - Application component specs `MUST` distinguish application-owned API roots from dependency
-  SDK roots. A `foundationApiGateway` declaration must not imply that application-owned app-api, backend-api,
-  or open-api surfaces are served by the gateway unless the application exposes them as declared gateway
-  dependency surfaces.
+  SDK roots. A `foundationApiGateway` declaration describes **platform connectivity-plane ingress**
+  for shared foundation dependency SDKs (IAM, Drive, messaging, etc.). It is not domain `platform`
+  bounded-context ownership and does not rename application-owned `app-api`, `backend-api`, or
+  `open-api` surfaces unless those surfaces are explicitly declared as gateway dependency exports.
 - Existing governed application-local foundation adapters in component specs `MUST` be marked as
   removal-bound exceptions and must not be declared as default same-origin dependency surface
   coverage when the shared gateway is the target runtime.
@@ -302,7 +303,7 @@ Rules:
 - If a component exposes only route contracts or manifests and no executable router/controller or
   service builder, consumers `MUST` treat its HTTP SDK as an external dependency surface for runtime
   base URL configuration.
-- App-specific visual identity may be passed as configuration or design tokens, not embedded as a dependency from shared component packages to product apps.
+- App-specific visual identity may be passed as configuration or design tokens, not embedded as a dependency from shared component packages to consuming applications.
 - Component specs should make extension points explicit when the component is intended for reuse by multiple applications.
 
 ## 7. Verification

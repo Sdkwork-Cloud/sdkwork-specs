@@ -33,7 +33,7 @@ Rules:
 ## 2. Standard Root Layout
 
 ```text
-apps/sdkwork-<product>-flutter-mobile/
+apps/sdkwork-<application-code>-flutter-mobile/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -54,15 +54,15 @@ apps/sdkwork-<product>-flutter-mobile/
       flutter.staging.example.json
       flutter.production.example.json
     server/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     container/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
   docs/
   scripts/
   sdks/
@@ -82,24 +82,24 @@ apps/sdkwork-<product>-flutter-mobile/
     shell/
     routes/
   packages/
-    sdkwork_<product>_flutter_mobile_core/
-    sdkwork_<product>_flutter_mobile_commons/
-    sdkwork_<product>_flutter_mobile_shell/
-    sdkwork_<product>_flutter_mobile_<capability>/
-    sdkwork_<product>_flutter_mobile_console_core/
-    sdkwork_<product>_flutter_mobile_console_shell/
-    sdkwork_<product>_flutter_mobile_console_<capability>/
-    sdkwork_<product>_flutter_mobile_admin_core/
-    sdkwork_<product>_flutter_mobile_admin_shell/
-    sdkwork_<product>_flutter_mobile_admin_<capability>/
-    sdkwork_<product>_flutter_mobile_host/
+    sdkwork_<application_code>_flutter_mobile_core/
+    sdkwork_<application_code>_flutter_mobile_commons/
+    sdkwork_<application_code>_flutter_mobile_shell/
+    sdkwork_<application_code>_flutter_mobile_<capability>/
+    sdkwork_<application_code>_flutter_mobile_console_core/
+    sdkwork_<application_code>_flutter_mobile_console_shell/
+    sdkwork_<application_code>_flutter_mobile_console_<capability>/
+    sdkwork_<application_code>_flutter_mobile_admin_core/
+    sdkwork_<application_code>_flutter_mobile_admin_shell/
+    sdkwork_<application_code>_flutter_mobile_admin_<capability>/
+    sdkwork_<application_code>_flutter_mobile_host/
   test/
   pubspec.yaml
 ```
 
 Rules:
 
-- The root name `apps/sdkwork-<product>-flutter-mobile` is canonical for Flutter mobile roots. New Flutter mobile roots `MUST NOT` use the shorter `apps/<product>-flutter-mobile/` form.
+- The root name `apps/sdkwork-<application-code>-flutter-mobile` is canonical for Flutter mobile roots. New Flutter mobile roots `MUST NOT` use the shorter `apps/<application-code>-flutter-mobile/` form.
 - Dart package names `MUST` use lower snake case and include `flutter_mobile`.
 - `config/app/` owns non-secret runtime templates consumed by the Flutter app bootstrap.
 - `config/host/` owns platform packaging metadata, permission references, bundle/package ids, app links/universal links, and signing reference names.
@@ -110,33 +110,33 @@ Rules:
 
 | Package family | Owns | Must not own |
 | --- | --- | --- |
-| `sdkwork_<product>_flutter_mobile_core` | runtime config, SDK factories, token manager equivalent, appbase IAM runtime/wrapper, session/context stores, route registry, platform adapter contracts | screens, widgets, business workflows |
-| `sdkwork_<product>_flutter_mobile_commons` | domain-neutral widgets, design tokens/theme adapters, form/list/error primitives, i18n helpers | business screens, SDK construction |
-| `sdkwork_<product>_flutter_mobile_shell` | `MaterialApp`/router shell, tab/stack/navigation assembly, AuthGate integration, app route composition | business services |
-| `sdkwork_<product>_flutter_mobile_<capability>` | screens, widgets, controllers/blocs/notifiers, services, repositories, state, i18n, route contributions, view models | concrete SDK construction, backend admin logic |
-| `sdkwork_<product>_flutter_mobile_console_*` | user-facing console workflows through app-api | internal operator workflows |
-| `sdkwork_<product>_flutter_mobile_admin_*` | approved internal operator workflows through backend-api | app user login/session creation |
-| `sdkwork_<product>_flutter_mobile_host` | platform adapters for camera, QR, secure storage, push, deep links, files, lifecycle, device features | business API transport, authorization |
+| `sdkwork_<application_code>_flutter_mobile_core` | runtime config, SDK factories, token manager equivalent, appbase IAM runtime/wrapper, session/context stores, route registry, platform adapter contracts | screens, widgets, business workflows |
+| `sdkwork_<application_code>_flutter_mobile_commons` | domain-neutral widgets, design tokens/theme adapters, form/list/error primitives, i18n helpers | business screens, SDK construction |
+| `sdkwork_<application_code>_flutter_mobile_shell` | `MaterialApp`/router shell, tab/stack/navigation assembly, AuthGate integration, app route composition | business services |
+| `sdkwork_<application_code>_flutter_mobile_<capability>` | screens, widgets, controllers/blocs/notifiers, services, repositories, state, i18n, route contributions, view models | concrete SDK construction, backend admin logic |
+| `sdkwork_<application_code>_flutter_mobile_console_*` | user-facing console workflows through app-api | internal operator workflows |
+| `sdkwork_<application_code>_flutter_mobile_admin_*` | approved internal operator workflows through backend-api | app user login/session creation |
+| `sdkwork_<application_code>_flutter_mobile_host` | platform adapters for camera, QR, secure storage, push, deep links, files, lifecycle, device features | business API transport, authorization |
 
 Rules:
 
 - New Flutter packages `MUST` be split by domain/capability and must not become catch-all mobile business packages.
 - Packages without `_console_` or `_admin_` are default Flutter app/user packages.
-- `sdkwork_<product>_flutter_mobile_console_<capability>` packages are the user-facing mobile management console family. They follow the same package-internal shape as default Flutter capability packages and consume app-api through generated Dart/Flutter app SDK clients or approved appbase wrappers.
-- `sdkwork_<product>_flutter_mobile_admin_<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated Dart/Flutter backend SDK clients or approved backend wrappers.
+- `sdkwork_<application_code>_flutter_mobile_console_<capability>` packages are the user-facing mobile management console family. They follow the same package-internal shape as default Flutter capability packages and consume app-api through generated Dart/Flutter app SDK clients or approved appbase wrappers.
+- `sdkwork_<application_code>_flutter_mobile_admin_<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated Dart/Flutter backend SDK clients or approved backend wrappers.
 - The `<capability>` segment is the concrete business module token. It `MUST` use lower snake case and `MUST NOT` be a placeholder such as `console`, `admin`, `manager`, `backend`, `common`, or `misc`.
 - Shared widgets remain domain-neutral unless they live inside the owning capability package.
 - A Flutter app root should choose one primary presentation-state pattern for new packages, such as `controllers`, `blocs`, or `notifiers`, and document it in the root component spec.
-- Mobile admin packages require product approval, an explicit `backend-admin` surface classification, and backend SDK boundary verification.
+- Mobile admin packages require governance approval, an explicit `backend-admin` surface classification, and backend SDK boundary verification.
 
 ## 4. Package Internal Shape
 
 ```text
-packages/sdkwork_<product>_flutter_mobile_<capability>/
+packages/sdkwork_<application_code>_flutter_mobile_<capability>/
   pubspec.yaml
   README.md
   lib/
-    sdkwork_<product>_flutter_mobile_<capability>.dart
+    sdkwork_<application_code>_flutter_mobile_<capability>.dart
     src/
       screens/
       widgets/
@@ -287,8 +287,8 @@ Required verification for Flutter mobile architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-flutter-mobile/` and `.sdkwork/`, `config/app`, `config/host`, `lib/bootstrap`, `packages/`, `sdks/`, `scripts/`, and tests exist. |
-| Package naming | Static check proves Dart packages use `sdkwork_<product>_flutter_mobile_*` and lower snake case. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<application-code>-flutter-mobile/` and `.sdkwork/`, `config/app`, `config/host`, `lib/bootstrap`, `packages/`, `sdks/`, `scripts/`, and tests exist. |
+| Package naming | Static check proves Dart packages use `sdkwork_<application_code>_flutter_mobile_*` and lower snake case. |
 | Package boundary | Static scan proves root `lib/` is thin and features live in packages. |
 | SDK boundary | Static scan proves generated Dart SDK clients are injected and no raw `http`, manual auth headers, TypeScript wrapper imports, or generated SDK edits were introduced. |
 | IAM clearing | Tests prove token manager, context store, secure storage, sensitive state, and realtime/session bridges clear on logout and refresh failure. |
@@ -299,7 +299,7 @@ Required verification for Flutter mobile architecture changes:
 
 Acceptance checklist:
 
-- [ ] Flutter root uses `apps/sdkwork-<product>-flutter-mobile/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
+- [ ] Flutter root uses `apps/sdkwork-<application-code>-flutter-mobile/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
 - [ ] Root `lib/` remains thin.
 - [ ] Packages are split by core, commons, shell, capability, optional console/admin, and host roles.
 - [ ] Generated Dart SDKs and appbase Flutter IAM runtime/wrapper are injected from bootstrap/core.

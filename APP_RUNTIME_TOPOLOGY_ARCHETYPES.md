@@ -29,12 +29,12 @@ Retired archetype ids: `http-product-gateway`, `multi-plane-realtime`, and
 ## 2. `application-http-gateway`
 
 Single application HTTP ingress; optional platform gateway or embedded platform
-adapter for IAM and cross-product SDKs.
+adapter for IAM and cross-application SDKs.
 
 ### Connectivity Planes
 
 - `application` is required.
-- `platform` is required when IAM or cross-product SDKs are used.
+- `platform` is required when IAM or cross-application SDKs are used.
 - `operations` is optional for operator-only control APIs.
 
 ### Surfaces
@@ -71,7 +71,7 @@ Agent, and other shared APIs; optional operations control ingress.
 ### Connectivity Planes
 
 - `application` is required for product APIs and realtime WebSocket.
-- `platform` is required for IAM and cross-product SDKs unless the standalone
+- `platform` is required for IAM and cross-application SDKs unless the standalone
   profile embeds an approved platform adapter.
 - `operations` is optional for governance/control APIs.
 
@@ -123,15 +123,15 @@ Rules:
 ### Client Env Model
 
 ```text
-SDKWORK_<APP>_APPLICATION_PUBLIC_HTTP_URL
-SDKWORK_<APP>_APPLICATION_PUBLIC_WEBSOCKET_URL
-SDKWORK_<APP>_PLATFORM_API_GATEWAY_HTTP_URL
-VITE_SDKWORK_<APP>_APPLICATION_PUBLIC_HTTP_URL
-VITE_SDKWORK_<APP>_APPLICATION_PUBLIC_WEBSOCKET_URL
-VITE_SDKWORK_<APP>_PLATFORM_API_GATEWAY_HTTP_URL
+SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL
+SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_WEBSOCKET_URL
+SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL
+VITE_SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL
+VITE_SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_WEBSOCKET_URL
+VITE_SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL
 ```
 
-Forbidden: `SDKWORK_<APP>_SERVER_API_BASE_URL`, `commonSdkRootEnv` pointing at
+Forbidden: `SDKWORK_<APPLICATION_CODE>_SERVER_API_BASE_URL`, `commonSdkRootEnv` pointing at
 application URLs for platform SDKs, and undocumented WebSocket URL shapes.
 
 ### Cloud Public URL Policy

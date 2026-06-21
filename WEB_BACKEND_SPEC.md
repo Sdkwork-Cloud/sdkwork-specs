@@ -94,20 +94,20 @@ Backends use names that expose domain intent without leaking transport details i
 
 | Concept | Standard name shape | Example |
 | --- | --- | --- |
-| Rust route crate | `sdkwork-router-<capability>-<surface>` | `sdkwork-router-product-app-api` |
+| Rust route crate | `sdkwork-router-<capability>-<surface>` | `sdkwork-router-merchandise-app-api` |
 | Java controller | `<Capability><Surface>Controller` | `ProductAppApiController` |
 | Handler function | `<verb>_<resource>` or `<action>_<resource>` | `list_products`, `submit_order` |
 | Service/use-case | `<Capability>Service` or `<UseCase>Service` | `ProductService`, `SubmitOrderService` |
 | Repository | `<Aggregate>Repository` | `ProductRepository` |
 | Provider adapter | `<Provider><Capability>Adapter` | `StripePaymentAdapter` |
-| Route manifest | `<packageName>.route-manifest.json` | `sdkwork-router-product-app-api.route-manifest.json` |
+| Route manifest | `<packageName>.route-manifest.json` | `sdkwork-router-merchandise-app-api.route-manifest.json` |
 | API authority | `sdkwork-<domain>-<surface>` | `sdkwork-commerce-app-api` |
 | SDK family | `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-sdk`, `sdkwork-<domain>-backend-sdk` | `sdkwork-commerce-app-sdk` |
 
 Rules:
 
 - Use canonical domain names from `DOMAIN_SPEC.md`.
-- Capability names should be small business units such as product, cart, order, payment, catalog, shipment, tenant, report, audit, conversation, or file.
+- Capability names should be small business units such as merchandise, cart, order, payment, catalog, shipment, tenant, report, audit, conversation, or file.
 - Controller and handler names `MUST NOT` drive OpenAPI tags or operationIds. Tags and operationIds follow `API_SPEC.md`.
 - Avoid generic backend names such as `CommonController`, `BaseApiController`, `BizService`, `Manager`, or `Handler` unless they are framework-level abstractions with no business authority.
 - Do not encode transport in service names unless the service truly owns a transport adapter. Prefer `ProductService` over `ProductHttpService`.
@@ -161,9 +161,9 @@ Required crate families for Rust HTTP backends:
 | HTTP route/API adapter | `sdkwork-router-<capability>-<surface>` | paths, routes, handlers, manifest, request/response mapping |
 | Business service/use case | `sdkwork-<domain>-<capability>-service` | business rules, authorization, transactions, idempotency, repository/provider ports |
 | SQL repository implementation | `sdkwork-<domain>-<capability>-repository-sqlx` | SQLx row mapping, SQL queries, tenant/data-scope-safe repository implementation |
-| HTTP API server process | `sdkwork-<app>-api-server` | config, state, dependency wiring, route mounting, listener, preflight |
-| In-process service host | `sdkwork-<app>-service-host` | service container for standalone/native usage, no HTTP route mounting |
-| Gateway/proxy | `sdkwork-<app>-gateway` | upstream routing, route precedence, dependency API surface proxying |
+| HTTP API server process | `sdkwork-<application-code>-api-server` | config, state, dependency wiring, route mounting, listener, preflight |
+| In-process service host | `sdkwork-<application-code>-service-host` | service container for standalone/native usage, no HTTP route mounting |
+| Gateway/proxy | `sdkwork-<application-code>-gateway` | upstream routing, route precedence, dependency API surface proxying |
 
 Required route crate shape:
 
@@ -206,7 +206,7 @@ crates/sdkwork-<domain>-<capability>-repository-sqlx/
 Required API server process crate shape:
 
 ```text
-crates/sdkwork-<app>-api-server/
+crates/sdkwork-<application-code>-api-server/
   Cargo.toml
   src/main.rs
   src/bootstrap/

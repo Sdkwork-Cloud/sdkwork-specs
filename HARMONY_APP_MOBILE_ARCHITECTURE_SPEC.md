@@ -34,7 +34,7 @@ Rules:
 ## 2. Standard Root Layout
 
 ```text
-apps/sdkwork-<product>-harmony-mobile/
+apps/sdkwork-<application-code>-harmony-mobile/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -55,15 +55,15 @@ apps/sdkwork-<product>-harmony-mobile/
       harmony.staging.example.json
       harmony.production.example.json
     server/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     container/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
   docs/
   scripts/
   sdks/
@@ -92,17 +92,17 @@ apps/sdkwork-<product>-harmony-mobile/
             __generated__/
       ohosTest/
   packages/
-    sdkwork-<product>-harmony-mobile-core/
-    sdkwork-<product>-harmony-mobile-commons/
-    sdkwork-<product>-harmony-mobile-shell/
-    sdkwork-<product>-harmony-mobile-<capability>/
-    sdkwork-<product>-harmony-mobile-console-core/
-    sdkwork-<product>-harmony-mobile-console-shell/
-    sdkwork-<product>-harmony-mobile-console-<capability>/
-    sdkwork-<product>-harmony-mobile-admin-core/
-    sdkwork-<product>-harmony-mobile-admin-shell/
-    sdkwork-<product>-harmony-mobile-admin-<capability>/
-    sdkwork-<product>-harmony-mobile-host/
+    sdkwork-<application-code>-harmony-mobile-core/
+    sdkwork-<application-code>-harmony-mobile-commons/
+    sdkwork-<application-code>-harmony-mobile-shell/
+    sdkwork-<application-code>-harmony-mobile-<capability>/
+    sdkwork-<application-code>-harmony-mobile-console-core/
+    sdkwork-<application-code>-harmony-mobile-console-shell/
+    sdkwork-<application-code>-harmony-mobile-console-<capability>/
+    sdkwork-<application-code>-harmony-mobile-admin-core/
+    sdkwork-<application-code>-harmony-mobile-admin-shell/
+    sdkwork-<application-code>-harmony-mobile-admin-<capability>/
+    sdkwork-<application-code>-harmony-mobile-host/
   tests/
   oh-package.json5
   build-profile.json5
@@ -112,15 +112,15 @@ apps/sdkwork-<product>-harmony-mobile/
 
 Rules:
 
-- The root name `apps/sdkwork-<product>-harmony-mobile` and package segment `harmony-mobile` are canonical for native HarmonyOS phone roots. New HarmonyOS native roots `MUST NOT` use the shorter `apps/<product>-harmony-mobile/` form.
-- Package directories use SDKWork kebab-case names such as `sdkwork-<product>-harmony-mobile-orders`.
-- ohpm package ids or import aliases may use an approved registry scope, but they must preserve the `sdkwork-<product>-harmony-mobile-*` identity in package metadata and component specs.
+- The root name `apps/sdkwork-<application-code>-harmony-mobile` and package segment `harmony-mobile` are canonical for native HarmonyOS phone roots. New HarmonyOS native roots `MUST NOT` use the shorter `apps/<application-code>-harmony-mobile/` form.
+- Package directories use SDKWork kebab-case names such as `sdkwork-<application-code>-harmony-mobile-orders`.
+- ohpm package ids or import aliases may use an approved registry scope, but they must preserve the `sdkwork-<application-code>-harmony-mobile-*` identity in package metadata and component specs.
 - ArkTS namespaces and import aliases must use legal identifiers derived from the package directory identity and must not hide the SDKWork package role.
 - `config/app/` owns non-secret runtime templates consumed by Harmony bootstrap.
 - `config/host/` owns Harmony bundle id/app id, module metadata, device types, permissions, app links, push profile references, signing reference names, AppGallery/private distribution references, and release metadata. It must not contain signing private keys or secrets.
 - The root `entry/` module is the installable Harmony application entry and composition module. It must not own product business workflows.
 - `packages/` owns ArkTS/HAR-style modules for runtime, shell, surface, capability, and host packages.
-- `entry/src/main/ets/pages/__generated__/` is a projection target when route/page generation exists. Product business code should remain in packages.
+- `entry/src/main/ets/pages/__generated__/` is a projection target when route/page generation exists. Application business code should remain in packages.
 - `sdks/` follows `SDK_WORKSPACE_GENERATION_SPEC.md` and must not contain hand-edited generated output.
 - Harmony roots that publish app manifests use `runtime.family = "mobile"` and `runtime.framework = "harmony-native"`.
 
@@ -128,29 +128,29 @@ Rules:
 
 | Package family | Owns | Must not own |
 | --- | --- | --- |
-| `sdkwork-<product>-harmony-mobile-core` | runtime config, SDK factories, token-manager equivalent, appbase IAM runtime/wrapper, session/context stores, route registry, host adapter contracts | pages, components, business workflows |
-| `sdkwork-<product>-harmony-mobile-commons` | domain-neutral ArkUI components, theme adapters, design tokens, form/list/error primitives, i18n/resource helpers | business pages, SDK construction |
-| `sdkwork-<product>-harmony-mobile-shell` | app shell, navigation/page stack assembly, AuthGate integration, app route composition | business services |
-| `sdkwork-<product>-harmony-mobile-<capability>` | pages, components, view models/controllers, services, repositories, state, i18n, route contributions, models | concrete SDK construction, unrelated capabilities |
-| `sdkwork-<product>-harmony-mobile-console-*` | approved user-facing mobile console workflows through app-api | internal operator workflows |
-| `sdkwork-<product>-harmony-mobile-admin-*` | approved internal operator workflows through backend-api | app user login/session creation |
-| `sdkwork-<product>-harmony-mobile-host` | HarmonyOS platform adapters for camera, QR, secure storage, push, deep links, files, lifecycle, device features | business API transport, business authorization |
+| `sdkwork-<application-code>-harmony-mobile-core` | runtime config, SDK factories, token-manager equivalent, appbase IAM runtime/wrapper, session/context stores, route registry, host adapter contracts | pages, components, business workflows |
+| `sdkwork-<application-code>-harmony-mobile-commons` | domain-neutral ArkUI components, theme adapters, design tokens, form/list/error primitives, i18n/resource helpers | business pages, SDK construction |
+| `sdkwork-<application-code>-harmony-mobile-shell` | app shell, navigation/page stack assembly, AuthGate integration, app route composition | business services |
+| `sdkwork-<application-code>-harmony-mobile-<capability>` | pages, components, view models/controllers, services, repositories, state, i18n, route contributions, models | concrete SDK construction, unrelated capabilities |
+| `sdkwork-<application-code>-harmony-mobile-console-*` | approved user-facing mobile console workflows through app-api | internal operator workflows |
+| `sdkwork-<application-code>-harmony-mobile-admin-*` | approved internal operator workflows through backend-api | app user login/session creation |
+| `sdkwork-<application-code>-harmony-mobile-host` | HarmonyOS platform adapters for camera, QR, secure storage, push, deep links, files, lifecycle, device features | business API transport, business authorization |
 
 Rules:
 
 - New Harmony packages `MUST` be split by domain/capability and must not become catch-all mobile business modules.
 - Packages without `harmony-mobile-console` or `harmony-mobile-admin` are default Harmony app/user packages.
-- `sdkwork-<product>-harmony-mobile-console-<capability>` packages are the user-facing Harmony management console family. They follow the same package-internal shape as default Harmony capability packages and consume app-api through generated ArkTS/TypeScript app SDK clients or approved Harmony appbase wrappers.
-- `sdkwork-<product>-harmony-mobile-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated Harmony-compatible backend SDK clients or approved backend wrappers.
+- `sdkwork-<application-code>-harmony-mobile-console-<capability>` packages are the user-facing Harmony management console family. They follow the same package-internal shape as default Harmony capability packages and consume app-api through generated ArkTS/TypeScript app SDK clients or approved Harmony appbase wrappers.
+- `sdkwork-<application-code>-harmony-mobile-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated Harmony-compatible backend SDK clients or approved backend wrappers.
 - The `<capability>` segment is the concrete business module token. It `MUST` use lower kebab-case in SDKWork package directories, preserve legal ohpm/ArkTS module identities, and `MUST NOT` be a placeholder such as `console`, `admin`, `manager`, `backend`, `common`, or `misc`.
-- Console and admin package families are optional. Mobile admin packages require explicit product approval, `backend-admin` surface classification, and backend SDK boundary verification.
+- Console and admin package families are optional. Mobile admin packages require explicit governance approval, `backend-admin` surface classification, and backend SDK boundary verification.
 - Shared UI primitives remain domain-neutral unless they live inside the owning capability package.
 - Harmony packages may share route ids, i18n keys, design tokens, SDK port contracts, and service contracts with other client roots, but must not import another architecture's UI/runtime implementation.
 
 ## 4. Package Internal Shape
 
 ```text
-packages/sdkwork-<product>-harmony-mobile-<capability>/
+packages/sdkwork-<application-code>-harmony-mobile-<capability>/
   oh-package.json5
   build-profile.json5
   README.md
@@ -312,8 +312,8 @@ Required verification for Harmony native architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-harmony-mobile/` and `.sdkwork/`, `config/app`, `config/host`, root `entry` bootstrap, `packages/`, `sdks/`, `scripts/`, ohpm/hvigor files, and tests exist. |
-| Package naming | Static check proves Harmony packages use `sdkwork-<product>-harmony-mobile-*` and reserved console/admin/host forms. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<application-code>-harmony-mobile/` and `.sdkwork/`, `config/app`, `config/host`, root `entry` bootstrap, `packages/`, `sdks/`, `scripts/`, ohpm/hvigor files, and tests exist. |
+| Package naming | Static check proves Harmony packages use `sdkwork-<application-code>-harmony-mobile-*` and reserved console/admin/host forms. |
 | Root thinness | Static scan proves root `entry/` owns bootstrap/composition only and business features live in packages. |
 | SDK boundary | Static scan proves generated ArkTS/TypeScript SDK clients are injected and no raw request APIs, manual auth headers, React/Flutter/Kotlin/Swift wrapper imports, or generated SDK edits were introduced. |
 | IAM clearing | Tests prove token manager, context store, secure storage, sensitive state, and realtime/session bridges clear on logout and refresh failure. |
@@ -324,7 +324,7 @@ Required verification for Harmony native architecture changes:
 
 Acceptance checklist:
 
-- [ ] Harmony root uses `apps/sdkwork-<product>-harmony-mobile/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
+- [ ] Harmony root uses `apps/sdkwork-<application-code>-harmony-mobile/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
 - [ ] Root `entry/` remains thin.
 - [ ] Packages are split by core, commons, shell, capability, optional console/admin, and host roles.
 - [ ] Generated ArkTS/TypeScript SDKs and appbase Harmony IAM runtime/wrapper are injected from bootstrap/core.

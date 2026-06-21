@@ -4,7 +4,7 @@ This directory contains executable validators for SDKWork standards.
 
 Rules:
 
-- Tools in this directory are standards-owned and product-neutral.
+- Tools in this directory are standards-owned and application-neutral.
 - Application repositories may call these tools through thin `package.json` scripts.
 - `check-pnpm-script-standard.mjs` validates root scripts, package-local
   script names and command values, default `dev:browser`/`dev:desktop`
@@ -24,4 +24,8 @@ Rules:
   a workspace root and reports database framework compliance tiers.
 - `bootstrap-database-module.mjs` scaffolds a standard `database/` module from
   `templates/database/` using `database-module-registry.json`.
-- Tools must not embed application-specific secrets, local paths, or product behavior.
+- `check-identity-naming.mjs` validates identity lattice terminology in standards
+  (`NAMING_SPEC.md` §0–§0.2) and scans consumer repositories for retired identity
+  placeholders, commerce `product` overloads, `identity` domain packages, and related patterns.
+  See `MIGRATION_SPEC.md` §8.
+- Tools must not embed application-specific secrets, local paths, or application-line behavior.

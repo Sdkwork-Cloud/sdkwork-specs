@@ -11,13 +11,13 @@ SDKWork source packages and platform pages/subpackages remain separate. This fil
 Canonical app-root mini program package shape:
 
 ```text
-apps/sdkwork-<product>-mini-program/
+apps/sdkwork-<application-code>-mini-program/
   packages/
-    sdkwork-<product>-mp-core/
-    sdkwork-<product>-mp-commons/
-    sdkwork-<product>-mp-shell/
-    sdkwork-<product>-mp-<capability>/
-    sdkwork-<product>-mp-console-<capability>/
+    sdkwork-<application-code>-mp-core/
+    sdkwork-<application-code>-mp-commons/
+    sdkwork-<application-code>-mp-shell/
+    sdkwork-<application-code>-mp-<capability>/
+    sdkwork-<application-code>-mp-console-<capability>/
 ```
 
 Optional shared mini program package shape:
@@ -38,8 +38,8 @@ packages/
 
 Rules:
 
-- Mini program app UI `MUST` live in normalized mini program application packages such as `apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-<capability>` or approved shared mini program package families such as `packages/mini-program/<domain>/<package>`.
-- Mini program user-console UI `MUST` live in `apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Mini program app UI `MUST` live in normalized mini program application packages such as `apps/sdkwork-<application-code>-mini-program/packages/sdkwork-<application-code>-mp-<capability>` or approved shared mini program package families such as `packages/mini-program/<domain>/<package>`.
+- Mini program user-console UI `MUST` live in `apps/sdkwork-<application-code>-mini-program/packages/sdkwork-<application-code>-mp-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - Mini program app and user-console UI `MUST` consume `/app/v3/api` through generated TypeScript app SDK clients or approved appbase mini program wrappers.
 - Mini program app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, or backend UI service facades for user-facing workflows.
 - Operator/admin screens require separately approved mini program admin package families classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
@@ -50,11 +50,11 @@ Rules:
 
 | Package type | Naming | Owns | Must not own |
 | --- | --- | --- | --- |
-| mini program shell/runtime | `sdkwork-<product>-mp-shell` or app-specific mini program shell | app shell, tab/page composition, route projection inputs, AuthGate integration | reusable domain pages and services |
-| mini program foundation | `sdkwork-<product>-mp-commons` or `sdkwork-<foundation>-mini-program` | domain-neutral components, form/list/error primitives, design tokens, i18n helpers | business-domain shortcuts |
-| mini program domain package | `sdkwork-<product>-mp-<capability>` or `sdkwork-<capability>-mini-program` | source pages, components, services, state, i18n, route metadata, view models | concrete SDK construction, unrelated capabilities |
-| mini program user console package | `sdkwork-<product>-mp-console-<capability>` | user-facing management console source pages, components, services, state, i18n, route metadata, view models | company-internal admin workflows, backend-only operation center behavior |
-| platform host package | `sdkwork-<product>-mp-host` or `sdkwork-<host>-mini-program` when needed | platform API adapters, permissions, login bridge, storage, media/file picker, share, scene/deep-link handling | business API transport, business authorization |
+| mini program shell/runtime | `sdkwork-<application-code>-mp-shell` or app-specific mini program shell | app shell, tab/page composition, route projection inputs, AuthGate integration | reusable domain pages and services |
+| mini program foundation | `sdkwork-<application-code>-mp-commons` or `sdkwork-<foundation>-mini-program` | domain-neutral components, form/list/error primitives, design tokens, i18n helpers | business-domain shortcuts |
+| mini program domain package | `sdkwork-<application-code>-mp-<capability>` or `sdkwork-<capability>-mini-program` | source pages, components, services, state, i18n, route metadata, view models | concrete SDK construction, unrelated capabilities |
+| mini program user console package | `sdkwork-<application-code>-mp-console-<capability>` | user-facing management console source pages, components, services, state, i18n, route metadata, view models | company-internal admin workflows, backend-only operation center behavior |
+| platform host package | `sdkwork-<application-code>-mp-host` or `sdkwork-<host>-mini-program` when needed | platform API adapters, permissions, login bridge, storage, media/file picker, share, scene/deep-link handling | business API transport, business authorization |
 
 Rules:
 
@@ -70,7 +70,7 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-<capability>/
+apps/sdkwork-<application-code>-mini-program/packages/sdkwork-<application-code>-mp-<capability>/
   package.json
   README.md
   src/
@@ -226,7 +226,7 @@ Required coverage for new mini program UI capabilities:
 
 | Test | Requirement |
 | --- | --- |
-| Package boundary | Static scan proves packages follow `sdkwork-<product>-mp-*` or approved shared mini program package names and do not deep-import another package's private source. |
+| Package boundary | Static scan proves packages follow `sdkwork-<application-code>-mp-*` or approved shared mini program package names and do not deep-import another package's private source. |
 | Route projection | Tests prove route contributions generate or assemble platform pages/subpackages deterministically. |
 | SDK boundary | Static scan proves generated SDK clients or approved wrappers are used and no raw request APIs, manual auth headers, or generated SDK edits were introduced. |
 | IAM clearing | Tests prove platform storage, token manager, context store, caches, and sensitive state clear on logout, refresh failure, tenant switch, and account switch. |

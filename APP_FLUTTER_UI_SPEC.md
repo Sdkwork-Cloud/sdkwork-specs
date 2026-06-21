@@ -11,13 +11,13 @@ This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to 
 Canonical app-root Flutter mobile package shape:
 
 ```text
-apps/sdkwork-<product>-flutter-mobile/
+apps/sdkwork-<application-code>-flutter-mobile/
   packages/
-    sdkwork_<product>_flutter_mobile_core/
-    sdkwork_<product>_flutter_mobile_commons/
-    sdkwork_<product>_flutter_mobile_shell/
-    sdkwork_<product>_flutter_mobile_<capability>/
-    sdkwork_<product>_flutter_mobile_console_<capability>/
+    sdkwork_<application_code>_flutter_mobile_core/
+    sdkwork_<application_code>_flutter_mobile_commons/
+    sdkwork_<application_code>_flutter_mobile_shell/
+    sdkwork_<application_code>_flutter_mobile_<capability>/
+    sdkwork_<application_code>_flutter_mobile_console_<capability>/
 ```
 
 Shared Flutter package shape:
@@ -39,8 +39,8 @@ apps/sdkwork-appbase/
 
 Rules:
 
-- Flutter app UI `MUST` live in normalized Flutter application packages such as `apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>` or shared Flutter package families such as `packages/mobile-flutter/<domain>/<package>`.
-- Flutter user-console UI `MUST` live in `apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_console_<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Flutter app UI `MUST` live in normalized Flutter application packages such as `apps/sdkwork-<application-code>-flutter-mobile/packages/sdkwork_<application_code>_flutter_mobile_<capability>` or shared Flutter package families such as `packages/mobile-flutter/<domain>/<package>`.
+- Flutter user-console UI `MUST` live in `apps/sdkwork-<application-code>-flutter-mobile/packages/sdkwork_<application_code>_flutter_mobile_console_<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - Flutter app and user-console UI `MUST` consume `/app/v3/api` through generated Dart/Flutter app SDK clients or approved wrappers.
 - Flutter app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDKs, backend React packages, or backend UI service facades.
 - App login, registration, OAuth, verification-code login, password reset, QR login, and current user flows belong to Flutter app UI when implemented in Flutter.
@@ -50,11 +50,11 @@ Rules:
 
 | Package type | Naming | Owns | Must not own |
 | --- | --- | --- | --- |
-| Flutter app shell | `sdkwork_<product>_flutter_mobile_shell` or app-specific Flutter shell | `MaterialApp`/router, providers, SDK bootstrap, token store, platform adapters | reusable domain features |
-| Flutter foundation package | `sdkwork_<product>_flutter_mobile_commons` or `sdkwork_<foundation>_flutter` | appbase, router, workspace, command/search primitives | business-domain shortcuts |
-| Flutter domain package | `sdkwork_<product>_flutter_mobile_<capability>` or `sdkwork_<capability>_flutter` | screens, widgets, controllers/blocs, repositories, services, i18n | concrete SDK construction, backend admin logic |
-| Flutter user console package | `sdkwork_<product>_flutter_mobile_console_<capability>` | user-facing management console screens, widgets, controllers/blocs, repositories, services, i18n | company-internal admin workflows, backend-only operation center behavior |
-| platform adapter package | `sdkwork_<product>_flutter_mobile_host` or `sdkwork_<host>_flutter` when needed | camera, QR scanner, secure storage, biometric, push, deep links | API business logic |
+| Flutter app shell | `sdkwork_<application_code>_flutter_mobile_shell` or app-specific Flutter shell | `MaterialApp`/router, providers, SDK bootstrap, token store, platform adapters | reusable domain features |
+| Flutter foundation package | `sdkwork_<application_code>_flutter_mobile_commons` or `sdkwork_<foundation>_flutter` | appbase, router, workspace, command/search primitives | business-domain shortcuts |
+| Flutter domain package | `sdkwork_<application_code>_flutter_mobile_<capability>` or `sdkwork_<capability>_flutter` | screens, widgets, controllers/blocs, repositories, services, i18n | concrete SDK construction, backend admin logic |
+| Flutter user console package | `sdkwork_<application_code>_flutter_mobile_console_<capability>` | user-facing management console screens, widgets, controllers/blocs, repositories, services, i18n | company-internal admin workflows, backend-only operation center behavior |
+| platform adapter package | `sdkwork_<application_code>_flutter_mobile_host` or `sdkwork_<host>_flutter` when needed | camera, QR scanner, secure storage, biometric, push, deep links | API business logic |
 
 Rules:
 
@@ -69,10 +69,10 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>/
+apps/sdkwork-<application-code>-flutter-mobile/packages/sdkwork_<application_code>_flutter_mobile_<capability>/
   pubspec.yaml
   lib/
-    sdkwork_<product>_flutter_mobile_<capability>.dart
+    sdkwork_<application_code>_flutter_mobile_<capability>.dart
     src/
       screens/
       widgets/

@@ -83,15 +83,16 @@ Rules:
 Environment variable names must follow this format:
 
 ```text
-<PRODUCT_OR_PLATFORM>_<APP_OR_CAPABILITY>_<SETTING>
+<PLATFORM_OR_APPLICATION_CODE>_<DOMAIN_OR_CAPABILITY>_<SETTING>
 ```
 
-For application-specific products:
+For SDKWork application private runtime values:
 
 ```text
-SDKWORK_CLAW_<SETTING>
-SDKWORK_<APP_CODE>_<SETTING>
+SDKWORK_<APPLICATION_CODE>_<SETTING>
 ```
+
+Legacy application-specific prefixes such as `SDKWORK_CLAW_*` may remain only during a documented migration window.
 
 For browser-public portal values:
 
@@ -108,12 +109,12 @@ VITE_<APP_CODE>_<SURFACE>_<SETTING>
 Rules:
 
 - Use uppercase snake case.
-- Use one product prefix per product family.
+- Use one application-code prefix per application family.
 - Use capability names that match `DOMAIN_SPEC.md` and `SDK_SPEC.md`.
 - Use `SDK_BASE_URL` only for the common SDK root that can derive multiple SDK surfaces. Do not use generic names such as `GATEWAY_API_BASE_URL` when the consuming SDK surface is more specific. Prefer `OPEN_API_BASE_URL`, `APP_API_BASE_URL`, or `BACKEND_API_BASE_URL` for resolved surface overrides.
-- Dependency SDK base URL override variables must include a stable dependency SDK family or dependency app code segment, for example `SDKWORK_<APP>_APPBASE_APP_API_BASE_URL`, `SDKWORK_<APP>_DRIVE_APP_API_BASE_URL`, or `PORTAL_PUBLIC_IM_OPEN_API_BASE_URL`.
+- Dependency SDK base URL override variables must include a stable dependency SDK family or dependency app code segment, for example `SDKWORK_<APPLICATION_CODE>_APPBASE_APP_API_BASE_URL`, `SDKWORK_<APPLICATION_CODE>_DRIVE_APP_API_BASE_URL`, or `PORTAL_PUBLIC_IM_OPEN_API_BASE_URL`.
 - Do not put secrets in names prefixed with `PORTAL_PUBLIC_`, `VITE_`, `PUBLIC_`, `NEXT_PUBLIC_`, or any variable that is exposed to browser code.
-- `SDKWORK_ACCESS_TOKEN` is the unified private bootstrap access credential for every application root. It `MUST` appear in checked-in private env templates such as `.env.example` when the application calls protected app-api or backend-api surfaces. It `MUST NOT` use an app-prefixed name such as `SDKWORK_<APP>_ACCESS_TOKEN`. It `MUST NOT` be exposed through `VITE_*`, `PORTAL_PUBLIC_*`, or other browser-visible runtime config.
+- `SDKWORK_ACCESS_TOKEN` is the unified private bootstrap access credential for every application root. It `MUST` appear in checked-in private env templates such as `.env.example` when the application calls protected app-api or backend-api surfaces. It `MUST NOT` use an app-prefixed name such as `SDKWORK_<APPLICATION_CODE>_ACCESS_TOKEN`. It `MUST NOT` be exposed through `VITE_*`, `PORTAL_PUBLIC_*`, or other browser-visible runtime config.
 - `SDKWORK_AUTH_TOKEN`, `SDKWORK_REFRESH_TOKEN`, `SDKWORK_API_KEY`, app-prefixed credential env names, and `VITE_*_TOKEN` remain forbidden as live credential inputs. `auth_token`, `refresh_token`, and API keys `MUST` come from login, refresh, or approved runtime credential providers—not environment variables.
 - After appbase login, registration, refresh, or current-session bootstrap succeeds, runtime session tokens from the global TokenManager `MUST` supersede env bootstrap credentials for outbound protected SDK calls. Env bootstrap credentials `MUST NOT` be merged with or override authenticated session tokens.
 - Boolean variables must accept only `true`, `false`, `1`, or `0` after normalization.
@@ -125,74 +126,74 @@ These variables form the baseline for SDKWork applications.
 
 | Variable | Visibility | Required | Description |
 | --- | --- | --- | --- |
-| `SDKWORK_<APP>_ENVIRONMENT` | private | SHOULD | Lifecycle stage: `development`, `test`, `staging`, `production`. |
-| `SDKWORK_<APP>_CONFIG_PROFILE` | private | SHOULD | File/script profile alias: `dev`, `test`, `staging`, `prod`. Startup must normalize it to `SDKWORK_<APP>_ENVIRONMENT`. |
-| `SDKWORK_<APP>_DEPLOYMENT_PROFILE` | private | SHOULD | Application deployment architecture: `standalone` or `cloud`. |
-| `SDKWORK_<APP>_RUNTIME_TARGET` | private | SHOULD | Execution target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, `test-runner`. |
-| `SDKWORK_<APP>_BUILD_MODE` | private/public by tool | MAY | Build tool mode. It must not replace `ENVIRONMENT`, `DEPLOYMENT_PROFILE`, or `RUNTIME_TARGET`. |
-| `SDKWORK_<APP>_CONFIG_FILE` | private | MAY | Explicit runtime config file path. |
-| `SDKWORK_<APP>_SERVER_CONFIG_FILE` | private | MAY | Explicit server process config file path when a PC/desktop root also owns server profiles. Defaults to `CONFIG_FILE` when absent. |
-| `SDKWORK_<APP>_DESKTOP_CONFIG_FILE` | private | MAY | Explicit desktop/tablet user config file path. Defaults to the user-private SDKWork config path when absent. |
-| `SDKWORK_<APP>_SDK_BASE_URL` | private | SHOULD when multiple SDK surfaces share one gateway | Common SDK root used to derive SDKWork open-api, app-api, backend-api, and documented dependency SDK base URLs. It must be a deployment root, not a resolved surface URL such as `/v1` or `/backend/v3/api`. |
-| `SDKWORK_<APP>_API_BASE_URL` | private | MAY | Generic same-origin or service-side default API base URL. Prefer surface-specific variables for SDK client construction. |
-| `SDKWORK_<APP>_OPEN_API_BASE_URL` | private | MAY | Server/runtime SDKWork open-api or documented compatibility API base URL. Business open-api paths need not include `/open`; they are any approved non-app/non-backend prefix. |
-| `SDKWORK_<APP>_APP_API_BASE_URL` | private | SHOULD when app SDK is consumed | Server/runtime app-api SDK base URL, normally ending in `/app/v3/api` for SDKWork v3 app-api. |
-| `SDKWORK_<APP>_BACKEND_API_BASE_URL` | private | SHOULD when backend SDK is consumed | Server/runtime backend-api SDK base URL, normally ending in `/backend/v3/api` for SDKWork v3 backend-api. |
-| `SDKWORK_<APP>_<DEPENDENCY>_OPEN_API_BASE_URL` | private | MAY | Dependency open-api SDK base URL keyed by dependency SDK family/app code. |
-| `SDKWORK_<APP>_<DEPENDENCY>_APP_API_BASE_URL` | private | MAY | Dependency app-api SDK base URL keyed by dependency SDK family/app code, for example appbase or Drive. |
-| `SDKWORK_<APP>_<DEPENDENCY>_BACKEND_API_BASE_URL` | private | MAY | Dependency backend-api SDK base URL keyed by dependency SDK family/app code. |
-| `SDKWORK_<APP>_TOKEN_MANAGER_MODE` | private | MAY | Credential strategy: `appbase-global`, `service-context`, or `test`. It configures behavior only; it must not contain token values. |
-| `SDKWORK_<APP>_TOKEN_STORAGE` | private | MAY | Token storage strategy: `memory`, `browser-session`, `browser-local`, `os-secure-storage`, or `server-context`. Browser strategies must pass security review. |
+| `SDKWORK_<APPLICATION_CODE>_ENVIRONMENT` | private | SHOULD | Lifecycle stage: `development`, `test`, `staging`, `production`. |
+| `SDKWORK_<APPLICATION_CODE>_CONFIG_PROFILE` | private | SHOULD | File/script profile alias: `dev`, `test`, `staging`, `prod`. Startup must normalize it to `SDKWORK_<APPLICATION_CODE>_ENVIRONMENT`. |
+| `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE` | private | SHOULD | Application deployment architecture: `standalone` or `cloud`. |
+| `SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET` | private | SHOULD | Execution target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, `test-runner`. |
+| `SDKWORK_<APPLICATION_CODE>_BUILD_MODE` | private/public by tool | MAY | Build tool mode. It must not replace `ENVIRONMENT`, `DEPLOYMENT_PROFILE`, or `RUNTIME_TARGET`. |
+| `SDKWORK_<APPLICATION_CODE>_CONFIG_FILE` | private | MAY | Explicit runtime config file path. |
+| `SDKWORK_<APPLICATION_CODE>_SERVER_CONFIG_FILE` | private | MAY | Explicit server process config file path when a PC/desktop root also owns server profiles. Defaults to `CONFIG_FILE` when absent. |
+| `SDKWORK_<APPLICATION_CODE>_DESKTOP_CONFIG_FILE` | private | MAY | Explicit desktop/tablet user config file path. Defaults to the user-private SDKWork config path when absent. |
+| `SDKWORK_<APPLICATION_CODE>_SDK_BASE_URL` | private | SHOULD when multiple SDK surfaces share one gateway | Common SDK root used to derive SDKWork open-api, app-api, backend-api, and documented dependency SDK base URLs. It must be a deployment root, not a resolved surface URL such as `/v1` or `/backend/v3/api`. |
+| `SDKWORK_<APPLICATION_CODE>_API_BASE_URL` | private | MAY | Generic same-origin or service-side default API base URL. Prefer surface-specific variables for SDK client construction. |
+| `SDKWORK_<APPLICATION_CODE>_OPEN_API_BASE_URL` | private | MAY | Server/runtime SDKWork open-api or documented compatibility API base URL. Business open-api paths need not include `/open`; they are any approved non-app/non-backend prefix. |
+| `SDKWORK_<APPLICATION_CODE>_APP_API_BASE_URL` | private | SHOULD when app SDK is consumed | Server/runtime app-api SDK base URL, normally ending in `/app/v3/api` for SDKWork v3 app-api. |
+| `SDKWORK_<APPLICATION_CODE>_BACKEND_API_BASE_URL` | private | SHOULD when backend SDK is consumed | Server/runtime backend-api SDK base URL, normally ending in `/backend/v3/api` for SDKWork v3 backend-api. |
+| `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | private | MAY | Dependency open-api SDK base URL keyed by dependency SDK family/app code. |
+| `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_APP_API_BASE_URL` | private | MAY | Dependency app-api SDK base URL keyed by dependency SDK family/app code, for example appbase or Drive. |
+| `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_BACKEND_API_BASE_URL` | private | MAY | Dependency backend-api SDK base URL keyed by dependency SDK family/app code. |
+| `SDKWORK_<APPLICATION_CODE>_TOKEN_MANAGER_MODE` | private | MAY | Credential strategy: `appbase-global`, `service-context`, or `test`. It configures behavior only; it must not contain token values. |
+| `SDKWORK_<APPLICATION_CODE>_TOKEN_STORAGE` | private | MAY | Token storage strategy: `memory`, `browser-session`, `browser-local`, `os-secure-storage`, or `server-context`. Browser strategies must pass security review. |
 | `SDKWORK_ACCESS_TOKEN` | secret | SHOULD when protected app-api/backend-api is called before interactive login | Unified private bootstrap `access_token` used to seed the global TokenManager or service-context credential provider for SaaS deployment tenant isolation. It `MUST` be a signed SDKWork access token whose claims carry current `tenant_id`, `organization_id`, `app_id`, environment, deployment profile, runtime target, and scope metadata. It `MUST NOT` use an app-prefixed env name. It `MUST NOT` be exposed to browser public runtime config. After login/session bootstrap, runtime session `accessToken` replaces this value. |
 | `SDKWORK_ACCESS_TOKEN_HEADER` | private | MAY | Must be `Access-Token` for SDKWork v3 app-api/backend-api. Present only for compatibility validation, not customization. |
 | `SDKWORK_AUTH_TOKEN_HEADER` | private | MAY | Must be `Authorization` for SDKWork v3 bearer auth. Present only for compatibility validation, not customization. |
-| `SDKWORK_<APP>_DEFAULT_LOCALE` | private/public | MAY | Default BCP 47 locale such as `en-US` or `zh-CN`. This configures selection only; translated messages stay in i18n catalog fragments. |
-| `SDKWORK_<APP>_SUPPORTED_LOCALES` | private/public | MAY | Comma-separated supported locale list. It must not contain translated message content. |
-| `SDKWORK_<APP>_FALLBACK_LOCALE` | private/public | MAY | Explicit fallback locale, normally `en-US` for first-party SDKWork apps unless a product spec narrows it. |
-| `SDKWORK_<APP>_I18N_CATALOG_MANIFEST_URL` | private/public | MAY | URL or path to a generated catalog manifest. The manifest points to package-local fragments or generated bundles and must not be an authored monolithic locale file. |
-| `SDKWORK_<APP>_DATABASE_ENGINE` | private | MAY | Database engine, normally `postgresql` for standalone server/container and cloud targets, and `sqlite` for desktop user data. |
-| `SDKWORK_<APP>_DATABASE_HOST` | private | MAY | PostgreSQL host. Prefer this structured field over a URL for release deployments. |
-| `SDKWORK_<APP>_DATABASE_PORT` | private | MAY | PostgreSQL port, normally `5432`. |
-| `SDKWORK_<APP>_DATABASE_NAME` | private | MAY | PostgreSQL database name. |
-| `SDKWORK_<APP>_DATABASE_SCHEMA` | private | MAY | PostgreSQL schema, normally `public` unless the app standard says otherwise. |
-| `SDKWORK_<APP>_DATABASE_USERNAME` | private | MAY | PostgreSQL username. |
-| `SDKWORK_<APP>_DATABASE_PASSWORD_FILE` | secret | MAY | PostgreSQL password file path. Prefer this over direct password values. |
-| `SDKWORK_<APP>_DATABASE_PASSWORD` | secret | MAY | Direct PostgreSQL password override, allowed only for protected process environments or secret-bearing config files. |
-| `SDKWORK_<APP>_DATABASE_SSL_MODE` | private | MAY | PostgreSQL SSL mode. Production deployments should use `require`, `verify-ca`, or `verify-full` where supported. |
-| `SDKWORK_<APP>_DATABASE_URL` | private | MAY | Explicit database URL override. Server release packages should prefer structured runtime config fields for PostgreSQL; desktop and local development may use SQLite. |
-| `SDKWORK_<APP>_DATABASE_FILE` | private | MAY | SQLite database file path for desktop user-data targets. |
-| `SDKWORK_<APP>_DATABASE_MAX_CONNECTIONS` | private | MAY | Database pool limit. |
-| `SDKWORK_<APP>_DATABASE_MODULE_ID` | private | MAY | Database lifecycle module id resolved from `database/database.manifest.json`. |
-| `SDKWORK_<APP>_DATABASE_AUTO_MIGRATE` | private | MAY | When `true`, service bootstrap applies pending migrations. Production SHOULD default to `false`. |
-| `SDKWORK_<APP>_DATABASE_SEED_ON_BOOT` | private | MAY | When `true`, service bootstrap applies required seed sets if not yet recorded. Production SHOULD default to `false`. |
-| `SDKWORK_<APP>_DATABASE_SEED_LOCALE` | private | MAY | Seed locale directory name. Default `zh-CN`. |
-| `SDKWORK_<APP>_DATABASE_SEED_PROFILE` | private | MAY | Seed profile name from `seeds/seed.manifest.json`. Default `standard`. |
-| `SDKWORK_<APP>_DATABASE_DRIFT_INTERVAL_SEC` | private | MAY | Background drift refresh interval in seconds. Default `60`. |
-| `SDKWORK_<APP>_REDIS_ENABLED` | private | MAY | Enables the Redis adapter. Cloud deployments and standalone server/container targets that require shared state default to `true`; desktop user-data targets default to `false` unless shared infrastructure is explicitly enabled. |
-| `SDKWORK_<APP>_REDIS_HOST` | private | MAY | Redis host used when Redis is enabled. Prefer this structured field over a URL. |
-| `SDKWORK_<APP>_REDIS_PORT` | private | MAY | Redis port used when Redis is enabled. Defaults should normally use `6379`. |
-| `SDKWORK_<APP>_REDIS_DATABASE` | private | MAY | Redis logical database index used when Redis is enabled. Defaults should normally use `0`. |
-| `SDKWORK_<APP>_REDIS_USERNAME` | private | MAY | Optional Redis username, for ACL-enabled Redis deployments. |
-| `SDKWORK_<APP>_REDIS_URL` | private | MAY | Advanced Redis URL override used only when a managed endpoint cannot be represented cleanly with host, port, database, username, and TLS fields. |
-| `SDKWORK_<APP>_REDIS_PASSWORD_FILE` | secret | MAY | Redis password file path. Prefer this over direct Redis password values. |
-| `SDKWORK_<APP>_REDIS_PASSWORD` | secret | MAY | Direct Redis password override, allowed only for protected process environments or secret-bearing config files. |
-| `SDKWORK_<APP>_REDIS_KEY_PREFIX` | private | MAY | Optional key namespace prefix for Redis data owned by the application. |
-| `SDKWORK_<APP>_REDIS_TLS` | private | MAY | Enables TLS for structured Redis host/port/database configuration. Use `rediss://` when using the URL override. |
-| `SDKWORK_<APP>_REDIS_MAX_CONNECTIONS` | private | MAY | Redis client pool limit. |
-| `SDKWORK_<APP>_REDIS_CONNECT_TIMEOUT_MILLIS` | private | MAY | Redis connection timeout in milliseconds. |
-| `SDKWORK_<APP>_REDIS_COMMAND_TIMEOUT_MILLIS` | private | MAY | Redis command timeout in milliseconds. |
-| `SDKWORK_<APP>_REDIS_POOL_IDLE_TIMEOUT_SECONDS` | private | MAY | Redis idle connection lifetime in seconds. |
-| `SDKWORK_<APP>_SERVER_BIND` | private | SHOULD for services | Public service bind address, for example `0.0.0.0:3900`. |
-| `SDKWORK_<APP>_TRUST_FORWARDED_HEADERS` | private | MAY | Whether reverse-proxy forwarded headers are trusted. |
-| `SDKWORK_<APP>_LOG_LEVEL` | private | MAY | Runtime log filter. |
-| `SDKWORK_<APP>_DATA_DIR` | private | MAY | Explicit data directory override. |
-| `SDKWORK_<APP>_CACHE_DIR` | private | MAY | Explicit cache directory override. |
-| `SDKWORK_<APP>_LOG_DIR` | private | MAY | Explicit file log directory override. |
-| `SDKWORK_<APP>_RUNTIME_DIR` | private | MAY | Explicit runtime state directory override for PID files, sockets, locks, and generated ephemeral state. |
-| `SDKWORK_<APP>_TEMP_DIR` | private | MAY | Explicit temporary file directory override. |
-| `SDKWORK_<APP>_API_KEY_PEPPER` | secret | REQUIRED when API keys are issued | Pepper used for API key hashing or verification. |
-| `SDKWORK_<APP>_SESSION_SECRET` | secret | REQUIRED when sessions are issued | Session signing/encryption secret. |
-| `SDKWORK_<APP>_WEBHOOK_SECRET` | secret | REQUIRED when webhooks are verified | Webhook signing secret. |
+| `SDKWORK_<APPLICATION_CODE>_DEFAULT_LOCALE` | private/public | MAY | Default BCP 47 locale such as `en-US` or `zh-CN`. This configures selection only; translated messages stay in i18n catalog fragments. |
+| `SDKWORK_<APPLICATION_CODE>_SUPPORTED_LOCALES` | private/public | MAY | Comma-separated supported locale list. It must not contain translated message content. |
+| `SDKWORK_<APPLICATION_CODE>_FALLBACK_LOCALE` | private/public | MAY | Explicit fallback locale, normally `en-US` for first-party SDKWork apps unless a product spec narrows it. |
+| `SDKWORK_<APPLICATION_CODE>_I18N_CATALOG_MANIFEST_URL` | private/public | MAY | URL or path to a generated **message-catalog** manifest. The manifest points to package-local fragments or generated bundles and must not be an authored monolithic locale file. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` | private | MAY | Database engine, normally `postgresql` for standalone server/container and cloud targets, and `sqlite` for desktop user data. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_HOST` | private | MAY | PostgreSQL host. Prefer this structured field over a URL for release deployments. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_PORT` | private | MAY | PostgreSQL port, normally `5432`. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_NAME` | private | MAY | PostgreSQL database name. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_SCHEMA` | private | MAY | PostgreSQL schema, normally `public` unless the app standard says otherwise. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_USERNAME` | private | MAY | PostgreSQL username. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD_FILE` | secret | MAY | PostgreSQL password file path. Prefer this over direct password values. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD` | secret | MAY | Direct PostgreSQL password override, allowed only for protected process environments or secret-bearing config files. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` | private | MAY | PostgreSQL SSL mode. Production deployments should use `require`, `verify-ca`, or `verify-full` where supported. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` | private | MAY | Explicit database URL override. Server release packages should prefer structured runtime config fields for PostgreSQL; desktop and local development may use SQLite. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_FILE` | private | MAY | SQLite database file path for desktop user-data targets. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_MAX_CONNECTIONS` | private | MAY | Database pool limit. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_MODULE_ID` | private | MAY | Database lifecycle module id resolved from `database/database.manifest.json`. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_AUTO_MIGRATE` | private | MAY | When `true`, service bootstrap applies pending migrations. Production SHOULD default to `false`. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_SEED_ON_BOOT` | private | MAY | When `true`, service bootstrap applies required seed sets if not yet recorded. Production SHOULD default to `false`. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_SEED_LOCALE` | private | MAY | Seed locale directory name. Default `zh-CN`. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_SEED_PROFILE` | private | MAY | Seed profile name from `seeds/seed.manifest.json`. Default `standard`. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_DRIFT_INTERVAL_SEC` | private | MAY | Background drift refresh interval in seconds. Default `60`. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_ENABLED` | private | MAY | Enables the Redis adapter. Cloud deployments and standalone server/container targets that require shared state default to `true`; desktop user-data targets default to `false` unless shared infrastructure is explicitly enabled. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_HOST` | private | MAY | Redis host used when Redis is enabled. Prefer this structured field over a URL. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_PORT` | private | MAY | Redis port used when Redis is enabled. Defaults should normally use `6379`. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_DATABASE` | private | MAY | Redis logical database index used when Redis is enabled. Defaults should normally use `0`. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_USERNAME` | private | MAY | Optional Redis username, for ACL-enabled Redis deployments. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_URL` | private | MAY | Advanced Redis URL override used only when a managed endpoint cannot be represented cleanly with host, port, database, username, and TLS fields. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_PASSWORD_FILE` | secret | MAY | Redis password file path. Prefer this over direct Redis password values. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_PASSWORD` | secret | MAY | Direct Redis password override, allowed only for protected process environments or secret-bearing config files. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_KEY_PREFIX` | private | MAY | Optional key namespace prefix for Redis data owned by the application. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_TLS` | private | MAY | Enables TLS for structured Redis host/port/database configuration. Use `rediss://` when using the URL override. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_MAX_CONNECTIONS` | private | MAY | Redis client pool limit. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_CONNECT_TIMEOUT_MILLIS` | private | MAY | Redis connection timeout in milliseconds. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_COMMAND_TIMEOUT_MILLIS` | private | MAY | Redis command timeout in milliseconds. |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_POOL_IDLE_TIMEOUT_SECONDS` | private | MAY | Redis idle connection lifetime in seconds. |
+| `SDKWORK_<APPLICATION_CODE>_SERVER_BIND` | private | SHOULD for services | Public service bind address, for example `0.0.0.0:3900`. |
+| `SDKWORK_<APPLICATION_CODE>_TRUST_FORWARDED_HEADERS` | private | MAY | Whether reverse-proxy forwarded headers are trusted. |
+| `SDKWORK_<APPLICATION_CODE>_LOG_LEVEL` | private | MAY | Runtime log filter. |
+| `SDKWORK_<APPLICATION_CODE>_DATA_DIR` | private | MAY | Explicit data directory override. |
+| `SDKWORK_<APPLICATION_CODE>_CACHE_DIR` | private | MAY | Explicit cache directory override. |
+| `SDKWORK_<APPLICATION_CODE>_LOG_DIR` | private | MAY | Explicit file log directory override. |
+| `SDKWORK_<APPLICATION_CODE>_RUNTIME_DIR` | private | MAY | Explicit runtime state directory override for PID files, sockets, locks, and generated ephemeral state. |
+| `SDKWORK_<APPLICATION_CODE>_TEMP_DIR` | private | MAY | Explicit temporary file directory override. |
+| `SDKWORK_<APPLICATION_CODE>_API_KEY_PEPPER` | secret | REQUIRED when API keys are issued | Pepper used for API key hashing or verification. |
+| `SDKWORK_<APPLICATION_CODE>_SESSION_SECRET` | secret | REQUIRED when sessions are issued | Session signing/encryption secret. |
+| `SDKWORK_<APPLICATION_CODE>_WEBHOOK_SECRET` | secret | REQUIRED when webhooks are verified | Webhook signing secret. |
 
 Application-specific variables may be added only when they have an owner, validation rule, and documentation entry.
 
@@ -241,7 +242,7 @@ PC browser/desktop/tablet roots should use this grouped config layout when the
 application supports multiple runtime targets:
 
 ```text
-apps/sdkwork-<product>-pc/
+apps/sdkwork-<application-code>-pc/
   config/
     browser/
       runtime-env.development.example.json
@@ -291,7 +292,7 @@ one PC application root.
 | Runtime target | Default config location | Default persistence | Standard profile behavior |
 | --- | --- | --- | --- |
 | `browser` | `/runtime-env.js` or `/runtime-env.json` served by the trusted host | Browser storage only through approved auth/session adapter | Public SDK URLs and flags only; no secrets, database URLs, or private endpoints. |
-| `desktop` | `~/.sdkwork/<app>/config/<app>.toml` or `%USERPROFILE%\.sdkwork\<app>\config\<app>.toml` | SQLite under SDKWork user-private data directory | Installed desktop runtime; may start local services but desktop user config stays separate. |
+| `desktop` | `~/.sdkwork/<application-code>/config/<app>.toml` or `%USERPROFILE%\.sdkwork\<application-code>\config\<app>.toml` | SQLite under SDKWork user-private data directory | Installed desktop runtime; may start local services but desktop user config stays separate. |
 | `tablet-ipados` | Platform app-private config plus approved Tauri iOS config | SQLite or approved encrypted platform-local storage | Same PC renderer and SDK/IAM runtime; iPadOS packaging metadata is target config. |
 | `tablet-android` | Platform app-private config plus approved Tauri Android config | SQLite or approved encrypted platform-local storage | Same PC renderer and SDK/IAM runtime; Android package/signing metadata is target config. |
 | `capacitor-ios` | H5 mobile `config/browser` plus `config/host` Capacitor iOS profile and platform app-private storage | Approved secure storage adapter; local caches only | Same H5 mobile renderer and SDK/IAM runtime; iOS package/signing metadata is host config. |
@@ -302,8 +303,8 @@ one PC application root.
 | `ios-native` | iOS native `config/app` plus `config/host` iOS profile and platform app-private storage | Approved secure storage adapter; local caches only | Generated Swift SDK/IAM runtime; iOS package/signing metadata is host config. |
 | `harmony-native` | Harmony native `config/app` plus `config/host` Harmony profile and platform app-private storage | Approved secure storage adapter; local caches only | Generated ArkTS/TypeScript SDK/IAM runtime adapted for Harmony; Harmony package/signing metadata is host config. |
 | `mini-program` | Mini program `config/mini-program` plus `config/host` platform profile | Platform storage through approved host adapter | Generated TypeScript app SDK or approved wrapper; platform pages/subpackages are route projections. |
-| `server` | `/etc/sdkwork/<app>/<process>.toml` or `%ProgramData%\sdkwork\<app>\<process>.toml` | PostgreSQL, Redis when required | Long-running service, explicit bind, reverse proxy assumptions, strict secret handling. |
-| `container` | Mounted `/etc/sdkwork/<app>/<process>.toml`, env, and `/run/secrets/...` | External PostgreSQL/Redis or mounted volumes | Image contains examples only; runtime config and secrets are injected. |
+| `server` | `/etc/sdkwork/<application-code>/<process>.toml` or `%ProgramData%\sdkwork\<app>\<process>.toml` | PostgreSQL, Redis when required | Long-running service, explicit bind, reverse proxy assumptions, strict secret handling. |
+| `container` | Mounted `/etc/sdkwork/<application-code>/<process>.toml`, env, and `/run/secrets/...` | External PostgreSQL/Redis or mounted volumes | Image contains examples only; runtime config and secrets are injected. |
 | `test-runner` | Ephemeral generated config under test temp directory | Isolated SQLite or isolated PostgreSQL schema/database | No shared dev/prod state; deterministic cleanup. |
 
 Rules:
@@ -331,14 +332,14 @@ Generated SDK bootstrap should require one common SDK root by default, then reso
 
 | SDK surface | Private server/runtime env | Public browser runtime env | Vite/dev-server public env | Default |
 | --- | --- | --- | --- | --- |
-| Common SDK root | `SDKWORK_<APP>_SDK_BASE_URL` | `PORTAL_PUBLIC_SDK_BASE_URL` | `VITE_<APP_CODE>_SDK_BASE_URL` | Same-origin deployment root, for example `/` or a gateway origin. |
-| Public API reference / generic OpenAPI display | `SDKWORK_<APP>_API_BASE_URL` | `PORTAL_PUBLIC_API_BASE_URL` | `VITE_API_BASE_URL` | Same-origin API path, app-specific. |
-| SDKWork open-api SDK or documented OpenAI-compatible API | `SDKWORK_<APP>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_OPEN_API_BASE_URL` | Derived from the common SDK root plus the approved open-api prefix, or from the API reference base URL when documented. |
-| App/user SDK | `SDKWORK_<APP>_APP_API_BASE_URL` | `PORTAL_PUBLIC_APP_API_BASE_URL` | `VITE_<APP_CODE>_APP_API_BASE_URL` | Derived from the common SDK root plus `/app/v3/api` for SDKWork v3 app-api. |
-| `backend-admin` SDK | `SDKWORK_<APP>_BACKEND_API_BASE_URL` | `PORTAL_PUBLIC_BACKEND_API_BASE_URL` | `VITE_<APP_CODE>_BACKEND_API_BASE_URL` | Derived from the common SDK root plus `/backend/v3/api` for SDKWork v3 backend-api. |
-| Dependency open-api SDK | `SDKWORK_<APP>_<DEPENDENCY>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | Derived from the common SDK root only when the dependency surface is documented as served by that gateway; otherwise configure this override. |
-| Dependency app-api SDK | `SDKWORK_<APP>_<DEPENDENCY>_APP_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_APP_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_APP_API_BASE_URL` | Derived from the common SDK root plus the dependency app-api prefix only when hosted by the same edge; otherwise configure this override. |
-| Dependency backend-api SDK | `SDKWORK_<APP>_<DEPENDENCY>_BACKEND_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_BACKEND_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_BACKEND_API_BASE_URL` | Derived from the common SDK root only when verified dependency backend mount coverage exists; otherwise configure this override. |
+| Common SDK root | `SDKWORK_<APPLICATION_CODE>_SDK_BASE_URL` | `PORTAL_PUBLIC_SDK_BASE_URL` | `VITE_<APP_CODE>_SDK_BASE_URL` | Same-origin deployment root, for example `/` or a gateway origin. |
+| Public API reference / generic OpenAPI display | `SDKWORK_<APPLICATION_CODE>_API_BASE_URL` | `PORTAL_PUBLIC_API_BASE_URL` | `VITE_API_BASE_URL` | Same-origin API path, app-specific. |
+| SDKWork open-api SDK or documented OpenAI-compatible API | `SDKWORK_<APPLICATION_CODE>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_OPEN_API_BASE_URL` | Derived from the common SDK root plus the approved open-api prefix, or from the API reference base URL when documented. |
+| App/user SDK | `SDKWORK_<APPLICATION_CODE>_APP_API_BASE_URL` | `PORTAL_PUBLIC_APP_API_BASE_URL` | `VITE_<APP_CODE>_APP_API_BASE_URL` | Derived from the common SDK root plus `/app/v3/api` for SDKWork v3 app-api. |
+| `backend-admin` SDK | `SDKWORK_<APPLICATION_CODE>_BACKEND_API_BASE_URL` | `PORTAL_PUBLIC_BACKEND_API_BASE_URL` | `VITE_<APP_CODE>_BACKEND_API_BASE_URL` | Derived from the common SDK root plus `/backend/v3/api` for SDKWork v3 backend-api. |
+| Dependency open-api SDK | `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | Derived from the common SDK root only when the dependency surface is documented as served by that gateway; otherwise configure this override. |
+| Dependency app-api SDK | `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_APP_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_APP_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_APP_API_BASE_URL` | Derived from the common SDK root plus the dependency app-api prefix only when hosted by the same edge; otherwise configure this override. |
+| Dependency backend-api SDK | `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_BACKEND_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_BACKEND_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_BACKEND_API_BASE_URL` | Derived from the common SDK root only when verified dependency backend mount coverage exists; otherwise configure this override. |
 
 Rules:
 
@@ -351,7 +352,7 @@ Rules:
 - Browser public runtime config may expose SDK base URLs only when the browser is allowed to call that SDK surface directly. `backend-admin` base URLs must not be exposed to user-facing app UI or PC user console UI unless that route surface is explicitly `backend-admin`.
 - Defaults should be same-origin paths in browser deployments so remote browsers are not given loopback addresses, but dependency SDK same-origin defaults are allowed only when `dependencyApiSurfaces` records verified mount coverage for that dependency surface.
 - Dependency backend-api SDK override variables such as
-  `SDKWORK_<APP>_APPBASE_BACKEND_API_BASE_URL`,
+  `SDKWORK_<APPLICATION_CODE>_APPBASE_BACKEND_API_BASE_URL`,
   `PORTAL_PUBLIC_APPBASE_BACKEND_API_BASE_URL`, and
   `VITE_SDKWORK_APPBASE_BACKEND_API_BASE_URL` are optional when `SDK_BASE_URL` points to a verified gateway that serves the dependency backend routes. They `MUST` be configured explicitly when the dependency backend is deployed elsewhere or when mount coverage is not documented.
 - A checked-in example may leave a required external dependency backend base URL empty to force deployment configuration, but it `MUST NOT` set that dependency URL to `/backend/v3/api` or another application-owned default without matching `dependencyApiSurfaces` coverage evidence.
@@ -392,8 +393,8 @@ Rules:
 - App-api and backend-api SDK clients must obtain runtime session tokens through the global TokenManager or language-equivalent credential provider. Service/bootstrap runtimes may seed that provider from `SDKWORK_ACCESS_TOKEN` only.
 - When both bootstrap/session `auth_token` and `access_token` are present, frameworks and runtimes `MUST` treat overlapping principal and tenancy claims from `auth_token` as authoritative. Overlapping fields are: `sub`/`user_id`, `sid`/`session_id`, `tenant_id`, `organization_id`, `login_scope`, and `auth_level`. Access-isolation-only fields such as `data_scope`, `permission_scope`, deployment profile, runtime target, and sharding hints remain authoritative from `access_token`.
 - If `access_token` carries an overlapping claim that contradicts the authoritative `auth_token` value after normalization, the request `MUST` be rejected.
-- TokenManager config may be controlled by `SDKWORK_<APP>_TOKEN_MANAGER_MODE` and `SDKWORK_<APP>_TOKEN_STORAGE`, but those variables describe behavior only and must never contain token values.
-- TokenManager config may be controlled by `SDKWORK_<APP>_TOKEN_MANAGER_MODE` and `SDKWORK_<APP>_TOKEN_STORAGE`, but those variables describe behavior only and must never contain token values.
+- TokenManager config may be controlled by `SDKWORK_<APPLICATION_CODE>_TOKEN_MANAGER_MODE` and `SDKWORK_<APPLICATION_CODE>_TOKEN_STORAGE`, but those variables describe behavior only and must never contain token values.
+- TokenManager config may be controlled by `SDKWORK_<APPLICATION_CODE>_TOKEN_MANAGER_MODE` and `SDKWORK_<APPLICATION_CODE>_TOKEN_STORAGE`, but those variables describe behavior only and must never contain token values.
 - `SDKWORK_ACCESS_TOKEN_HEADER` may exist only to assert that the runtime uses `Access-Token`; SDKWork v3 applications must reject any value other than `Access-Token`.
 - `SDKWORK_AUTH_TOKEN_HEADER` may exist only to assert that the runtime uses `Authorization`; SDKWork v3 applications must reject any value other than `Authorization`.
 - Browser public runtime config must never include token manager state, token storage contents, refresh tokens, API keys, or generated `getAuthHeaders()` output.
@@ -410,7 +411,7 @@ Standalone server/container targets and cloud targets default to PostgreSQL
 through runtime TOML, environment, or orchestration config. Desktop user data
 remains SQLite by default. Desktop/Tauri development commands that start a
 backend service use PostgreSQL to exercise server behavior, but that does not
-change the desktop package database default. `SDKWORK_<APP>_DATABASE_URL` is an
+change the desktop package database default. `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` is an
 explicit operator override, not the primary production configuration path.
 Application root `pnpm dev:browser` and `pnpm dev:desktop` are development
 orchestration defaults, not installer defaults: both must select the
@@ -440,7 +441,7 @@ Applications MUST NOT define per-app PostgreSQL database names, usernames, passw
 Rules:
 
 - `SDKWORK_CLAW_DATABASE_*` is the single source of truth for PostgreSQL connection identity across IAM, gateway-embedded routers, and application services.
-- Per-app `SDKWORK_<APP>_DATABASE_*` keys MAY remain for pool sizing, deployment mode, table prefix, SQLite desktop paths, and service-specific bootstrap, but MUST NOT redefine host, port, database, schema, username, password, or URL in checked-in files.
+- Per-app `SDKWORK_<APPLICATION_CODE>_DATABASE_*` keys MAY remain for pool sizing, deployment mode, table prefix, SQLite desktop paths, and service-specific bootstrap, but MUST NOT redefine host, port, database, schema, username, password, or URL in checked-in files.
 - Every application repository MUST ship `.env.postgres.example` that contains only `SDKWORK_CLAW_DATABASE_*` fields copied from `sdkwork-specs/templates/env.postgres.example` or `sdkwork-claw-router/.env.postgres.example`.
 - Developer overrides belong in ignored `.env.postgres` at the application root or in `sdkwork-claw-router/.env.postgres`; do not fork per-app connection identity in source control.
 - Dev orchestration, topology loaders, and IAM env helpers MUST resolve PostgreSQL through `SDKWORK_CLAW_DATABASE_*` before any per-app database fields.
@@ -502,7 +503,7 @@ Rules:
 - `.env.postgres.example` must use the unified `SDKWORK_CLAW_DATABASE_*` split
   fields from `§7.1 Unified Workspace PostgreSQL Profile` and
   `sdkwork-specs/templates/env.postgres.example`. Per-app
-  `SDKWORK_<APP>_DATABASE_*` connection identity fields are not allowed in
+  `SDKWORK_<APPLICATION_CODE>_DATABASE_*` connection identity fields are not allowed in
   checked-in PostgreSQL templates.
 - If database initialization needs an admin connection, use
   `SDKWORK_CLAW_DATABASE_ADMIN_HOST`, `SDKWORK_CLAW_DATABASE_ADMIN_PORT`,
@@ -543,28 +544,28 @@ SDKWORK_CLAW_DATABASE_ADMIN_SSL_MODE=disable
 applications. Environment handling must reference that file instead of defining
 app-local directory schemes.
 
-For product code `<app>`:
+For application code `<app>`:
 
 | OS/profile | Config file | Data directory | Log directory |
 | --- | --- | --- | --- |
-| Linux service/container | `/etc/sdkwork/<app>/<app>.toml` or `/etc/sdkwork/<app>/<process>.toml` | `/var/lib/sdkwork/<app>` | `/var/log/sdkwork/<app>` |
-| Linux user/desktop | `~/.sdkwork/<app>/config/<app>.toml` or `~/.sdkwork/<app>/config/<process>.toml` | `~/.sdkwork/<app>/data` | `~/.sdkwork/<app>/logs` |
-| macOS service | `/Library/Application Support/sdkwork/<app>/<app>.toml` or process-specific equivalent | `/Library/Application Support/sdkwork/<app>/Data` | `/Library/Logs/sdkwork/<app>` |
-| macOS user/desktop | `~/.sdkwork/<app>/config/<app>.toml` or process-specific equivalent | `~/.sdkwork/<app>/data` | `~/.sdkwork/<app>/logs` |
+| Linux service/container | `/etc/sdkwork/<application-code>/<app>.toml` or `/etc/sdkwork/<application-code>/<process>.toml` | `/var/lib/sdkwork/<application-code>` | `/var/log/sdkwork/<application-code>` |
+| Linux user/desktop | `~/.sdkwork/<application-code>/config/<app>.toml` or `~/.sdkwork/<application-code>/config/<process>.toml` | `~/.sdkwork/<application-code>/data` | `~/.sdkwork/<application-code>/logs` |
+| macOS service | `/Library/Application Support/sdkwork/<application-code>/<app>.toml` or process-specific equivalent | `/Library/Application Support/sdkwork/<application-code>/Data` | `/Library/Logs/sdkwork/<application-code>` |
+| macOS user/desktop | `~/.sdkwork/<application-code>/config/<app>.toml` or process-specific equivalent | `~/.sdkwork/<application-code>/data` | `~/.sdkwork/<application-code>/logs` |
 | Windows service | `%ProgramData%\sdkwork\<app>\<app>.toml` or process-specific equivalent | `%ProgramData%\sdkwork\<app>\Data` | `%ProgramData%\sdkwork\<app>\Logs` |
-| Windows user/desktop | `%USERPROFILE%\.sdkwork\<app>\config\<app>.toml` or process-specific equivalent | `%USERPROFILE%\.sdkwork\<app>\data` | `%USERPROFILE%\.sdkwork\<app>\logs` |
-| Container | `/etc/sdkwork/<app>/<app>.toml` or process-specific equivalent | `/var/lib/sdkwork/<app>` or mounted volume | stdout/stderr, optional `/var/log/sdkwork/<app>` |
+| Windows user/desktop | `%USERPROFILE%\.sdkwork\<application-code>\config\<app>.toml` or process-specific equivalent | `%USERPROFILE%\.sdkwork\<application-code>\data` | `%USERPROFILE%\.sdkwork\<application-code>\logs` |
+| Container | `/etc/sdkwork/<application-code>/<app>.toml` or process-specific equivalent | `/var/lib/sdkwork/<application-code>` or mounted volume | stdout/stderr, optional `/var/log/sdkwork/<application-code>` |
 
 Rules:
 
-- `SDKWORK_<APP>_CONFIG_FILE` must override default config discovery.
-- `SDKWORK_<APP>_DATA_DIR`, `SDKWORK_<APP>_CACHE_DIR`, and
-  `SDKWORK_<APP>_LOG_DIR` may override their resolved directories.
+- `SDKWORK_<APPLICATION_CODE>_CONFIG_FILE` must override default config discovery.
+- `SDKWORK_<APPLICATION_CODE>_DATA_DIR`, `SDKWORK_<APPLICATION_CODE>_CACHE_DIR`, and
+  `SDKWORK_<APPLICATION_CODE>_LOG_DIR` may override their resolved directories.
 - Config files must be created with restrictive permissions when they include secrets.
 - Desktop apps should place SQLite data under the user private data path, not beside the executable.
-- Server services should place mutable data under `/var/lib/sdkwork/<app>/` on Linux or the equivalent service data directory on other systems.
+- Server services should place mutable data under `/var/lib/sdkwork/<application-code>/` on Linux or the equivalent service data directory on other systems.
 - Release archives must include example config templates but must not include host-local secrets.
-- Historical XDG, `%APPDATA%`, `%LOCALAPPDATA%`, or display-name directories may be read as compatibility fallbacks during migration, but canonical SDKWork writes should target `~/.sdkwork/<app>` or the Windows equivalent `%USERPROFILE%\.sdkwork\<app>` for user-private files.
+- Historical XDG, `%APPDATA%`, `%LOCALAPPDATA%`, or display-name directories may be read as compatibility fallbacks during migration, but canonical SDKWork writes should target `~/.sdkwork/<application-code>` or the Windows equivalent `%USERPROFILE%\.sdkwork\<application-code>` for user-private files.
 
 ## 9. Runtime Config File Shape
 
@@ -737,7 +738,7 @@ enabled = true
 host = "redis.internal"
 port = 6379
 database = 0
-password_file = "/etc/sdkwork/<app>/redis.secret"
+password_file = "/etc/sdkwork/<application-code>/redis.secret"
 key_prefix = "<app>:prod"
 tls = true
 ```
@@ -758,7 +759,7 @@ secure_storage_provider = "os-keychain"
 
 [database]
 engine = "sqlite"
-file = "~/.sdkwork/<app>/data/<app>.sqlite"
+file = "~/.sdkwork/<application-code>/data/<app>.sqlite"
 max_connections = 1
 
 [redis]
@@ -855,7 +856,7 @@ Required behavior:
   selected.
 - Support a config file in the SDKWork user private config directory.
 - Keep secrets in OS secure storage when possible.
-- Allow `SDKWORK_<APP>_DATABASE_URL` to override the local database for diagnostics and managed operator deployments.
+- Allow `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` to override the local database for diagnostics and managed operator deployments.
 
 Example desktop config:
 
@@ -867,7 +868,7 @@ runtime_target = "desktop"
 
 [database]
 engine = "sqlite"
-file = "~/.sdkwork/<app>/data/<app>.sqlite"
+file = "~/.sdkwork/<application-code>/data/<app>.sqlite"
 max_connections = 1
 ```
 
@@ -878,7 +879,7 @@ Use when the application runs as a long-lived service on a VM or bare-metal host
 Required behavior:
 
 - Require PostgreSQL for release deployment.
-- Read config from the canonical service config path or `SDKWORK_<APP>_CONFIG_FILE`.
+- Read config from the canonical service config path or `SDKWORK_<APPLICATION_CODE>_CONFIG_FILE`.
 - Bind explicitly and document reverse-proxy assumptions.
 - Fail fast when required secrets or database config are missing.
 - Declare `environment`, `deployment_profile = "standalone"`, and `runtime_target = "server"` in runtime config.
@@ -886,11 +887,11 @@ Required behavior:
 Example server env:
 
 ```text
-SDKWORK_<APP>_CONFIG_FILE=/etc/sdkwork/<app>/<app>.toml
-SDKWORK_<APP>_ENVIRONMENT=production
-SDKWORK_<APP>_CONFIG_PROFILE=prod
-SDKWORK_<APP>_DEPLOYMENT_PROFILE=standalone
-SDKWORK_<APP>_RUNTIME_TARGET=server
+SDKWORK_<APPLICATION_CODE>_CONFIG_FILE=/etc/sdkwork/<application-code>/<app>.toml
+SDKWORK_<APPLICATION_CODE>_ENVIRONMENT=production
+SDKWORK_<APPLICATION_CODE>_CONFIG_PROFILE=prod
+SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE=standalone
+SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET=server
 SDKWORK_CLAW_DATABASE_ENGINE=postgresql
 SDKWORK_CLAW_DATABASE_HOST=db.example.com
 SDKWORK_CLAW_DATABASE_PORT=5432
@@ -901,8 +902,8 @@ SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/etc/sdkwork/router/database.secret
 SDKWORK_CLAW_DATABASE_SSL_MODE=require
 SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=20
 # SDKWORK_CLAW_DATABASE_URL=postgresql://sdkwork_ai_prod:change-me@db.example.com:5432/sdkwork_ai_prod
-SDKWORK_<APP>_SERVER_BIND=0.0.0.0:3900
-SDKWORK_<APP>_TRUST_FORWARDED_HEADERS=1
+SDKWORK_<APPLICATION_CODE>_SERVER_BIND=0.0.0.0:3900
+SDKWORK_<APPLICATION_CODE>_TRUST_FORWARDED_HEADERS=1
 ```
 
 ### 10.6 Container Deployment
@@ -920,11 +921,11 @@ Required behavior:
 Example container env:
 
 ```text
-SDKWORK_<APP>_CONFIG_FILE=/etc/sdkwork/<app>/<app>.toml
-SDKWORK_<APP>_ENVIRONMENT=production
-SDKWORK_<APP>_CONFIG_PROFILE=prod
-SDKWORK_<APP>_DEPLOYMENT_PROFILE=cloud
-SDKWORK_<APP>_RUNTIME_TARGET=container
+SDKWORK_<APPLICATION_CODE>_CONFIG_FILE=/etc/sdkwork/<application-code>/<app>.toml
+SDKWORK_<APPLICATION_CODE>_ENVIRONMENT=production
+SDKWORK_<APPLICATION_CODE>_CONFIG_PROFILE=prod
+SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE=cloud
+SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET=container
 SDKWORK_CLAW_DATABASE_ENGINE=postgresql
 SDKWORK_CLAW_DATABASE_HOST=postgres
 SDKWORK_CLAW_DATABASE_PORT=5432
@@ -934,7 +935,7 @@ SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_prod
 SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/run/secrets/sdkwork/database-password
 SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=20
 # SDKWORK_CLAW_DATABASE_URL=postgresql://sdkwork_ai_prod:change-me@postgres:5432/sdkwork_ai_prod
-SDKWORK_<APP>_SERVER_BIND=0.0.0.0:3900
+SDKWORK_<APPLICATION_CODE>_SERVER_BIND=0.0.0.0:3900
 ```
 
 ## 11. sdkwork-claw-router Application Env
@@ -1254,7 +1255,7 @@ PORTAL_PUBLIC_TOOL_API_ENABLED=false
 - CSP `connect-src` must include only validated absolute API origins and the application origin.
 - Env parsing must fail closed on malformed URLs, invalid booleans, invalid numbers, and missing required release secrets.
 - Local development default secrets must be clearly marked as development-only.
-- Env and public runtime config may expose locale strategy values such as default locale, supported locales, fallback locale, and catalog manifest URL, but must not embed translated message catalogs, product copy overrides, or generated locale bundle contents.
+- Env and public runtime config may expose locale strategy values such as default locale, supported locales, fallback locale, and message-catalog manifest URL, but must not embed translated message catalogs, L1 brand/store copy overrides, or generated locale bundle contents.
 
 ## 14. Validation And Tests
 
@@ -1267,7 +1268,7 @@ Every application that adopts this standard should provide:
 - Release preflight validation for required production variables.
 - Browser runtime env tests that verify public values load before SDK clients are constructed.
 - Browser public runtime tests that verify no secret, database URL, Redis URL, token, signing key, or private endpoint is emitted through `/runtime-env.js`, `PORTAL_PUBLIC_*`, or `VITE_*`.
-- I18n runtime config tests that verify env/public config contains only locale strategy and catalog manifest references, not translated message content or app/root/package locale monoliths.
+- I18n runtime config tests that verify env/public config contains only locale strategy and message-catalog manifest references, not translated message content or app/root/package locale monoliths.
 - Database selection tests for desktop SQLite and server PostgreSQL behavior.
 - Test-profile isolation tests for database/schema names, Redis key prefix, logs, cache, runtime, and temp directories.
 - Tauri/native config tests that verify platform config contains packaging metadata, permissions, capabilities, and signing references only, not API secrets or business SDK contracts.
@@ -1277,11 +1278,11 @@ Every application that adopts this standard should provide:
 Acceptance checklist:
 
 - [ ] Env names follow the product and capability prefix rules.
-- [ ] `SDKWORK_<APP>_ENVIRONMENT`, `SDKWORK_<APP>_CONFIG_PROFILE`, `SDKWORK_<APP>_DEPLOYMENT_PROFILE`, and `SDKWORK_<APP>_RUNTIME_TARGET` are normalized and validated separately.
+- [ ] `SDKWORK_<APPLICATION_CODE>_ENVIRONMENT`, `SDKWORK_<APPLICATION_CODE>_CONFIG_PROFILE`, `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE`, and `SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET` are normalized and validated separately.
 - [ ] Dev/test/staging/prod example files exist where applicable and local overrides are ignored.
 - [ ] Public values are separated from private and secret values.
 - [ ] Generated SDK base URLs resolve from one common SDK root plus optional per-surface or per-SDK overrides; effective open-api, app-api, and backend-api URLs are explicit after resolution.
-- [ ] Locale env/public runtime values contain only default/supported/fallback locale strategy and catalog manifest references; translated messages remain in `I18N_SPEC.md` catalog fragments.
+- [ ] Locale env/public runtime values contain only default/supported/fallback locale strategy and message-catalog manifest references; translated messages remain in `I18N_SPEC.md` message-catalog fragments.
 - [ ] Server release defaults require PostgreSQL.
 - [ ] PostgreSQL development templates use `.env.postgres.example` with unified `SDKWORK_CLAW_DATABASE_*` fields from `ENVIRONMENT_SPEC.md` §7.1 and `sdkwork-specs/templates/env.postgres.example`.
 - [ ] Checked-in topology profiles and release env files do not define per-app PostgreSQL database names, usernames, passwords, or schemas that differ from the unified claw-router profile.
@@ -1302,15 +1303,15 @@ RPC runtime variables are private process variables unless explicitly documented
 
 | Variable | Visibility | Required | Description |
 | --- | --- | --- | --- |
-| `SDKWORK_<APP>_RPC_ENABLED` | private | MAY | Enables the app/domain RPC server. |
-| `SDKWORK_<APP>_RPC_BIND_ADDR` | private | SHOULD when RPC is enabled | Bind address such as `127.0.0.1:50051` for standalone desktop/dev targets or `0.0.0.0:50051` behind approved ingress. |
-| `SDKWORK_<APP>_RPC_PUBLIC_ENDPOINT` | private/public by deployment | MAY | Endpoint published to generated external RPC clients. |
-| `SDKWORK_<APP>_RPC_TLS_ENABLED` | private | SHOULD for production | Enables server TLS. |
-| `SDKWORK_<APP>_RPC_MTLS_ENABLED` | private | SHOULD for service-to-service production | Requires client certificates. |
-| `SDKWORK_<APP>_RPC_REFLECTION_ENABLED` | private | MAY | Enables gRPC reflection. Must be disabled or access-controlled in public production. |
-| `SDKWORK_<APP>_RPC_HEALTH_ENABLED` | private | SHOULD | Enables gRPC health service. |
-| `SDKWORK_<APP>_RPC_GRPC_WEB_ENABLED` | private | MAY | Enables gRPC-Web bridge for approved browser clients. |
-| `SDKWORK_<APP>_RPC_DEFAULT_DEADLINE_MS` | private | MAY | Default client/server deadline in milliseconds. |
+| `SDKWORK_<APPLICATION_CODE>_RPC_ENABLED` | private | MAY | Enables the app/domain RPC server. |
+| `SDKWORK_<APPLICATION_CODE>_RPC_BIND_ADDR` | private | SHOULD when RPC is enabled | Bind address such as `127.0.0.1:50051` for standalone desktop/dev targets or `0.0.0.0:50051` behind approved ingress. |
+| `SDKWORK_<APPLICATION_CODE>_RPC_PUBLIC_ENDPOINT` | private/public by deployment | MAY | Endpoint published to generated external RPC clients. |
+| `SDKWORK_<APPLICATION_CODE>_RPC_TLS_ENABLED` | private | SHOULD for production | Enables server TLS. |
+| `SDKWORK_<APPLICATION_CODE>_RPC_MTLS_ENABLED` | private | SHOULD for service-to-service production | Requires client certificates. |
+| `SDKWORK_<APPLICATION_CODE>_RPC_REFLECTION_ENABLED` | private | MAY | Enables gRPC reflection. Must be disabled or access-controlled in public production. |
+| `SDKWORK_<APPLICATION_CODE>_RPC_HEALTH_ENABLED` | private | SHOULD | Enables gRPC health service. |
+| `SDKWORK_<APPLICATION_CODE>_RPC_GRPC_WEB_ENABLED` | private | MAY | Enables gRPC-Web bridge for approved browser clients. |
+| `SDKWORK_<APPLICATION_CODE>_RPC_DEFAULT_DEADLINE_MS` | private | MAY | Default client/server deadline in milliseconds. |
 
 Rules:
 

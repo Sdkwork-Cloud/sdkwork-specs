@@ -11,13 +11,13 @@ This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to 
 Canonical app-root iOS package shape:
 
 ```text
-apps/sdkwork-<product>-ios-mobile/
+apps/sdkwork-<application-code>-ios-mobile/
   packages/
-    sdkwork-<product>-ios-mobile-core/
-    sdkwork-<product>-ios-mobile-commons/
-    sdkwork-<product>-ios-mobile-shell/
-    sdkwork-<product>-ios-mobile-<capability>/
-    sdkwork-<product>-ios-mobile-console-<capability>/
+    sdkwork-<application-code>-ios-mobile-core/
+    sdkwork-<application-code>-ios-mobile-commons/
+    sdkwork-<application-code>-ios-mobile-shell/
+    sdkwork-<application-code>-ios-mobile-<capability>/
+    sdkwork-<application-code>-ios-mobile-console-<capability>/
 ```
 
 Optional shared iOS package shape:
@@ -37,8 +37,8 @@ packages/ios-native/
 
 Rules:
 
-- iOS app UI `MUST` live in normalized iOS application packages such as `apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>` or approved shared iOS package families such as `packages/ios-native/<domain>/<package>`.
-- iOS user-console UI `MUST` live in `apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- iOS app UI `MUST` live in normalized iOS application packages such as `apps/sdkwork-<application-code>-ios-mobile/packages/sdkwork-<application-code>-ios-mobile-<capability>` or approved shared iOS package families such as `packages/ios-native/<domain>/<package>`.
+- iOS user-console UI `MUST` live in `apps/sdkwork-<application-code>-ios-mobile/packages/sdkwork-<application-code>-ios-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - iOS app and user-console UI `MUST` consume `/app/v3/api` through generated Swift app SDK clients or approved wrappers.
 - iOS app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, Flutter packages, Android packages, or Harmony packages for user-facing workflows.
 - Operator/admin screens require a separately approved iOS admin package family classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
@@ -48,11 +48,11 @@ Rules:
 
 | Package type | Naming | Owns | Must not own |
 | --- | --- | --- | --- |
-| iOS app shell | `sdkwork-<product>-ios-mobile-shell` or app-specific iOS shell | navigation stack/tab/sheet composition, providers, AuthGate, route composition | reusable domain features |
-| iOS foundation package | `sdkwork-<product>-ios-mobile-commons` or `sdkwork-<foundation>-ios-native` | domain-neutral UI primitives, theme adapters, form/list/error primitives, i18n helpers | business-domain shortcuts |
-| iOS domain package | `sdkwork-<product>-ios-mobile-<capability>` or `sdkwork-<capability>-ios-native` | screens, views, view models/controllers, services, repositories, state, localization, route metadata | concrete SDK construction, backend admin logic |
-| iOS user console package | `sdkwork-<product>-ios-mobile-console-<capability>` | user-facing management console screens, views, view models/controllers, services, repositories, state, localization, route metadata | company-internal admin workflows, backend-only operation center behavior |
-| iOS host package | `sdkwork-<product>-ios-mobile-host` or `sdkwork-<host>-ios-native` when needed | iOS platform API adapters, permissions, lifecycle, keychain, camera/QR/share/push/universal links | API business logic |
+| iOS app shell | `sdkwork-<application-code>-ios-mobile-shell` or app-specific iOS shell | navigation stack/tab/sheet composition, providers, AuthGate, route composition | reusable domain features |
+| iOS foundation package | `sdkwork-<application-code>-ios-mobile-commons` or `sdkwork-<foundation>-ios-native` | domain-neutral UI primitives, theme adapters, form/list/error primitives, i18n helpers | business-domain shortcuts |
+| iOS domain package | `sdkwork-<application-code>-ios-mobile-<capability>` or `sdkwork-<capability>-ios-native` | screens, views, view models/controllers, services, repositories, state, localization, route metadata | concrete SDK construction, backend admin logic |
+| iOS user console package | `sdkwork-<application-code>-ios-mobile-console-<capability>` | user-facing management console screens, views, view models/controllers, services, repositories, state, localization, route metadata | company-internal admin workflows, backend-only operation center behavior |
+| iOS host package | `sdkwork-<application-code>-ios-mobile-host` or `sdkwork-<host>-ios-native` when needed | iOS platform API adapters, permissions, lifecycle, keychain, camera/QR/share/push/universal links | API business logic |
 
 Rules:
 
@@ -67,7 +67,7 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>/
+apps/sdkwork-<application-code>-ios-mobile/packages/sdkwork-<application-code>-ios-mobile-<capability>/
   Package.swift
   Sources/
     Sdkwork<Product>IosMobile<Capability>/
@@ -152,7 +152,7 @@ Required coverage for new iOS capabilities:
 
 | Test | Requirement |
 | --- | --- |
-| Package boundary | Static scan proves packages follow `sdkwork-<product>-ios-mobile-*` or approved shared iOS package names and do not deep-import another package's private source. |
+| Package boundary | Static scan proves packages follow `sdkwork-<application-code>-ios-mobile-*` or approved shared iOS package names and do not deep-import another package's private source. |
 | SDK boundary | Static scan proves generated SDK clients or approved wrappers are used and no raw HTTP, manual auth headers, or generated SDK edits were introduced. |
 | Service/view model | Unit tests use fake generated app SDK clients and fake host adapters. |
 | UI states | SwiftUI/UIKit tests or documented fixtures cover loading, empty, validation-error, permission-denied, unavailable, and unknown-error states. |

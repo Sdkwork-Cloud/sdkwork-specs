@@ -4,7 +4,7 @@
 - Scope: cache runtime abstraction, local cache, Redis cache, namespace policy, admin cache management, QR/login temporary state, cache observability
 - Related: `APPLICATION_SPEC.md`, `API_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines the framework-level cache contract for SDKWork applications. Cache is a runtime capability, not an ad hoc business helper. Product modules must use the cache abstraction and namespace policy model instead of reading Redis, process memory, browser storage, deployment profile flags, or runtime target flags directly.
+This standard defines the framework-level cache contract for SDKWork applications. Cache is a runtime capability, not an ad hoc business helper. Application modules must use the cache abstraction and namespace policy model instead of reading Redis, process memory, browser storage, deployment profile flags, or runtime target flags directly.
 
 ## 1. Design Goals
 

@@ -53,14 +53,14 @@ Rules:
 - Shared foundation modules `SHOULD` split contracts, service, UI, feature, runtime, and host only when the split reduces coupling.
 - Small modules may keep these layers in one package, but boundaries must remain visible in folders and exports.
 - A package named `core` must be domain-specific, such as `sdkwork-iam-core-pc-react`; generic `sdkwork-core` is forbidden for new shared domain behavior.
-- PC user console modules `MUST` follow `APP_PC_ARCHITECTURE_SPEC.md` and be split as `sdkwork-<product>-pc-console-<capability>`.
-- PC internal admin modules `MUST` follow `APP_PC_ARCHITECTURE_SPEC.md` and `BACKEND_UI_SPEC.md` and be split as `sdkwork-<product>-pc-admin-<capability>`.
-- H5 application modules `MUST` follow `APP_H5_ARCHITECTURE_SPEC.md` and be split as `sdkwork-<product>-h5-<capability>`, with Capacitor host code in `sdkwork-<product>-h5-capacitor`.
-- Flutter mobile modules `MUST` follow `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` and be split as lower snake case Dart packages such as `sdkwork_<product>_flutter_mobile_<capability>`.
-- Mini program modules `MUST` follow `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` and `APP_MINI_PROGRAM_UI_SPEC.md` and be split as `sdkwork-<product>-mp-<capability>` source packages or approved shared `sdkwork-<capability>-mini-program` packages. Platform `pages` and `subpackages` are projections, not the source module boundary.
-- Android native modules `MUST` follow `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_ANDROID_NATIVE_UI_SPEC.md` and be split as `sdkwork-<product>-android-mobile-<capability>` source packages or approved shared `sdkwork-<capability>-android-native` packages.
-- iOS native modules `MUST` follow `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_IOS_NATIVE_UI_SPEC.md` and be split as `sdkwork-<product>-ios-mobile-<capability>` source packages or approved shared `sdkwork-<capability>-ios-native` packages.
-- Harmony native modules `MUST` follow `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_HARMONY_NATIVE_UI_SPEC.md` and be split as `sdkwork-<product>-harmony-mobile-<capability>` source packages or approved shared `sdkwork-<capability>-harmony-native` packages.
+- PC user console modules `MUST` follow `APP_PC_ARCHITECTURE_SPEC.md` and be split as `sdkwork-<application-code>-pc-console-<capability>`.
+- PC internal admin modules `MUST` follow `APP_PC_ARCHITECTURE_SPEC.md` and `BACKEND_UI_SPEC.md` and be split as `sdkwork-<application-code>-pc-admin-<capability>`.
+- H5 application modules `MUST` follow `APP_H5_ARCHITECTURE_SPEC.md` and be split as `sdkwork-<application-code>-h5-<capability>`, with Capacitor host code in `sdkwork-<application-code>-h5-capacitor`.
+- Flutter mobile modules `MUST` follow `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` and be split as lower snake case Dart packages such as `sdkwork_<application_code>_flutter_mobile_<capability>`.
+- Mini program modules `MUST` follow `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` and `APP_MINI_PROGRAM_UI_SPEC.md` and be split as `sdkwork-<application-code>-mp-<capability>` source packages or approved shared `sdkwork-<capability>-mini-program` packages. Platform `pages` and `subpackages` are projections, not the source module boundary.
+- Android native modules `MUST` follow `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_ANDROID_NATIVE_UI_SPEC.md` and be split as `sdkwork-<application-code>-android-mobile-<capability>` source packages or approved shared `sdkwork-<capability>-android-native` packages.
+- iOS native modules `MUST` follow `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_IOS_NATIVE_UI_SPEC.md` and be split as `sdkwork-<application-code>-ios-mobile-<capability>` source packages or approved shared `sdkwork-<capability>-ios-native` packages.
+- Harmony native modules `MUST` follow `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` and `APP_HARMONY_NATIVE_UI_SPEC.md` and be split as `sdkwork-<application-code>-harmony-mobile-<capability>` source packages or approved shared `sdkwork-<capability>-harmony-native` packages.
 - Standalone backend/admin UI modules `MUST` follow `BACKEND_UI_SPEC.md` and be split by business domain as `@sdkwork/react-backend-<domain>`.
 - `@sdkwork/react-backend-ui` may contain only domain-neutral primitives; backend business pages and services must live in the owning backend domain package.
 
@@ -106,7 +106,7 @@ Forbidden dependencies:
 - `ui` constructing generated SDK clients.
 - `service` importing app route files, page components, or native host implementations.
 - shared modules importing another package through `/src/...` internals.
-- foundation modules depending on product-specific feature modules.
+- foundation modules depending on application-specific feature modules.
 
 ## 4.1 Implementation Layout
 
@@ -181,15 +181,15 @@ Deprecated `openchat` sources `MUST NOT` be used for new appbase modules.
 
 | Architecture | Canonical package family | Required spec |
 | --- | --- | --- |
-| App PC React | `packages/pc-react/<domain>/sdkwork-<capability>-pc-react` or `apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
-| PC user console React | `apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-console-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
-| PC internal admin React | `apps/sdkwork-<product>-pc/packages/sdkwork-<product>-pc-admin-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` |
-| H5 mobile React | `apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-<capability>` or `packages/mobile-react/<domain>/sdkwork-<capability>-mobile-react` | `APP_H5_ARCHITECTURE_SPEC.md`, then `APP_MOBILE_REACT_UI_SPEC.md` |
-| App Flutter | `apps/sdkwork-<product>-flutter-mobile/packages/sdkwork_<product>_flutter_mobile_<capability>` or `packages/mobile-flutter/<domain>/sdkwork_<capability>_flutter` | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_FLUTTER_UI_SPEC.md` |
-| Mini program app | `apps/sdkwork-<product>-mini-program/packages/sdkwork-<product>-mp-<capability>` or `packages/mini-program/<domain>/sdkwork-<capability>-mini-program` | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md` |
-| Android native app | `apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>` or `packages/android-native/<domain>/sdkwork-<capability>-android-native` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md` |
-| iOS native app | `apps/sdkwork-<product>-ios-mobile/packages/sdkwork-<product>-ios-mobile-<capability>` or `packages/ios-native/<domain>/sdkwork-<capability>-ios-native` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md` |
-| Harmony native app | `apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>` or `packages/harmony-native/<domain>/sdkwork-<capability>-harmony-native` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md` |
+| App PC React | `packages/pc-react/<domain>/sdkwork-<capability>-pc-react` or `apps/sdkwork-<application-code>-pc/packages/sdkwork-<application-code>-pc-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
+| PC user console React | `apps/sdkwork-<application-code>-pc/packages/sdkwork-<application-code>-pc-console-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `APP_PC_REACT_UI_SPEC.md` |
+| PC internal admin React | `apps/sdkwork-<application-code>-pc/packages/sdkwork-<application-code>-pc-admin-<capability>` | `APP_PC_ARCHITECTURE_SPEC.md`, then `BACKEND_UI_SPEC.md` |
+| H5 mobile React | `apps/sdkwork-<application-code>-h5/packages/sdkwork-<application-code>-h5-<capability>` or `packages/mobile-react/<domain>/sdkwork-<capability>-mobile-react` | `APP_H5_ARCHITECTURE_SPEC.md`, then `APP_MOBILE_REACT_UI_SPEC.md` |
+| App Flutter | `apps/sdkwork-<application-code>-flutter-mobile/packages/sdkwork_<application_code>_flutter_mobile_<capability>` or `packages/mobile-flutter/<domain>/sdkwork_<capability>_flutter` | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_FLUTTER_UI_SPEC.md` |
+| Mini program app | `apps/sdkwork-<application-code>-mini-program/packages/sdkwork-<application-code>-mp-<capability>` or `packages/mini-program/<domain>/sdkwork-<capability>-mini-program` | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, then `APP_MINI_PROGRAM_UI_SPEC.md` |
+| Android native app | `apps/sdkwork-<application-code>-android-mobile/packages/sdkwork-<application-code>-android-mobile-<capability>` or `packages/android-native/<domain>/sdkwork-<capability>-android-native` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_ANDROID_NATIVE_UI_SPEC.md` |
+| iOS native app | `apps/sdkwork-<application-code>-ios-mobile/packages/sdkwork-<application-code>-ios-mobile-<capability>` or `packages/ios-native/<domain>/sdkwork-<capability>-ios-native` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_IOS_NATIVE_UI_SPEC.md` |
+| Harmony native app | `apps/sdkwork-<application-code>-harmony-mobile/packages/sdkwork-<application-code>-harmony-mobile-<capability>` or `packages/harmony-native/<domain>/sdkwork-<capability>-harmony-native` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, then `APP_HARMONY_NATIVE_UI_SPEC.md` |
 | Standalone backend/admin React | `apps/sdkwork-backend-react-web/packages/sdkwork-react-backend-<domain>` | `BACKEND_UI_SPEC.md` |
 
 Rules:

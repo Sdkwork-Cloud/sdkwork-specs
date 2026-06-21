@@ -65,15 +65,15 @@ Minimum surface block pattern:
 ```json
 "application.public-ingress": {
   "connectivityPlane": "application",
-  "bindEnv": "SDKWORK_<APP>_APPLICATION_PUBLIC_INGRESS_BIND",
-  "httpUrlEnv": "SDKWORK_<APP>_APPLICATION_PUBLIC_HTTP_URL",
-  "clientHttpEnv": "VITE_SDKWORK_<APP>_APPLICATION_PUBLIC_HTTP_URL"
+  "bindEnv": "SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_INGRESS_BIND",
+  "httpUrlEnv": "SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL",
+  "clientHttpEnv": "VITE_SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL"
 },
 "platform.api-gateway": {
   "connectivityPlane": "platform",
-  "httpUrlEnv": "SDKWORK_<APP>_PLATFORM_API_GATEWAY_HTTP_URL",
-  "clientHttpEnv": "VITE_SDKWORK_<APP>_PLATFORM_API_GATEWAY_HTTP_URL",
-  "autostartEnv": "SDKWORK_<APP>_PLATFORM_API_GATEWAY_AUTOSTART"
+  "httpUrlEnv": "SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL",
+  "clientHttpEnv": "VITE_SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL",
+  "autostartEnv": "SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_AUTOSTART"
 }
 ```
 
@@ -103,8 +103,8 @@ Rules:
 1. Parse `--deployment-profile` and `--service-layout`, or use a fixed default profile id.
 2. Load `configs/topology/<profile-id>.env` from the adapter.
 3. Merge `process.env`, profile env, and optional database env.
-4. Set `SDKWORK_<APP>_DEPLOYMENT_PROFILE` to `standalone` or `cloud`.
-5. Set `SDKWORK_<APP>_RUNTIME_TARGET` to `server`, `container`, `desktop`, `browser`, or `test-runner`.
+4. Set `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE` to `standalone` or `cloud`.
+5. Set `SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET` to `server`, `container`, `desktop`, `browser`, or `test-runner`.
 6. Health-check required surfaces before starting Vite, Tauri, backend, workers, or clients.
 7. Inject client env keys from profile; never hardcode `127.0.0.1:*` in orchestrator except as profile defaults in checked-in topology env examples.
 

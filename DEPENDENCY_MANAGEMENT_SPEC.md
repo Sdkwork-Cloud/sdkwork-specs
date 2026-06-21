@@ -239,12 +239,12 @@ Rules:
 - A standalone gateway catalog file is forbidden when it only repeats Cargo dependency/feature data
   or existing SDKWork manifest/component/spec data. Adding such a file creates a parallel source of
   truth and is not an approved SDKWork dependency mechanism.
-- Product application servers `MUST NOT` directly compose foundation API runtime crates when the
+- Application servers `MUST NOT` directly compose platform foundation API runtime crates when the
   shared gateway provides that dependency surface. They consume the gateway as an external service
   through a common SDK root or embed the gateway runtime through its public package exports.
-- Product application dev runners and server launch scripts that need shared foundation APIs
+- Application dev runners and server launch scripts that need shared platform foundation APIs
   `SHOULD` start or require the shared gateway as the managed dependency boundary. Their default
-  product-server upstream env must point at the gateway root, not at individual foundation module
+  application-server upstream env must point at the gateway root, not at individual foundation module
   service URLs. Dependency-specific upstream env keys are allowed as explicit split-deployment
   overrides, and tests must make that override status visible.
 - Managed gateway startup `MUST` use the native build command for the gateway application, such as

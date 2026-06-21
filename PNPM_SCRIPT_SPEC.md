@@ -4,7 +4,7 @@
 - Scope: public `package.json#scripts` command names for SDKWork application repositories, application roots, app surface roots, and TypeScript/JavaScript packages
 - Related: `README.md`, `SOUL.md`, `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `RELEASE_SPEC.md`, `TEST_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`
 
-This standard defines the public `pnpm` command surface for SDKWork. It prevents each application from inventing product-prefixed or locally ordered commands such as `drive:dev`, `clawrouter:dev`, or `im:dev`.
+This standard defines the public `pnpm` command surface for SDKWork. It prevents each application from inventing application-code-prefixed or locally ordered commands such as `drive:dev`, `clawrouter:dev`, or `im:dev`.
 
 The command name must describe the action and standard runtime axis. Product-specific implementation belongs behind a standard dispatcher, manifest, topology profile, workflow config, or internal runner script.
 
@@ -14,8 +14,8 @@ Rules:
 
 - SDKWork automation `MUST` be able to run common application tasks without knowing the product name.
 - Repository root commands `MUST` use one public vocabulary across applications.
-- Product names `MUST NOT` be the first segment of public root scripts.
-- Application differences `MUST` be expressed through `runtimeTarget`, `database`, `serviceLayout`, `deploymentProfile`, `environment`, manifests, and topology profiles, not through product-prefixed script names.
+- Application-code tokens `MUST NOT` be the first segment of public root scripts.
+- Application differences `MUST` be expressed through `runtimeTarget`, `database`, `serviceLayout`, `deploymentProfile`, `environment`, manifests, and topology profiles, not through application-code-prefixed script names.
 - Command examples in standards, README files, agent instructions, and runbooks `MUST` use this standard vocabulary.
 
 ## 2. Command Layers
@@ -33,7 +33,7 @@ Rules:
 
 - Repository root commands are the stable automation contract.
 - App surface and package commands may be narrower, but they should still use standard base names such as `dev`, `build`, `typecheck`, `lint`, `test`, and `clean`.
-- Internal runner names may contain product names when the file is product-owned, but those names `MUST NOT` leak into public root script names.
+- Internal runner names may contain product names when the file is application-owned, but those names `MUST NOT` leak into public root script names.
 - Root commands `SHOULD` call a standard dispatcher such as `node scripts/sdkwork-command.mjs ...` or a thin equivalent wrapper.
 
 ## 3. Required Root Commands
@@ -124,7 +124,7 @@ smoke
 Rules:
 
 - Use `api`, not `apis`, for new root scripts.
-- Use `sdk`, not product-specific SDK prefixes such as `file-sdk`, for cross-application SDK generation and verification commands. Domain-specific package commands may keep narrower names inside the owning package.
+- Use `sdk`, not application-specific SDK prefixes such as `file-sdk`, for cross-application SDK generation and verification commands. Domain-specific package commands may keep narrower names inside the owning package.
 - Runtime targets `MUST` be exposed through action-first scripts such as `dev:browser`,
   `dev:desktop`, `build:desktop`, `build:container`, `build:android-native`,
   `build:ios-native`, `dev:flutter-android`, and `release:package:mini-program`.
@@ -218,7 +218,7 @@ Rules:
 - `web`, `mobile`, `native`, and `docker` `MUST NOT` be used as deployment profile or runtime-target aliases.
 - `dev`, `test`, `staging`, and `prod` may appear only as script/file profile aliases. Runtime config must normalize them to `development`, `test`, `staging`, and `production`.
 
-## 6. Forbidden Product Prefixes
+## 6. Forbidden Application-Code Prefixes
 
 Repository root public scripts `MUST NOT` start with a product or repository-specific token.
 
@@ -231,9 +231,9 @@ im:dev
 im:dev:desktop
 clawrouter:dev
 clawrouter:plan
-<product>:dev
-<product>:build
-<product>:release
+<application-code>:dev
+<application-code>:build
+<application-code>:release
 ```
 
 Migration examples:
@@ -261,7 +261,7 @@ Migration examples:
 | `im:dev` | `dev` |
 | `im:dev:desktop` | `dev:desktop` |
 
-Unreleased applications `MUST` delete legacy product-prefixed scripts rather than preserve compatibility aliases. A temporary migration branch may use `legacy:<product>:<command>` only when a migration plan names the removal date and validation emits a warning.
+Unreleased applications `MUST` delete legacy application-code-prefixed scripts rather than preserve compatibility aliases. A temporary migration branch may use `legacy:<application-code>:<command>` only when a migration plan names the removal date and validation emits a warning.
 
 ## 7. Gateway Commands
 
@@ -311,7 +311,7 @@ Rules:
 
 - Bare `release` is not a canonical required command. Repositories may keep it only as a documented aggregate that calls canonical `release:*` phases.
 - Use `release:build:desktop` or `release:package:desktop`, not `release:desktop`.
-- Environment selection belongs in config/profile flags or runtime config, not in product-specific release command names.
+- Environment selection belongs in config/profile flags or runtime config, not in application-specific release command names.
 
 Deploy scripts `MUST` use:
 
@@ -338,7 +338,7 @@ Rules:
 - The dispatcher `MUST` print or pass normalized `deploymentProfile`, `runtimeTarget`, `serviceLayout`, and lifecycle environment when they affect runtime behavior.
 - The dispatcher `MUST` fail fast on unknown standard commands.
 - The dispatcher `MUST NOT` accept retired public axis values such as `self-hosted` or `cloud-hosted`.
-- Existing product runners such as `scripts/<product>-dev.mjs` may remain as internal implementation details.
+- Existing product runners such as `scripts/<application-code>-dev.mjs` may remain as internal implementation details.
 
 ## 10. Validation
 
@@ -360,7 +360,7 @@ pnpm script validation `MUST` check:
   `alignment:*`, `apis:*`, `file-sdk:*`, or `prepare:*`.
 - Standards, `README.md`, `AGENTS.md`, active runbook examples, `sdkwork.app.config.json`,
   `sdkwork.workflow.json`, active `specs/*.json`, and Tauri config command hooks do not
-  introduce product-prefixed public root commands, platform/tool-first runtime aliases,
+  introduce application-code-prefixed public root commands, platform/tool-first runtime aliases,
   retired deployment flags such as `--hosting self-hosted`, or retired command
   order such as `gateway:cloud:bundle`.
 - Active runner scripts under `scripts/` and `tools/` do not invoke or
@@ -380,7 +380,7 @@ Validation SHOULD provide a migration suggestion for every rejected script name.
 
 - [ ] Repository root exposes `dev`, `build`, `test`, `check`, `verify`, and `clean`.
 - [ ] Capability-specific root commands exist for release, deploy, API, SDK, database, gateway, topology, and supply-chain workflows when those capabilities exist.
-- [ ] No repository root public script starts with a product prefix such as `drive`, `im`, or `clawrouter`.
+- [ ] No repository root public script starts with a application-code prefix such as `drive`, `im`, or `clawrouter`.
 - [ ] Runtime-target commands are action-first, for example `dev:browser`, `dev:desktop`, `build:desktop`, `build:container`, `build:android-native`, `build:ios-native`, and `build:mini-program`; no public script uses platform/tool-first aliases such as `browser:*`, `desktop:*`, `tauri:*`, `docker:*`, `android:*`, `ios:*`, `harmony:*`, `flutter:*`, `mini-program:*`, or `*:tauri`.
 - [ ] Root `dev:browser` and `dev:desktop` default to
       `postgres:unified-process:standalone`; SQLite, split-services, and cloud

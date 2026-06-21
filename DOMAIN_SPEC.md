@@ -41,7 +41,7 @@ The same concept must not appear as `identity` in one surface, `user_center` in 
 | --- | --- | --- |
 | `iam` | Tenant, organization, user, authentication, authorization, policy, security/audit events | users, sessions, roles, permissions |
 | `platform` | App registry, platform catalog, feature flags, runtime registration | apps, manifests, environments |
-| `system` | Product settings, notifications, help, diagnostics | settings, preferences |
+| `system` | Application settings, notifications, help, diagnostics | settings, preferences |
 | `drive` | File storage, spaces, nodes, upload sessions, download grants, object storage providers, storage metadata | Drive spaces, nodes, files, folders, upload sessions |
 | `content` | Documents, assets, media publishing, editors, content workflows that use Drive for file storage | articles, pages, media publishing |
 | `communication` | Conversations, contacts, channels, inboxes, notifications | messages, threads |
@@ -54,11 +54,37 @@ The same concept must not appear as `identity` in one surface, `user_center` in 
 Rules:
 
 - A new domain `MUST` be added to this catalog or an app-local extension catalog before APIs or tables are created.
-- A new domain `MUST` declare whether it is shared foundation, product feature, integration adapter, or app-local extension.
+- A new domain `MUST` declare whether it is shared foundation, application feature, integration adapter, or app-local extension.
 - A shared foundation domain `MUST` target Java/Rust contract parity when it
   participates in standalone/cloud deployment profiles or multiple runtime
   targets.
 - File storage work uses the `drive` domain and `DRIVE_SPEC.md`. Other domains may reference Drive resources, but they must not take ownership of storage lifecycle.
+
+### 3.1 Commerce Capability Tokens
+
+Within domain `commerce`, these capability tokens are canonical and must not be collapsed into `product`:
+
+| Capability | Owns | Example packages or route crates | Must not mean |
+| --- | --- | --- | --- |
+| `shop` | Shop configuration, brands, categories, shop staff | `@sdkwork/react-backend-shop` | application code or SDKWork repository |
+| `catalog` | Public or browsable catalog trees, navigation catalog, open-api catalog surfaces | `sdkwork-router-catalog-open-api` | i18n message catalog |
+| `merchandise` | Sellable-item master data, SKU, attributes, merchandise admin | `sdkwork-commerce-merchandise-service`, `sdkwork-router-merchandise-app-api`, `@sdkwork/react-backend-merchandise` | application entrypoint crate suffix `product` |
+
+Rules:
+
+- Retired commerce capability token `product` must converge to `merchandise` per `MIGRATION_SPEC.md`.
+- `catalog` and `merchandise` are sibling capabilities. Do not use `product` as a catch-all for both.
+- `shop`, `catalog`, and `merchandise` remain inside domain `commerce` for API tags, permissions, and database prefixes unless a governance exception splits them.
+
+### 3.2 `platform` Domain Vs Connectivity Plane
+
+Rules:
+
+- Domain `platform` in this file means the **bounded context** for app registry, manifests, and runtime registration.
+- Connectivity plane `platform` in `APP_RUNTIME_TOPOLOGY_NAMING.md` means **shared SDKWork ingress** for IAM, Drive, and other foundation APIs.
+- Package names, database prefixes, and API tags must use domain `platform` only for the bounded context.
+- Topology env keys such as `SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_*` refer to the connectivity plane, not the domain catalog entry.
+- Do not name application-line packages `sdkwork-<application-code>-platform-*` when the work belongs to domain `platform`; use domain-owned packages or dependency SDKs instead.
 
 ## 4. Bounded Context Record
 
@@ -93,7 +119,7 @@ rust_parity: required
 Rules:
 
 - The record `MUST` identify owner, prefix, API tags, SDK namespaces, frontend packages, capabilities, dependencies, and parity requirements.
-- Domain dependencies `MUST` point inward to more stable domains. `iam` and `platform` should not depend on product feature domains.
+- Domain dependencies `MUST` point inward to more stable domains. `iam` and `platform` should not depend on application feature domains.
 - Cyclic domain dependencies are forbidden.
 
 ## 5. Model Boundary Rules

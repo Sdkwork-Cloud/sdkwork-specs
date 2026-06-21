@@ -1,0 +1,319 @@
+#!/usr/bin/env node
+/**
+ * Validates SDKWork identity and naming terminology in standards and optional consumer roots.
+ * See NAMING_SPEC.md §0 and MIGRATION_SPEC.md §8.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
+
+const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+const IGNORE_DIRS = new Set(['node_modules', '.git', 'artifacts']);
+const SCAN_EXTENSIONS = new Set(['.md', '.json', '.mjs', '.ts', '.tsx', '.yaml', '.yml']);
+
+const ALLOW_PATH_PARTS = new Set([
+  'migrate-identity-terminology.mjs',
+  'check-identity-naming.mjs',
+  'check-unified-postgres-profile.mjs',
+  'unify-postgres-profile.mjs',
+]);
+
+function usage() {
+  return [
+    'Usage: node tools/check-identity-naming.mjs [--root <path>] [--mode standards|consumer]',
+    '',
+    'standards: scan sdkwork-specs normative markdown (default when --root is specs root)',
+    'consumer: scan repository packages/crates for retired naming patterns',
+  ].join('\n');
+}
+
+function fail(message, details = []) {
+  console.error(`identity naming failed: ${message}`);
+  for (const detail of details) {
+    console.error(`- ${detail}`);
+  }
+  process.exit(1);
+}
+
+function walk(dir, files = []) {
+  if (!fs.existsSync(dir)) return files;
+  for (const name of fs.readdirSync(dir)) {
+    if (IGNORE_DIRS.has(name)) continue;
+    const full = path.join(dir, name);
+    const stat = fs.statSync(full);
+    if (stat.isDirectory()) walk(full, files);
+    else files.push(full);
+  }
+  return files;
+}
+
+function relative(root, file) {
+  return path.relative(root, file) || file;
+}
+
+function lineNumber(text, index) {
+  return text.slice(0, index).split('\n').length;
+}
+
+function scanText(file, text, rules, root) {
+  const issues = [];
+  const rel = relative(root, file);
+  for (const rule of rules) {
+    if (rule.onlySpecs && !rel.endsWith('_SPEC.md') && rel !== 'README.md') continue;
+    let from = 0;
+    while (from < text.length) {
+      const match = rule.pattern.exec(text.slice(from));
+      if (!match) break;
+      const index = from + match.index;
+      const line = lineNumber(text, index);
+      const snippet = text.slice(index, index + 80).split('\n')[0];
+      if (rule.allow?.(snippet, rel, line, text, index)) {
+        from = index + match[0].length;
+        continue;
+      }
+      issues.push(`${rel}:${line}: ${rule.message} (${snippet.trim()})`);
+      from = index + match[0].length;
+    }
+  }
+  return issues;
+}
+
+function isLegacyTableRow(rel, line, text, index) {
+  if (!rel.endsWith('MIGRATION_SPEC.md') && !rel.endsWith('NAMING_SPEC.md')) return false;
+  const lineStart = text.lastIndexOf('\n', index) + 1;
+  const lineEnd = text.indexOf('\n', index);
+  const lineText = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
+  if (rel.endsWith('MIGRATION_SPEC.md') && lineText.trimStart().startsWith('|')) return true;
+  if (rel.endsWith('NAMING_SPEC.md') && lineText.trimStart().startsWith('|')) return true;
+  return (
+    lineText.includes('Retired synonyms') ||
+    lineText.includes('sdkwork-router-product-*')
+  );
+}
+
+function isAllowedContext(snippet, rel, line, text, index) {
+  return (
+    /production/u.test(snippet) ||
+    /product name/u.test(snippet) ||
+    /product-owned internal/u.test(snippet) ||
+    /`product:\*`/u.test(snippet) ||
+    /namespace.*product/u.test(snippet) ||
+    /Retired commerce capability token `product`/u.test(snippet) ||
+    /forbidden generic suffix `product`/u.test(snippet) ||
+    /sdkwork-<application-code>-product/u.test(snippet) ||
+    isLegacyTableRow(rel, line, text, index)
+  );
+}
+
+const standardsRules = [
+  {
+    pattern: /<product>/gu,
+    message: 'retired placeholder <product>; use <application-code> or <application_code>',
+    allow: (snippet, rel, line, text, index) => isAllowedContext(snippet, rel, line, text, index),
+    onlySpecs: true,
+  },
+  {
+    pattern: /sdkwork-<app>-/gu,
+    message: 'retired placeholder sdkwork-<app>-*; use sdkwork-<application-code>-*',
+    onlySpecs: true,
+  },
+  {
+    pattern: /sdkwork-router-product-/gu,
+    message: 'retired route crate prefix router-product; use router-merchandise',
+  },
+  {
+    pattern: /react-backend-product/gu,
+    message: 'retired backend package react-backend-product; use react-backend-merchandise',
+  },
+  {
+    pattern: /commerce-product-service/gu,
+    message: 'retired commerce-product-service; use commerce-merchandise-service',
+  },
+  {
+    pattern: /-(?:pc|h5)-product(?:[^a-z]|$)/gu,
+    message: 'retired client package suffix -pc-product/-h5-product; use -merchandise or another capability',
+    allow: (snippet) => snippet.includes('application-code>-product'),
+  },
+  {
+    pattern: /product-specific/gu,
+    message: 'retired product-specific; use application-specific',
+    allow: (snippet, rel, line, text, index) => isAllowedContext(snippet, rel, line, text, index),
+  },
+  {
+    pattern: /product-prefixed/gu,
+    message: 'retired product-prefixed; use application-code-prefixed',
+    allow: (snippet) => snippet.includes('product-prefix') && snippet.includes('deprecated'),
+  },
+  {
+    pattern: /Product repository/gu,
+    message: 'retired Product repository; use SDKWork repository',
+  },
+  {
+    pattern: /product code/giu,
+    message: 'retired product code; use application code',
+    allow: (snippet, rel, line, text, index) => isAllowedContext(snippet, rel, line, text, index),
+  },
+  {
+    pattern: /sdkwork\/<app>/gu,
+    message: 'retired path sdkwork/<app>; use sdkwork/<application-code>',
+    onlySpecs: true,
+  },
+  {
+    pattern: /SDKWORK_<APP>_/gu,
+    message: 'retired env segment SDKWORK_<APP>_; use SDKWORK_<APPLICATION_CODE>_',
+    allow: (snippet) => snippet.includes('APPLICATION_CODE'),
+    onlySpecs: true,
+  },
+  {
+    pattern: /PRODUCT_OR_PLATFORM/gu,
+    message: 'retired env formula PRODUCT_OR_PLATFORM; use PLATFORM_OR_APPLICATION_CODE',
+    onlySpecs: true,
+  },
+  {
+    pattern: /Product apps/gu,
+    message: 'retired Product apps; use Consuming applications or application roots',
+  },
+  {
+    pattern: /product apps/gu,
+    message: 'retired product apps; use consuming applications',
+  },
+  {
+    pattern: /Product application/gu,
+    message: 'retired Product application; use Application or application root',
+    allow: (snippet) => /Product application-owned/i.test(snippet),
+  },
+  {
+    pattern: /product prefix/giu,
+    message: 'retired product prefix; use application-code prefix',
+    allow: (snippet, rel, line, text, index) =>
+      isLegacyTableRow(rel, line, text, index) || /Forbidden Application-Code Prefixes/i.test(text),
+  },
+  {
+    pattern: /product approval/giu,
+    message: 'retired product approval; use governance approval',
+  },
+  {
+    pattern: /sdkwork-identity-/giu,
+    message: 'forbidden sdkwork-identity-* package/crate; domain is iam',
+  },
+  {
+    pattern: /domain:\s*identity/giu,
+    message: 'forbidden domain identity; use iam',
+  },
+  {
+    pattern: /Product app-api/gu,
+    message: 'retired Product app-api qualifier; use app-api',
+  },
+  {
+    pattern: /product app-api/gu,
+    message: 'retired product app-api qualifier; use app-api',
+  },
+  {
+    pattern: /shared foundation gateway/giu,
+    message: 'ambiguous shared foundation gateway; use platform connectivity-plane gateway',
+    allow: (snippet) => snippet.includes('platform connectivity-plane'),
+  },
+  {
+    pattern: /product adapter/giu,
+    message: 'retired product adapter; use application-line adapter',
+    allow: (snippet, rel, line, text, index) => isLegacyTableRow(rel, line, text, index),
+  },
+  {
+    pattern: /product same-origin/giu,
+    message: 'retired product same-origin; use application same-origin',
+  },
+  {
+    pattern: /product copy/giu,
+    message: 'retired product copy; use L1 brand/store copy or message-catalog content',
+    allow: (snippet, rel, line, text, index) => isLegacyTableRow(rel, line, text, index),
+  },
+  {
+    pattern: /product OpenAPI/giu,
+    message: 'retired product OpenAPI; use application-owned OpenAPI',
+  },
+];
+
+const consumerRules = [
+  {
+    pattern: /sdkwork-router-product-/gu,
+    message: 'retired route crate prefix router-product; use router-merchandise',
+  },
+  {
+    pattern: /react-backend-product/gu,
+    message: 'retired backend package react-backend-product; use react-backend-merchandise',
+  },
+  {
+    pattern: /commerce-product-service/gu,
+    message: 'retired commerce-product-service; use commerce-merchandise-service',
+  },
+  {
+    pattern: /sdkwork-[a-z0-9]+-(?:pc|h5)-product(?:[^a-z]|$)/gu,
+    message: 'retired client package *-pc-product/*-h5-product; migrate to *-merchandise',
+  },
+];
+
+function scanStandards(root) {
+  const files = walk(root).filter((file) => {
+    const ext = path.extname(file);
+    if (!SCAN_EXTENSIONS.has(ext)) return false;
+    const rel = relative(root, file);
+    if (ALLOW_PATH_PARTS.has(path.basename(file))) return false;
+    if (rel.includes('templates/env.postgres')) return false;
+    return ext === '.md' || rel.includes('tools/');
+  });
+  const issues = [];
+  for (const file of files) {
+    const rel = relative(root, file);
+    if (rel === 'MIGRATION_SPEC.md') continue;
+    const text = fs.readFileSync(file, 'utf8');
+    issues.push(...scanText(file, text, standardsRules, root));
+  }
+  return issues;
+}
+
+function scanConsumer(root) {
+  const targets = [];
+  for (const sub of ['packages', 'apps', 'crates', 'sdks']) {
+    const dir = path.join(root, sub);
+    if (fs.existsSync(dir)) targets.push(...walk(dir));
+  }
+  const issues = [];
+  for (const file of targets) {
+    const ext = path.extname(file);
+    if (!['.json', '.toml', '.rs', '.ts', '.tsx', '.md', '.yaml', '.yml'].includes(ext)) continue;
+    const text = fs.readFileSync(file, 'utf8');
+    issues.push(...scanText(file, text, consumerRules, root));
+  }
+  return issues;
+}
+
+const parsed = parseArgs({
+  options: {
+    root: { type: 'string' },
+    mode: { type: 'string' },
+    help: { type: 'boolean', short: 'h' },
+  },
+  allowPositionals: false,
+});
+
+if (parsed.values.help) {
+  console.log(usage());
+  process.exit(0);
+}
+
+const root = path.resolve(parsed.values.root || SPECS_ROOT);
+const mode =
+  parsed.values.mode ||
+  (path.resolve(root) === path.resolve(SPECS_ROOT) ? 'standards' : 'consumer');
+
+const issues = mode === 'standards' ? scanStandards(root) : scanConsumer(root);
+
+if (issues.length > 0) {
+  fail(`found ${issues.length} identity naming issue(s)`, issues.slice(0, 100));
+}
+
+console.log(
+  `identity naming ok: ${path.relative(process.cwd(), root) || root} (${mode} mode)`,
+);

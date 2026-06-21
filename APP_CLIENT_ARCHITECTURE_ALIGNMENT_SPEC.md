@@ -38,13 +38,13 @@ SDKWork client roots use stable architecture identifiers.
 
 | Client architecture | Application root | Package segment | Root standard |
 | --- | --- | --- | --- |
-| PC browser/desktop/large-screen tablet | `apps/sdkwork-<product>-pc` | `pc` | `APP_PC_ARCHITECTURE_SPEC.md` |
-| H5 mobile plus Capacitor iOS/Android | `apps/sdkwork-<product>-h5` | `h5` | `APP_H5_ARCHITECTURE_SPEC.md` |
-| Flutter mobile app | `apps/sdkwork-<product>-flutter-mobile` | `flutter-mobile` root segment; `flutter_mobile` Dart package segment | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| Mini program | `apps/sdkwork-<product>-mini-program` | `mp` unless a platform-specific profile is approved | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` |
-| Native Android mobile app | `apps/sdkwork-<product>-android-mobile` | `android-mobile` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| Native iOS mobile app | `apps/sdkwork-<product>-ios-mobile` | `ios-mobile` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` |
-| Native HarmonyOS mobile app | `apps/sdkwork-<product>-harmony-mobile` | `harmony-mobile` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| PC browser/desktop/large-screen tablet | `apps/sdkwork-<application-code>-pc` | `pc` | `APP_PC_ARCHITECTURE_SPEC.md` |
+| H5 mobile plus Capacitor iOS/Android | `apps/sdkwork-<application-code>-h5` | `h5` | `APP_H5_ARCHITECTURE_SPEC.md` |
+| Flutter mobile app | `apps/sdkwork-<application-code>-flutter-mobile` | `flutter-mobile` root segment; `flutter_mobile` Dart package segment | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| Mini program | `apps/sdkwork-<application-code>-mini-program` | `mp` unless a platform-specific profile is approved | `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md` |
+| Native Android mobile app | `apps/sdkwork-<application-code>-android-mobile` | `android-mobile` | `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| Native iOS mobile app | `apps/sdkwork-<application-code>-ios-mobile` | `ios-mobile` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md` |
+| Native HarmonyOS mobile app | `apps/sdkwork-<application-code>-harmony-mobile` | `harmony-mobile` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` |
 
 Rules:
 
@@ -59,7 +59,7 @@ Rules:
 Every client root should align to this logical structure. Architecture standards may rename entry files to match the language, but responsibilities must remain equivalent.
 
 ```text
-apps/sdkwork-<product>-<client-arch>/
+apps/sdkwork-<application-code>-<client-arch>/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -93,17 +93,17 @@ apps/sdkwork-<product>-<client-arch>/
     shell/
     routes/
   packages/
-    sdkwork-<product>-<arch>-core/
-    sdkwork-<product>-<arch>-commons/
-    sdkwork-<product>-<arch>-shell/
-    sdkwork-<product>-<arch>-<capability>/
-    sdkwork-<product>-<arch>-console-core/
-    sdkwork-<product>-<arch>-console-shell/
-    sdkwork-<product>-<arch>-console-<capability>/
-    sdkwork-<product>-<arch>-admin-core/
-    sdkwork-<product>-<arch>-admin-shell/
-    sdkwork-<product>-<arch>-admin-<capability>/
-    sdkwork-<product>-<arch>-host/
+    sdkwork-<application-code>-<arch>-core/
+    sdkwork-<application-code>-<arch>-commons/
+    sdkwork-<application-code>-<arch>-shell/
+    sdkwork-<application-code>-<arch>-<capability>/
+    sdkwork-<application-code>-<arch>-console-core/
+    sdkwork-<application-code>-<arch>-console-shell/
+    sdkwork-<application-code>-<arch>-console-<capability>/
+    sdkwork-<application-code>-<arch>-admin-core/
+    sdkwork-<application-code>-<arch>-admin-shell/
+    sdkwork-<application-code>-<arch>-admin-<capability>/
+    sdkwork-<application-code>-<arch>-host/
   tests/ or test/
 ```
 
@@ -114,7 +114,7 @@ Rules:
 - `config/host/` owns native, platform, or container-host packaging metadata and permission references. It is not a business runtime config store.
 - `src/bootstrap/` or `lib/bootstrap/` is the concrete composition boundary.
 - `packages/` owns reusable runtime, shell, surface, capability, and host packages.
-- Flutter roots use the same logical package roles, but their physical Dart package names use lower snake case such as `sdkwork_<product>_flutter_mobile_core`.
+- Flutter roots use the same logical package roles, but their physical Dart package names use lower snake case such as `sdkwork_<application_code>_flutter_mobile_core`.
 - Native Android, iOS, and HarmonyOS roots use the same logical package roles with kebab-case SDKWork package directories. Language/toolchain module identifiers may use Kotlin dotted namespaces, Swift PascalCase modules, or ArkTS/ohpm aliases only when they preserve the SDKWork package identity.
 - `tests/` or `test/` owns application-level architecture, config, route, package-boundary, and release verification.
 
@@ -144,7 +144,7 @@ Rules:
 - Shared business behavior across capabilities should use a new explicit domain/capability package or a service/contract package, not a catch-all `commons` package.
 - `core`, `commons`, and `shell` package names are reserved for infrastructure and must not own business pages or business services.
 - Console and admin package families are optional. They should be created only when the product has that surface.
-- Mobile admin packages require explicit product approval and `backend-admin` surface classification because they expose internal operator behavior on portable devices.
+- Mobile admin packages require explicit governance approval and `backend-admin` surface classification because they expose internal operator behavior on portable devices.
 - Packages without a `console` or `admin` role segment are the default app/user-facing package family for that architecture.
 - Console packages are the user-facing management console family. They reuse the default app package shape, service layering, route contribution model, host adapter boundary, i18n structure, and app-api SDK boundary, then insert the `console` role before the concrete capability name.
 - Admin packages are the internal operator backend family. They reuse the same package shape and host/runtime boundaries, insert the `admin` role before the concrete capability name, and map to the `backend-admin` API/SDK boundary.
@@ -196,7 +196,7 @@ Rules:
 - UI components/widgets/pages stay private unless the package intentionally exposes a reusable visual primitive.
 - Services receive explicit runtime inputs: SDK ports, config, host adapters, feature flags, and shared services.
 - View models are package-local unless they are declared as public integration contracts.
-- App-specific visual identity may be passed through design tokens or theme adapters. Shared packages must not import product app shells.
+- App-specific visual identity may be passed through design tokens or theme adapters. Shared packages must not import application app shells.
 
 ## 7. Route Identity And Navigation Alignment
 

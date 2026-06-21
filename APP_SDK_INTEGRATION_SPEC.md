@@ -31,7 +31,7 @@ application root
   -> service/facade package
   -> generated language SDK client or approved wrapper
   -> appbase IAM runtime and global TokenManager
-  -> product app-api/backend-api/open-api SDKs
+  -> app-api/backend-api/open-api SDKs
   -> Rust route/service crates or Java backend controllers
   -> dependency SDKs and reusable modules
 ```
@@ -41,8 +41,8 @@ Rules:
 - An application root `MUST` be a composition layer, not a source-copy layer.
 - App shells `MUST` own routing, providers, runtime config, SDK construction, token/session bootstrap, host adapters, and composition of feature packages.
 - Feature packages `MUST` receive services, ports, generated SDK clients, host adapters, and runtime inputs through explicit injection.
-- Product apps `MUST NOT` copy dependency routes, SDK generated output, appbase IAM packages, appbase DTOs, or dependency service internals into the product repo for convenience.
-- Product apps `MUST NOT` regenerate dependency-owned APIs into product SDK families. Dependency capabilities are consumed through dependency SDK packages, approved composed wrappers, or runtime service interfaces.
+- Consuming applications `MUST NOT` copy dependency routes, SDK generated output, appbase IAM packages, appbase DTOs, or dependency service internals into the application repository for convenience.
+- Consuming applications `MUST NOT` regenerate dependency-owned APIs into application-owned SDK families. Dependency capabilities are consumed through dependency SDK packages, approved composed wrappers, or runtime service interfaces.
 - Cross-app reuse `MUST` happen through published modules, generated SDKs, component specs, `sdkDependencies`, or approved composed facades. It must not happen through imports of another app's private `src` paths.
 - Shared pure contracts may be framework-neutral. UI components, host adapters, and platform-specific runtime code stay in their own architecture family.
 - Services may compose multiple SDK calls into a domain use case, but they `MUST NOT` hide a missing backend capability with raw HTTP or local DTO forks.
@@ -102,7 +102,7 @@ to import backend SDKs. The machine-readable component spec owns that classifica
 Rules:
 
 - PC React admin feature packages that use backend SDKs `MUST` live in a package named
-  `sdkwork-<product>-pc-admin-<capability>` and declare `component.surface: "backend-admin"`.
+  `sdkwork-<application-code>-pc-admin-<capability>` and declare `component.surface: "backend-admin"`.
 - App, console, app auth runtime, shared frontend core, mobile/native/desktop renderer, and app-side
   service packages `MUST NOT` import, construct, export, or wrap application-owned backend SDKs or appbase
   backend SDKs. They may receive app SDK clients, appbase app SDK clients, or approved app-side
@@ -136,9 +136,9 @@ shared SDKWork API gateway instead of being re-integrated by each application se
 Rules:
 
 - An application server `MUST NOT` directly mount appbase, Drive, messaging, IM, RTC,
-  commerce, AIoT, or other foundation API runtime crates when an approved shared gateway already
+  commerce, AIoT, or other platform foundation API runtime crates when an approved shared gateway already
   serves the required dependency surface.
-- The preferred production shape is split/server composition: the product application uses one
+- The preferred production shape is split/server composition: the application uses one
   common SDK root that points at the shared gateway, and the gateway proxies or serves the required
   dependency surfaces.
 - Application dev runners, server launchers, and local all-in-one commands that need shared foundation
@@ -276,7 +276,7 @@ Rules:
 Rust backends participate in composition through route crates, service crates, dependency SDKs, and appbase runtime crates.
 
 ```text
-packages/sdkwork-router-product-app-api
+packages/sdkwork-router-merchandise-app-api
   -> route manifest
   -> sdkwork-commerce-app-api
   -> sdkwork-commerce-app-sdk
@@ -289,7 +289,7 @@ Rules:
 - Rust route crates own route/path configuration, handler binding, and route manifests for one capability and one surface. They do not become frontend path libraries.
 - Application shells aggregate route manifests into project/domain API authorities such as `sdkwork-commerce-app-api`, then generate owner-only SDK families.
 - Rust implementations that expose or validate appbase IAM/session/context
-  behavior `MUST` depend on appbase Rust crates. Product Rust services must not
+  behavior `MUST` depend on appbase Rust crates. Application Rust services must not
   fork appbase auth guards, context extraction, token validation, or bootstrap
   behavior.
 - Protected Rust business routes `MUST` validate dual tokens and inject typed `WebRequestContext`/`AppContext` through `sdkwork-web-framework` according to `WEB_FRAMEWORK_SPEC.md` and `IAM_LOGIN_INTEGRATION_SPEC.md`.
@@ -356,10 +356,10 @@ Rules:
   departments, roles, permissions, policies, tenants, API keys, audit events, or security events
   `MUST` receive an appbase backend API base URL that serves `/backend/v3/api/iam/*`.
 - A consuming application may satisfy that base URL through a common SDK gateway only when the
-  gateway is declared to serve the appbase backend surface, or through the product same-origin
+  gateway is declared to serve the appbase backend surface, or through the application same-origin
   backend only when a production-capable appbase backend router/controller/service adapter is
   mounted and verified in `dependencyApiSurfaces`. The adapter may be appbase-owned or an approved
-  product adapter, but it must be backed by real appbase IAM tables/services or a real upstream.
+  application adapter, but it must be backed by real appbase IAM tables/services or a real upstream.
 - A demo/local appbase backend IAM router, hard-coded seed response, or fake success handler is not
   appbase backend IAM integration. If a command route has no real command store yet, it must fail
   explicitly instead of returning synthetic success or synthetic rows.
@@ -406,13 +406,13 @@ Required checks for app SDK composition:
 Suggested scan categories:
 
 ```text
-rg -n "fetch\\(|axios\\.|Authorization|Access-Token|X-API-Key" apps/<product>
-rg -n "/drive/uploader|/drive/upload_sessions|client\\.uploader|DriveUploaderService|sdkwork_drive_uploader_service" apps/<product>
-rg -n "auth\\.sessions|auth\\.registrations|iam\\.users\\.current|openPlatform\\.qrAuth" apps/<product>
-rg -n "sdkwork-router-.*-(app-api|backend-api|open-api)" apps/<product>/packages
-rg -n "createSdkworkAppbase.*AuthRuntime|setTokenManager|tokenManager|createIamRuntime|createTokenManager|commitSession" apps/<product> apps/sdkwork-appbase
-rg -n "@sdkwork/iam-sdk-adapter|createIamAppSdkAdapter|createIamBackendSdkAdapter" apps/<product>
-rg -n "createTokenManager\\(|new .*TokenManager|setAuthToken|setAccessToken" apps/<product>
+rg -n "fetch\\(|axios\\.|Authorization|Access-Token|X-API-Key" apps/<application-code>
+rg -n "/drive/uploader|/drive/upload_sessions|client\\.uploader|DriveUploaderService|sdkwork_drive_uploader_service" apps/<application-code>
+rg -n "auth\\.sessions|auth\\.registrations|iam\\.users\\.current|openPlatform\\.qrAuth" apps/<application-code>
+rg -n "sdkwork-router-.*-(app-api|backend-api|open-api)" apps/<application-code>/packages
+rg -n "createSdkworkAppbase.*AuthRuntime|setTokenManager|tokenManager|createIamRuntime|createTokenManager|commitSession" apps/<application-code> apps/sdkwork-appbase
+rg -n "@sdkwork/iam-sdk-adapter|createIamAppSdkAdapter|createIamBackendSdkAdapter" apps/<application-code>
+rg -n "createTokenManager\\(|new .*TokenManager|setAuthToken|setAccessToken" apps/<application-code>
 ```
 
 ## 8. Acceptance Checklist
@@ -431,7 +431,7 @@ rg -n "createTokenManager\\(|new .*TokenManager|setAuthToken|setAccessToken" app
 - [ ] The selected UI architecture uses the matching generated SDK language and surface.
 - [ ] Runtime/bootstrap declares or derives an SDK inventory and classifies each SDK credential mode before services are constructed.
 - [ ] Runtime/bootstrap supports one common SDK base URL as the default and supports per-surface or per-SDK overrides for split and external dependency services.
-- [ ] Application servers consume shared foundation APIs through the SDKWork API gateway
+- [ ] Application servers consume shared platform foundation APIs through the SDKWork API gateway
   common SDK root or gateway runtime embedding, instead of directly composing foundation runtime
   crates in each application.
 - [ ] Runtime/bootstrap uses the approved high-level appbase auth runtime/factory for the architecture and does not locally wire low-level IAM SDK adapters in application code.

@@ -26,22 +26,22 @@ Allowed authored Rust crate families:
 | Business service/use case | `sdkwork-<domain>-<capability>-service` | domain models, commands, results, business rules, service ports |
 | SQLx repository implementation | `sdkwork-<domain>-<capability>-repository-sqlx` | database schema constants, row mapping, SQLx queries, repository trait implementation |
 | HTTP route/API adapter | `sdkwork-router-<capability>-<surface>` | paths, routes, handlers, route manifest, API/service mapping |
-| HTTP API server process | `sdkwork-<app>-api-server` | config loading, dependency construction, route mounting, HTTP listener, preflight |
-| In-process service host | `sdkwork-<app>-service-host` | standalone/native service container, no HTTP route mounting |
-| Native/Tauri host | `sdkwork-<app>-native-host` or `sdkwork-<app>-tauri-host` | native commands, host state, platform adapters |
+| HTTP API server process | `sdkwork-<application-code>-api-server` | config loading, dependency construction, route mounting, HTTP listener, preflight |
+| In-process service host | `sdkwork-<application-code>-service-host` | standalone/native service container, no HTTP route mounting |
+| Native/Tauri host | `sdkwork-<application-code>-native-host` or `sdkwork-<application-code>-tauri-host` | native commands, host state, platform adapters |
 | Background job process | `sdkwork-<domain>-<capability>-worker` | jobs, scheduling, queues, retries, cursors, locks |
-| API gateway/proxy | `sdkwork-<app>-gateway` | upstream routing, route precedence, dependency API surface proxying |
+| API gateway/proxy | `sdkwork-<application-code>-gateway` | upstream routing, route precedence, dependency API surface proxying |
 
 Forbidden Rust crate suffixes for new and existing SDKWork Rust crates:
 
-- `sdkwork-<app>-product`
-- `sdkwork-<app>-runtime`
+- `sdkwork-<application-code>-product`
+- `sdkwork-<application-code>-runtime`
 - `sdkwork-<domain>-<capability>-runtime`
-- `sdkwork-<app>-backend`
-- `sdkwork-<app>-core`
-- `sdkwork-<app>-common`
-- `sdkwork-<app>-manager`
-- `sdkwork-<app>-server-runtime`
+- `sdkwork-<application-code>-backend`
+- `sdkwork-<application-code>-core`
+- `sdkwork-<application-code>-common`
+- `sdkwork-<application-code>-manager`
+- `sdkwork-<application-code>-server-runtime`
 
 These names are not legacy-compatible exceptions. Repositories containing them are not compliant
 until the crates are renamed to responsibility-specific names and public references are updated. Do
@@ -148,7 +148,7 @@ Rules:
 Standard HTTP API server process crate layout:
 
 ```text
-crates/sdkwork-<app>-api-server/
+crates/sdkwork-<application-code>-api-server/
   Cargo.toml
   README.md
   src/
@@ -194,7 +194,7 @@ Rules:
 Standard in-process service host crate layout:
 
 ```text
-crates/sdkwork-<app>-service-host/
+crates/sdkwork-<application-code>-service-host/
   Cargo.toml
   README.md
   src/
@@ -230,7 +230,7 @@ Rules:
 Standard native/Tauri host crate layout:
 
 ```text
-crates/sdkwork-<app>-native-host/
+crates/sdkwork-<application-code>-native-host/
   Cargo.toml
   README.md
   src/
@@ -303,7 +303,7 @@ Rules:
 Standard gateway crate layout:
 
 ```text
-crates/sdkwork-<app>-gateway/
+crates/sdkwork-<application-code>-gateway/
   Cargo.toml
   README.md
   src/
@@ -406,7 +406,7 @@ Rules:
 
 Rules:
 
-- Cargo package names use lowercase kebab-case, for example `sdkwork-router-product-app-api`.
+- Cargo package names use lowercase kebab-case, for example `sdkwork-router-merchandise-app-api`.
 - Rust import names use snake_case, for example `sdkwork_routes_product_app_api`.
 - Runnable crate names must use a specific suffix such as `api-server`, `service-host`,
   `native-host`, `worker`, or `gateway`; generic `product` and `runtime` suffixes are forbidden.
@@ -432,7 +432,7 @@ Rules:
 - Shared mutable state must be explicit in state structs or service ports.
 - SQLx queries belong in repository modules, not handlers or route manifests.
 - Tenant, organization, user, request id, trace, and permission context must come from typed request context, not raw headers.
-- IAM session/token lookup for open-api `MUST` live in `sdkwork-iam-web-adapter` or product adapters implementing framework traits; route handlers `MUST NOT` duplicate credential resolution SQL.
+- IAM session/token lookup for open-api `MUST` live in `sdkwork-iam-web-adapter` or application-line adapters implementing framework traits; route handlers `MUST NOT` duplicate credential resolution SQL.
 - Queries comparing logical `instant` columns physically stored as TEXT `MUST` use explicit PostgreSQL casts such as `expires_at::timestamptz > $1::timestamptz` per `DATABASE_SPEC.md` section 8.1.1. `MUST NOT` bind `chrono::DateTime<Utc>` directly against TEXT `instant` columns without cast.
 - Provider SDK calls belong in adapters behind traits or service ports.
 

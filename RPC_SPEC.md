@@ -95,7 +95,7 @@ SDKWork RPC has the same app/backend separation as HTTP plus an internal-only su
 
 | Surface | Proto package segment | Audience | Auth |
 | --- | --- | --- | --- |
-| App RPC | `app.v3` | Product clients, desktop/mobile hosts, standalone/cloud app clients | App auth/session token model. |
+| App RPC | `app.v3` | Application clients, desktop/mobile hosts, standalone/cloud app clients | App auth/session token model. |
 | Backend RPC | `backend.v3` | Admin consoles, operator tooling, backend SDKs | Backend/operator token or service identity. |
 | Internal RPC | `internal.v1` or `internal.v3` | Service-to-service, local host, migration/runtime orchestration | mTLS or explicit standalone/internal trust boundary. |
 | Common RPC | `common.v1` | Shared messages only, no business service ownership | No direct app endpoint. |

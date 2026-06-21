@@ -12,7 +12,7 @@ Rules:
 
 - Protected HTTP APIs `MUST` use the authentication mode declared by their API surface. Protected app-api and backend-api operations require both `AuthToken` and `AccessToken`. Protected open-api operations require `api-key`, `oauth`, or `open-api-flexible` mode according to the route manifest unless an explicitly documented compatibility contract defines a different scheme.
 - Protected RPC methods `MUST` require the equivalent `authorization` and `access-token` metadata unless the method is explicitly public or internal mTLS-only.
-- Product app login/session integration, AuthGate behavior, generated SDK token wiring, logout clearing, and Rust AppContext validation `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`.
+- Application login/session integration, AuthGate behavior, generated SDK token wiring, logout clearing, and Rust AppContext validation `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - Public endpoints `MUST` explicitly declare `security: []`. Public endpoints generated into SDKs that must not receive stored user credentials `MUST` also declare `x-sdkwork-auth-mode: anonymous`, and generated SDKs `MUST` skip automatic credential injection for those operations.
 - Tokens `MUST` be signed or resolved through a trusted server-side session store.
 - Token expiry, revocation, rotation, and audience checks are mandatory for production.
@@ -149,7 +149,7 @@ Rules:
   runtime databases, logs, generated transient outputs, and secret-bearing files `MUST` be ignored.
 - `.sdkwork/` `MUST NOT` contain API keys, auth tokens, passwords, private certificates, private
   keys, provider credentials, local user data, runtime database files, generated SDK transport
-  output, or copied `~/.sdkwork/<app>` runtime state.
+  output, or copied `~/.sdkwork/<application-code>` runtime state.
 - Generated SDK output `.sdkwork/sdkwork-generator-*.json` files are valid only below generated SDK
   output and are not repository workspace secrets or skills.
 

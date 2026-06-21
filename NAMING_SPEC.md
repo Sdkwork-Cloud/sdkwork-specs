@@ -1,10 +1,91 @@
 # Naming Standard
 
-- Version: 1.0
+- Version: 1.4
 - Scope: domains, capabilities, repositories, applications, components, packages, SDK families, API authorities, route crates, database identifiers, files, and test names
 - Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CODE_STYLE_SPEC.md`
 
 This standard is the naming entrypoint for SDKWork. It indexes naming rules that are also governed by more specific specs. If this file conflicts with a more specific root spec, the more specific spec wins and this file must be updated.
+
+## 0. Identity And Terminology
+
+SDKWork names use a fixed identity lattice. Do not collapse these layers into one placeholder such as `product` or `app`.
+
+| Layer | Canonical term | Placeholder | Example | Must not use for this layer |
+| --- | --- | --- | --- | --- |
+| L1 product name | product name | (prose only) | SdkWork Claw Router | paths, packages, crates, env keys |
+| L2 application code | application code | `<application-code>` (kebab-case paths) or `<application_code>` (Dart snake_case) | `commerce`, `router`, `drive` | `product`, bare `app`, repository name, process name |
+| L3 process name | process name | `<process-name>` | `clawrouter` | application code |
+| L4 manifest key | `app.key` | (manifest field, not a path placeholder) | `commerce-pc` | application code alone |
+| L5 repository stem | SDKWork repository | `sdkwork-<application-code>` when they match | `sdkwork-drive` | guaranteed equal to L2 |
+| L6 client architecture | client-arch | `<client-arch>` | `pc`, `h5`, `flutter-mobile` | — |
+| L7 domain | domain | `<domain>` | `commerce`, `iam` | product name |
+| L8 capability | capability | `<capability>` | `cart`, `merchandise` | `product`, `common`, `manager` |
+| L9 API owner | owner code | `<owner-code>` | `sdkwork-commerce` | SDK family name |
+
+Rules:
+
+- `application code` is defined authoritatively in `RUNTIME_DIRECTORY_SPEC.md`. It is the runtime directory and private env stem. Repository names and `app.key` may differ from it; directory names must still use application code, not product display names or repository stems when they differ.
+- `app` in SDKWork already means application root, `app-api`, `app.key`, app/user surface, `apps/`, or PlusApp registration. Do not use bare `<app>` as a naming placeholder.
+- `product` is retired as a naming placeholder. It remains valid only as L1 **product name** in prose, or in the forbidden generic suffix `sdkwork-<application-code>-product`.
+- Commerce sellable-item work uses capability token **`merchandise`**. Public catalog browsing uses **`catalog`**. Shop configuration uses **`shop`**. See `DOMAIN_SPEC.md`.
+- Retired synonyms: `<product>` → `<application-code>`; use `application-specific` instead of retired `product-specific`; use `application-code-prefix` / `application-code-prefixed` instead of retired pnpm prefix terms.
+
+### 0.1 Naming Formula Summary
+
+```text
+apps/sdkwork-<application-code>-<client-arch>/
+sdkwork-<application-code>-<client-arch>-<capability>
+sdkwork_<application_code>_<client_arch>_<capability>    # Dart only
+
+sdkwork-<application-code>-gateway | -api-server | -service-host | -native-host | -tauri-host
+sdkwork-<domain>-<capability>-service
+sdkwork-router-<capability>-<surface>
+sdkwork-<domain>-app-api | sdkwork-<domain>-backend-api | sdkwork-<domain>-open-api
+```
+
+Environment variables:
+
+```text
+SDKWORK_<APPLICATION_CODE>_<SETTING>           # private runtime; APPLICATION_CODE is uppercase L2
+VITE_<APP_CODE>_<SURFACE>_<SETTING>            # browser-internal; APP_CODE is uppercase L2
+```
+
+### 0.2 Second-Order Ambiguity Registry
+
+After `product`, these words are the most common sources of naming drift. Each row lists allowed meanings and forbidden overloads.
+
+| Word | Allowed meaning(s) | Forbidden or retired overload | Canonical replacement |
+| --- | --- | --- | --- |
+| `app` | `app-api` surface, `app.key`, app/user UI surface, `apps/` directory, PlusApp registration, prose "application root" | bare placeholder `<app>`; path/env token for L2 | `<application-code>` / `application code` |
+| `application` | application root, application-owned API ingress, application packages | shortening L2 to just "application" in package tokens | `application code` for L2; `application-owned` for ingress |
+| `catalog` | commerce browse/category capability; i18n **message catalog**; permission/route **metadata catalog**; DB **catalog** name | generic folder name `catalog/` without domain | `i18n catalog`, `message catalog`, commerce `catalog` capability |
+| `console` | user-facing **management console** package role (`*-console-*`) | company-internal operator UI; `backend-admin`; capability token | `*-console-*` + app-api; internal ops → `*-admin-*` + `backend-admin` |
+| `admin` | package role segment only when paired with `backend-admin` surface rules | bare capability token `admin`; synonym for console | `*-admin-*` packages + `backend-admin` API/SDK |
+| `backend` | `backend-api` surface; `backend-admin` surface; Rust crate suffix only in forbidden list context | vague crate suffix `sdkwork-<application-code>-backend`; capability token | `backend-api`, `backend-admin`, or `sdkwork-<domain>-<capability>-service` |
+| `service` | business **service crate** `sdkwork-<domain>-<capability>-service`; OS/service manager prose | package profile alias for `server`; pnpm `service:*` namespace | package profile `server`; action-first `dev:server` |
+| `server` | `runtimeTarget=server`; package profile `server`; `sdkwork-<application-code>-api-server` | deployment profile; domain name; generic "backend" | `deploymentProfile`, `runtimeTarget`, `api-server` |
+| `platform` | domain `platform`; connectivity plane `platform`; OS platform in package ids | application line name; product name | domain `platform` or plane `platform` — state which |
+| `profile` | full topology profile id; **config profile alias** `dev`/`prod`; GitHub package **profile** segment | lifecycle environment alone; deployment profile alone | `environment`, `deploymentProfile`, `configProfile`, or full profile id |
+| `runtime` | `runtimeTarget`; forbidden crate suffix `*-runtime` | synonym for application or environment | `runtimeTarget`, `environment`, or responsibility-specific crate |
+| `gateway` | `sdkwork-<application-code>-gateway` crate; `gateway:*` pnpm namespace; platform **API gateway** ingress | any HTTP server; SDK family name | `api-server` vs `gateway` vs `platform.api-gateway` — pick one role |
+| `foundation` | shared foundation **domain/module** tier (L3); foundation dependency SDKs | package name `foundation` without domain | `sdkwork-<domain>-*` or `shared foundation module` |
+| `portal` | browser **portal** public config (`PORTAL_PUBLIC_*`, `[portal.public]`); static portal assets | application code; IAM domain | `PORTAL_PUBLIC_*`, `browser public runtime` |
+| `identity` | prose "identity projection" in HTTP headers | domain name instead of `iam` | domain `iam` |
+| `core` | reserved package role `*-core` (runtime/bootstrap) | business capability token; forbidden `sdkwork-<application-code>-core` crate | `*-core` role or `sdkwork-<domain>-<capability>-service` |
+| `common` / `manager` | — | capability or crate catch-alls | concrete domain capability |
+| `open` | approved **open-api** prefix/path; `open-api` surface | shorthand package name `open` | `open-api`, `sdkwork-<domain>-open-api` |
+| `domain` (L7) | bounded context `commerce`, `iam`, … | application code; repository stem | `<domain>` vs `<application-code>` — commerce can be both; document which axis |
+| `owner-code` (L9) | API aggregation owner `sdkwork-commerce` | SDK family; application code when they differ | `owner` in route manifest; not `sdkFamily` |
+| `sdk-family-stem` | generated SDK workspace stem `im`, `commerce` | route crate name; API authority directory; application code | `sdkwork-<sdk-family-stem>-app-sdk` family table |
+| `utils` | TypeScript npm package `@sdkwork/utils`; cross-language repo `sdkwork-utils` | language suffix in TypeScript npm name such as `@sdkwork/utils-typescript` | `@sdkwork/utils`, directory `packages/sdkwork-utils-typescript` |
+| `product name` (L1) | human brand in prose and store copy only | paths, crates, env, capability tokens | `application code`, `merchandise`, or `product name` prose |
+| `application-line adapter` | framework extension implementing IAM/domain projections for one application line | `product adapter` | `application-line adapter` or `application adapter` |
+
+Rules:
+
+- When two columns in this table could both apply, the name must encode the axis explicitly (`pc-console-order` = console role, not domain).
+- Specs that still use retired overloads must be updated or listed in `MIGRATION_SPEC.md` §8.
+- `tools/check-identity-naming.mjs` enforces the highest-risk retired patterns; this table is the human-readable authority for the rest.
 
 ## 1. General Rules
 
@@ -20,54 +101,54 @@ Rules:
 
 | Concept | Pattern | Example |
 | --- | --- | --- |
-| Product repository | `sdkwork-<product>` | `sdkwork-drive` |
-| PC app root | `apps/sdkwork-<product>-pc/` | `apps/sdkwork-commerce-pc/` |
-| H5 app root | `apps/sdkwork-<product>-h5/` | `apps/sdkwork-commerce-h5/` |
-| Flutter mobile app root | `apps/sdkwork-<product>-flutter-mobile/` | `apps/sdkwork-commerce-flutter-mobile/` |
-| Mini program app root | `apps/sdkwork-<product>-mini-program/` | `apps/sdkwork-commerce-mini-program/` |
-| Android native app root | `apps/sdkwork-<product>-android-mobile/` | `apps/sdkwork-commerce-android-mobile/` |
-| iOS native app root | `apps/sdkwork-<product>-ios-mobile/` | `apps/sdkwork-commerce-ios-mobile/` |
-| Harmony native app root | `apps/sdkwork-<product>-harmony-mobile/` | `apps/sdkwork-commerce-harmony-mobile/` |
-| PC app package | `sdkwork-<product>-pc-<capability>` | `sdkwork-commerce-pc-product` |
-| PC user console package | `sdkwork-<product>-pc-console-<capability>` | `sdkwork-commerce-pc-console-order` |
-| PC internal admin package | `sdkwork-<product>-pc-admin-<capability>` | `sdkwork-commerce-pc-admin-audit` |
-| H5 mobile app package | `sdkwork-<product>-h5-<capability>` | `sdkwork-commerce-h5-order` |
-| H5 mobile user console package | `sdkwork-<product>-h5-console-<capability>` | `sdkwork-commerce-h5-console-order` |
-| H5 mobile internal admin package | `sdkwork-<product>-h5-admin-<capability>` | `sdkwork-commerce-h5-admin-audit` |
-| H5 mobile Capacitor host package | `sdkwork-<product>-h5-capacitor` | `sdkwork-commerce-h5-capacitor` |
-| Flutter mobile Dart package | `sdkwork_<product>_flutter_mobile_<capability>` | `sdkwork_commerce_flutter_mobile_order` |
-| Flutter mobile user console Dart package | `sdkwork_<product>_flutter_mobile_console_<capability>` | `sdkwork_commerce_flutter_mobile_console_order` |
-| Flutter mobile internal admin Dart package | `sdkwork_<product>_flutter_mobile_admin_<capability>` | `sdkwork_commerce_flutter_mobile_admin_audit` |
-| Mini program source package | `sdkwork-<product>-mp-<capability>` | `sdkwork-commerce-mp-order` |
-| Mini program user console package | `sdkwork-<product>-mp-console-<capability>` | `sdkwork-commerce-mp-console-order` |
-| Mini program internal admin package | `sdkwork-<product>-mp-admin-<capability>` | `sdkwork-commerce-mp-admin-audit` |
-| Mini program host package | `sdkwork-<product>-mp-host` | `sdkwork-commerce-mp-host` |
+| SDKWork repository | `sdkwork-<application-code>` | `sdkwork-drive` |
+| PC app root | `apps/sdkwork-<application-code>-pc/` | `apps/sdkwork-commerce-pc/` |
+| H5 app root | `apps/sdkwork-<application-code>-h5/` | `apps/sdkwork-commerce-h5/` |
+| Flutter mobile app root | `apps/sdkwork-<application-code>-flutter-mobile/` | `apps/sdkwork-commerce-flutter-mobile/` |
+| Mini program app root | `apps/sdkwork-<application-code>-mini-program/` | `apps/sdkwork-commerce-mini-program/` |
+| Android native app root | `apps/sdkwork-<application-code>-android-mobile/` | `apps/sdkwork-commerce-android-mobile/` |
+| iOS native app root | `apps/sdkwork-<application-code>-ios-mobile/` | `apps/sdkwork-commerce-ios-mobile/` |
+| Harmony native app root | `apps/sdkwork-<application-code>-harmony-mobile/` | `apps/sdkwork-commerce-harmony-mobile/` |
+| PC app package | `sdkwork-<application-code>-pc-<capability>` | `sdkwork-commerce-pc-merchandise` |
+| PC user console package | `sdkwork-<application-code>-pc-console-<capability>` | `sdkwork-commerce-pc-console-order` |
+| PC internal admin package | `sdkwork-<application-code>-pc-admin-<capability>` | `sdkwork-commerce-pc-admin-audit` |
+| H5 mobile app package | `sdkwork-<application-code>-h5-<capability>` | `sdkwork-commerce-h5-order` |
+| H5 mobile user console package | `sdkwork-<application-code>-h5-console-<capability>` | `sdkwork-commerce-h5-console-order` |
+| H5 mobile internal admin package | `sdkwork-<application-code>-h5-admin-<capability>` | `sdkwork-commerce-h5-admin-audit` |
+| H5 mobile Capacitor host package | `sdkwork-<application-code>-h5-capacitor` | `sdkwork-commerce-h5-capacitor` |
+| Flutter mobile Dart package | `sdkwork_<application_code>_flutter_mobile_<capability>` | `sdkwork_commerce_flutter_mobile_order` |
+| Flutter mobile user console Dart package | `sdkwork_<application_code>_flutter_mobile_console_<capability>` | `sdkwork_commerce_flutter_mobile_console_order` |
+| Flutter mobile internal admin Dart package | `sdkwork_<application_code>_flutter_mobile_admin_<capability>` | `sdkwork_commerce_flutter_mobile_admin_audit` |
+| Mini program source package | `sdkwork-<application-code>-mp-<capability>` | `sdkwork-commerce-mp-order` |
+| Mini program user console package | `sdkwork-<application-code>-mp-console-<capability>` | `sdkwork-commerce-mp-console-order` |
+| Mini program internal admin package | `sdkwork-<application-code>-mp-admin-<capability>` | `sdkwork-commerce-mp-admin-audit` |
+| Mini program host package | `sdkwork-<application-code>-mp-host` | `sdkwork-commerce-mp-host` |
 | Shared mini program package | `sdkwork-<capability>-mini-program` | `sdkwork-order-mini-program` |
-| Android native app package | `sdkwork-<product>-android-mobile-<capability>` | `sdkwork-commerce-android-mobile-order` |
-| Android native user console package | `sdkwork-<product>-android-mobile-console-<capability>` | `sdkwork-commerce-android-mobile-console-order` |
-| Android native internal admin package | `sdkwork-<product>-android-mobile-admin-<capability>` | `sdkwork-commerce-android-mobile-admin-audit` |
-| Android native host package | `sdkwork-<product>-android-mobile-host` | `sdkwork-commerce-android-mobile-host` |
+| Android native app package | `sdkwork-<application-code>-android-mobile-<capability>` | `sdkwork-commerce-android-mobile-order` |
+| Android native user console package | `sdkwork-<application-code>-android-mobile-console-<capability>` | `sdkwork-commerce-android-mobile-console-order` |
+| Android native internal admin package | `sdkwork-<application-code>-android-mobile-admin-<capability>` | `sdkwork-commerce-android-mobile-admin-audit` |
+| Android native host package | `sdkwork-<application-code>-android-mobile-host` | `sdkwork-commerce-android-mobile-host` |
 | Shared Android native package | `sdkwork-<capability>-android-native` | `sdkwork-order-android-native` |
-| iOS native app package | `sdkwork-<product>-ios-mobile-<capability>` | `sdkwork-commerce-ios-mobile-order` |
-| iOS native user console package | `sdkwork-<product>-ios-mobile-console-<capability>` | `sdkwork-commerce-ios-mobile-console-order` |
-| iOS native internal admin package | `sdkwork-<product>-ios-mobile-admin-<capability>` | `sdkwork-commerce-ios-mobile-admin-audit` |
-| iOS native host package | `sdkwork-<product>-ios-mobile-host` | `sdkwork-commerce-ios-mobile-host` |
+| iOS native app package | `sdkwork-<application-code>-ios-mobile-<capability>` | `sdkwork-commerce-ios-mobile-order` |
+| iOS native user console package | `sdkwork-<application-code>-ios-mobile-console-<capability>` | `sdkwork-commerce-ios-mobile-console-order` |
+| iOS native internal admin package | `sdkwork-<application-code>-ios-mobile-admin-<capability>` | `sdkwork-commerce-ios-mobile-admin-audit` |
+| iOS native host package | `sdkwork-<application-code>-ios-mobile-host` | `sdkwork-commerce-ios-mobile-host` |
 | Shared iOS native package | `sdkwork-<capability>-ios-native` | `sdkwork-order-ios-native` |
-| Harmony native app package | `sdkwork-<product>-harmony-mobile-<capability>` | `sdkwork-commerce-harmony-mobile-order` |
-| Harmony native user console package | `sdkwork-<product>-harmony-mobile-console-<capability>` | `sdkwork-commerce-harmony-mobile-console-order` |
-| Harmony native internal admin package | `sdkwork-<product>-harmony-mobile-admin-<capability>` | `sdkwork-commerce-harmony-mobile-admin-audit` |
-| Harmony native host package | `sdkwork-<product>-harmony-mobile-host` | `sdkwork-commerce-harmony-mobile-host` |
+| Harmony native app package | `sdkwork-<application-code>-harmony-mobile-<capability>` | `sdkwork-commerce-harmony-mobile-order` |
+| Harmony native user console package | `sdkwork-<application-code>-harmony-mobile-console-<capability>` | `sdkwork-commerce-harmony-mobile-console-order` |
+| Harmony native internal admin package | `sdkwork-<application-code>-harmony-mobile-admin-<capability>` | `sdkwork-commerce-harmony-mobile-admin-audit` |
+| Harmony native host package | `sdkwork-<application-code>-harmony-mobile-host` | `sdkwork-commerce-harmony-mobile-host` |
 | Shared Harmony native package | `sdkwork-<capability>-harmony-native` | `sdkwork-order-harmony-native` |
 | Backend/admin React package | `@sdkwork/react-backend-<domain>` | `@sdkwork/react-backend-commerce` |
-| Route crate package | `sdkwork-router-<capability>-<surface>` | `sdkwork-router-product-app-api` |
+| Route crate package | `sdkwork-router-<capability>-<surface>` | `sdkwork-router-merchandise-app-api` |
 | Web framework crate | `sdkwork-web-<capability>` | `sdkwork-web-context`, `sdkwork-web-axum`, `sdkwork-web-bootstrap` |
 | Rust service crate | `sdkwork-<domain>-<capability>-service` | `sdkwork-drive-node-service` |
 | Rust SQLx repository crate | `sdkwork-<domain>-<capability>-repository-sqlx` | `sdkwork-drive-node-repository-sqlx` |
-| Rust API server crate | `sdkwork-<app>-api-server` | `sdkwork-drive-api-server` |
-| Rust service host crate | `sdkwork-<app>-service-host` | `sdkwork-drive-service-host` |
-| Rust native host crate | `sdkwork-<app>-native-host` or `sdkwork-<app>-tauri-host` | `sdkwork-drive-native-host` |
+| Rust API server crate | `sdkwork-<application-code>-api-server` | `sdkwork-drive-api-server` |
+| Rust service host crate | `sdkwork-<application-code>-service-host` | `sdkwork-drive-service-host` |
+| Rust native host crate | `sdkwork-<application-code>-native-host` or `sdkwork-<application-code>-tauri-host` | `sdkwork-drive-native-host` |
 | Rust worker crate | `sdkwork-<domain>-<capability>-worker` | `sdkwork-drive-maintenance-worker` |
-| Rust gateway crate | `sdkwork-<app>-gateway` | `sdkwork-drive-gateway` |
+| Rust gateway crate | `sdkwork-<application-code>-gateway` | `sdkwork-drive-gateway` |
 | Open API authority | `sdkwork-<domain>-open-api` | `sdkwork-im-open-api` |
 | App API authority | `sdkwork-<domain>-app-api` | `sdkwork-commerce-app-api` |
 | Backend API authority | `sdkwork-<domain>-backend-api` | `sdkwork-commerce-backend-api` |
@@ -82,7 +163,7 @@ Rules:
 | Agent entrypoint | `AGENTS.md` | `AGENTS.md` |
 | Tool compatibility shim | `<TOOL>.md` | `CLAUDE.md`, `GEMINI.md`, `CODEX.md` |
 
-`package.json#scripts` public command names follow `PNPM_SCRIPT_SPEC.md`. Repository root scripts use action-first standard names such as `dev`, `build`, `verify`, `release:package`, `api:materialize:check`, `sdk:generate`, and `gateway:package:cloud`. Product-prefixed root script names such as `drive:dev`, `im:dev`, and `clawrouter:dev` are forbidden public command names.
+`package.json#scripts` public command names follow `PNPM_SCRIPT_SPEC.md`. Repository root scripts use action-first standard names such as `dev`, `build`, `verify`, `release:package`, `api:materialize:check`, `sdk:generate`, and `gateway:package:cloud`. Application-code-prefixed root script names such as `drive:dev`, `im:dev`, and `clawrouter:dev` are forbidden public command names.
 
 ## 3. Language Naming
 
@@ -93,10 +174,10 @@ Rules:
   `repository-sqlx`, `api-server`, `service-host`, `native-host`, `worker`, or `gateway`.
 - Java packages use lowercase dotted names under an approved SDKWork root; Java classes use PascalCase.
 - TypeScript packages use kebab-case or approved scoped names; exported types/classes/components use PascalCase; functions and variables use camelCase.
-- Dart and Flutter package names use lowercase snake_case; SDKWork Flutter mobile packages use the `sdkwork_<product>_flutter_mobile_<capability>` family from `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`.
-- Android native SDKWork package directories use kebab-case `sdkwork-<product>-android-mobile-*`; Kotlin packages and Android namespaces use legal lowercase dotted names that preserve the SDKWork package identity.
-- iOS native SDKWork package directories use kebab-case `sdkwork-<product>-ios-mobile-*`; Swift package targets/modules use legal PascalCase names derived from the SDKWork package identity.
-- Harmony native SDKWork package directories use kebab-case `sdkwork-<product>-harmony-mobile-*`; ohpm package ids or ArkTS aliases must preserve the SDKWork package identity.
+- Dart and Flutter package names use lowercase snake_case; SDKWork Flutter mobile packages use the `sdkwork_<application_code>_flutter_mobile_<capability>` family from `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`.
+- Android native SDKWork package directories use kebab-case `sdkwork-<application-code>-android-mobile-*`; Kotlin packages and Android namespaces use legal lowercase dotted names that preserve the SDKWork package identity.
+- iOS native SDKWork package directories use kebab-case `sdkwork-<application-code>-ios-mobile-*`; Swift package targets/modules use legal PascalCase names derived from the SDKWork package identity.
+- Harmony native SDKWork package directories use kebab-case `sdkwork-<application-code>-harmony-mobile-*`; ohpm package ids or ArkTS aliases must preserve the SDKWork package identity.
 - React hooks start with `use`.
 - Database tables and columns use lowercase snake_case according to `DATABASE_SPEC.md`.
 
@@ -108,7 +189,7 @@ Rules:
 - SDK family names and API authority names must not be conflated.
 - Route crates are source inputs, not SDK families and not OpenAPI authority directories.
 - Generated package names must trace to the SDK family, not directly to the API authority.
-- `<sdk-family-stem>` is the stable SDK family stem used by the product or capability line. It often
+- `<sdk-family-stem>` is the stable SDK family stem used by the application or capability line. It often
   matches the public integration name, such as `im`, even when the canonical domain used by proto
   packages is broader, such as `communication`.
 - Public, app, backend, and RPC SDK families for the same capability line MUST share the same
@@ -116,6 +197,28 @@ Rules:
 - RPC proto package names continue to use canonical `sdkwork.<domain>.*` package names. The SDK
   family stem is linked to that domain through `.sdkwork-assembly.json`, `sdk-manifest.json` when
   present, and `specs/component.spec.json`.
+
+### 4.2 Cross-Language Utility Libraries
+
+Rules:
+
+- The cross-language utility repository is `sdkwork-utils`.
+- Language implementation directories use `packages/sdkwork-utils-<language>/`.
+- TypeScript / Node npm package names `MUST` use `@sdkwork/utils`, not `@sdkwork/utils-typescript` or other language suffixes in the npm scope.
+- Rust, Python, Go, Java, Kotlin, C#, and PHP package names `MAY` include the language in the artifact or module name when required by that ecosystem.
+- `@sdkwork/utils` is not an HTTP generated SDK. Do not rename it to `@sdkwork/utils-app-sdk` or add `-sdk` unless the package becomes a generated transport SDK.
+- Every contract module exported from `specs/utils.contract.json` `MUST` have a matching `@sdkwork/utils/<module>` subpath export in `packages/sdkwork-utils-typescript/package.json`.
+- Application repositories `MUST` consume `@sdkwork/utils` through package `exports` and normal dependency resolution. They `MUST NOT` rely on Vite or TypeScript path aliases to bypass missing subpath exports.
+- Retired npm name: `@sdkwork/utils-typescript`.
+
+Examples:
+
+| Axis | Canonical name |
+| --- | --- |
+| Repository | `sdkwork-utils` |
+| TypeScript directory | `packages/sdkwork-utils-typescript` |
+| TypeScript npm import | `@sdkwork/utils`, `@sdkwork/utils/string`, `@sdkwork/utils/optional` |
+| Rust crate | `sdkwork-utils-rust` |
 
 ## 4.1 Package Artifact Naming
 
@@ -169,17 +272,17 @@ Examples:
 Rules:
 
 - Client application root packages `MUST` include the architecture segment required by `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` and the matching root architecture standard.
-- PC packages use kebab-case names under `sdkwork-<product>-pc-*`, with `pc-console` reserved for user-facing console surfaces and `pc-admin` reserved for `backend-admin` company-internal admin surfaces.
+- PC packages use kebab-case names under `sdkwork-<application-code>-pc-*`, with `pc-console` reserved for user-facing console surfaces and `pc-admin` reserved for `backend-admin` company-internal admin surfaces.
 - Packages without `console` or `admin` are the default app/user-facing package family for the selected architecture.
-- Console packages insert the `console` role after the architecture segment and before the concrete capability. They are user-facing management console packages for customers, tenants, app owners, or product users managing their own resources, and they remain app-api/app SDK consumers unless a more specific approved contract says otherwise.
+- Console packages insert the `console` role after the architecture segment and before the concrete capability. They are user-facing management console packages for customers, tenants, app owners, or app users managing their own resources, and they remain app-api/app SDK consumers unless a more specific approved contract says otherwise.
 - Admin packages insert the `admin` role after the architecture segment and before the concrete capability. They map to `backend-admin` company-internal admin surfaces for staff, operators, support, auditors, platform administrators, or trusted backend services acting for those workflows.
 - `backend-admin` is the canonical surface term for admin-only backend UI, backend SDK, and backend API consumption. `*-admin-*` client packages and standalone backend/admin packages map to `backend-admin`; `*-console-*`, default app packages, app auth runtime packages, and shared frontend core packages do not.
-- H5/Capacitor packages use kebab-case names under `sdkwork-<product>-h5-*`; user console packages use `sdkwork-<product>-h5-console-*`; internal admin packages use `sdkwork-<product>-h5-admin-*`; the Capacitor host package is exactly `sdkwork-<product>-h5-capacitor`.
-- Flutter mobile packages use Dart lower snake case names under `sdkwork_<product>_flutter_mobile_*`; user console packages use `sdkwork_<product>_flutter_mobile_console_*`; internal admin packages use `sdkwork_<product>_flutter_mobile_admin_*`; do not publish Flutter app-root packages with hyphenated Dart package names.
-- Mini program source packages use kebab-case names under `sdkwork-<product>-mp-*`; user console packages use `sdkwork-<product>-mp-console-*`; internal admin packages use `sdkwork-<product>-mp-admin-*`; shared mini program packages use `sdkwork-<capability>-mini-program`; platform subpackages, pages, and platform config files must not replace SDKWork source package naming.
-- Android native packages use kebab-case names under `sdkwork-<product>-android-mobile-*`; user console packages use `sdkwork-<product>-android-mobile-console-*`; internal admin packages use `sdkwork-<product>-android-mobile-admin-*`; shared Android native packages use `sdkwork-<capability>-android-native`.
-- iOS native packages use kebab-case names under `sdkwork-<product>-ios-mobile-*`; user console packages use `sdkwork-<product>-ios-mobile-console-*`; internal admin packages use `sdkwork-<product>-ios-mobile-admin-*`; shared iOS native packages use `sdkwork-<capability>-ios-native`.
-- Harmony native packages use kebab-case names under `sdkwork-<product>-harmony-mobile-*`; user console packages use `sdkwork-<product>-harmony-mobile-console-*`; internal admin packages use `sdkwork-<product>-harmony-mobile-admin-*`; shared Harmony native packages use `sdkwork-<capability>-harmony-native`.
+- H5/Capacitor packages use kebab-case names under `sdkwork-<application-code>-h5-*`; user console packages use `sdkwork-<application-code>-h5-console-*`; internal admin packages use `sdkwork-<application-code>-h5-admin-*`; the Capacitor host package is exactly `sdkwork-<application-code>-h5-capacitor`.
+- Flutter mobile packages use Dart lower snake case names under `sdkwork_<application_code>_flutter_mobile_*`; user console packages use `sdkwork_<application_code>_flutter_mobile_console_*`; internal admin packages use `sdkwork_<application_code>_flutter_mobile_admin_*`; do not publish Flutter app-root packages with hyphenated Dart package names.
+- Mini program source packages use kebab-case names under `sdkwork-<application-code>-mp-*`; user console packages use `sdkwork-<application-code>-mp-console-*`; internal admin packages use `sdkwork-<application-code>-mp-admin-*`; shared mini program packages use `sdkwork-<capability>-mini-program`; platform subpackages, pages, and platform config files must not replace SDKWork source package naming.
+- Android native packages use kebab-case names under `sdkwork-<application-code>-android-mobile-*`; user console packages use `sdkwork-<application-code>-android-mobile-console-*`; internal admin packages use `sdkwork-<application-code>-android-mobile-admin-*`; shared Android native packages use `sdkwork-<capability>-android-native`.
+- iOS native packages use kebab-case names under `sdkwork-<application-code>-ios-mobile-*`; user console packages use `sdkwork-<application-code>-ios-mobile-console-*`; internal admin packages use `sdkwork-<application-code>-ios-mobile-admin-*`; shared iOS native packages use `sdkwork-<capability>-ios-native`.
+- Harmony native packages use kebab-case names under `sdkwork-<application-code>-harmony-mobile-*`; user console packages use `sdkwork-<application-code>-harmony-mobile-console-*`; internal admin packages use `sdkwork-<application-code>-harmony-mobile-admin-*`; shared Harmony native packages use `sdkwork-<capability>-harmony-native`.
 - Optional `core`, `commons`, `shell`, `console-core`, `console-shell`, `admin-core`, `admin-shell`, and `host` suffixes are reserved role names inside each client root package family.
 - The `<capability>` token is the concrete business module token. It `MUST` use canonical domain/capability vocabulary and `MUST NOT` be a catch-all such as `common`, `misc`, `manager`, `backend`, `console`, or `admin`.
 
@@ -198,23 +301,21 @@ Rules:
 - `sdkwork-web-<capability>` owns HTTP framework integration code only and lives in the
   `sdkwork-web-framework` repository. Business repositories must not create local `sdkwork-web-*`
   crates.
-- `sdkwork-<app>-api-server` owns an HTTP server process that mounts route crates and listens on
+- `sdkwork-<application-code>-api-server` owns an HTTP server process that mounts route crates and listens on
   HTTP.
-- `sdkwork-<app>-service-host` owns an in-process service container and must not mount HTTP routes.
-- `sdkwork-<app>-native-host` and `sdkwork-<app>-tauri-host` own native/Tauri command and platform
+- `sdkwork-<application-code>-service-host` owns an in-process service container and must not mount HTTP routes.
+- `sdkwork-<application-code>-native-host` and `sdkwork-<application-code>-tauri-host` own native/Tauri command and platform
   adapter boundaries.
 - `sdkwork-<domain>-<capability>-worker` owns background jobs, schedulers, queues, maintenance
   loops, retries, locks, and cursors.
-- `sdkwork-<app>-gateway` owns upstream routing, route precedence, proxy behavior, and dependency
+- `sdkwork-<application-code>-gateway` owns upstream routing, route precedence, proxy behavior, and dependency
   API surface aggregation.
 - The following Rust crate names are forbidden and are not compatibility exceptions:
-  `sdkwork-<app>-product`, `sdkwork-<app>-runtime`,
-  `sdkwork-<domain>-<capability>-runtime`, `sdkwork-<app>-backend`,
-  `sdkwork-<app>-core`, `sdkwork-<app>-common`, `sdkwork-<app>-manager`, and
-  `sdkwork-<app>-server-runtime`.
-- A business capability may be named `product` when the domain actually owns product/catalog
-  behavior, for example `sdkwork-commerce-product-service`. The forbidden form is using `product`
-  as the application entrypoint or runtime suffix, such as `sdkwork-drive-product`.
+  `sdkwork-<application-code>-product`, `sdkwork-<application-code>-runtime`,
+  `sdkwork-<domain>-<capability>-runtime`, `sdkwork-<application-code>-backend`,
+  `sdkwork-<application-code>-core`, `sdkwork-<application-code>-common`, `sdkwork-<application-code>-manager`, and
+  `sdkwork-<application-code>-server-runtime`.
+- Commerce merchandise capability uses `merchandise` for sellable-item master data, SKU, and attributes, for example `sdkwork-commerce-merchandise-service` and `sdkwork-router-merchandise-app-api`. The forbidden form is using `product` as the application entrypoint or runtime suffix, such as `sdkwork-drive-product`, or reviving capability token `product` for commerce merchandise.
 - Repositories must not preserve forbidden Rust crate names through wrapper crates, package aliases,
   feature aliases, or public re-export aliases.
 
@@ -242,7 +343,8 @@ Rules:
 - [ ] Domain and capability names are canonical.
 - [ ] Package, route crate, SDK family, and API authority names follow the required patterns.
 - [ ] Rust crate names use responsibility-specific families and do not use forbidden generic
-      `product`, `runtime`, `backend`, `core`, `common`, or `manager` suffixes.
+      `product`, `runtime`, `backend`, `core`, `common`, or `manager` suffixes on application-code crates.
+- [ ] Commerce sellable-item capabilities use `merchandise`, not retired capability token `product`.
 - [ ] Client app packages use the required PC, H5, Flutter, mini program, Android native, iOS native, or Harmony native architecture segment and reserved role names.
 - [ ] Component manifests use matching names.
 - [ ] Database identifiers follow `DATABASE_SPEC.md`.

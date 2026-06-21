@@ -61,8 +61,8 @@ Rules:
   digits, and underscores only when a legacy domain already requires it.
 - Directory names must use the application code, not the product display name,
   service name, executable name, package name, or repository name.
-- System scope paths must use `sdkwork/<app>`.
-- User private paths must use `.sdkwork/<app>`.
+- System scope paths must use `sdkwork/<application-code>`.
+- User private paths must use `.sdkwork/<application-code>`.
 - Source-controlled repository/application `.sdkwork/` directories are not user private runtime
   paths. Do not write runtime files under a source root `.sdkwork/`.
 - Process-specific files may use the process name inside the application
@@ -75,7 +75,7 @@ Rules:
 
 Recommended application codes:
 
-| Product or capability | Application code | Notes |
+| Application line or capability | Application code | Notes |
 | --- | --- | --- |
 | SdkWork Claw Router | `router` | Process name may remain `clawrouter`. |
 | SdkWork Chat | `chat` | User private files use `~/.sdkwork/chat`. |
@@ -91,30 +91,30 @@ Linux service, archive, and package deployments must use these directories.
 
 | Purpose | Canonical path | Ownership | Notes |
 | --- | --- | --- | --- |
-| Runtime config | `/etc/sdkwork/<app>` | `root:sdkwork` | TOML, env files, config templates copied during install. |
-| Runtime config file | `/etc/sdkwork/<app>/<process>.toml` or `/etc/sdkwork/<app>/<app>.toml` | `root:sdkwork` | `SDKWORK_<APP>_CONFIG_FILE` may override it. |
-| Process env file | `/etc/sdkwork/<app>/<process>.env` or `/etc/sdkwork/<app>/<app>.env` | `root:sdkwork` | Non-public process overrides only. |
-| Secret files | `/etc/sdkwork/<app>/*.secret` | `root:sdkwork` | Prefer `0600` or `0640`; never world-readable. |
-| Private immutable runtime assets | `/usr/lib/sdkwork/<app>` | `root:root` | Binaries, service-local runtime assets, bundled native libraries. |
-| Shared read-only assets | `/usr/share/sdkwork/<app>` | `root:root` | Static portal assets, templates, generated SDK archives, catalogs. |
-| Documentation | `/usr/share/doc/sdkwork/<app>` | `root:root` | Install guide, license notices, runbooks. |
-| Durable mutable data | `/var/lib/sdkwork/<app>` | `sdkwork:sdkwork` | SQLite only for approved desktop/user-data exceptions, catalogs, queues, generated state. |
-| Logs | `/var/log/sdkwork/<app>` | `sdkwork:adm` or `sdkwork:sdkwork` | File logs only when journald/stdout is not enough. |
-| Cache | `/var/cache/sdkwork/<app>` | `sdkwork:sdkwork` | Rebuildable cache. |
-| Runtime state | `/run/sdkwork/<app>` | `sdkwork:sdkwork` | PID files, sockets, locks. |
-| Temporary files | `/tmp/sdkwork/<app>` | process user | Only for disposable scratch files. |
-| Archive install root | `/opt/sdkwork/<app>` | `root:root` | Self-contained tar/zip installs that are not package-manager owned. |
+| Runtime config | `/etc/sdkwork/<application-code>` | `root:sdkwork` | TOML, env files, config templates copied during install. |
+| Runtime config file | `/etc/sdkwork/<application-code>/<process>.toml` or `/etc/sdkwork/<application-code>/<app>.toml` | `root:sdkwork` | `SDKWORK_<APPLICATION_CODE>_CONFIG_FILE` may override it. |
+| Process env file | `/etc/sdkwork/<application-code>/<process>.env` or `/etc/sdkwork/<application-code>/<app>.env` | `root:sdkwork` | Non-public process overrides only. |
+| Secret files | `/etc/sdkwork/<application-code>/*.secret` | `root:sdkwork` | Prefer `0600` or `0640`; never world-readable. |
+| Private immutable runtime assets | `/usr/lib/sdkwork/<application-code>` | `root:root` | Binaries, service-local runtime assets, bundled native libraries. |
+| Shared read-only assets | `/usr/share/sdkwork/<application-code>` | `root:root` | Static portal assets, templates, generated SDK archives, catalogs. |
+| Documentation | `/usr/share/doc/sdkwork/<application-code>` | `root:root` | Install guide, license notices, runbooks. |
+| Durable mutable data | `/var/lib/sdkwork/<application-code>` | `sdkwork:sdkwork` | SQLite only for approved desktop/user-data exceptions, catalogs, queues, generated state. |
+| Logs | `/var/log/sdkwork/<application-code>` | `sdkwork:adm` or `sdkwork:sdkwork` | File logs only when journald/stdout is not enough. |
+| Cache | `/var/cache/sdkwork/<application-code>` | `sdkwork:sdkwork` | Rebuildable cache. |
+| Runtime state | `/run/sdkwork/<application-code>` | `sdkwork:sdkwork` | PID files, sockets, locks. |
+| Temporary files | `/tmp/sdkwork/<application-code>` | process user | Only for disposable scratch files. |
+| Archive install root | `/opt/sdkwork/<application-code>` | `root:root` | Self-contained tar/zip installs that are not package-manager owned. |
 
 Rules:
 
-- `/etc/sdkwork/<app>` is for operator-managed configuration, not generated
+- `/etc/sdkwork/<application-code>` is for operator-managed configuration, not generated
   application data.
-- `/var/lib/sdkwork/<app>` is the only Linux system-scope durable mutable data
+- `/var/lib/sdkwork/<application-code>` is the only Linux system-scope durable mutable data
   directory.
-- `/var/log/sdkwork/<app>` is the only Linux system-scope file log directory.
-- `/usr/lib/sdkwork/<app>`, `/usr/share/sdkwork/<app>`, and
-  `/usr/share/doc/sdkwork/<app>` must contain read-only release assets.
-- New code must not write to `/opt/sdkwork/<app>` at runtime except for archive
+- `/var/log/sdkwork/<application-code>` is the only Linux system-scope file log directory.
+- `/usr/lib/sdkwork/<application-code>`, `/usr/share/sdkwork/<application-code>`, and
+  `/usr/share/doc/sdkwork/<application-code>` must contain read-only release assets.
+- New code must not write to `/opt/sdkwork/<application-code>` at runtime except for archive
   distributions explicitly installed there.
 - New Linux service paths such as `/etc/<process>`, `/var/lib/<process>`,
   `/var/log/<process>`, `/usr/lib/<process>`, `/usr/share/<process>`, or
@@ -122,30 +122,30 @@ Rules:
 
 ### 4.2 Linux User Scope
 
-SDKWork-managed user-private files must use `~/.sdkwork/<app>`.
+SDKWork-managed user-private files must use `~/.sdkwork/<application-code>`.
 
 | Purpose | Canonical path |
 | --- | --- |
-| User private root | `~/.sdkwork/<app>` |
-| User config | `~/.sdkwork/<app>/config` |
-| User config file | `~/.sdkwork/<app>/config/<process>.toml` or `~/.sdkwork/<app>/config/<app>.toml` |
-| User durable data | `~/.sdkwork/<app>/data` |
-| User SQLite database | `~/.sdkwork/<app>/data/<app>.sqlite` or `~/.sdkwork/<app>/data/<process>.sqlite` |
-| User logs | `~/.sdkwork/<app>/logs` |
-| User cache | `~/.sdkwork/<app>/cache` |
-| User secrets | `~/.sdkwork/<app>/secrets` |
-| User temp | `~/.sdkwork/<app>/tmp` |
+| User private root | `~/.sdkwork/<application-code>` |
+| User config | `~/.sdkwork/<application-code>/config` |
+| User config file | `~/.sdkwork/<application-code>/config/<process>.toml` or `~/.sdkwork/<application-code>/config/<app>.toml` |
+| User durable data | `~/.sdkwork/<application-code>/data` |
+| User SQLite database | `~/.sdkwork/<application-code>/data/<app>.sqlite` or `~/.sdkwork/<application-code>/data/<process>.sqlite` |
+| User logs | `~/.sdkwork/<application-code>/logs` |
+| User cache | `~/.sdkwork/<application-code>/cache` |
+| User secrets | `~/.sdkwork/<application-code>/secrets` |
+| User temp | `~/.sdkwork/<application-code>/tmp` |
 
 Rules:
 
-- SDKWork desktop and local private files should use `~/.sdkwork/<app>` instead
+- SDKWork desktop and local private files should use `~/.sdkwork/<application-code>` instead
   of scattered XDG directories so one SDKWork namespace is easy to back up,
   inspect, and remove.
 - Applications may read historical XDG paths as compatibility fallbacks during a
   documented migration period, but canonical writes must target
-  `~/.sdkwork/<app>`.
-- Explicit environment variables such as `SDKWORK_<APP>_CONFIG_FILE`,
-  `SDKWORK_<APP>_DATA_DIR`, and `SDKWORK_<APP>_CACHE_DIR` override default
+  `~/.sdkwork/<application-code>`.
+- Explicit environment variables such as `SDKWORK_<APPLICATION_CODE>_CONFIG_FILE`,
+  `SDKWORK_<APPLICATION_CODE>_DATA_DIR`, and `SDKWORK_<APPLICATION_CODE>_CACHE_DIR` override default
   discovery.
 - User private secret files should be created with mode `0600`.
 
@@ -156,20 +156,20 @@ service conventions.
 
 | Purpose | System scope | User scope |
 | --- | --- | --- |
-| Config root | `/Library/Application Support/sdkwork/<app>` | `~/.sdkwork/<app>/config` |
-| Config file | `/Library/Application Support/sdkwork/<app>/<process>.toml` | `~/.sdkwork/<app>/config/<process>.toml` |
-| Data root | `/Library/Application Support/sdkwork/<app>/Data` | `~/.sdkwork/<app>/data` |
-| Logs | `/Library/Logs/sdkwork/<app>` | `~/.sdkwork/<app>/logs` |
-| Cache | `/Library/Caches/sdkwork/<app>` | `~/.sdkwork/<app>/cache` |
-| Secrets | `/Library/Application Support/sdkwork/<app>/Secrets` | `~/.sdkwork/<app>/secrets` |
-| App support alternate | Not applicable | `~/Library/Application Support/sdkwork/<app>` |
+| Config root | `/Library/Application Support/sdkwork/<application-code>` | `~/.sdkwork/<application-code>/config` |
+| Config file | `/Library/Application Support/sdkwork/<application-code>/<process>.toml` | `~/.sdkwork/<application-code>/config/<process>.toml` |
+| Data root | `/Library/Application Support/sdkwork/<application-code>/Data` | `~/.sdkwork/<application-code>/data` |
+| Logs | `/Library/Logs/sdkwork/<application-code>` | `~/.sdkwork/<application-code>/logs` |
+| Cache | `/Library/Caches/sdkwork/<application-code>` | `~/.sdkwork/<application-code>/cache` |
+| Secrets | `/Library/Application Support/sdkwork/<application-code>/Secrets` | `~/.sdkwork/<application-code>/secrets` |
+| App support alternate | Not applicable | `~/Library/Application Support/sdkwork/<application-code>` |
 
 Rules:
 
 - Service or launchd-managed deployments should use the system-scope locations.
-- SDKWork-managed desktop private files should use `~/.sdkwork/<app>` for
+- SDKWork-managed desktop private files should use `~/.sdkwork/<application-code>` for
   consistency across operating systems.
-- A signed macOS app bundle may also use `~/Library/Application Support/sdkwork/<app>`
+- A signed macOS app bundle may also use `~/Library/Application Support/sdkwork/<application-code>`
   when platform integration requires it, but the application must document this
   as an OS integration alternate and must not mix multiple writable roots
   without migration rules.
@@ -181,12 +181,12 @@ Windows paths must use an SDKWork namespace and the canonical application code.
 | Purpose | System scope | User scope |
 | --- | --- | --- |
 | Program files | `%ProgramFiles%\sdkwork\<app>` | Not applicable |
-| Config root | `%ProgramData%\sdkwork\<app>` | `%USERPROFILE%\.sdkwork\<app>\config` |
-| Config file | `%ProgramData%\sdkwork\<app>\<process>.toml` | `%USERPROFILE%\.sdkwork\<app>\config\<process>.toml` |
-| Data root | `%ProgramData%\sdkwork\<app>\Data` | `%USERPROFILE%\.sdkwork\<app>\data` |
-| Logs | `%ProgramData%\sdkwork\<app>\Logs` | `%USERPROFILE%\.sdkwork\<app>\logs` |
-| Cache | `%ProgramData%\sdkwork\<app>\Cache` | `%USERPROFILE%\.sdkwork\<app>\cache` |
-| Secrets | `%ProgramData%\sdkwork\<app>\Secrets` | `%USERPROFILE%\.sdkwork\<app>\secrets` |
+| Config root | `%ProgramData%\sdkwork\<app>` | `%USERPROFILE%\.sdkwork\<application-code>\config` |
+| Config file | `%ProgramData%\sdkwork\<app>\<process>.toml` | `%USERPROFILE%\.sdkwork\<application-code>\config\<process>.toml` |
+| Data root | `%ProgramData%\sdkwork\<app>\Data` | `%USERPROFILE%\.sdkwork\<application-code>\data` |
+| Logs | `%ProgramData%\sdkwork\<app>\Logs` | `%USERPROFILE%\.sdkwork\<application-code>\logs` |
+| Cache | `%ProgramData%\sdkwork\<app>\Cache` | `%USERPROFILE%\.sdkwork\<application-code>\cache` |
+| Secrets | `%ProgramData%\sdkwork\<app>\Secrets` | `%USERPROFILE%\.sdkwork\<application-code>\secrets` |
 | OS roaming alternate | Not applicable | `%APPDATA%\sdkwork\<app>` |
 | OS local alternate | Not applicable | `%LOCALAPPDATA%\sdkwork\<app>` |
 
@@ -195,7 +195,7 @@ Rules:
 - Windows service deployments should use `%ProgramData%\sdkwork\<app>` for
   mutable/configurable files and `%ProgramFiles%\sdkwork\<app>` for read-only
   installed binaries.
-- SDKWork-managed user private files should use `%USERPROFILE%\.sdkwork\<app>`.
+- SDKWork-managed user private files should use `%USERPROFILE%\.sdkwork\<application-code>`.
 - `%APPDATA%\sdkwork\<app>` and `%LOCALAPPDATA%\sdkwork\<app>` are allowed only
   when an installer or desktop framework needs Windows roaming/local semantics.
   They must be documented as compatibility or OS integration alternates.
@@ -209,13 +209,13 @@ secrets and external durable services.
 
 | Purpose | Canonical path |
 | --- | --- |
-| Config mount | `/etc/sdkwork/<app>` |
-| Config file | `/etc/sdkwork/<app>/<process>.toml` or `/etc/sdkwork/<app>/<app>.toml` |
-| Secret mount | `/run/secrets/sdkwork/<app>` |
-| Data volume | `/var/lib/sdkwork/<app>` |
-| Cache volume | `/var/cache/sdkwork/<app>` |
-| Runtime state | `/run/sdkwork/<app>` |
-| Image workdir/install root | `/opt/sdkwork/<app>` |
+| Config mount | `/etc/sdkwork/<application-code>` |
+| Config file | `/etc/sdkwork/<application-code>/<process>.toml` or `/etc/sdkwork/<application-code>/<app>.toml` |
+| Secret mount | `/run/secrets/sdkwork/<application-code>` |
+| Data volume | `/var/lib/sdkwork/<application-code>` |
+| Cache volume | `/var/cache/sdkwork/<application-code>` |
+| Runtime state | `/run/sdkwork/<application-code>` |
+| Image workdir/install root | `/opt/sdkwork/<application-code>` |
 
 Rules:
 
@@ -224,7 +224,7 @@ Rules:
 - Durable data must live on mounted volumes or external services, not ephemeral
   container layers.
 - Logs should go to stdout/stderr by default. File logs are optional and, when
-  enabled, use `/var/log/sdkwork/<app>`.
+  enabled, use `/var/log/sdkwork/<application-code>`.
 
 ### 4.6 Non-System Client Runtime Targets
 
@@ -272,9 +272,9 @@ Repository-local conventions:
 | PostgreSQL developer override | `.env.postgres` or typed dev config file excluded from source control |
 | SQLite dev example | `.env.sqlite.example` when an app needs one |
 | SQLite developer override | `.env.sqlite` or typed dev config file excluded from source control |
-| Dev generated data | `target/dev/<app>` or `~/.sdkwork/<app>/dev` |
-| Dev SQLite database | `target/dev/<app>/<app>.sqlite` or `~/.sdkwork/<app>/dev/data/<app>.sqlite` |
-| Dev logs | `target/dev/<app>/logs` or `~/.sdkwork/<app>/dev/logs` |
+| Dev generated data | `target/dev/<app>` or `~/.sdkwork/<application-code>/dev` |
+| Dev SQLite database | `target/dev/<app>/<app>.sqlite` or `~/.sdkwork/<application-code>/dev/data/<app>.sqlite` |
+| Dev logs | `target/dev/<app>/logs` or `~/.sdkwork/<application-code>/dev/logs` |
 
 Rules:
 
@@ -288,12 +288,12 @@ Rules:
 - Checked-in examples must never contain real passwords, tenant tokens, API
   keys, or production hostnames.
 - Dev PostgreSQL and Redis credentials must be documented as local-only.
-- PostgreSQL dev profiles must use `SDKWORK_<APP>_DATABASE_ENGINE=postgresql`
-  and `SDKWORK_<APP>_DATABASE_SSL_MODE`; they must not use legacy aliases such
+- PostgreSQL dev profiles must use `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE=postgresql`
+  and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE`; they must not use legacy aliases such
   as `DATABASE_PROVIDER` or `DATABASE_SSLMODE`.
 - Test databases must be isolated from dev and production databases.
 - A local command may write to `target/dev/<app>` for disposable workspace data.
-  Long-lived private user data should use `~/.sdkwork/<app>`.
+  Long-lived private user data should use `~/.sdkwork/<application-code>`.
 
 ## 6. Release And Production Configuration Standard
 
@@ -302,7 +302,7 @@ platform secret managers. Dev `.env` files are not production configuration.
 
 Rules:
 
-- Linux service packages must install or initialize `/etc/sdkwork/<app>`.
+- Linux service packages must install or initialize `/etc/sdkwork/<application-code>`.
 - Standalone server/container and cloud deployments must default to
   PostgreSQL unless an approved desktop-only or local-data exception is
   documented.
@@ -324,16 +324,16 @@ Recommended Linux permissions:
 
 | Path | Mode | Owner |
 | --- | --- | --- |
-| `/etc/sdkwork/<app>` | `0750` | `root:sdkwork` |
-| `/etc/sdkwork/<app>/*.toml` | `0640` | `root:sdkwork` |
-| `/etc/sdkwork/<app>/*.env` | `0640` | `root:sdkwork` |
-| `/etc/sdkwork/<app>/*.secret` | `0600` or `0640` | `root:sdkwork` |
-| `/usr/lib/sdkwork/<app>` | `0755` | `root:root` |
-| `/usr/share/sdkwork/<app>` | `0755` | `root:root` |
-| `/var/lib/sdkwork/<app>` | `0750` | `sdkwork:sdkwork` |
-| `/var/log/sdkwork/<app>` | `0750` | `sdkwork:adm` or `sdkwork:sdkwork` |
-| `/var/cache/sdkwork/<app>` | `0750` | `sdkwork:sdkwork` |
-| `/run/sdkwork/<app>` | `0750` | `sdkwork:sdkwork` |
+| `/etc/sdkwork/<application-code>` | `0750` | `root:sdkwork` |
+| `/etc/sdkwork/<application-code>/*.toml` | `0640` | `root:sdkwork` |
+| `/etc/sdkwork/<application-code>/*.env` | `0640` | `root:sdkwork` |
+| `/etc/sdkwork/<application-code>/*.secret` | `0600` or `0640` | `root:sdkwork` |
+| `/usr/lib/sdkwork/<application-code>` | `0755` | `root:root` |
+| `/usr/share/sdkwork/<application-code>` | `0755` | `root:root` |
+| `/var/lib/sdkwork/<application-code>` | `0750` | `sdkwork:sdkwork` |
+| `/var/log/sdkwork/<application-code>` | `0750` | `sdkwork:adm` or `sdkwork:sdkwork` |
+| `/var/cache/sdkwork/<application-code>` | `0750` | `sdkwork:sdkwork` |
+| `/run/sdkwork/<application-code>` | `0750` | `sdkwork:sdkwork` |
 
 ## 7. Config Discovery And Precedence
 
@@ -351,9 +351,9 @@ Applications must resolve runtime configuration in this order:
 
 Rules:
 
-- Explicit `SDKWORK_<APP>_CONFIG_FILE` always overrides default discovery.
-- Explicit `SDKWORK_<APP>_DATA_DIR`, `SDKWORK_<APP>_CACHE_DIR`, and
-  `SDKWORK_<APP>_LOG_DIR` override default path discovery for their scope.
+- Explicit `SDKWORK_<APPLICATION_CODE>_CONFIG_FILE` always overrides default discovery.
+- Explicit `SDKWORK_<APPLICATION_CODE>_DATA_DIR`, `SDKWORK_<APPLICATION_CODE>_CACHE_DIR`, and
+  `SDKWORK_<APPLICATION_CODE>_LOG_DIR` override default path discovery for their scope.
 - Shared libraries must not read default paths directly. Bootstrap code resolves
   paths and passes typed configuration into the application.
 - Release mode should fail validation on unknown strict config keys unless the
@@ -457,7 +457,7 @@ Rules:
 
 - Standalone server/container and cloud release config must not depend on only
   `url`. Structured fields are the primary production contract.
-- `SDKWORK_<APP>_DATABASE_URL` may override the structured config only when an
+- `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` may override the structured config only when an
   operator explicitly sets it.
 - PostgreSQL password material should use `password_file` or a platform secret.
 - Direct `password` is allowed only when the entire config file is protected as
@@ -480,18 +480,18 @@ Recommended env override mapping:
 
 | Env var | Config field |
 | --- | --- |
-| `SDKWORK_<APP>_DATABASE_ENGINE` | `[database].engine` |
-| `SDKWORK_<APP>_DATABASE_URL` | `[database].url` |
-| `SDKWORK_<APP>_DATABASE_HOST` | `[database].host` |
-| `SDKWORK_<APP>_DATABASE_PORT` | `[database].port` |
-| `SDKWORK_<APP>_DATABASE_NAME` | `[database].database` |
-| `SDKWORK_<APP>_DATABASE_SCHEMA` | `[database].schema` |
-| `SDKWORK_<APP>_DATABASE_USERNAME` | `[database].username` |
-| `SDKWORK_<APP>_DATABASE_PASSWORD_FILE` | `[database].password_file` |
-| `SDKWORK_<APP>_DATABASE_PASSWORD` | `[database].password` |
-| `SDKWORK_<APP>_DATABASE_SSL_MODE` | `[database].ssl_mode` |
-| `SDKWORK_<APP>_DATABASE_MAX_CONNECTIONS` | `[database].max_connections` |
-| `SDKWORK_<APP>_DATABASE_FILE` | `[database].file` |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` | `[database].engine` |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` | `[database].url` |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_HOST` | `[database].host` |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_PORT` | `[database].port` |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_NAME` | `[database].database` |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_SCHEMA` | `[database].schema` |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_USERNAME` | `[database].username` |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD_FILE` | `[database].password_file` |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD` | `[database].password` |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` | `[database].ssl_mode` |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_MAX_CONNECTIONS` | `[database].max_connections` |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_FILE` | `[database].file` |
 
 Standard PostgreSQL development example shape:
 
@@ -571,20 +571,20 @@ Recommended env override mapping:
 
 | Env var | Config field |
 | --- | --- |
-| `SDKWORK_<APP>_REDIS_ENABLED` | `[redis].enabled` |
-| `SDKWORK_<APP>_REDIS_HOST` | `[redis].host` |
-| `SDKWORK_<APP>_REDIS_PORT` | `[redis].port` |
-| `SDKWORK_<APP>_REDIS_DATABASE` | `[redis].database` |
-| `SDKWORK_<APP>_REDIS_USERNAME` | `[redis].username` |
-| `SDKWORK_<APP>_REDIS_PASSWORD_FILE` | `[redis].password_file` |
-| `SDKWORK_<APP>_REDIS_PASSWORD` | `[redis].password` |
-| `SDKWORK_<APP>_REDIS_KEY_PREFIX` | `[redis].key_prefix` |
-| `SDKWORK_<APP>_REDIS_TLS` | `[redis].tls` |
-| `SDKWORK_<APP>_REDIS_MAX_CONNECTIONS` | `[redis].max_connections` |
-| `SDKWORK_<APP>_REDIS_CONNECT_TIMEOUT_MILLIS` | `[redis].connect_timeout_ms` |
-| `SDKWORK_<APP>_REDIS_COMMAND_TIMEOUT_MILLIS` | `[redis].command_timeout_ms` |
-| `SDKWORK_<APP>_REDIS_POOL_IDLE_TIMEOUT_SECONDS` | `[redis].pool_idle_timeout_seconds` |
-| `SDKWORK_<APP>_REDIS_URL` | `[redis].url` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_ENABLED` | `[redis].enabled` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_HOST` | `[redis].host` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_PORT` | `[redis].port` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_DATABASE` | `[redis].database` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_USERNAME` | `[redis].username` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_PASSWORD_FILE` | `[redis].password_file` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_PASSWORD` | `[redis].password` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_KEY_PREFIX` | `[redis].key_prefix` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_TLS` | `[redis].tls` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_MAX_CONNECTIONS` | `[redis].max_connections` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_CONNECT_TIMEOUT_MILLIS` | `[redis].connect_timeout_ms` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_COMMAND_TIMEOUT_MILLIS` | `[redis].command_timeout_ms` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_POOL_IDLE_TIMEOUT_SECONDS` | `[redis].pool_idle_timeout_seconds` |
+| `SDKWORK_<APPLICATION_CODE>_REDIS_URL` | `[redis].url` |
 
 ## 11. Secrets Standard
 
@@ -597,12 +597,12 @@ Rules:
 - Secrets must never appear in browser runtime config, frontend bundles,
   generated SDK examples, screenshots, logs, telemetry attributes, or committed
   templates.
-- Secret files in `/etc/sdkwork/<app>` must be readable only by the service
+- Secret files in `/etc/sdkwork/<application-code>` must be readable only by the service
   account and administrators.
-- User-scope secret files under `~/.sdkwork/<app>/secrets` should be readable
+- User-scope secret files under `~/.sdkwork/<application-code>/secrets` should be readable
   only by the owning user.
 - Container deployments should prefer platform secret mounts such as
-  `/run/secrets/sdkwork/<app>/<secret-name>`.
+  `/run/secrets/sdkwork/<application-code>/<secret-name>`.
 - Config files may reference secret file paths, but examples must use placeholder
   paths and must not include real secret values.
 - Installers may create placeholder secret files, but startup must fail closed
@@ -612,15 +612,15 @@ Rules:
 
 Rules:
 
-- File logs use `/var/log/sdkwork/<app>` for Linux service scope and
-  `~/.sdkwork/<app>/logs` for user scope.
+- File logs use `/var/log/sdkwork/<application-code>` for Linux service scope and
+  `~/.sdkwork/<application-code>/logs` for user scope.
 - Container logs should go to stdout/stderr first and use file logs only when
   explicitly configured.
 - Structured logs must redact secrets and private connection strings.
-- Cache files use `/var/cache/sdkwork/<app>` for Linux service scope and
-  `~/.sdkwork/<app>/cache` for user scope.
-- Temporary files use `/run/sdkwork/<app>` for process runtime state and
-  `~/.sdkwork/<app>/tmp` for user-private temp files. General `/tmp` use is
+- Cache files use `/var/cache/sdkwork/<application-code>` for Linux service scope and
+  `~/.sdkwork/<application-code>/cache` for user scope.
+- Temporary files use `/run/sdkwork/<application-code>` for process runtime state and
+  `~/.sdkwork/<application-code>/tmp` for user-private temp files. General `/tmp` use is
   allowed only for disposable scratch files with safe cleanup.
 - Rebuildable cache must not be treated as authoritative data.
 - Durable queue state, catalogs, migration state, or generated data required for
@@ -672,7 +672,7 @@ Rules:
 
 - New installs must use only the canonical SDKWork paths.
 - Upgrades may read old paths as compatibility fallbacks.
-- If both old and new config files exist, explicit `SDKWORK_<APP>_CONFIG_FILE`
+- If both old and new config files exist, explicit `SDKWORK_<APPLICATION_CODE>_CONFIG_FILE`
   wins; otherwise the canonical path wins and the old path is ignored unless a
   documented migration command is running.
 - Migration tooling must copy data before changing the active path and must not
@@ -683,13 +683,13 @@ Rules:
 ## 15. Acceptance Checklist
 
 - [ ] The application has one canonical lowercase application code.
-- [ ] Linux system config is under `/etc/sdkwork/<app>`.
-- [ ] Linux read-only assets are under `/usr/lib/sdkwork/<app>` or `/usr/share/sdkwork/<app>`.
-- [ ] Linux durable data is under `/var/lib/sdkwork/<app>`.
-- [ ] Linux logs are under `/var/log/sdkwork/<app>`.
-- [ ] User private files are under `~/.sdkwork/<app>` or the documented Windows equivalent `%USERPROFILE%\.sdkwork\<app>`.
+- [ ] Linux system config is under `/etc/sdkwork/<application-code>`.
+- [ ] Linux read-only assets are under `/usr/lib/sdkwork/<application-code>` or `/usr/share/sdkwork/<application-code>`.
+- [ ] Linux durable data is under `/var/lib/sdkwork/<application-code>`.
+- [ ] Linux logs are under `/var/log/sdkwork/<application-code>`.
+- [ ] User private files are under `~/.sdkwork/<application-code>` or the documented Windows equivalent `%USERPROFILE%\.sdkwork\<application-code>`.
 - [ ] Development config is separated from release config.
-- [ ] PostgreSQL development config uses checked-in `.env.postgres.example`, ignored `.env.postgres`, `SDKWORK_<APP>_DATABASE_ENGINE=postgresql`, and `SDKWORK_<APP>_DATABASE_SSL_MODE`.
+- [ ] PostgreSQL development config uses checked-in `.env.postgres.example`, ignored `.env.postgres`, `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE=postgresql`, and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE`.
 - [ ] Standalone server/container and cloud production config defaults to PostgreSQL through structured `[database]` fields.
 - [ ] Desktop user-data config defaults to SQLite under the user private data directory.
 - [ ] Redis config uses structured `[redis]` fields by default.

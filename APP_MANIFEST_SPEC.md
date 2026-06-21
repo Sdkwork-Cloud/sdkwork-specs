@@ -213,7 +213,7 @@ Common media asset fields:
 | --- | --- |
 | `id` | Immutable unique asset id within the manifest |
 | `type` | `ICON`, `SCREENSHOT`, `PREVIEW_IMAGE`, `PREVIEW_VIDEO`, `FEATURE_GRAPHIC` |
-| `purpose` | Product purpose such as `PRIMARY`, `STORE_LISTING`, `CATALOG_SCREENSHOT`, `STORE_APP_PREVIEW` |
+| `purpose` | Release purpose such as `PRIMARY`, `STORE_LISTING`, `CATALOG_SCREENSHOT`, `STORE_APP_PREVIEW` |
 | `url` | HTTP/HTTPS delivery URL for published/store-facing projection; SDKWork-owned source files remain Drive-backed |
 | `driveUri` | Stable Drive reference for SDKWork-owned media source when the asset is uploaded or managed by SDKWork |
 | `resource` | Optional `MediaResource` snapshot for SDKWork-owned media source |

@@ -161,7 +161,7 @@ const IGNORED_DOCUMENT_PATH_PARTS = new Set([
 
 function usage() {
   return [
-    'Usage: node tools/check-pnpm-script-standard.mjs --root <repo> [--product-prefix a,b,c]',
+    'Usage: node tools/check-pnpm-script-standard.mjs --root <repo> [--application-code-prefix a,b,c]',
     '',
     'Validates SDKWork repository root package.json scripts against PNPM_SCRIPT_SPEC.md.',
   ].join('\n');
@@ -381,7 +381,7 @@ function pushCommandNameIssues(
   issues,
   productPrefixes,
   prefix = '',
-  productPrefixMessage = 'product-prefixed public root scripts are forbidden',
+  productPrefixMessage = 'application-code-prefixed public root scripts are forbidden',
 ) {
   const first = scriptName.split(':')[0];
   if (!ALLOWED_FIRST_SEGMENTS.has(first)) {
@@ -547,7 +547,7 @@ function validateDocumentationExamples(root, productPrefixes) {
           issues,
           productPrefixes,
           prefix,
-          'product-prefixed command examples are forbidden',
+          'application-code-prefixed command examples are forbidden',
         );
         pushRetiredCommandExampleIssues(scriptName, commandText, issues, prefix);
       }
@@ -620,7 +620,7 @@ function validateJsonCommandExamples(root, productPrefixes) {
           issues,
           productPrefixes,
           prefix,
-          'product-prefixed command examples are forbidden',
+          'application-code-prefixed command examples are forbidden',
         );
         pushRetiredCommandExampleIssues(scriptName, commandText, issues, prefix);
       }
@@ -712,7 +712,7 @@ function validateRunnerScriptExamples(root, productPrefixes) {
           issues,
           productPrefixes,
           prefix,
-          'product-prefixed command examples are forbidden',
+          'application-code-prefixed command examples are forbidden',
         );
         pushRetiredCommandExampleIssues(scriptName, commandText, issues, prefix);
       }
@@ -723,7 +723,7 @@ function validateRunnerScriptExamples(root, productPrefixes) {
             issues,
             productPrefixes,
             prefix,
-            'product-prefixed command examples are forbidden',
+            'application-code-prefixed command examples are forbidden',
           );
           continue;
         }
@@ -732,7 +732,7 @@ function validateRunnerScriptExamples(root, productPrefixes) {
           issues,
           productPrefixes,
           prefix,
-          'product-prefixed command examples are forbidden',
+          'application-code-prefixed command examples are forbidden',
         );
       }
     }
@@ -748,6 +748,7 @@ function validateRunnerScriptExamples(root, productPrefixes) {
 const parsed = parseArgs({
   options: {
     root: { type: 'string' },
+    'application-code-prefix': { type: 'string', multiple: true },
     'product-prefix': { type: 'string', multiple: true },
     help: { type: 'boolean', short: 'h' },
   },
@@ -760,15 +761,18 @@ if (parsed.values.help) {
 }
 
 const root = path.resolve(parsed.values.root || process.cwd());
-const productPrefixes = parsed.values['product-prefix']
-  ? parsed.values['product-prefix'].flatMap(splitCsv)
-  : [];
+const applicationCodePrefixes = [
+  ...(parsed.values['application-code-prefix']
+    ? parsed.values['application-code-prefix'].flatMap(splitCsv)
+    : []),
+  ...(parsed.values['product-prefix'] ? parsed.values['product-prefix'].flatMap(splitCsv) : []),
+];
 
-const rootResult = validateRootScripts(root, productPrefixes);
+const rootResult = validateRootScripts(root, applicationCodePrefixes);
 const packageCount = validatePackageLocalScripts(root);
-const docCount = validateDocumentationExamples(root, productPrefixes);
-const jsonCount = validateJsonCommandExamples(root, productPrefixes);
-const runnerCount = validateRunnerScriptExamples(root, productPrefixes);
+const docCount = validateDocumentationExamples(root, applicationCodePrefixes);
+const jsonCount = validateJsonCommandExamples(root, applicationCodePrefixes);
+const runnerCount = validateRunnerScriptExamples(root, applicationCodePrefixes);
 
 console.log(
   `pnpm script standard ok: ${path.relative(process.cwd(), rootResult.packagePath) || rootResult.packagePath} (${rootResult.scriptCount} root scripts, ${packageCount} package manifests scanned, ${docCount} docs scanned, ${jsonCount} command json files scanned, ${runnerCount} runner scripts scanned)`,

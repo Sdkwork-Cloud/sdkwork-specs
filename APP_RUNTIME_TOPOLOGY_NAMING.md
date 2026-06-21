@@ -16,10 +16,10 @@ document uses a retired synonym, that document is wrong.
 3. Deployment profile before process layout. `standalone` and `cloud` describe
    the application deployment architecture; `serviceLayout` describes how many
    backend processes participate.
-4. Plane before product. Connectivity names describe route ownership, not
+4. Plane before application line. Connectivity names describe route ownership, not
    marketing names.
 5. Env keys are scannable. Fixed segment order is
-   `SDKWORK_<APP>_<PLANE>_<SURFACE>_<PROPERTY>`.
+   `SDKWORK_<APPLICATION_CODE>_<PLANE>_<SURFACE>_<PROPERTY>`.
 6. Retire, do not alias. Unreleased applications delete old keys; bridging is
    forbidden outside approved migration tools.
 
@@ -112,7 +112,7 @@ CLI:
 
 | Plane | Owns | Example routes / protocols |
 | --- | --- | --- |
-| `application` | Product APIs and product realtime | `/im/v3/api/*`, HTTP + WebSocket on same ingress |
+| `application` | Application-owned APIs and application realtime | `/im/v3/api/*`, HTTP + WebSocket on same ingress |
 | `platform` | Shared SDKWork platform APIs | IAM, Drive, Notary, Agent through `sdkwork-api-gateway` or approved embedded standalone adapter |
 | `operations` | Operator / control APIs | Governance, drain, provider registry |
 | `edge` | Device and edge protocols | Device WebSocket, MQTT bridge, UDP |
@@ -125,7 +125,7 @@ CLI:
 
 | Surface id | Plane | Role | Protocols |
 | --- | --- | --- | --- |
-| `application.public-ingress` | application | Client-facing product entry | `http`, `ws` |
+| `application.public-ingress` | application | Client-facing application ingress | `http`, `ws` |
 | `platform.api-gateway` | platform | Shared platform HTTP entry | `http` |
 | `operations.control-ingress` | operations | Operator entry | `http` |
 | `edge.device-ingress` | edge | Device entry | `http`, `ws`, `mqtt`, `udp` |
@@ -139,8 +139,8 @@ Retired surface ids: `product-ingress`, `foundation-gateway`,
 
 | Key | Meaning |
 | --- | --- |
-| `SDKWORK_<APP>_DEPLOYMENT_PROFILE` | `standalone` or `cloud` |
-| `SDKWORK_<APP>_RUNTIME_TARGET` | One exact `CONFIG_SPEC.md` runtime target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, or `test-runner` |
+| `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE` | `standalone` or `cloud` |
+| `SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET` | One exact `CONFIG_SPEC.md` runtime target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, or `test-runner` |
 
 Browser/public runtime documents may expose `deploymentProfile` and
 `runtimeTarget` only as non-secret normalized values.
@@ -148,7 +148,7 @@ Browser/public runtime documents may expose `deploymentProfile` and
 ### Server-Side Surfaces
 
 ```text
-SDKWORK_<APP>_<PLANE>_<SURFACE>_<PROPERTY>
+SDKWORK_<APPLICATION_CODE>_<PLANE>_<SURFACE>_<PROPERTY>
 ```
 
 | Property | Meaning | Example |
@@ -169,7 +169,7 @@ Surface segment uses uppercase with underscores: `PUBLIC_INGRESS`,
 Split-services profiles may define internal upstream keys:
 
 ```text
-SDKWORK_<APP>_INTERNAL_<SERVICE>_BIND
+SDKWORK_<APPLICATION_CODE>_INTERNAL_<SERVICE>_BIND
 ```
 
 Example: `SDKWORK_IM_INTERNAL_SESSION_GATEWAY_BIND`.
@@ -177,7 +177,7 @@ Example: `SDKWORK_IM_INTERNAL_SESSION_GATEWAY_BIND`.
 ### Client-Side Mirror
 
 ```text
-VITE_<APP>_<PLANE>_<SURFACE>_<PROPERTY>
+VITE_<APP_CODE>_<PLANE>_<SURFACE>_<PROPERTY>
 ```
 
 Example: `VITE_SDKWORK_IM_APPLICATION_PUBLIC_HTTP_URL`.
@@ -187,10 +187,10 @@ Rules:
 - One env key `MUST NOT` serve two connectivity planes.
 - WebSocket URL keys use `WEBSOCKET_URL`, not `WS_URL` or
   `WEBSOCKET_BASE_URL`.
-- `SDKWORK_<APP>_DEPLOYMENT_MODE` is retired and `MUST` be rejected by new
+- `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_MODE` is retired and `MUST` be rejected by new
   application startup, checked-in examples, workflow config, and runtime config.
-  New applications use `SDKWORK_<APP>_DEPLOYMENT_PROFILE` plus
-  `SDKWORK_<APP>_RUNTIME_TARGET`.
+  New applications use `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE` plus
+  `SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET`.
 
 ## 7. Archetype Registry
 

@@ -777,7 +777,7 @@ Rules:
 
 ## 15. Legacy Adoption
 
-Existing repositories with crate-local migrations, bespoke installers, or product-specific bootstrap code `MUST` converge on this standard through a migration plan:
+Existing repositories with crate-local migrations, bespoke installers, or application-specific bootstrap code `MUST` converge on this standard through a migration plan:
 
 1. Move assets into `database/`.
 2. Add manifests and contract files.
@@ -789,7 +789,7 @@ Existing repositories with crate-local migrations, bespoke installers, or produc
 Known legacy patterns to converge:
 
 - crate-local `migrations/`
-- product-local `DatabaseInstaller`
+- application-local `DatabaseInstaller`
 - TypeScript/Rust ad-hoc schema bootstrap without history tables
 - seed data embedded in application code instead of `seeds/`
 

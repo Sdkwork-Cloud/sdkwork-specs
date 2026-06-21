@@ -19,7 +19,7 @@ sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md (L1 executable profile)
        -> enforced by
 sdkwork-web-framework crates (L2 runtime)
        -> extended by
-business repositories: sdkwork-router-* / sdkwork-*-api-server + appbase/product adapters (L3)
+business repositories: sdkwork-router-* / sdkwork-*-api-server + appbase/application-line adapters (L3)
 ```
 
 Rules:
@@ -29,7 +29,7 @@ Rules:
 - Any SDKWork application repository, application module, route crate, API server, backend service, gateway, or reusable component that owns, serves, develops, proxies, or composes an SDKWork HTTP `*-api` surface `MUST` follow this standard.
 - SDKWork HTTP `*-api` includes `open-api`, `app-api`, `backend-api`, and any package, crate, module, service, gateway, or authority whose name ends with `-api` and exposes HTTP routes.
 - Business repositories with Rust HTTP APIs `MUST` depend on `sdkwork-web-framework` crates; they `MUST NOT` fork, copy, or reimplement the standard interceptor chain, request-context resolution, route manifest contract metadata, or secure defaults locally.
-- `sdkwork-web-framework` `MUST NOT` depend on any business repository, business route crate, product OpenAPI authority, or application-owned SDK family.
+- `sdkwork-web-framework` `MUST NOT` depend on any business repository, business route crate, application-owned OpenAPI authority, or application-owned SDK family.
 - Java Spring HTTP backends do not cargo-depend on the Rust framework, but they `MUST` preserve equivalent `WebRequestContext` vocabulary, standard interceptor semantics, route manifest/OpenAPI metadata, and `application/problem+json` behavior defined by `API_SPEC.md` section 10 and `SECURITY_SPEC.md` section 5.1.
 
 ## 2. Mandatory Scope
@@ -41,8 +41,8 @@ The following artifacts `MUST` integrate `sdkwork-web-framework` or its language
 | `sdkwork-router-<capability>-open-api` | Framework router mounting, route manifest framework metadata, and `WebRequestContext` injection |
 | `sdkwork-router-<capability>-app-api` | Same |
 | `sdkwork-router-<capability>-backend-api` | Same |
-| `sdkwork-<app>-api-server` | Framework bootstrap, pipeline assembly, route mounting, adapter registration, and preflight |
-| `sdkwork-<app>-gateway` | Framework pipeline for proxied, dependency, or composed HTTP `*-api` surfaces before proxying or dispatch |
+| `sdkwork-<application-code>-api-server` | Framework bootstrap, pipeline assembly, route mounting, adapter registration, and preflight |
+| `sdkwork-<application-code>-gateway` | Framework pipeline for proxied, dependency, or composed HTTP `*-api` surfaces before proxying or dispatch |
 | Java/Spring `*ApiController` module | Typed `WebRequestContext` equivalent, standard interceptor order, and OpenAPI/manifest metadata parity |
 | Contract-only `apis/` source | OpenAPI operations still declare `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface` before SDK generation |
 
@@ -51,7 +51,7 @@ Out of scope for this standard:
 - gRPC/RPC services (`RPC_SPEC.md`, `RUST_RPC_SPEC.md`)
 - Pure frontend packages without HTTP route ownership
 - Workers without HTTP listeners
-- `sdkwork-<app>-service-host` in-process containers that do not mount HTTP routes
+- `sdkwork-<application-code>-service-host` in-process containers that do not mount HTTP routes
 
 These out-of-scope artifacts still `MUST NOT` introduce a competing HTTP context framework when they call, generate, or compose SDKWork HTTP APIs.
 
@@ -151,7 +151,7 @@ Rules:
 - Dual-token resolution on app-api/backend-api surfaces `MUST` require both `Authorization` and `Access-Token` when the route declares `dual-token` mode and the client runtime has both credentials available.
 - When both tokens are present, overlapping principal and tenancy claims `MUST` be resolved from `auth_token` first. Contradictory overlapping values in `access_token` `MUST` fail validation.
 - Production and production-like profiles `MUST` resolve API keys and OAuth bearer tokens through server-side lookup services. Dev-only inline claim-string resolvers are allowed only in local/private profiles documented by the owning repository.
-- IAM standard adapter: `sdkwork-iam-web-adapter` implements `IamOpenApiWebRequestContextResolver` (`IamDatabaseWebRequestContextResolver`) with `IamApiKeyLookupService` and `IamOAuthTokenLookupService`. Product repositories `SHOULD` reuse this adapter instead of forking open-api credential resolution.
+- IAM standard adapter: `sdkwork-iam-web-adapter` implements `IamOpenApiWebRequestContextResolver` (`IamDatabaseWebRequestContextResolver`) with `IamApiKeyLookupService` and `IamOAuthTokenLookupService`. Application repositories `SHOULD` reuse this adapter instead of forking open-api credential resolution.
 - L1 trait signatures, detector defaults, and Axum extractors: `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`, `../sdkwork-web-framework/docs/03-web-request-context.md`, and `../sdkwork-web-framework/docs/15-extension-points-registry.md`.
 
 - Business route crates `MUST NOT` live in `sdkwork-web-framework`. Framework-owned admin or control-plane route crates may live in the framework repository only when their ownership is explicit, their paths are framework-owned, and they follow the same `WebRequestContext`, manifest, OpenAPI, and security rules as application route crates.
@@ -227,7 +227,7 @@ Rules:
 
 - Business adapters `MUST` register through framework runtime assembly. They `MUST NOT` bypass the standard chain.
 - IAM token validation, API key lookup, OAuth bearer lookup, RBAC, and tenant isolation remain business-owned, but their hook positions and semantics are framework-owned.
-- appbase and product repositories `MUST` implement framework traits instead of exposing a parallel HTTP context framework.
+- appbase and application repositories `MUST` implement framework traits instead of exposing a parallel HTTP context framework.
 
 ## 10. Handler, Service, And Repository Rules
 
@@ -310,7 +310,7 @@ Detailed test requirements: `TEST_SPEC.md` section 2.3.1.
 - [ ] Public SDK-generated operations declare `security: []` and `x-sdkwork-auth-mode: anonymous`.
 - [ ] Login-like anonymous credential-entry operations declare and enforce `x-sdkwork-forbid-credential-headers: true`.
 - [ ] Handlers/controllers declare typed `WebRequestContext`; no raw credential, tenant, organization, user, permission, or request-id header parsing.
-- [ ] Business adapters implement framework traits; no parallel HTTP context framework in appbase or product repositories.
+- [ ] Business adapters implement framework traits; no parallel HTTP context framework in appbase or application repositories.
 - [ ] Java controllers, when present, preserve equivalent typed context, interceptor semantics, route metadata, and problem-detail behavior.
 - [ ] Protected open-api routes declare `api-key`, `oauth`, or `open-api-flexible` auth mode and resolve credentials through framework extension traits, not handler-local header parsing.
 - [ ] SDK generation inputs preserve request-context and API-surface extensions from authority OpenAPI.

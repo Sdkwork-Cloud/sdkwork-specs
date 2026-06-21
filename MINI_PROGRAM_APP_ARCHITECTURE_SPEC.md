@@ -34,7 +34,7 @@ Rules:
 ## 2. Standard Root Layout
 
 ```text
-apps/sdkwork-<product>-mini-program/
+apps/sdkwork-<application-code>-mini-program/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -55,15 +55,15 @@ apps/sdkwork-<product>-mini-program/
       mp-weixin.staging.example.json
       mp-weixin.production.example.json
     server/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     container/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
   docs/
   scripts/
   sdks/
@@ -86,17 +86,17 @@ apps/sdkwork-<product>-mini-program/
     subpackages/
       __generated__/
   packages/
-    sdkwork-<product>-mp-core/
-    sdkwork-<product>-mp-commons/
-    sdkwork-<product>-mp-shell/
-    sdkwork-<product>-mp-<capability>/
-    sdkwork-<product>-mp-console-core/
-    sdkwork-<product>-mp-console-shell/
-    sdkwork-<product>-mp-console-<capability>/
-    sdkwork-<product>-mp-admin-core/
-    sdkwork-<product>-mp-admin-shell/
-    sdkwork-<product>-mp-admin-<capability>/
-    sdkwork-<product>-mp-host/
+    sdkwork-<application-code>-mp-core/
+    sdkwork-<application-code>-mp-commons/
+    sdkwork-<application-code>-mp-shell/
+    sdkwork-<application-code>-mp-<capability>/
+    sdkwork-<application-code>-mp-console-core/
+    sdkwork-<application-code>-mp-console-shell/
+    sdkwork-<application-code>-mp-console-<capability>/
+    sdkwork-<application-code>-mp-admin-core/
+    sdkwork-<application-code>-mp-admin-shell/
+    sdkwork-<application-code>-mp-admin-<capability>/
+    sdkwork-<application-code>-mp-host/
   tests/
   package.json
   project.config.json
@@ -105,31 +105,31 @@ apps/sdkwork-<product>-mini-program/
 
 Rules:
 
-- The root name `apps/sdkwork-<product>-mini-program` is canonical for mini program roots. New mini program roots `MUST NOT` use the shorter `apps/<product>-mini-program/` form.
+- The root name `apps/sdkwork-<application-code>-mini-program` is canonical for mini program roots. New mini program roots `MUST NOT` use the shorter `apps/<application-code>-mini-program/` form.
 - The package segment `mp` is canonical for cross-platform mini program SDKWork packages.
-- Platform-specific behavior belongs in host/profile adapters, for example `mp-weixin` config and `sdkwork-<product>-mp-host/src/weixin/`.
+- Platform-specific behavior belongs in host/profile adapters, for example `mp-weixin` config and `sdkwork-<application-code>-mp-host/src/weixin/`.
 - Business packages should not be named `mp-weixin-*` unless the capability is truly platform-exclusive and approved in a component spec.
-- `src/pages/__generated__/` and `src/subpackages/__generated__/` are projection targets. Product business code should remain in packages.
+- `src/pages/__generated__/` and `src/subpackages/__generated__/` are projection targets. Application business code should remain in packages.
 - `project.private.config.json` is host-local and must not be committed. A safe `.example` may be committed.
 
 ## 3. Package Taxonomy
 
 | Package family | Owns | Must not own |
 | --- | --- | --- |
-| `sdkwork-<product>-mp-core` | runtime config, SDK factories, appbase IAM adapter, token/session/context stores, route registry, host adapter contracts | pages, business workflows |
-| `sdkwork-<product>-mp-commons` | domain-neutral mini program components, form/list/error primitives, design tokens, i18n helpers | business pages, SDK construction |
-| `sdkwork-<product>-mp-shell` | app shell, tab/page route composition, AuthGate integration, route projection inputs | business services |
-| `sdkwork-<product>-mp-<capability>` | pages, components, services, state, i18n, route contributions, view models | concrete SDK construction, unrelated capabilities |
-| `sdkwork-<product>-mp-console-*` | user-facing mini program console workflows through app-api | internal operator workflows |
-| `sdkwork-<product>-mp-admin-*` | approved internal operator workflows through backend-api | user app login/session creation |
-| `sdkwork-<product>-mp-host` | platform API adapters, permissions, login bridge, secure storage bridge, file/media pickers, QR/camera/share/push/profile APIs | business API transport, authorization |
+| `sdkwork-<application-code>-mp-core` | runtime config, SDK factories, appbase IAM adapter, token/session/context stores, route registry, host adapter contracts | pages, business workflows |
+| `sdkwork-<application-code>-mp-commons` | domain-neutral mini program components, form/list/error primitives, design tokens, i18n helpers | business pages, SDK construction |
+| `sdkwork-<application-code>-mp-shell` | app shell, tab/page route composition, AuthGate integration, route projection inputs | business services |
+| `sdkwork-<application-code>-mp-<capability>` | pages, components, services, state, i18n, route contributions, view models | concrete SDK construction, unrelated capabilities |
+| `sdkwork-<application-code>-mp-console-*` | user-facing mini program console workflows through app-api | internal operator workflows |
+| `sdkwork-<application-code>-mp-admin-*` | approved internal operator workflows through backend-api | user app login/session creation |
+| `sdkwork-<application-code>-mp-host` | platform API adapters, permissions, login bridge, secure storage bridge, file/media pickers, QR/camera/share/push/profile APIs | business API transport, authorization |
 
 Rules:
 
 - Mini program admin packages require explicit approval, `backend-admin` surface classification, and backend SDK boundary verification.
 - Packages without `mp-console` or `mp-admin` are default mini program app/user packages.
-- `sdkwork-<product>-mp-console-<capability>` packages are the user-facing mini program management console family. They follow the same package-internal shape as default mini program capability packages and consume app-api through generated TypeScript app SDK clients or approved appbase/mini-program wrappers.
-- `sdkwork-<product>-mp-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated backend SDK clients or approved backend wrappers.
+- `sdkwork-<application-code>-mp-console-<capability>` packages are the user-facing mini program management console family. They follow the same package-internal shape as default mini program capability packages and consume app-api through generated TypeScript app SDK clients or approved appbase/mini-program wrappers.
+- `sdkwork-<application-code>-mp-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must consume backend-api through generated backend SDK clients or approved backend wrappers.
 - The `<capability>` segment is the concrete business module token. It `MUST` use lower kebab-case and `MUST NOT` be a placeholder such as `console`, `admin`, `manager`, `backend`, `common`, or `misc`.
 - Capability packages should map to platform subpackages by default when they contain more than trivial pages.
 - Shared components remain domain-neutral. Domain components live in the owning capability package.
@@ -138,7 +138,7 @@ Rules:
 ## 4. Package Internal Shape
 
 ```text
-packages/sdkwork-<product>-mp-<capability>/
+packages/sdkwork-<application-code>-mp-<capability>/
   package.json
   README.md
   src/
@@ -330,8 +330,8 @@ Required verification for mini program architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-mini-program/` and `.sdkwork/`, `config/mini-program`, `config/host`, `src/bootstrap`, `packages/`, route projection targets, `sdks/`, scripts, and tests exist. |
-| Package naming | Static check proves packages use `sdkwork-<product>-mp-*` and reserved console/admin/host forms. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<application-code>-mini-program/` and `.sdkwork/`, `config/mini-program`, `config/host`, `src/bootstrap`, `packages/`, route projection targets, `sdks/`, scripts, and tests exist. |
+| Package naming | Static check proves packages use `sdkwork-<application-code>-mp-*` and reserved console/admin/host forms. |
 | Package/subpackage boundary | Static check proves business code lives in SDKWork packages and platform pages/subpackages are projections or thin wrappers. |
 | Route projection | Tests prove route contributions generate or assemble `app.json` pages/subpackages deterministically. |
 | Route alignment | Static checks prove route ids follow the shared route id format and align with other client roots where applicable. |
@@ -343,7 +343,7 @@ Required verification for mini program architecture changes:
 
 Acceptance checklist:
 
-- [ ] Mini program root uses `apps/sdkwork-<product>-mini-program/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
+- [ ] Mini program root uses `apps/sdkwork-<application-code>-mini-program/` and follows `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`.
 - [ ] SDKWork packages, not platform subpackages, define the source architecture.
 - [ ] Platform pages/subpackages are generated or assembled from route contributions.
 - [ ] Package names use the `mp` segment unless a platform-specific exception is approved.

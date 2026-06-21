@@ -25,5 +25,5 @@ Use this skill before changing SDKWork standards, application roots, API contrac
 - Root `specs/` files remain authoritative.
 - Repository/application `.sdkwork/` rules follow `SDKWORK_WORKSPACE_SPEC.md`.
 - Generated SDK output `.sdkwork/sdkwork-generator-*.json` remains generator-owned.
-- Runtime `~/.sdkwork/<app>` remains user-private runtime state governed by `RUNTIME_DIRECTORY_SPEC.md`.
+- Runtime `~/.sdkwork/<application-code>` remains user-private runtime state governed by `RUNTIME_DIRECTORY_SPEC.md`.
 - Do not add secrets, local runtime data, generated transport output, or user-private files to `.sdkwork/`.

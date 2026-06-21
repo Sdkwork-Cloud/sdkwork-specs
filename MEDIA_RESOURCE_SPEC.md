@@ -260,7 +260,7 @@ Rules:
 - `objectBlobId` may be populated only with a Drive-exposed storage object/version id. Do not use raw object keys as a substitute.
 - `metadata.drive.spaceId` and `metadata.drive.nodeId` should be present when the public schema permits metadata.
 
-## 6. Product Catalog Profile
+## 6. Merchandise Catalog Profile
 
 Product catalog media must support SPU-level and SKU-level media without inventing string URL fields per use case.
 

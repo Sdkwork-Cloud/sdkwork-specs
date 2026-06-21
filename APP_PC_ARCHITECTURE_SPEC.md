@@ -4,7 +4,7 @@
 - Scope: SDKWork PC application roots that support PC browser web, desktop, and large-screen tablet native packaging, including app modules, user-facing console modules, internal admin modules, shared renderer packages, Tauri/native host packages, and iPadOS/Android tablet runtime/package targets
 - Related: `SDKWORK_WORKSPACE_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `APPLICATION_SPEC.md`, `NAMING_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines the application-root architecture for SDKWork PC applications. A PC application is one product application root that can run as a browser web application and, when required, as a desktop or large-screen tablet native application through a host such as Tauri.
+This standard defines the application-root architecture for SDKWork PC applications. A PC application is one application root that can run as a browser web application and, when required, as a desktop or large-screen tablet native application through a host such as Tauri.
 
 This file is the PC application root standard. `APP_PC_REACT_UI_SPEC.md` remains the detailed React UI package standard, and `DESKTOP_APP_ARCHITECTURE_SPEC.md` remains the detailed desktop/Tauri host standard. New SDKWork application architecture standards for H5, Flutter, WeChat Mini Program, iOS, Android, and HarmonyOS should keep a similar root layout, package taxonomy, SDK boundary, appbase IAM boundary, and app/console/admin separation.
 
@@ -40,14 +40,14 @@ Rules:
 
 ## 2. Standard Root Layout
 
-Every new PC application root `MUST` use the directory name `apps/sdkwork-<product>-pc/`
+Every new PC application root `MUST` use the directory name `apps/sdkwork-<application-code>-pc/`
 and start from this layout unless an exception is recorded through
 `GOVERNANCE_SPEC.md`. The root directory name carries the SDKWork namespace,
 product identity, and PC architecture segment together; new roots `MUST NOT`
-use the shorter `apps/<product>-pc/` form.
+use the shorter `apps/<application-code>-pc/` form.
 
 ```text
-apps/sdkwork-<product>-pc/
+apps/sdkwork-<application-code>-pc/
   .sdkwork/
     README.md
     skills/
@@ -65,20 +65,20 @@ apps/sdkwork-<product>-pc/
       runtime-env.staging.example.json
       runtime-env.production.example.json
     desktop/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     server/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     container/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     tauri/
   docs/
   public/
@@ -97,17 +97,17 @@ apps/sdkwork-<product>-pc/
       routes.ts
       sdkClients.ts
   packages/
-    sdkwork-<product>-pc-core/
-    sdkwork-<product>-pc-commons/
-    sdkwork-<product>-pc-shell/
-    sdkwork-<product>-pc-<capability>/
-    sdkwork-<product>-pc-console-core/
-    sdkwork-<product>-pc-console-shell/
-    sdkwork-<product>-pc-console-<capability>/
-    sdkwork-<product>-pc-admin-core/
-    sdkwork-<product>-pc-admin-shell/
-    sdkwork-<product>-pc-admin-<capability>/
-    sdkwork-<product>-pc-desktop/
+    sdkwork-<application-code>-pc-core/
+    sdkwork-<application-code>-pc-commons/
+    sdkwork-<application-code>-pc-shell/
+    sdkwork-<application-code>-pc-<capability>/
+    sdkwork-<application-code>-pc-console-core/
+    sdkwork-<application-code>-pc-console-shell/
+    sdkwork-<application-code>-pc-console-<capability>/
+    sdkwork-<application-code>-pc-admin-core/
+    sdkwork-<application-code>-pc-admin-shell/
+    sdkwork-<application-code>-pc-admin-<capability>/
+    sdkwork-<application-code>-pc-desktop/
       src-tauri/
         tauri.conf.json
         tauri.windows.conf.json
@@ -159,9 +159,9 @@ Standard config ownership:
 | Config family | Example files | Owns | Must not own |
 | --- | --- | --- | --- |
 | Browser public runtime | `config/browser/runtime-env.<profile>.example.json`, `/runtime-env.js` | public SDK base URLs, public feature flags, public app metadata | secrets, database URLs, Redis URLs, tokens, private service endpoints |
-| Desktop user runtime | `config/desktop/<product>.<profile>.toml.example`, user `~/.sdkwork/<app>/config/<app>.toml` | installed desktop mode, local service toggle, user-private SQLite path, secure storage provider | server PostgreSQL defaults for dev services, API route constants, signing secrets |
-| Server runtime | `config/server/<product>.<profile>.toml.example`, `/etc/sdkwork/<app>/<process>.toml` | bind address, PostgreSQL, Redis, reverse proxy trust, service paths | browser-only `VITE_*`, Tauri packaging metadata |
-| Container runtime | `config/container/<product>.<profile>.toml.example`, mounted `/etc/sdkwork/...` | container service config, mounted secrets, external services, volumes | image-baked secrets or mutable database state |
+| Desktop user runtime | `config/desktop/<application-code>.<profile>.toml.example`, user `~/.sdkwork/<application-code>/config/<app>.toml` | installed desktop mode, local service toggle, user-private SQLite path, secure storage provider | server PostgreSQL defaults for dev services, API route constants, signing secrets |
+| Server runtime | `config/server/<application-code>.<profile>.toml.example`, `/etc/sdkwork/<application-code>/<process>.toml` | bind address, PostgreSQL, Redis, reverse proxy trust, service paths | browser-only `VITE_*`, Tauri packaging metadata |
+| Container runtime | `config/container/<application-code>.<profile>.toml.example`, mounted `/etc/sdkwork/...` | container service config, mounted secrets, external services, volumes | image-baked secrets or mutable database state |
 | Tauri platform | `src-tauri/tauri.*.conf.json`, optional `config/tauri/` templates | bundle id, package id, icons, permissions, capabilities, window metadata, signing references | business API contracts, SDK ownership, auth tokens, private keys |
 
 Rules:
@@ -170,7 +170,7 @@ Rules:
 - `dev` and `prod` are script/file aliases only. Runtime config content should use `development` and `production`.
 - `.env.local`, `.env.<profile>.local`, `.env.postgres`, `.env.release.local`, and `config/*.local.toml` must be ignored.
 - `pnpm dev` starts the browser renderer with browser public runtime config.
-- `pnpm dev:server` starts the backend service with `config/server/<product>.development.toml.example` copied or materialized into a host-local dev config.
+- `pnpm dev:server` starts the backend service with `config/server/<application-code>.development.toml.example` copied or materialized into a host-local dev config.
 - `pnpm test` uses an isolated test profile and must not share development or production database/schema, Redis prefix, logs, cache, runtime, or temp directories.
 - `pnpm dev:desktop` starts the desktop host through the standard development
   orchestration profile. It defaults to PostgreSQL, `unified-process`, and
@@ -189,11 +189,11 @@ PC applications share one renderer and one package taxonomy across large-screen 
 | Target | Standard mode | Host/package | Required behavior |
 | --- | --- | --- | --- |
 | PC browser web | `web` | root Vite/browser build | Full app/console/admin route composition, no native host dependency, graceful host-adapter fallback |
-| Windows desktop | `desktop-windows` | `sdkwork-<product>-pc-desktop` | Tauri desktop bundle, WebView2 runtime boundary, Windows scripts in `bin/windows/` |
-| macOS desktop | `desktop-macos` | `sdkwork-<product>-pc-desktop` | Tauri desktop bundle, signed/notarized release when distributed outside development |
-| Linux desktop | `desktop-linux` | `sdkwork-<product>-pc-desktop` | Tauri desktop bundle, distro/runtime dependency documentation |
-| iPadOS native tablet | `tablet-ipados` | `sdkwork-<product>-pc-desktop` Tauri iOS target | Same PC renderer, adaptive tablet layout, iPad split/multi-window awareness, Apple signing and IPA workflow |
-| Android tablet native | `tablet-android` | `sdkwork-<product>-pc-desktop` Tauri Android target | Same PC renderer, adaptive tablet layout, Android large-screen/windowing behavior, APK/AAB workflow |
+| Windows desktop | `desktop-windows` | `sdkwork-<application-code>-pc-desktop` | Tauri desktop bundle, WebView2 runtime boundary, Windows scripts in `bin/windows/` |
+| macOS desktop | `desktop-macos` | `sdkwork-<application-code>-pc-desktop` | Tauri desktop bundle, signed/notarized release when distributed outside development |
+| Linux desktop | `desktop-linux` | `sdkwork-<application-code>-pc-desktop` | Tauri desktop bundle, distro/runtime dependency documentation |
+| iPadOS native tablet | `tablet-ipados` | `sdkwork-<application-code>-pc-desktop` Tauri iOS target | Same PC renderer, adaptive tablet layout, iPad split/multi-window awareness, Apple signing and IPA workflow |
+| Android tablet native | `tablet-android` | `sdkwork-<application-code>-pc-desktop` Tauri Android target | Same PC renderer, adaptive tablet layout, Android large-screen/windowing behavior, APK/AAB workflow |
 
 Rules:
 
@@ -244,36 +244,36 @@ Rules:
 
 ## 3. Package Taxonomy
 
-PC package directory names `MUST` include the product code and the `pc` surface segment.
+PC package directory names `MUST` include the application code and the `pc` surface segment.
 
 | Package family | Naming | Surface | Owns | Must not own |
 | --- | --- | --- | --- | --- |
-| Core runtime | `sdkwork-<product>-pc-core` | shared PC runtime | SDK client factories, TokenManager binding, appbase IAM runtime, session store, environment, host adapter contracts | product pages, domain workflows, admin business logic |
-| Commons | `sdkwork-<product>-pc-commons` | shared PC UI/runtime | domain-neutral components, hooks, utilities, design-system adapters, i18n helpers | business pages, business services, route ownership |
-| App shell | `sdkwork-<product>-pc-shell` | app/user shell | user-facing layout, navigation, app route composition, app AuthGate integration | console/admin routes, backend SDK calls, business services |
-| App capability | `sdkwork-<product>-pc-<capability>` | app/user | user-facing pages, components, services, hooks, route metadata, i18n | console/admin pages, backend-only operations, concrete SDK construction |
-| Console core | `sdkwork-<product>-pc-console-core` | user console runtime | console SDK providers, console permission hints, console session/runtime helpers | app shell, admin SDK resources, internal staff features |
-| Console shell | `sdkwork-<product>-pc-console-shell` | user console shell | user-facing management console layout, menus, console route composition | app pages, internal admin pages, backend-only operation center |
-| Console capability | `sdkwork-<product>-pc-console-<capability>` | user console | customer/tenant/app-owner management pages, console services, console route metadata | internal company admin behavior, backend-only moderation/ops workflows |
-| Admin core | `sdkwork-<product>-pc-admin-core` | `backend-admin` runtime | backend SDK provider, admin permission/audit helpers, admin route guards, operator context | user login UI, app-api session creation, customer console workflows |
-| Admin shell | `sdkwork-<product>-pc-admin-shell` | `backend-admin` shell | internal management layout, admin menus, admin route composition | app user navigation, user console navigation, business data transport |
-| Admin capability | `sdkwork-<product>-pc-admin-<capability>` | `backend-admin` | internal staff operation pages, backend services, permissions, audit-facing workflows | app-api user workflows, user console workflows, raw HTTP bypasses |
-| Native host | `sdkwork-<product>-pc-desktop` | desktop and tablet native host | Tauri config, native commands, permissions, capabilities, icons, desktop bundles, iPadOS IPA workflow, Android tablet APK/AAB workflow | business authorization, app/domain services, generated SDK edits |
+| Core runtime | `sdkwork-<application-code>-pc-core` | shared PC runtime | SDK client factories, TokenManager binding, appbase IAM runtime, session store, environment, host adapter contracts | product pages, domain workflows, admin business logic |
+| Commons | `sdkwork-<application-code>-pc-commons` | shared PC UI/runtime | domain-neutral components, hooks, utilities, design-system adapters, i18n helpers | business pages, business services, route ownership |
+| App shell | `sdkwork-<application-code>-pc-shell` | app/user shell | user-facing layout, navigation, app route composition, app AuthGate integration | console/admin routes, backend SDK calls, business services |
+| App capability | `sdkwork-<application-code>-pc-<capability>` | app/user | user-facing pages, components, services, hooks, route metadata, i18n | console/admin pages, backend-only operations, concrete SDK construction |
+| Console core | `sdkwork-<application-code>-pc-console-core` | user console runtime | console SDK providers, console permission hints, console session/runtime helpers | app shell, admin SDK resources, internal staff features |
+| Console shell | `sdkwork-<application-code>-pc-console-shell` | user console shell | user-facing management console layout, menus, console route composition | app pages, internal admin pages, backend-only operation center |
+| Console capability | `sdkwork-<application-code>-pc-console-<capability>` | user console | customer/tenant/app-owner management pages, console services, console route metadata | internal company admin behavior, backend-only moderation/ops workflows |
+| Admin core | `sdkwork-<application-code>-pc-admin-core` | `backend-admin` runtime | backend SDK provider, admin permission/audit helpers, admin route guards, operator context | user login UI, app-api session creation, customer console workflows |
+| Admin shell | `sdkwork-<application-code>-pc-admin-shell` | `backend-admin` shell | internal management layout, admin menus, admin route composition | app user navigation, user console navigation, business data transport |
+| Admin capability | `sdkwork-<application-code>-pc-admin-<capability>` | `backend-admin` | internal staff operation pages, backend services, permissions, audit-facing workflows | app-api user workflows, user console workflows, raw HTTP bypasses |
+| Native host | `sdkwork-<application-code>-pc-desktop` | desktop and tablet native host | Tauri config, native commands, permissions, capabilities, icons, desktop bundles, iPadOS IPA workflow, Android tablet APK/AAB workflow | business authorization, app/domain services, generated SDK edits |
 
 Rules:
 
-- A package named `sdkwork-<product>-pc-<capability>` without `pc-console` or `pc-admin` is an app/user package by default.
-- `console` means user-facing management console for customers, tenants, app owners, or product users who manage their own resources.
+- A package named `sdkwork-<application-code>-pc-<capability>` without `pc-console` or `pc-admin` is an app/user package by default.
+- `console` means user-facing management console for customers, tenants, app owners, or app users who manage their own resources.
 - `admin` means the PC package maps to the `backend-admin` surface: company-internal staff management backend for operations, moderation, platform administration, support, audit, and internal control. `pc-console` packages are not `backend-admin`.
-- New PC packages `MUST NOT` use `sdkwork-<product>-console-*` or `sdkwork-<product>-admin-*` without the `pc` segment.
-- Existing packages without the `pc` segment are migration references only. New work should either create the normalized `sdkwork-<product>-pc-console-*` or `sdkwork-<product>-pc-admin-*` package, or record a migration exception.
+- New PC packages `MUST NOT` use `sdkwork-<application-code>-console-*` or `sdkwork-<application-code>-admin-*` without the `pc` segment.
+- Existing packages without the `pc` segment are migration references only. New work should either create the normalized `sdkwork-<application-code>-pc-console-*` or `sdkwork-<application-code>-pc-admin-*` package, or record a migration exception.
 - `core`, `commons`, and `shell` package names are reserved for infrastructure. They `MUST NOT` own business pages or business services.
 - Capability names `MUST` be lower kebab-case and should match a domain or business capability from `DOMAIN_SPEC.md`.
 
 Examples:
 
 ```text
-sdkwork-commerce-pc-product
+sdkwork-commerce-pc-merchandise
 sdkwork-commerce-pc-cart
 sdkwork-commerce-pc-orders
 sdkwork-commerce-pc-console-settings
@@ -289,9 +289,9 @@ The three PC surfaces share the same root and renderer stack, but they have diff
 
 | Surface | Package pattern | Typical users | API/SDK boundary | Route ownership |
 | --- | --- | --- | --- | --- |
-| App | `sdkwork-<product>-pc-<capability>` | end users and app users | app-api through generated app SDKs; protected open-api only through injected approved clients | app shell |
-| Console | `sdkwork-<product>-pc-console-<capability>` | customers, tenant owners, app owners, business users managing their own resources | app-api through generated app SDKs or approved console-facing app SDK wrappers; protected open-api only through injected approved clients | console shell |
-| Admin | `sdkwork-<product>-pc-admin-<capability>` | internal company staff, operators, support, auditors | backend-api through generated backend SDKs; appbase backend SDK for IAM administration | admin shell |
+| App | `sdkwork-<application-code>-pc-<capability>` | end users and app users | app-api through generated app SDKs; protected open-api only through injected approved clients | app shell |
+| Console | `sdkwork-<application-code>-pc-console-<capability>` | customers, tenant owners, app owners, business users managing their own resources | app-api through generated app SDKs or approved console-facing app SDK wrappers; protected open-api only through injected approved clients | console shell |
+| Admin | `sdkwork-<application-code>-pc-admin-<capability>` | internal company staff, operators, support, auditors | backend-api through generated backend SDKs; appbase backend SDK for IAM administration | admin shell |
 
 Rules:
 
@@ -307,7 +307,7 @@ Rules:
 Capability packages should use a consistent internal shape.
 
 ```text
-packages/sdkwork-<product>-pc-<surface-or-capability>/
+packages/sdkwork-<application-code>-pc-<surface-or-capability>/
   package.json
   README.md
   src/
@@ -340,7 +340,7 @@ Rules:
 Core package shape:
 
 ```text
-packages/sdkwork-<product>-pc-core/
+packages/sdkwork-<application-code>-pc-core/
   src/
     index.ts
     config/
@@ -353,7 +353,7 @@ packages/sdkwork-<product>-pc-core/
 Native host package shape:
 
 ```text
-packages/sdkwork-<product>-pc-desktop/
+packages/sdkwork-<application-code>-pc-desktop/
   package.json
   src/
     host/
@@ -413,7 +413,7 @@ Rules:
 - Protected open-api clients, when used from PC packages, `MUST` be injected with their approved open-api credential provider matching the declared auth mode. They `MUST NOT` be added to app/backend token-manager client lists.
 - Runtime/bootstrap `MUST` create one global TokenManager per authenticated session context and bind it to appbase app SDK clients, downstream authenticated app-api SDK clients, and explicit `backend-admin` backend-api SDK clients.
 - Appbase IAM runtime owns login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user self-service. Verification-code delivery and verification are messaging-owned app-api capabilities and must be injected through the generated messaging app SDK surface when auth flows need them.
-- Product packages `MUST NOT` copy appbase IAM APIs, regenerate appbase-owned contracts, or create local auth/session SDK ports when the appbase resource exists.
+- Application packages `MUST NOT` copy appbase IAM APIs, regenerate appbase-owned contracts, or create local auth/session SDK ports when the appbase resource exists.
 - `backend-admin` IAM management uses appbase backend SDK resources where applicable. Backend SDKs `MUST NOT` expose or consume user-facing `auth.sessions.create`, registration, refresh, or login-session creation resources.
 - App auth runtime for the user-facing PC renderer `MUST` construct appbase app SDK and downstream app SDK clients only. It `MUST NOT` construct backend SDK clients just because admin packages are present in the same PC root.
 - Services receive SDK clients or narrow SDK ports through dependency injection. UI components call services or hooks, not SDK clients directly, when reusable behavior exists.
@@ -425,7 +425,7 @@ PC browser, desktop, and tablet native modes share the renderer.
 Rules:
 
 - `pnpm dev` should start the default PC browser renderer for the application root.
-- `pnpm dev:desktop` should start the default desktop host when `sdkwork-<product>-pc-desktop` exists.
+- `pnpm dev:desktop` should start the default desktop host when `sdkwork-<application-code>-pc-desktop` exists.
 - `pnpm dev:tablet-ipados` should start the iOS/iPadOS Tauri development target when tablet packaging is enabled.
 - `pnpm dev:tablet-android` should start the Android tablet Tauri development target when tablet packaging is enabled.
 - Tauri `devUrl` `MUST` point to the renderer dev server, and `frontendDist` `MUST` point to the renderer build output.
@@ -502,12 +502,12 @@ pnpm build:tablet-android:prod
 Package filters should be stable:
 
 ```text
-pnpm --filter @sdkwork/<product>-pc-core typecheck
-pnpm --filter @sdkwork/<product>-pc-console-settings test
-pnpm --filter @sdkwork/<product>-pc-admin-monitor test
-pnpm --filter @sdkwork/<product>-pc-desktop build:desktop
-pnpm --filter @sdkwork/<product>-pc-desktop build:tablet-ipados
-pnpm --filter @sdkwork/<product>-pc-desktop build:tablet-android
+pnpm --filter @sdkwork/<application-code>-pc-core typecheck
+pnpm --filter @sdkwork/<application-code>-pc-console-settings test
+pnpm --filter @sdkwork/<application-code>-pc-admin-monitor test
+pnpm --filter @sdkwork/<application-code>-pc-desktop build:desktop
+pnpm --filter @sdkwork/<application-code>-pc-desktop build:tablet-ipados
+pnpm --filter @sdkwork/<application-code>-pc-desktop build:tablet-android
 ```
 
 Rules:
@@ -548,8 +548,8 @@ Required verification for PC application architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-pc/` and `.sdkwork/`, `src/`, `packages/`, `sdks/`, `scripts/`, and required metadata exist for application roots. |
-| Package naming | Static check proves new packages use `sdkwork-<product>-pc-*`, `sdkwork-<product>-pc-console-*`, or `sdkwork-<product>-pc-admin-*`. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<application-code>-pc/` and `.sdkwork/`, `src/`, `packages/`, `sdks/`, `scripts/`, and required metadata exist for application roots. |
+| Package naming | Static check proves new packages use `sdkwork-<application-code>-pc-*`, `sdkwork-<application-code>-pc-console-*`, or `sdkwork-<application-code>-pc-admin-*`. |
 | Surface split | Static scan proves app, console, and admin packages do not deep import each other or share hidden route/service internals. |
 | SDK boundary | Static scan proves app/console use app SDKs, `backend-admin` packages use backend SDKs, protected open-api uses declared open-api credential provider, and no raw HTTP/manual auth headers were introduced. |
 | SDK export boundary | Static scan proves `pc-core` exports app SDK/appbase app SDK wrappers and no backend SDK wrappers, while backend SDK/appbase backend SDK wrappers are exported only from `pc-admin-core` or another `backend-admin` boundary. |
@@ -562,7 +562,7 @@ Required verification for PC application architecture changes:
 
 Acceptance checklist:
 
-- [ ] PC application root uses `apps/sdkwork-<product>-pc/` and follows the standard root layout or has a documented exception.
+- [ ] PC application root uses `apps/sdkwork-<application-code>-pc/` and follows the standard root layout or has a documented exception.
 - [ ] New package names include the `pc` segment.
 - [ ] Packages without `pc-console` or `pc-admin` are treated as user-facing app packages.
 - [ ] Console packages are user-facing management console packages, not internal admin packages.

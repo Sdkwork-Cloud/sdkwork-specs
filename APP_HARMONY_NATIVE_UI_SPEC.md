@@ -11,13 +11,13 @@ This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to 
 Canonical app-root Harmony package shape:
 
 ```text
-apps/sdkwork-<product>-harmony-mobile/
+apps/sdkwork-<application-code>-harmony-mobile/
   packages/
-    sdkwork-<product>-harmony-mobile-core/
-    sdkwork-<product>-harmony-mobile-commons/
-    sdkwork-<product>-harmony-mobile-shell/
-    sdkwork-<product>-harmony-mobile-<capability>/
-    sdkwork-<product>-harmony-mobile-console-<capability>/
+    sdkwork-<application-code>-harmony-mobile-core/
+    sdkwork-<application-code>-harmony-mobile-commons/
+    sdkwork-<application-code>-harmony-mobile-shell/
+    sdkwork-<application-code>-harmony-mobile-<capability>/
+    sdkwork-<application-code>-harmony-mobile-console-<capability>/
 ```
 
 Optional shared Harmony package shape:
@@ -37,8 +37,8 @@ packages/harmony-native/
 
 Rules:
 
-- Harmony app UI `MUST` live in normalized Harmony application packages such as `apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>` or approved shared Harmony package families such as `packages/harmony-native/<domain>/<package>`.
-- Harmony user-console UI `MUST` live in `apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Harmony app UI `MUST` live in normalized Harmony application packages such as `apps/sdkwork-<application-code>-harmony-mobile/packages/sdkwork-<application-code>-harmony-mobile-<capability>` or approved shared Harmony package families such as `packages/harmony-native/<domain>/<package>`.
+- Harmony user-console UI `MUST` live in `apps/sdkwork-<application-code>-harmony-mobile/packages/sdkwork-<application-code>-harmony-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - Harmony app and user-console UI `MUST` consume `/app/v3/api` through generated ArkTS/TypeScript app SDK clients adapted for Harmony runtime or approved wrappers.
 - Harmony app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, Flutter packages, Android packages, or iOS packages for user-facing workflows.
 - Operator/admin screens require a separately approved Harmony admin package family classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
@@ -48,11 +48,11 @@ Rules:
 
 | Package type | Naming | Owns | Must not own |
 | --- | --- | --- | --- |
-| Harmony app shell | `sdkwork-<product>-harmony-mobile-shell` or app-specific Harmony shell | navigation/page stack composition, providers, AuthGate, route composition | reusable domain features |
-| Harmony foundation package | `sdkwork-<product>-harmony-mobile-commons` or `sdkwork-<foundation>-harmony-native` | domain-neutral ArkUI primitives, theme adapters, form/list/error primitives, i18n helpers | business-domain shortcuts |
-| Harmony domain package | `sdkwork-<product>-harmony-mobile-<capability>` or `sdkwork-<capability>-harmony-native` | pages, components, view models/controllers, services, repositories, state, i18n/resources, route metadata | concrete SDK construction, backend admin logic |
-| Harmony user console package | `sdkwork-<product>-harmony-mobile-console-<capability>` | user-facing management console pages, components, view models/controllers, services, repositories, state, i18n/resources, route metadata | company-internal admin workflows, backend-only operation center behavior |
-| Harmony host package | `sdkwork-<product>-harmony-mobile-host` or `sdkwork-<host>-harmony-native` when needed | HarmonyOS platform API adapters, permissions, lifecycle, secure storage, camera/QR/share/push/deep links | API business logic |
+| Harmony app shell | `sdkwork-<application-code>-harmony-mobile-shell` or app-specific Harmony shell | navigation/page stack composition, providers, AuthGate, route composition | reusable domain features |
+| Harmony foundation package | `sdkwork-<application-code>-harmony-mobile-commons` or `sdkwork-<foundation>-harmony-native` | domain-neutral ArkUI primitives, theme adapters, form/list/error primitives, i18n helpers | business-domain shortcuts |
+| Harmony domain package | `sdkwork-<application-code>-harmony-mobile-<capability>` or `sdkwork-<capability>-harmony-native` | pages, components, view models/controllers, services, repositories, state, i18n/resources, route metadata | concrete SDK construction, backend admin logic |
+| Harmony user console package | `sdkwork-<application-code>-harmony-mobile-console-<capability>` | user-facing management console pages, components, view models/controllers, services, repositories, state, i18n/resources, route metadata | company-internal admin workflows, backend-only operation center behavior |
+| Harmony host package | `sdkwork-<application-code>-harmony-mobile-host` or `sdkwork-<host>-harmony-native` when needed | HarmonyOS platform API adapters, permissions, lifecycle, secure storage, camera/QR/share/push/deep links | API business logic |
 
 Rules:
 
@@ -67,7 +67,7 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/sdkwork-<product>-harmony-mobile/packages/sdkwork-<product>-harmony-mobile-<capability>/
+apps/sdkwork-<application-code>-harmony-mobile/packages/sdkwork-<application-code>-harmony-mobile-<capability>/
   oh-package.json5
   src/
     main/
@@ -156,7 +156,7 @@ Required coverage for new Harmony capabilities:
 
 | Test | Requirement |
 | --- | --- |
-| Package boundary | Static scan proves packages follow `sdkwork-<product>-harmony-mobile-*` or approved shared Harmony package names and do not deep-import another package's private source. |
+| Package boundary | Static scan proves packages follow `sdkwork-<application-code>-harmony-mobile-*` or approved shared Harmony package names and do not deep-import another package's private source. |
 | SDK boundary | Static scan proves generated SDK clients or approved wrappers are used and no raw request APIs, manual auth headers, or generated SDK edits were introduced. |
 | Service/view model | Unit tests use fake generated app SDK clients and fake host adapters. |
 | UI states | ArkUI tests or documented fixtures cover loading, empty, validation-error, permission-denied, unavailable, and unknown-error states. |

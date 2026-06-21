@@ -43,13 +43,13 @@ Rules:
 ## 2. Standard Root Layout
 
 Every new H5 application root `MUST` use the directory name
-`apps/sdkwork-<product>-h5/` and start from this layout unless an exception is
+`apps/sdkwork-<application-code>-h5/` and start from this layout unless an exception is
 recorded through `GOVERNANCE_SPEC.md`. The root directory name carries the
 SDKWork namespace, product identity, and H5 architecture segment together; new
-roots `MUST NOT` use the shorter `apps/<product>-h5/` form.
+roots `MUST NOT` use the shorter `apps/<application-code>-h5/` form.
 
 ```text
-apps/sdkwork-<product>-h5/
+apps/sdkwork-<application-code>-h5/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
@@ -73,15 +73,15 @@ apps/sdkwork-<product>-h5/
       capacitor.staging.example.json
       capacitor.production.example.json
     server/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     container/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
   docs/
   public/
   scripts/
@@ -104,17 +104,17 @@ apps/sdkwork-<product>-h5/
     shell/
     routes/
   packages/
-    sdkwork-<product>-h5-core/
-    sdkwork-<product>-h5-commons/
-    sdkwork-<product>-h5-shell/
-    sdkwork-<product>-h5-<capability>/
-    sdkwork-<product>-h5-console-core/
-    sdkwork-<product>-h5-console-shell/
-    sdkwork-<product>-h5-console-<capability>/
-    sdkwork-<product>-h5-admin-core/
-    sdkwork-<product>-h5-admin-shell/
-    sdkwork-<product>-h5-admin-<capability>/
-    sdkwork-<product>-h5-capacitor/
+    sdkwork-<application-code>-h5-core/
+    sdkwork-<application-code>-h5-commons/
+    sdkwork-<application-code>-h5-shell/
+    sdkwork-<application-code>-h5-<capability>/
+    sdkwork-<application-code>-h5-console-core/
+    sdkwork-<application-code>-h5-console-shell/
+    sdkwork-<application-code>-h5-console-<capability>/
+    sdkwork-<application-code>-h5-admin-core/
+    sdkwork-<application-code>-h5-admin-shell/
+    sdkwork-<application-code>-h5-admin-<capability>/
+    sdkwork-<application-code>-h5-capacitor/
       capacitor.config.ts
       src/
         host/
@@ -132,7 +132,7 @@ apps/sdkwork-<product>-h5/
 
 Directory rules:
 
-- The root name `apps/sdkwork-<product>-h5` and package segment `h5` are canonical for H5/Capacitor application roots.
+- The root name `apps/sdkwork-<application-code>-h5` and package segment `h5` are canonical for H5/Capacitor application roots.
 - `.sdkwork/` is required by `SDKWORK_WORKSPACE_SPEC.md` for repository/application skills and plugins. It is not generated SDK output and is not user runtime state.
 - `bin/` contains cross-platform operational scripts for build, install, run, diagnostics, and mobile host helper commands when the H5 root is runnable outside a larger workspace.
 - `config/browser/` owns public browser-visible runtime config for H5. It is named `browser` to align with PC and other browser renderers.
@@ -145,7 +145,7 @@ Directory rules:
 - `specs/` contains local component/application specs that extend, but do not contradict, this canonical specs directory.
 - `src/` is the root shell entry and composition boundary only.
 - `packages/` contains all reusable runtime, shell, app, console, admin, and native host packages.
-- `packages/sdkwork-<product>-h5-capacitor` is the only package that may own Capacitor configuration, plugin implementation, generated native project directories, and platform-specific host implementations.
+- `packages/sdkwork-<application-code>-h5-capacitor` is the only package that may own Capacitor configuration, plugin implementation, generated native project directories, and platform-specific host implementations.
 - Generated Capacitor `ios/` and `android/` directories must not contain product business logic or app SDK transport.
 - `tests/` contains application-level integration, runtime, route, package-boundary, host-adapter, config, and release verification tests.
 
@@ -167,8 +167,8 @@ Standard config ownership:
 | --- | --- | --- | --- |
 | Browser public runtime | `config/browser/runtime-env.<profile>.example.json`, `/runtime-env.js` | public SDK base URLs, public feature flags, public app metadata, H5 host capability flags | secrets, database URLs, Redis URLs, tokens, refresh tokens, private service endpoints |
 | Host platform runtime | `config/host/capacitor.<profile>.example.json`, `capacitor.config.ts`, platform config references | bundle id/package id references, schemes, app links, associated domains, permissions, plugin flags, store metadata references | signing private keys, API keys, auth tokens, business API paths, SDK ownership |
-| Server runtime | `config/server/<product>.<profile>.toml.example`, `/etc/sdkwork/<app>/<process>.toml` | bind address, API gateway, PostgreSQL, Redis, reverse proxy trust, service paths when the app owns server runtime | browser-only `VITE_*`, Capacitor packaging metadata |
-| Container runtime | `config/container/<product>.<profile>.toml.example`, mounted `/etc/sdkwork/...` | container service config, mounted secrets, external service endpoints, volumes | image-baked secrets or mutable database state |
+| Server runtime | `config/server/<application-code>.<profile>.toml.example`, `/etc/sdkwork/<application-code>/<process>.toml` | bind address, API gateway, PostgreSQL, Redis, reverse proxy trust, service paths when the app owns server runtime | browser-only `VITE_*`, Capacitor packaging metadata |
+| Container runtime | `config/container/<application-code>.<profile>.toml.example`, mounted `/etc/sdkwork/...` | container service config, mounted secrets, external service endpoints, volumes | image-baked secrets or mutable database state |
 
 Rules:
 
@@ -191,8 +191,8 @@ H5 applications share one mobile renderer and one package taxonomy across browse
 | Mobile H5 browser | `h5` | root Vite/browser build | Phone-first renderer, public runtime config, generated app SDKs, no native host dependency |
 | WeChat H5 browser | `h5-weixin` | H5 renderer with WeChat bridge adapter | Same SDK/IAM boundary with WeChat browser facts behind typed host adapters |
 | Embedded WebView | `webview` | H5 renderer embedded by another approved host | Same route/SDK/runtime model, host facts injected through adapter contract |
-| iOS Capacitor app | `capacitor-ios` | `sdkwork-<product>-h5-capacitor` | Same renderer, iOS bundle id, universal links, push, secure storage, IPA/TestFlight/App Store or private distribution workflow |
-| Android Capacitor app | `capacitor-android` | `sdkwork-<product>-h5-capacitor` | Same renderer, Android package id, app links, push, secure storage, APK/AAB/Google Play or private distribution workflow |
+| iOS Capacitor app | `capacitor-ios` | `sdkwork-<application-code>-h5-capacitor` | Same renderer, iOS bundle id, universal links, push, secure storage, IPA/TestFlight/App Store or private distribution workflow |
+| Android Capacitor app | `capacitor-android` | `sdkwork-<application-code>-h5-capacitor` | Same renderer, Android package id, app links, push, secure storage, APK/AAB/Google Play or private distribution workflow |
 
 Rules:
 
@@ -235,38 +235,38 @@ Rules:
 
 ## 3. Package Taxonomy
 
-H5 package directory names `MUST` include the product code and the `h5` surface segment.
+H5 package directory names `MUST` include the application code and the `h5` surface segment.
 
 | Package family | Naming | Surface | Owns | Must not own |
 | --- | --- | --- | --- | --- |
-| Core runtime | `sdkwork-<product>-h5-core` | shared H5 runtime | SDK client factories, TokenManager binding, appbase IAM runtime, session/context stores, runtime config, route registry, host adapter contracts | screens, business workflows |
-| Commons | `sdkwork-<product>-h5-commons` | shared mobile UI/runtime | mobile UI primitives, safe-area helpers, touch/form/list primitives, design-system adapters, domain-neutral hooks | business screens, concrete SDK construction |
-| App shell | `sdkwork-<product>-h5-shell` | app/user shell | mobile navigation container, tab/stack/sheet layout, app route composition, app AuthGate integration | console/admin routes, business services |
-| App capability | `sdkwork-<product>-h5-<capability>` | app/user | user-facing screens, components, hooks, services, state, i18n, route contributions, view models | console/admin workflows, concrete SDK construction |
-| Console core | `sdkwork-<product>-h5-console-core` | user console runtime | console SDK providers, console permission hints, mobile console session/runtime helpers | app shell, internal admin SDK resources |
-| Console shell | `sdkwork-<product>-h5-console-shell` | user console shell | user-facing mobile management console navigation and route composition | app routes, internal admin navigation |
-| Console capability | `sdkwork-<product>-h5-console-<capability>` | user console | customer/tenant/app-owner mobile management workflows through app-api | company-internal admin behavior |
-| Admin core | `sdkwork-<product>-h5-admin-core` | `backend-admin` runtime, approved only | backend SDK provider, admin permission/audit helpers, admin route guards, operator context | user login UI, app-api session creation |
-| Admin shell | `sdkwork-<product>-h5-admin-shell` | internal mobile admin, approved only | internal staff navigation, route composition, audit-sensitive transitions | app or console navigation |
-| Admin capability | `sdkwork-<product>-h5-admin-<capability>` | internal mobile admin, approved only | internal operator workflows through backend-api | user app workflows, app SDK login/session creation |
-| Capacitor host | `sdkwork-<product>-h5-capacitor` | native host | Capacitor config, plugins, permissions, iOS/Android package metadata, typed host implementations | business API calls, business authorization, SDK generation |
+| Core runtime | `sdkwork-<application-code>-h5-core` | shared H5 runtime | SDK client factories, TokenManager binding, appbase IAM runtime, session/context stores, runtime config, route registry, host adapter contracts | screens, business workflows |
+| Commons | `sdkwork-<application-code>-h5-commons` | shared mobile UI/runtime | mobile UI primitives, safe-area helpers, touch/form/list primitives, design-system adapters, domain-neutral hooks | business screens, concrete SDK construction |
+| App shell | `sdkwork-<application-code>-h5-shell` | app/user shell | mobile navigation container, tab/stack/sheet layout, app route composition, app AuthGate integration | console/admin routes, business services |
+| App capability | `sdkwork-<application-code>-h5-<capability>` | app/user | user-facing screens, components, hooks, services, state, i18n, route contributions, view models | console/admin workflows, concrete SDK construction |
+| Console core | `sdkwork-<application-code>-h5-console-core` | user console runtime | console SDK providers, console permission hints, mobile console session/runtime helpers | app shell, internal admin SDK resources |
+| Console shell | `sdkwork-<application-code>-h5-console-shell` | user console shell | user-facing mobile management console navigation and route composition | app routes, internal admin navigation |
+| Console capability | `sdkwork-<application-code>-h5-console-<capability>` | user console | customer/tenant/app-owner mobile management workflows through app-api | company-internal admin behavior |
+| Admin core | `sdkwork-<application-code>-h5-admin-core` | `backend-admin` runtime, approved only | backend SDK provider, admin permission/audit helpers, admin route guards, operator context | user login UI, app-api session creation |
+| Admin shell | `sdkwork-<application-code>-h5-admin-shell` | internal mobile admin, approved only | internal staff navigation, route composition, audit-sensitive transitions | app or console navigation |
+| Admin capability | `sdkwork-<application-code>-h5-admin-<capability>` | internal mobile admin, approved only | internal operator workflows through backend-api | user app workflows, app SDK login/session creation |
+| Capacitor host | `sdkwork-<application-code>-h5-capacitor` | native host | Capacitor config, plugins, permissions, iOS/Android package metadata, typed host implementations | business API calls, business authorization, SDK generation |
 
 Rules:
 
 - H5 mobile capability packages follow `APP_MOBILE_REACT_UI_SPEC.md` for screens, components, hooks, services, state, i18n, navigation, and host contracts.
-- Admin package families for H5 roots require explicit product approval, `backend-admin` surface classification, and backend SDK boundary verification.
+- Admin package families for H5 roots require explicit governance approval, `backend-admin` surface classification, and backend SDK boundary verification.
 - Shared UI primitives belong in `h5-commons`. Shared runtime/session/SDK behavior belongs in `h5-core`.
 - `core`, `commons`, and `shell` package names are reserved for infrastructure. They `MUST NOT` own business screens or business services.
 - Capability names `MUST` be lower kebab-case and align with canonical domains or approved business capabilities.
 - Packages without `h5-console` or `h5-admin` are default mobile app/user packages.
-- `h5-console-<capability>` packages are the user-facing mobile management console family. They follow the same package-internal shape as `h5-<capability>` packages, but their routes, i18n, services, and state are scoped to customer, tenant, app-owner, or product-user management workflows.
+- `h5-console-<capability>` packages are the user-facing mobile management console family. They follow the same package-internal shape as `h5-<capability>` packages, but their routes, i18n, services, and state are scoped to customer, tenant, app-owner, or app-user management workflows.
 - `h5-admin-<capability>` packages are approved internal operations admin packages and map to `backend-admin`; they must not be used for user-facing management console workflows.
 - The `<capability>` segment is the concrete business module token. It `MUST NOT` be a placeholder such as `console`, `admin`, `manager`, `backend`, `common`, or `misc`.
 
 Examples:
 
 ```text
-sdkwork-commerce-h5-product
+sdkwork-commerce-h5-merchandise
 sdkwork-commerce-h5-cart
 sdkwork-commerce-h5-orders
 sdkwork-commerce-h5-console-settings
@@ -281,9 +281,9 @@ H5 app, console, and admin surfaces share the same root and renderer stack, but 
 
 | Surface | Package pattern | Typical users | API/SDK boundary | Route ownership |
 | --- | --- | --- | --- | --- |
-| App | `sdkwork-<product>-h5-<capability>` | end users and app users on mobile web/app | app-api through generated app SDKs; protected open-api only through injected approved clients | app shell |
-| Console | `sdkwork-<product>-h5-console-<capability>` | customers, tenant owners, app owners, business users managing their own resources from mobile | app-api through generated app SDKs or approved console-facing app SDK wrappers | console shell |
-| Admin | `sdkwork-<product>-h5-admin-<capability>` | approved internal company staff, operators, support, auditors | backend-api through generated backend SDKs; appbase backend SDK for IAM administration | admin shell |
+| App | `sdkwork-<application-code>-h5-<capability>` | end users and app users on mobile web/app | app-api through generated app SDKs; protected open-api only through injected approved clients | app shell |
+| Console | `sdkwork-<application-code>-h5-console-<capability>` | customers, tenant owners, app owners, business users managing their own resources from mobile | app-api through generated app SDKs or approved console-facing app SDK wrappers | console shell |
+| Admin | `sdkwork-<application-code>-h5-admin-<capability>` | approved internal company staff, operators, support, auditors | backend-api through generated backend SDKs; appbase backend SDK for IAM administration | admin shell |
 
 Rules:
 
@@ -292,14 +292,14 @@ Rules:
 - Admin packages `MUST NOT` import app/user screens, user console screens, or app-api login/session resources.
 - Shared visual primitives belong in `h5-commons`. Shared SDK/session/runtime logic belongs in `h5-core`. Shared surface-specific runtime logic belongs in `h5-console-core` or `h5-admin-core`.
 - Cross-surface workflows `MUST` be composed through public package exports, SDK service ports, or generated SDK clients. They `MUST NOT` share route constants, hidden globals, or deep `src/` imports.
-- Mobile admin surfaces are high-risk and require product approval because mobile devices have different loss, lock-screen, notification, and secure-storage risks than PC internal admin surfaces.
+- Mobile admin surfaces are high-risk and require governance approval because mobile devices have different loss, lock-screen, notification, and secure-storage risks than PC internal admin surfaces.
 
 ## 5. Package Internal Shape
 
 Capability packages should use a consistent internal shape.
 
 ```text
-packages/sdkwork-<product>-h5-<surface-or-capability>/
+packages/sdkwork-<application-code>-h5-<surface-or-capability>/
   package.json
   README.md
   src/
@@ -334,7 +334,7 @@ Rules:
 Core package shape:
 
 ```text
-packages/sdkwork-<product>-h5-core/
+packages/sdkwork-<application-code>-h5-core/
   src/
     index.ts
     config/
@@ -348,7 +348,7 @@ packages/sdkwork-<product>-h5-core/
 Capacitor host package shape:
 
 ```text
-packages/sdkwork-<product>-h5-capacitor/
+packages/sdkwork-<application-code>-h5-capacitor/
   package.json
   capacitor.config.ts
   src/
@@ -529,10 +529,10 @@ pnpm cap:android:build:prod
 Package filters should be stable:
 
 ```text
-pnpm --filter @sdkwork/<product>-h5-core typecheck
-pnpm --filter @sdkwork/<product>-h5-orders test
-pnpm --filter @sdkwork/<product>-h5-console-settings test
-pnpm --filter @sdkwork/<product>-h5-capacitor cap:sync
+pnpm --filter @sdkwork/<application-code>-h5-core typecheck
+pnpm --filter @sdkwork/<application-code>-h5-orders test
+pnpm --filter @sdkwork/<application-code>-h5-console-settings test
+pnpm --filter @sdkwork/<application-code>-h5-capacitor cap:sync
 ```
 
 Rules:
@@ -560,8 +560,8 @@ Required verification for H5 application architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Root layout | Static check proves the root path uses `apps/sdkwork-<product>-h5/` and `.sdkwork/`, `config/browser`, `config/host`, `src/bootstrap`, `packages/`, `sdks/`, `scripts/`, and tests exist for application roots. |
-| Package naming | Static check proves new packages use `sdkwork-<product>-h5-*`, including reserved console/admin/host forms. |
+| Root layout | Static check proves the root path uses `apps/sdkwork-<application-code>-h5/` and `.sdkwork/`, `config/browser`, `config/host`, `src/bootstrap`, `packages/`, `sdks/`, `scripts/`, and tests exist for application roots. |
+| Package naming | Static check proves new packages use `sdkwork-<application-code>-h5-*`, including reserved console/admin/host forms. |
 | Renderer sharing | Tests or static checks prove H5, WebView, iOS, and Android targets reuse the same renderer, route contributions, SDK clients, IAM runtime, and TokenManager. |
 | Surface split | Static scan proves app, console, and admin packages do not deep import each other or share hidden route/service internals. |
 | SDK boundary | Static scan proves app/console packages use app SDKs, approved `backend-admin` packages use backend SDKs, protected open-api uses declared open-api credential provider, and no raw HTTP/manual auth headers/generated SDK edits were introduced. |
@@ -576,7 +576,7 @@ Required verification for H5 application architecture changes:
 
 Acceptance checklist:
 
-- [ ] H5 application root uses `apps/sdkwork-<product>-h5/` and follows the standard root layout or has a documented exception.
+- [ ] H5 application root uses `apps/sdkwork-<application-code>-h5/` and follows the standard root layout or has a documented exception.
 - [ ] H5 is the baseline runtime and Capacitor is a host/release shape.
 - [ ] H5, WebView, and Capacitor targets share one mobile renderer and one SDK/IAM runtime model.
 - [ ] Root `src/` remains thin.

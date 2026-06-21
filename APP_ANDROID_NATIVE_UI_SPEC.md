@@ -11,13 +11,13 @@ This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to 
 Canonical app-root Android package shape:
 
 ```text
-apps/sdkwork-<product>-android-mobile/
+apps/sdkwork-<application-code>-android-mobile/
   packages/
-    sdkwork-<product>-android-mobile-core/
-    sdkwork-<product>-android-mobile-commons/
-    sdkwork-<product>-android-mobile-shell/
-    sdkwork-<product>-android-mobile-<capability>/
-    sdkwork-<product>-android-mobile-console-<capability>/
+    sdkwork-<application-code>-android-mobile-core/
+    sdkwork-<application-code>-android-mobile-commons/
+    sdkwork-<application-code>-android-mobile-shell/
+    sdkwork-<application-code>-android-mobile-<capability>/
+    sdkwork-<application-code>-android-mobile-console-<capability>/
 ```
 
 Optional shared Android package shape:
@@ -37,8 +37,8 @@ packages/android-native/
 
 Rules:
 
-- Android app UI `MUST` live in normalized Android application packages such as `apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>` or approved shared Android package families such as `packages/android-native/<domain>/<package>`.
-- Android user-console UI `MUST` live in `apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Android app UI `MUST` live in normalized Android application packages such as `apps/sdkwork-<application-code>-android-mobile/packages/sdkwork-<application-code>-android-mobile-<capability>` or approved shared Android package families such as `packages/android-native/<domain>/<package>`.
+- Android user-console UI `MUST` live in `apps/sdkwork-<application-code>-android-mobile/packages/sdkwork-<application-code>-android-mobile-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - Android app and user-console UI `MUST` consume `/app/v3/api` through generated Kotlin/Java app SDK clients or approved wrappers.
 - Android app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, backend React packages, Flutter packages, iOS packages, or Harmony packages for user-facing workflows.
 - Operator/admin screens require a separately approved Android admin package family classified as `backend-admin` and must follow `backend-admin` backend-api/backend SDK rules.
@@ -48,11 +48,11 @@ Rules:
 
 | Package type | Naming | Owns | Must not own |
 | --- | --- | --- | --- |
-| Android app shell | `sdkwork-<product>-android-mobile-shell` or app-specific Android shell | navigation graph, providers, AuthGate, route composition | reusable domain features |
-| Android foundation package | `sdkwork-<product>-android-mobile-commons` or `sdkwork-<foundation>-android-native` | domain-neutral UI primitives, theme adapters, form/list/error primitives, i18n helpers | business-domain shortcuts |
-| Android domain package | `sdkwork-<product>-android-mobile-<capability>` or `sdkwork-<capability>-android-native` | screens, composables/views, view models/controllers, services, repositories, state, i18n/resources, route metadata | concrete SDK construction, backend admin logic |
-| Android user console package | `sdkwork-<product>-android-mobile-console-<capability>` | user-facing management console screens, composables/views, view models/controllers, services, repositories, state, i18n/resources, route metadata | company-internal admin workflows, backend-only operation center behavior |
-| Android host package | `sdkwork-<product>-android-mobile-host` or `sdkwork-<host>-android-native` when needed | Android platform API adapters, permissions, lifecycle, secure storage, camera/QR/share/push/deep links | API business logic |
+| Android app shell | `sdkwork-<application-code>-android-mobile-shell` or app-specific Android shell | navigation graph, providers, AuthGate, route composition | reusable domain features |
+| Android foundation package | `sdkwork-<application-code>-android-mobile-commons` or `sdkwork-<foundation>-android-native` | domain-neutral UI primitives, theme adapters, form/list/error primitives, i18n helpers | business-domain shortcuts |
+| Android domain package | `sdkwork-<application-code>-android-mobile-<capability>` or `sdkwork-<capability>-android-native` | screens, composables/views, view models/controllers, services, repositories, state, i18n/resources, route metadata | concrete SDK construction, backend admin logic |
+| Android user console package | `sdkwork-<application-code>-android-mobile-console-<capability>` | user-facing management console screens, composables/views, view models/controllers, services, repositories, state, i18n/resources, route metadata | company-internal admin workflows, backend-only operation center behavior |
+| Android host package | `sdkwork-<application-code>-android-mobile-host` or `sdkwork-<host>-android-native` when needed | Android platform API adapters, permissions, lifecycle, secure storage, camera/QR/share/push/deep links | API business logic |
 
 Rules:
 
@@ -67,12 +67,12 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/sdkwork-<product>-android-mobile/packages/sdkwork-<product>-android-mobile-<capability>/
+apps/sdkwork-<application-code>-android-mobile/packages/sdkwork-<application-code>-android-mobile-<capability>/
   build.gradle.kts
   src/
     main/
       kotlin/
-        com/sdkwork/<product>/android/mobile/<capability>/
+        com/sdkwork/<application-code>/android/mobile/<capability>/
           PublicApi.kt
           ui/
             screens/
@@ -160,7 +160,7 @@ Required coverage for new Android capabilities:
 
 | Test | Requirement |
 | --- | --- |
-| Package boundary | Static scan proves packages follow `sdkwork-<product>-android-mobile-*` or approved shared Android package names and do not deep-import another package's private source. |
+| Package boundary | Static scan proves packages follow `sdkwork-<application-code>-android-mobile-*` or approved shared Android package names and do not deep-import another package's private source. |
 | SDK boundary | Static scan proves generated SDK clients or approved wrappers are used and no raw HTTP, manual auth headers, or generated SDK edits were introduced. |
 | Service/view model | Unit tests use fake generated app SDK clients and fake host adapters. |
 | UI states | Compose/UI tests or documented fixtures cover loading, empty, validation-error, permission-denied, unavailable, and unknown-error states. |

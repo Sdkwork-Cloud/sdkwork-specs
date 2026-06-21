@@ -6,7 +6,7 @@
 
 This standard defines how SDKWork backend/admin UI is packaged and integrated. Backend UI is the UI implementation of the `backend-admin` surface. `backend-admin` means admin-only backend UI/API/SDK use for internal company staff, operators, support, auditors, platform administrators, and trusted backend services acting for those admin workflows. It must be independent from app/user-facing UI packages, must use backend API and backend SDK contracts, and must be split by business domain instead of being placed into one large package.
 
-For client application roots, internal admin modules use the normalized `admin-<capability>` package family defined by `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` and the matching root architecture standard, such as `sdkwork-<product>-pc-admin-<capability>`, `sdkwork-<product>-h5-admin-<capability>`, `sdkwork_<product>_flutter_mobile_admin_<capability>`, `sdkwork-<product>-mp-admin-<capability>`, `sdkwork-<product>-android-mobile-admin-<capability>`, `sdkwork-<product>-ios-mobile-admin-<capability>`, or `sdkwork-<product>-harmony-mobile-admin-<capability>`. This file defines the backend/admin UI layering, SDK, permission, route, and operational design rules that those client admin modules must follow. The standalone backend React workspace keeps the `@sdkwork/react-backend-<domain>` package family.
+For client application roots, internal admin modules use the normalized `admin-<capability>` package family defined by `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` and the matching root architecture standard, such as `sdkwork-<application-code>-pc-admin-<capability>`, `sdkwork-<application-code>-h5-admin-<capability>`, `sdkwork_<application_code>_flutter_mobile_admin_<capability>`, `sdkwork-<application-code>-mp-admin-<capability>`, `sdkwork-<application-code>-android-mobile-admin-<capability>`, `sdkwork-<application-code>-ios-mobile-admin-<capability>`, or `sdkwork-<application-code>-harmony-mobile-admin-<capability>`. This file defines the backend/admin UI layering, SDK, permission, route, and operational design rules that those client admin modules must follow. The standalone backend React workspace keeps the `@sdkwork/react-backend-<domain>` package family.
 
 The canonical implementation shape is the backend React workspace:
 
@@ -63,7 +63,7 @@ Rules:
 
 - Every new backend feature `MUST` choose one owning business domain before files are created.
 - A backend domain package `MUST` be named `@sdkwork/react-backend-<domain>` where `<domain>` is canonical kebab-case derived from `DOMAIN_SPEC.md`.
-- A client application internal admin package `MUST` use the matching root architecture package family, such as `sdkwork-<product>-pc-admin-<capability>`, `sdkwork-<product>-h5-admin-<capability>`, `sdkwork_<product>_flutter_mobile_admin_<capability>`, `sdkwork-<product>-mp-admin-<capability>`, `sdkwork-<product>-android-mobile-admin-<capability>`, `sdkwork-<product>-ios-mobile-admin-<capability>`, or `sdkwork-<product>-harmony-mobile-admin-<capability>`.
+- A client application internal admin package `MUST` use the matching root architecture package family, such as `sdkwork-<application-code>-pc-admin-<capability>`, `sdkwork-<application-code>-h5-admin-<capability>`, `sdkwork_<application_code>_flutter_mobile_admin_<capability>`, `sdkwork-<application-code>-mp-admin-<capability>`, `sdkwork-<application-code>-android-mobile-admin-<capability>`, `sdkwork-<application-code>-ios-mobile-admin-<capability>`, or `sdkwork-<application-code>-harmony-mobile-admin-<capability>`.
 - Business pages, business components, domain services, repositories, hooks, route records, menu records, permission constants, and domain i18n `MUST` stay in the owning domain package.
 - `@sdkwork/react-backend-ui` `MUST` remain domain-neutral. It may expose visual primitives, not business workflows.
 - `@sdkwork/react-backend-core` `MUST` remain SDK/runtime infrastructure. It may expose backend SDK provider hooks, not business repositories.
@@ -106,7 +106,7 @@ The following backend package names are standard for the current backend console
 | `@sdkwork/react-backend-vip` | `commerce` | memberships, benefit packs, recharge packages |
 | `@sdkwork/react-backend-points` | `commerce` | points accounts, points records, rules |
 | `@sdkwork/react-backend-shop` | `commerce` | shop configuration, brands, categories, shop staff |
-| `@sdkwork/react-backend-product` | `commerce` | product catalog, SKU, attributes |
+| `@sdkwork/react-backend-merchandise` | `commerce` | merchandise catalog, SKU, attributes |
 | `@sdkwork/react-backend-marketing` | `commerce` | campaigns, coupons, distribution |
 | `@sdkwork/react-backend-iot` | `device` | device and IoT administration |
 | `@sdkwork/react-backend-desktop` | `device` | desktop preferences, release/update administration |

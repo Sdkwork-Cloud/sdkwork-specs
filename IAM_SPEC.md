@@ -252,9 +252,9 @@ Open-api routes may declare `auth.mode: oauth` or accept OAuth bearer credential
 Rules:
 
 - OAuth bearer mode `MUST` resolve a server-side token or session record before protected business logic runs.
-- Resolution `MAY` use access-token hash lookup against `iam_session`, OAuth JWT verification with tenant-bound signing keys from `iam_tenant_signing_key`, or a product-specific token store behind `OAuthTokenLookupService`.
+- Resolution `MAY` use access-token hash lookup against `iam_session`, OAuth JWT verification with tenant-bound signing keys from `iam_tenant_signing_key`, or a application-specific token store behind `OAuthTokenLookupService`.
 - Raw bearer token values `MUST` be stored hashed when persisted. Logs and audit records must use token/session ids and safe prefixes only.
-- `OAuthBearerParser` and `OAuthTokenLookupService` are required framework extension points. Implementations `MAY` live in `sdkwork-iam-web-adapter` (`IamOAuthTokenLookupService`) or product-owned adapters.
+- `OAuthBearerParser` and `OAuthTokenLookupService` are required framework extension points. Implementations `MAY` live in `sdkwork-iam-web-adapter` (`IamOAuthTokenLookupService`) or application-owned adapters.
 - OAuth bearer lookup `MUST` validate tenant binding, app audience, permission scope, expiry, revocation, and signing-key tenant binding before returning `WebRequestPrincipal` / `AppContext`.
 - OAuth bearer mode and dual-token mode `MUST` be mutually exclusive for a single request. Open-api OAuth bearer requests `MUST NOT` carry `Access-Token`.
 - Production and production-like profiles `MUST NOT` trust inline OAuth claim strings in the bearer token value alone.
@@ -349,7 +349,7 @@ Rules:
 - [ ] Database tables use `iam_` prefix and include the complete shared table set.
 - [ ] App API prefix is `/app/v3/api`; backend API prefix is `/backend/v3/api`.
 - [ ] Login/session APIs exist only in app-api.
-- [ ] Product app login/session integration follows `IAM_LOGIN_INTEGRATION_SPEC.md`.
+- [ ] Application login/session integration follows `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - [ ] Backend SDK clients expose `iam.*` resources and no `auth.*` namespace.
 - [ ] OperationIds are resource-style and SDK-friendly.
 - [ ] Protected operations use `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>`.

@@ -120,7 +120,7 @@ Rules:
 
 Rules:
 
-- Product and engineering requirements `MUST` follow `REQUIREMENTS_SPEC.md`.
+- Business and engineering requirements `MUST` follow `REQUIREMENTS_SPEC.md`.
 - Requirement docs `MUST` include owner, status, priority, acceptance criteria, non-functional requirements when relevant, affected specs/components, and verification evidence.
 - Requirement changes `MUST` preserve traceability to the original requirement id or explicitly supersede it.
 - Requirement docs `MUST NOT` hide breaking contract, security, privacy, release, or migration impact inside informal notes.

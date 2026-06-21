@@ -67,12 +67,12 @@ Recommended application-root shape:
     rpc/
     async/
   crates/
-    sdkwork-router-product-open-api/
+    sdkwork-router-merchandise-open-api/
     sdkwork-router-catalog-open-api/
-    sdkwork-router-product-app-api/
+    sdkwork-router-merchandise-app-api/
     sdkwork-router-cart-app-api/
     sdkwork-router-order-app-api/
-    sdkwork-router-product-backend-api/
+    sdkwork-router-merchandise-backend-api/
     sdkwork-router-order-backend-api/
   sdks/
     README.md
@@ -80,7 +80,7 @@ Recommended application-root shape:
     workspace-*.mjs
     _route-manifests/
       app-api/
-        sdkwork-router-product-app-api.route-manifest.json
+        sdkwork-router-merchandise-app-api.route-manifest.json
         sdkwork-router-cart-app-api.route-manifest.json
       backend-api/
       open-api/
@@ -172,7 +172,7 @@ The following table repeats the canonical SDK/API naming model from `SDK_SPEC.md
 Rules:
 
 - The SDK family name and API authority name `MUST` be declared in the family README and component manifest.
-- The authority name is the logical API product. Physical OpenAPI filenames may include an application prefix during migration, but the declared authority name must stay standard.
+- The authority name is the logical API authority. Physical OpenAPI filenames may include an application prefix during migration, but the declared authority name must stay standard.
 - SDK family names and API authority names `MUST NOT` be conflated. `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, and `sdkwork-<domain>-backend-api` are API authority names only; they are forbidden as directories directly below `sdks/`, as generated language workspace prefixes, as generated package names, as `sdkMetadata.name`, as `sdk-manifest.json.sdkName`, as assembly `workspace`, as generator `SDK_NAME`, and as generator `--sdk-name`.
 - The SDK family generated from an `open-api` authority is always `sdkwork-<domain>-sdk`, not `sdkwork-<domain>-open-api` and not `sdkwork-<domain>-open-sdk`.
 - Generated language workspaces `MUST` inherit the SDK family name exactly: `sdkwork-<domain>-sdk-{language}`, `sdkwork-<domain>-app-sdk-{language}`, and `sdkwork-<domain>-backend-sdk-{language}`.
@@ -188,7 +188,7 @@ Example mapping:
 | Route crate | Aggregated API authority | SDK family | Prefix |
 | --- | --- | --- | --- |
 | `sdkwork-router-conversation-open-api` | `sdkwork-im-open-api` | `sdkwork-im-sdk` | `/im/v3/api` |
-| `sdkwork-router-product-app-api` | `sdkwork-commerce-app-api` | `sdkwork-commerce-app-sdk` | `/app/v3/api` |
+| `sdkwork-router-merchandise-app-api` | `sdkwork-commerce-app-api` | `sdkwork-commerce-app-sdk` | `/app/v3/api` |
 | `sdkwork-router-order-backend-api` | `sdkwork-commerce-backend-api` | `sdkwork-commerce-backend-sdk` | `/backend/v3/api` |
 
 ### 3.1 Rust Route Crate Placement
@@ -198,7 +198,7 @@ Rust HTTP route crates are capability-level source packages. They configure path
 Recommended source shape:
 
 ```text
-crates/sdkwork-router-product-app-api/
+crates/sdkwork-router-merchandise-app-api/
   Cargo.toml
   src/lib.rs
   src/paths.rs
@@ -224,10 +224,10 @@ Rules:
   exporting a framework-neutral manifest structure, a build script emitting JSON, or a checked-in
   `sdkwork.route.manifest.json` file. The normalized artifact consumed by SDK workspace tooling
   `MUST` follow `API_SPEC.md` `kind: sdkwork.route.manifest`.
-- Route crates `MUST` validate their surface prefix locally. `sdkwork-router-product-app-api` cannot mount `/backend/v3/api` or any open-api domain prefix such as `/im/v3/api`.
+- Route crates `MUST` validate their surface prefix locally. `sdkwork-router-merchandise-app-api` cannot mount `/backend/v3/api` or any open-api domain prefix such as `/im/v3/api`.
 - Route crates `MUST` not generate SDK code, vendor generated SDK packages, or define final SDK package names.
 - Route crates may depend on runtime/service traits and appbase context helpers, but they `MUST NOT` depend on generated app/backend SDKs for the same application authority. Generated SDKs call the API; route crates implement the API.
-- Route crate names should use the business capability, for example product, cart, order, payment, catalog, shipment, wallet, tenant, report, or audit. The aggregated authority uses the project/domain, for example commerce.
+- Route crate names should use the business capability, for example merchandise, cart, order, payment, catalog, shipment, wallet, tenant, report, or audit. The aggregated authority uses the project/domain, for example commerce.
 
 ### 3.2 Route Manifest Artifact Placement
 
@@ -238,7 +238,7 @@ Recommended normalized output:
 ```text
 <application-root>/sdks/_route-manifests/
   app-api/
-    sdkwork-router-product-app-api.route-manifest.json
+    sdkwork-router-merchandise-app-api.route-manifest.json
     sdkwork-router-cart-app-api.route-manifest.json
     sdkwork-router-order-app-api.route-manifest.json
   backend-api/
@@ -277,7 +277,7 @@ Rules:
 - Authority OpenAPI documents `MUST` use the OpenAPI 3.x profile in `API_SPEC.md`.
 - Authority OpenAPI documents may be materialized from multiple route crate manifests for the same
   owner, domain, and API surface. For example, `sdkwork-commerce-app-api` may aggregate
-  `sdkwork-router-product-app-api`, `sdkwork-router-cart-app-api`, `sdkwork-router-order-app-api`,
+  `sdkwork-router-merchandise-app-api`, `sdkwork-router-cart-app-api`, `sdkwork-router-order-app-api`,
   and `sdkwork-router-payment-app-api`.
 - Route crate manifests `MUST` be aggregated by surface. An `app-api` authority may consume only
   `sdkwork-router-*-app-api` manifests; a `backend-api` authority may consume only

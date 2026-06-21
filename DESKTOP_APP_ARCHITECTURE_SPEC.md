@@ -10,7 +10,7 @@ Desktop apps are app composition layers. They should be thin, predictable, and r
 
 Desktop SDK composition, appbase IAM runtime wiring, dependency SDK usage, and global TokenManager behavior follow `APP_SDK_INTEGRATION_SPEC.md`.
 
-For SDKWork PC applications, `APP_PC_ARCHITECTURE_SPEC.md` is the parent application-root standard. This file is the desktop/tablet native host detail standard for the `sdkwork-<product>-pc-desktop` package and related Tauri packaging behavior, including Windows, macOS, Linux, iPadOS, and Android tablet targets.
+For SDKWork PC applications, `APP_PC_ARCHITECTURE_SPEC.md` is the parent application-root standard. This file is the desktop/tablet native host detail standard for the `sdkwork-<application-code>-pc-desktop` package and related Tauri packaging behavior, including Windows, macOS, Linux, iPadOS, and Android tablet targets.
 
 ## 1. Reference Architecture
 
@@ -30,7 +30,7 @@ Rules:
 
 - Desktop apps `MUST` separate web UI, service orchestration, SDK transport, native host capabilities, and local runtime concerns.
 - The app shell `MUST` stay thin: route composition, layout, providers, SDK bootstrap, session bootstrap, environment selection, and host adapter registration.
-- Product features `MUST` live in domain or capability packages, not in native host commands.
+- Application features `MUST` live in domain or capability packages, not in native host commands.
 - Remote business traffic `MUST` use generated SDK clients or approved wrappers.
 - Native host commands `MUST` expose local device or operating-system capability only. They must not become app business services.
 
@@ -93,7 +93,7 @@ Rules:
 Recommended shape:
 
 ```text
-apps/sdkwork-<product>-pc/
+apps/sdkwork-<application-code>-pc/
   package.json
   vite.config.ts
   config/
@@ -107,15 +107,15 @@ apps/sdkwork-<product>-pc/
     AuthGate.tsx
     bootstrap/
   packages/
-    sdkwork-<product>-pc-core/
+    sdkwork-<application-code>-pc-core/
       src/sdk/
       src/session/
       src/host/
-    sdkwork-<product>-pc-commons/
-    sdkwork-<product>-pc-<capability>/
-    sdkwork-<product>-pc-console-<capability>/
-    sdkwork-<product>-pc-admin-<capability>/
-    sdkwork-<product>-pc-desktop/
+    sdkwork-<application-code>-pc-commons/
+    sdkwork-<application-code>-pc-<capability>/
+    sdkwork-<application-code>-pc-console-<capability>/
+    sdkwork-<application-code>-pc-admin-<capability>/
+    sdkwork-<application-code>-pc-desktop/
       package.json
       src-tauri/
         tauri.conf.json
@@ -153,7 +153,7 @@ Required Tauri properties:
 
 | Area | Standard |
 | --- | --- |
-| Package boundary | Tauri shell and tablet-native target config live in a native host package named `sdkwork-<product>-pc-desktop`. |
+| Package boundary | Tauri shell and tablet-native target config live in a native host package named `sdkwork-<application-code>-pc-desktop`. |
 | Web dev server | `devUrl` points to the root PC app dev server. |
 | Web build output | `frontendDist` points to the root PC app build output. |
 | Window model | Window labels, size, minimum size, title, and decoration policy are explicit. |
@@ -237,18 +237,18 @@ Rules:
 Standard desktop/native config files:
 
 ```text
-apps/sdkwork-<product>-pc/
+apps/sdkwork-<application-code>-pc/
   config/
     desktop/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     server/
-      <product>.development.toml.example
-      <product>.test.toml.example
-      <product>.staging.toml.example
-      <product>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     tauri/
       tauri.conf.json
       tauri.windows.conf.json
@@ -256,7 +256,7 @@ apps/sdkwork-<product>-pc/
       tauri.linux.conf.json
       tauri.ios.conf.json
       tauri.android.conf.json
-  packages/sdkwork-<product>-pc-desktop/
+  packages/sdkwork-<application-code>-pc-desktop/
     src-tauri/
       tauri.conf.json
       tauri.windows.conf.json
@@ -372,14 +372,14 @@ pnpm dev
 pnpm dev:desktop
 pnpm dev:tablet-ipados
 pnpm dev:tablet-android
-pnpm --dir apps/sdkwork-<product>-pc lint
-pnpm --dir apps/sdkwork-<product>-pc build
-pnpm --dir apps/sdkwork-<product>-pc test:config
-pnpm --dir apps/sdkwork-<product>-pc exec <architecture-contract-tests>
-pnpm --filter @sdkwork/<product>-pc-desktop build:desktop:local
-pnpm --filter @sdkwork/<product>-pc-desktop check:tauri-config
-pnpm --filter @sdkwork/<product>-pc-desktop build:tablet-ipados
-pnpm --filter @sdkwork/<product>-pc-desktop build:tablet-android
+pnpm --dir apps/sdkwork-<application-code>-pc lint
+pnpm --dir apps/sdkwork-<application-code>-pc build
+pnpm --dir apps/sdkwork-<application-code>-pc test:config
+pnpm --dir apps/sdkwork-<application-code>-pc exec <architecture-contract-tests>
+pnpm --filter @sdkwork/<application-code>-pc-desktop build:desktop:local
+pnpm --filter @sdkwork/<application-code>-pc-desktop check:tauri-config
+pnpm --filter @sdkwork/<application-code>-pc-desktop build:tablet-ipados
+pnpm --filter @sdkwork/<application-code>-pc-desktop build:tablet-android
 ```
 
 ## 11. Acceptance Checklist

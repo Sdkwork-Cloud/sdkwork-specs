@@ -130,7 +130,7 @@ Rules:
 - When a shared capability exposes both HTTP and RPC, the HTTP `operationId` and RPC method manifest `operationId` `MUST` describe the same domain operation.
 - RPC services `MUST NOT` be used to hide missing or divergent HTTP/OpenAPI behavior for app/backend public APIs; divergence requires a documented compatibility decision.
 - A frontend module `MUST` call API through `UI -> service -> injected SDK client`. UI components must not assemble raw HTTP requests or auth headers.
-- New shared foundation APIs `MUST` use canonical domains from `DOMAIN_SPEC.md`.
+- New shared platform foundation APIs `MUST` use canonical domains from `DOMAIN_SPEC.md`.
 
 ### 4.1 Canonical Prefix Lock
 
@@ -189,7 +189,7 @@ sdkwork-router-<capability>-backend-api
 Examples:
 
 ```text
-sdkwork-router-product-app-api
+sdkwork-router-merchandise-app-api
 sdkwork-router-cart-app-api
 sdkwork-router-order-backend-api
 sdkwork-router-payment-open-api
@@ -198,10 +198,10 @@ sdkwork-router-payment-open-api
 Rules:
 
 - Rust route crates that define HTTP route paths, mount points, route metadata, handler bindings, or router composition for SDKWork APIs `MUST` start with `sdkwork-router-`.
-- `sdkwork-router-product-app-api` owns product app-api route/path definitions only. It `MUST NOT` be used as an SDK family name, generated package name, OpenAPI authority name, generator `--sdk-name`, or frontend SDK package name.
+- `sdkwork-router-merchandise-app-api` owns app-api route/path definitions only. It `MUST NOT` be used as an SDK family name, generated package name, OpenAPI authority name, generator `--sdk-name`, or frontend SDK package name.
 - Route crates `MUST` declare their API surface in their name and in their route manifest. A crate whose name ends in `app-api` may mount only `/app/v3/api` routes; a crate whose name ends in `backend-api` may mount only `/backend/v3/api` routes; a crate whose name ends in `open-api` may mount only approved open-api prefixes and `MUST NOT` mount `/app/v3/api` or `/backend/v3/api`.
-- Route crates `MUST` use lowercase kebab-case package names. The Rust crate import may use snake case, for example package `sdkwork-router-product-app-api` imports as `sdkwork_routes_product_app_api`.
-- Route crates may be split by business capability for maintainability, for example product, cart, order, payment, catalog, shipment, tenant, and report. They `MUST` still preserve the canonical domain names from `DOMAIN_SPEC.md` in tags, operationIds, schemas, and route manifests.
+- Route crates `MUST` use lowercase kebab-case package names. The Rust crate import may use snake case, for example package `sdkwork-router-merchandise-app-api` imports as `sdkwork_routes_product_app_api`.
+- Route crates may be split by business capability for maintainability, for example merchandise, cart, order, payment, catalog, shipment, tenant, and report. They `MUST` still preserve the canonical domain names from `DOMAIN_SPEC.md` in tags, operationIds, schemas, and route manifests.
 - Route crates `MUST` produce or feed a route manifest that can be materialized into an owner-only OpenAPI authority. Java controller mappings and Rust route crates are implementation inputs; the aggregated OpenAPI authority remains the HTTP contract source of truth for SDK generation.
 - A route crate `MUST NOT` copy appbase-owned routes. If a route is owned by `sdkwork-appbase`, the consuming application uses the appbase Rust crate or appbase SDK dependency instead of creating `sdkwork-router-<capability>-app-api` for that route.
 
@@ -214,16 +214,16 @@ Example:
 ```yaml
 schemaVersion: 1
 kind: sdkwork.route.manifest
-packageName: sdkwork-router-product-app-api
+packageName: sdkwork-router-merchandise-app-api
 surface: app-api
 owner: sdkwork-commerce
 domain: commerce
-capability: product
+capability: merchandise
 apiAuthority: sdkwork-commerce-app-api
 sdkFamily: sdkwork-commerce-app-sdk
 prefix: /app/v3/api
 source:
-  crateRoot: crates/sdkwork-router-product-app-api
+  crateRoot: crates/sdkwork-router-merchandise-app-api
   crateImport: sdkwork_routes_product_app_api
 routes:
   - method: GET
@@ -259,7 +259,7 @@ Required top-level fields:
 | --- | --- |
 | `schemaVersion` | Positive integer. Version `1` is the current required profile. |
 | `kind` | Exact value `sdkwork.route.manifest`. |
-| `packageName` | Exact Cargo package name, for example `sdkwork-router-product-app-api`. |
+| `packageName` | Exact Cargo package name, for example `sdkwork-router-merchandise-app-api`. |
 | `surface` | `open-api`, `app-api`, or `backend-api`. |
 | `owner` | SDK generation owner, materialized to `x-sdkwork-owner`. |
 | `domain` | Canonical domain from `DOMAIN_SPEC.md`. |
@@ -295,7 +295,7 @@ Optional route fields:
 
 Rules:
 
-- `packageName`, `surface`, and `capability` `MUST` agree. `sdkwork-router-product-app-api` means capability `product` and surface `app-api`.
+- `packageName`, `surface`, and `capability` `MUST` agree. `sdkwork-router-merchandise-app-api` means capability `product` and surface `app-api`.
 - `source.crateRoot` `MUST` use `crates/sdkwork-router-<capability>-<surface>` for SDKWork-standard Rust route crates.
 - `apiAuthority` and `sdkFamily` `MUST` follow `SDK_SPEC.md`: `sdkwork-<domain>-open-api` -> `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-api` -> `sdkwork-<domain>-app-sdk`, and `sdkwork-<domain>-backend-api` -> `sdkwork-<domain>-backend-sdk`.
 - For `app-api`, `prefix` `MUST` be `/app/v3/api`. For `backend-api`, `prefix` `MUST` be `/backend/v3/api`. For `open-api`, `prefix` `MUST` be an approved versioned domain prefix that is not `/app/v3/api` or `/backend/v3/api`; literal `/open/v3/api` is valid only when the owning domain explicitly approves that prefix.
@@ -320,7 +320,7 @@ An API authority is the aggregated contract for one project/domain and one surfa
 Example:
 
 ```text
-sdkwork-router-product-app-api
+sdkwork-router-merchandise-app-api
 sdkwork-router-cart-app-api
 sdkwork-router-order-app-api
 sdkwork-router-payment-app-api
@@ -330,9 +330,9 @@ sdkwork-router-payment-app-api
 
 Rules:
 
-- `sdkwork-commerce-app-api` is the aggregated app-api authority for the commerce project. It may aggregate commerce-owned route crates such as `sdkwork-router-product-app-api`, `sdkwork-router-cart-app-api`, `sdkwork-router-order-app-api`, and `sdkwork-router-payment-app-api`.
+- `sdkwork-commerce-app-api` is the aggregated app-api authority for the commerce project. It may aggregate commerce-owned route crates such as `sdkwork-router-merchandise-app-api`, `sdkwork-router-cart-app-api`, `sdkwork-router-order-app-api`, and `sdkwork-router-payment-app-api`.
 - `sdkwork-commerce-app-api` `MUST` contain only commerce-owned app-api operations after dependency-owned routes are subtracted. Appbase, Drive, provider, or other dependency-owned operations remain dependency SDKs.
-- `sdkwork-commerce-app-sdk` is the generated SDK family produced from `sdkwork-commerce-app-api`. Product code consumes the SDK family or approved composed wrappers, not the route crates.
+- `sdkwork-commerce-app-sdk` is the generated SDK family produced from `sdkwork-commerce-app-api`. Application packages consume the SDK family or approved composed wrappers, not the route crates.
 - The same mapping applies to open-api and backend-api: `sdkwork-router-<capability>-open-api` aggregates into `sdkwork-<domain>-open-api` and generates `sdkwork-<domain>-sdk`; `sdkwork-router-<capability>-backend-api` aggregates into `sdkwork-<domain>-backend-api` and generates `sdkwork-<domain>-backend-sdk`.
 - Route manifest inputs `MUST` be grouped by `owner`, `domain`, `surface`, `apiAuthority`, `sdkFamily`, and `prefix`. A materializer `MUST NOT` merge manifests that disagree on any of those fields.
 - Materialization `MUST` reject mixed surfaces, mismatched prefixes, missing owner/domain/capability, missing or mismatched route framework metadata, a route crate package name that does not match `sdkwork-router-<capability>-<surface>`, operationId/tag/domain mismatch, duplicate method/path pairs, and dependency-owned operations in a consuming app authority.
@@ -773,7 +773,7 @@ Rules:
 
 ### 10.2 SDKWork Request Context Framework
 
-All SDKWork HTTP implementations for open-api, app-api, and backend-api `MUST` expose a unified `WebRequestContext` before protected business handlers run. The standard Rust framework is `sdkwork-web-framework`; Java and other runtimes must preserve the same behavior and vocabulary. Integration rules are defined in `WEB_FRAMEWORK_SPEC.md`; IAM and domain projections are implemented by appbase or product adapters through framework extension traits.
+All SDKWork HTTP implementations for open-api, app-api, and backend-api `MUST` expose a unified `WebRequestContext` before protected business handlers run. The standard Rust framework is `sdkwork-web-framework`; Java and other runtimes must preserve the same behavior and vocabulary. Integration rules are defined in `WEB_FRAMEWORK_SPEC.md`; IAM and domain projections are implemented by appbase or application-line adapters through framework extension traits.
 
 `AppRequestContext` is a migration-only alias for `WebRequestContext`. New contracts, OpenAPI extensions, handlers, and documentation `MUST` use `WebRequestContext`.
 
@@ -816,14 +816,14 @@ Rules:
 
 - `WebRequestContext` `MUST` be resolved once at the framework boundary and injected as a typed request extension or equivalent runtime context.
 - Business handlers `MUST` consume the typed context. They `MUST NOT` reparse auth tokens, access tokens, API keys, or tenant/user fields from raw headers.
-- `WebRequestContextResolver`, `ApiKeyLookupService`, `OAuthTokenLookupService`, `OpenApiCredentialSchemeDetector`, `AuthorizationPolicy`, `TenantIsolationPolicy`, and `DomainContextInjector` are standard framework extension points. appbase and product repositories implement them; they `MUST NOT` expose a parallel HTTP context framework.
+- `WebRequestContextResolver`, `ApiKeyLookupService`, `OAuthTokenLookupService`, `OpenApiCredentialSchemeDetector`, `AuthorizationPolicy`, `TenantIsolationPolicy`, and `DomainContextInjector` are standard framework extension points. appbase and application repositories implement them; they `MUST NOT` expose a parallel HTTP context framework.
 - The default parser may support standalone development claim formats, but
   production parsers `MUST` validate signature, tenant-bound signing key or key
   id, token type, expiry, issuer, audience, revocation, tenant binding,
   organization binding, login-scope consistency, app binding, deployment
   profile, runtime target, and permission scope.
 - API key lookup `MUST` be abstracted behind a service/interface. Implementations may use `iam_api_key`, tenant-local API key tables, encrypted secret stores, caches, or remote IAM services.
-- OAuth bearer lookup `MUST` be abstracted behind a service/interface. Implementations may validate access-token hashes against `iam_session`, OAuth JWT claims with tenant-bound signing keys, or product-specific token stores.
+- OAuth bearer lookup `MUST` be abstracted behind a service/interface. Implementations may validate access-token hashes against `iam_session`, OAuth JWT claims with tenant-bound signing keys, or application-specific token stores.
 - API key records `MUST` provide the principal user id, tenant id, organization id when applicable, app id, data scope, permission scope, key id, and revocation/expiry state.
 - Protected app-api and backend-api requests `MUST` include `Access-Token: <access_token>` whenever the client runtime has an access token from bootstrap or authenticated session state.
 - Protected app-api and backend-api requests `MUST` include `Authorization: Bearer <auth_token>` whenever the client runtime has an auth token from bootstrap or authenticated session state.
@@ -877,7 +877,7 @@ Rules:
 - The standard chain `MUST` be extensible without bypassing context resolution or security guards.
 - Request identity, surface classification, request context resolution, authentication, context injection, response identity, and secure response headers are mandatory for protected HTTP routers on all three API surfaces.
 - Rust integrations `MUST` follow `WEB_FRAMEWORK_SPEC.md`; business repositories `MUST NOT` fork the chain locally.
-- Authorization, tenant isolation, rate limit, idempotency, logging, and audit may be implemented by product-specific interceptors, but their hook positions and semantics `MUST` remain standard.
+- Authorization, tenant isolation, rate limit, idempotency, logging, and audit may be implemented by application-specific interceptors, but their hook positions and semantics `MUST` remain standard.
 - CORS, method guard, cross-site request protection, request size limits, and SQL injection request guards `SHOULD` run before credential parsing to reduce attack surface.
 - The SQL injection guard is a request-layer heuristic only. All database access `MUST` still use bind parameters, typed repositories, input validation, and server-side authorization.
 - Error responses produced by the chain `MUST` use `application/problem+json` and include the server-owned request id when available.

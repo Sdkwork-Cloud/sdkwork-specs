@@ -74,7 +74,7 @@ Rules:
   upstreams, managed secrets, persistent data stores, readiness/liveness checks,
   observability, rollback, and release environment binding.
 - Platform capabilities such as IAM, appbase, Drive, shared agent services, and
-  cross-product SDKs `MUST` be reached through declared platform/application
+  cross-application SDKs `MUST` be reached through declared platform/application
   surfaces or dependency SDK base URLs. They must not be hidden behind ad hoc
   localhost defaults.
 - Cloud browser/runtime config `SHOULD` start from one public SDK root when a
@@ -271,11 +271,11 @@ Rules:
   application startup and must normalize it into `SDKWORK_CLAW_DEPLOYMENT_PROFILE`
   plus `SDKWORK_CLAW_RUNTIME_TARGET` before application code sees the config.
 - Server runtime TOML and private process env must declare PostgreSQL through
-  structured fields: `SDKWORK_<APP>_DATABASE_ENGINE`,
-  `SDKWORK_<APP>_DATABASE_HOST`, `SDKWORK_<APP>_DATABASE_PORT`,
-  `SDKWORK_<APP>_DATABASE_NAME`, `SDKWORK_<APP>_DATABASE_SCHEMA`,
-  `SDKWORK_<APP>_DATABASE_USERNAME`, `SDKWORK_<APP>_DATABASE_PASSWORD_FILE`,
-  and `SDKWORK_<APP>_DATABASE_SSL_MODE`.
+  structured fields: `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE`,
+  `SDKWORK_<APPLICATION_CODE>_DATABASE_HOST`, `SDKWORK_<APPLICATION_CODE>_DATABASE_PORT`,
+  `SDKWORK_<APPLICATION_CODE>_DATABASE_NAME`, `SDKWORK_<APPLICATION_CODE>_DATABASE_SCHEMA`,
+  `SDKWORK_<APPLICATION_CODE>_DATABASE_USERNAME`, `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD_FILE`,
+  and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE`.
 - `DATABASE_PROVIDER` and `DATABASE_SSLMODE` are not standard names and must
   not be accepted by new SDKWork applications.
 - `SDKWORK_CLAW_DATABASE_URL` remains an explicit private override and must not be exposed through `PORTAL_PUBLIC_*` or any browser runtime script.

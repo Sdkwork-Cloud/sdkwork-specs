@@ -265,7 +265,7 @@ Rules:
 - `sdkBaseUrls` is the canonical SDK base URL map for bootstrap. It `SHOULD` start from one common `sdkBaseUrl` when one public SDK gateway, reverse proxy, or app edge serves all consumed SDK surfaces. `openApiBaseUrl`, `appApiBaseUrl`, `backendApiBaseUrl`, and dependency-specific entries are overrides, not a requirement to configure every SDK separately.
 - A common `sdkBaseUrl` is a root, origin, or deployment path prefix. Bootstrap derives surface URLs by appending the standard API prefixes, for example `/v1`, `/app/v3/api`, and `/backend/v3/api`. It `MUST NOT` treat a surface URL such as `/v1` as the common SDK root for other surfaces.
 - Per-surface and per-SDK overrides win over the common `sdkBaseUrl`. This keeps the simple one-base-url deployment path while still allowing split services, private dependency hosts, and tenant-specific SDK routing.
-- `sdkBaseUrls.dependencySdkBaseUrls` owns override base URLs for dependency SDK families such as appbase, Drive, IM, or another product app. It must be keyed by stable SDK family id, not by ad hoc host names.
+- `sdkBaseUrls.dependencySdkBaseUrls` owns override base URLs for dependency SDK families such as appbase, Drive, IM, or another application. It must be keyed by stable SDK family id, not by ad hoc host names.
 - `dependencyApiSurfaces` records which dependency-owned HTTP API surfaces are available through
   the current runtime, which are external services, and which are intentionally not mounted. It
   `MUST` match component/runtime manifests and the dependency surface rules in `SDK_SPEC.md`.
@@ -282,7 +282,7 @@ Rules:
   `[]`; dependency APIs are not exported by a consuming app merely because dependency SDK clients
   are configured.
 - `auth` config describes how the runtime obtains and stores credentials. It must not contain actual `authToken`, `accessToken`, `refreshToken`, API key values, or session DTOs.
-- `i18n` config describes locale selection, supported locale list, fallback locale, and catalog loading strategy only. It must not contain translated message content, product copy, validation copy, or generated catalog bundles.
+- `i18n` config describes locale selection, supported locale list, fallback locale, and message-catalog loading strategy only. It must not contain translated message content, L1 brand/store copy, validation copy, or generated message-catalog bundles.
 - Runtime config `MUST NOT` define `tenantId` or `organizationId` as API/SDK call defaults. Tenant and organization context after authentication is resolved from tokens, API key records, or server-side request context. Pre-auth tenant or organization selection must use IAM login/selection flows, not SDK config or per-call options.
 - Config objects crossing host/native boundaries `SHOULD` be serializable.
 - `publicRuntime` is browser-visible and may contain only non-secret values such
@@ -308,8 +308,8 @@ Rules:
   This development service config is separate from the desktop-local SQLite
   config and must not change the installed desktop package default.
 - Environment parsing for `database` must map
-  `SDKWORK_<APP>_DATABASE_ENGINE` to `engine` and
-  `SDKWORK_<APP>_DATABASE_SSL_MODE` to `sslMode`. New applications must reject
+  `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` to `engine` and
+  `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` to `sslMode`. New applications must reject
   `DATABASE_PROVIDER` and `DATABASE_SSLMODE` instead of treating them as
   aliases.
 - Redis config is optional infrastructure config. The default is
@@ -405,16 +405,16 @@ Rules:
 - In an authenticated application session context, every app-api SDK client and every explicit `backend-admin` backend-api SDK client `MUST` receive credentials from the same global `TokenManager`. This includes appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, application/dependency backend SDKs, and approved composed wrappers backed by those SDKs.
 - Server service-context runtimes that do not represent a user login session `MUST` use one request/service credential provider per service context. They must not create per-domain or per-SDK credential providers for calls that share the same context.
 - App-api and backend-api SDK clients `MUST NOT` receive live session `authToken`, `accessToken`, or `refreshToken` through browser public runtime config, feature flags, app manifests, or per-call manual headers. Private bootstrap env credentials are allowed only according to `ENVIRONMENT_SPEC.md` section 6.1.
-- `Access-Token` is the canonical access isolation header. Generated SDKs, runtime adapters, server guards, and tests must not introduce aliases such as `X-Access-Token`, `access_token` query parameters, or product-specific access headers.
+- `Access-Token` is the canonical access isolation header. Generated SDKs, runtime adapters, server guards, and tests must not introduce aliases such as `X-Access-Token`, `access_token` query parameters, or application-specific access headers.
 - Bootstrap may expose `getAuthHeaders()` only for approved runtime bridges, local service calls, or tests. UI components and feature service facades must call SDK methods instead of assembling headers.
 - Open-api credential providers for protected open-api SDKs `MUST` be separate from the app login token manager. API key and OAuth bearer secrets `MUST NOT` be stored in browser runtime env, app manifests, generated SDK docs, frontend bundles, logs, screenshots, or telemetry. Browser-facing open-api usage must be public, session-mediated, or backed by an approved short-lived credential flow.
-- Dependency SDK base URLs `MUST` be configured explicitly when they do not inherit the application common SDK root or a product app's verified same-origin defaults. Dependency-owned SDKs must not be regenerated or hard-coded into product SDK base URLs.
-- Dependency SDK base URLs may inherit the common `sdkBaseUrl` when that base URL is documented as a gateway/root that serves the dependency surface, or they may inherit a product same-origin app/backend default only when the
+- Dependency SDK base URLs `MUST` be configured explicitly when they do not inherit the application common SDK root or an application's verified same-origin defaults. Dependency-owned SDKs must not be regenerated or hard-coded into application-owned SDK base URLs.
+- Dependency SDK base URLs may inherit the common `sdkBaseUrl` when that base URL is documented as a gateway/root that serves the dependency surface, or they may inherit an application same-origin app/backend default only when the
   application runtime declares `dependencyApiSurfaces` mount coverage for that dependency SDK
   family, surface, and prefix. A route contract or `sdkDependencies` entry alone is not enough.
 - `dependencyApiSurfaces` entries with `runtimeMode: "same-origin"` `MUST` set
   `sameOriginAllowed: true`, name the executable router/controller/service export or equivalent
-  runtime adapter, and record `coverage: "verified"` before SDK clients may inherit the product
+  runtime adapter, and record `coverage: "verified"` before SDK clients may inherit the application
   same-origin `appApiBaseUrl` or `backendApiBaseUrl`.
 - When a shared Rust gateway provides the same-origin or embedded dependency surface,
   `dependencyApiSurfaces` `SHOULD` also name the Cargo feature and Cargo dependency that activate
@@ -434,10 +434,11 @@ Rules:
   owning both `/app/v3/api/comments` and `/app/v3/api/engagement`. Runtime config `MUST` declare
   each prefix as a separate dependency API surface while sharing the same service id and
   `requiredBaseUrlKey`, so route matching stays precise without broad fallback ownership.
-- Product application runtime config that consumes a shared foundation gateway `SHOULD` use one
-  common gateway root as the default dependency base URL source. Product-local server env such as a
-  web gateway upstream must default to that common gateway root for foundation surfaces; direct
-  dependency module URLs are per-surface overrides for explicit split deployments and must not be
+- Application runtime config that consumes a shared **platform connectivity-plane gateway**
+  (`APP_RUNTIME_TOPOLOGY_NAMING.md` plane `platform`, surface `platform.api-gateway`) `SHOULD` use one
+  common gateway root as the default dependency base URL source. Application-local server env such as a
+  web gateway upstream must default to that common gateway root for platform foundation dependency
+  surfaces; direct dependency module URLs are per-surface overrides for explicit split deployments and must not be
   hidden as the default.
 - A common dependency gateway root does not collapse application-owned SDK roots. Application-owned
   `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` may remain same-origin or otherwise
@@ -445,7 +446,7 @@ Rules:
 - Application-local runtime env `MUST NOT` materialize per-module foundation upstream defaults beside a
   configured shared gateway root. Appbase, Drive, commerce, search, voice, image, comments, course,
   messaging, or other foundation module URLs are explicit split overrides only.
-- Launch/config tests for applications that consume a shared foundation gateway `MUST` prove dependency
+- Launch/config tests for applications that consume a shared platform connectivity-plane gateway `MUST` prove dependency
   SDK defaults derive from the gateway root while application-owned app/backend/open SDK base URLs remain
   application-owned.
 - When dependency API surfaces overlap by prefix, runtime config or the component spec `MUST`
@@ -595,15 +596,15 @@ Rules:
 - Native Android, iOS, and Harmony host config files may own application ids, bundle ids, module ids, icons, permissions, capabilities, app links/universal links/wants, push profiles, store profiles, signing reference names, and OS version requirements. They must not contain signing private keys, tokens, business API route contracts, or SDK ownership decisions.
 - `.env.postgres.example` is the checked-in local PostgreSQL template for apps
   that support PostgreSQL development. It must use split fields such as
-  `SDKWORK_<APP>_DATABASE_ENGINE=postgresql` and
-  `SDKWORK_<APP>_DATABASE_SSL_MODE=disable`, plus `DATABASE_ADMIN_*` split
+  `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE=postgresql` and
+  `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE=disable`, plus `DATABASE_ADMIN_*` split
   fields when database initialization needs an admin connection.
 - `.env.postgres` is a host-local developer override and must be excluded from
   source control.
 - Production config must come from deployment infrastructure or secret manager.
 - Config keys `SHOULD` be namespaced by capability, such as `SDKWORK_IAM_*`.
 - Unknown config keys in machine-readable manifests `SHOULD` fail validation to prevent drift.
-- Locale and i18n runtime config keys should stay small and declarative: default locale, supported locales, fallback locale, and catalog manifest URL. Translation catalogs follow `I18N_SPEC.md` package-local fragment ownership and must not be embedded in runtime config, feature flags, app manifests, or environment files.
+- Locale and i18n runtime config keys should stay small and declarative: default locale, supported locales, fallback locale, and message-catalog manifest URL. Translation message catalogs follow `I18N_SPEC.md` package-local fragment ownership and must not be embedded in runtime config, feature flags, app manifests, or environment files.
 
 ## 5. Feature Flags
 
@@ -630,14 +631,14 @@ Rules:
 - [ ] Lifecycle environment, profile alias, deployment profile, build mode, and runtime target are normalized separately.
 - [ ] Dev/test/staging/prod example files are checked in only as safe templates, and local overrides are ignored.
 - [ ] Browser public runtime config, desktop user config, H5/Capacitor config, Flutter config, mini program config, native Android config, native iOS config, native Harmony config, server config, container config, and Tauri platform config are separated.
-- [ ] Database env parsing maps `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE` to typed config and rejects `DATABASE_PROVIDER`/`DATABASE_SSLMODE`.
+- [ ] Database env parsing maps `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` to typed config and rejects `DATABASE_PROVIDER`/`DATABASE_SSLMODE`.
 - [ ] Apps with PostgreSQL development support provide `.env.postgres.example` and ignore `.env.postgres`.
 - [ ] SDK clients are constructed in bootstrap from one common SDK base URL plus per-surface/per-SDK overrides, with separate effective open-api, app-api, and `backend-admin` backend-api URLs where those surfaces are consumed.
 - [ ] SDK inventory classifies every consumed SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake before services are constructed.
 - [ ] Appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, application/dependency backend SDKs, and approved composed wrappers in the same authenticated application session receive the same global `TokenManager`; server service-context runtimes use one request/service credential provider per service context.
 - [ ] Protected open-api SDKs receive credentials through a separate open-api credential provider matching their declared auth mode and are not placed in login TokenManager client lists.
 - [ ] Runtime config contains SDK base URL values and token-manager behavior, but does not contain actual auth/access/refresh tokens or raw API keys.
-- [ ] Runtime config contains only i18n locale strategy and catalog manifest references, not translated message content or monolithic locale bundles.
+- [ ] Runtime config contains only i18n locale strategy and message-catalog manifest references, not translated message content or monolithic locale bundles.
 - [ ] Dependency SDK base URLs are keyed by SDK family id and are injected during bootstrap instead of hard-coded in services.
 - [ ] `dependencyApiExports` is explicit and defaults to `[]`; dependency API exports with
   `runtimeRequired: true` have verified same-origin `dependencyApiSurfaces` coverage or explicit

@@ -52,7 +52,7 @@ Rules:
 - Generated RPC SDK source workspaces use convention-first evidence. They `MUST` retain the RPC SDK family root, `rpc/*.manifest.json`, proto source references, generated language package manifests, and generated client source; they `MUST NOT` require committed `.sdkwork/sdkwork-generator-*` files for normal source-control use.
 - RPC release, CI, audit, or migration workflows `MAY` request generated SDK control-plane evidence with `sdkgen --protocol rpc --emit-control-plane`. When emitted, the standard file names are `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, and `.sdkwork/sdkwork-generator-report.json`, and SDK metadata `MUST` declare `protocol: "rpc"`.
 - Optional RPC control-plane paths are derived from the language workspace root and the standard `sdkgen` file names. RPC SDK family metadata, such as `.sdkwork-assembly.json` and `specs/component.spec.json`, `MUST NOT` duplicate per-language `manifest`, `changes`, or `report` paths for the optional control plane; if it records optional control-plane policy, it `MUST` do so once at the SDK family or component contract level.
-- Product RPC SDK family READMEs, component READMEs, and family metadata `MUST` describe optional RPC generator evidence as convention-derived. They `MUST NOT` list derived `.sdkwork/sdkwork-generator-*` paths as normal source-control evidence or repeat those paths per language workspace. Generator/tooling standards may name the standard files only to define emitted release, CI, audit, or migration evidence.
+- Application RPC SDK family READMEs, component READMEs, and family metadata `MUST` describe optional RPC generator evidence as convention-derived. They `MUST NOT` list derived `.sdkwork/sdkwork-generator-*` paths as normal source-control evidence or repeat those paths per language workspace. Generator/tooling standards may name the standard files only to define emitted release, CI, audit, or migration evidence.
 - `sdkgen inspect` is the standard generated SDK evidence inspection entrypoint. For HTTP/OpenAPI SDKs it reads the persisted generated SDK control plane. `sdkgen inspect --protocol rpc` `MUST` accept convention evidence for normal RPC SDK source workspaces and `MUST` validate emitted control-plane metadata only when `.sdkwork/sdkwork-generator-*` files are present. Generator CLI help, generated READMEs, and product README examples `MUST NOT` imply that normal RPC inspection requires persisted generated SDK control-plane files.
 - HTTP/OpenAPI SDK output and RPC SDK output `MUST` use separate SDK family/language workspace directories. Protocol identity is carried by SDK metadata, not by alternate control-plane file names.
 - Generated HTTP SDK output `.sdkwork/` is generator-owned and `MUST NOT` be used for repository/application skills, plugins, local workspace manifests, runtime files, or user-private data.
@@ -91,8 +91,8 @@ Rules:
   or runtime API contracts `MUST` keep those generated SDK families under that repository or
   application's own `sdks/` directory.
 - A consuming application SDK family `MUST` generate only its own API authority. For example,
-  `sdkwork-<app>-app-sdk` generates only `sdkwork-<app>-app-api`, and
-  `sdkwork-<app>-backend-sdk` generates only `sdkwork-<app>-backend-api`.
+  `sdkwork-<application-code>-app-sdk` generates only `sdkwork-<application-code>-app-api`, and
+  `sdkwork-<application-code>-backend-sdk` generates only `sdkwork-<application-code>-backend-api`.
 - A consuming application `MUST NOT` regenerate APIs owned by Rust crate dependencies, reusable
   appbase modules, provider repos, or other SDKWork apps into its own app/backend/open SDK family.
   This applies even when the consuming application links the Rust crate or starts the runtime route
@@ -278,12 +278,12 @@ Rules:
   a dependency API is treated as mounted.
 - Executable mount coverage counts only when the mounted router/controller/service is
   production-capable for that surface: it must read/write through the dependency's real
-  store/service/upstream or an approved product adapter backed by real tables/services. Demo,
+  store/service/upstream or an approved application-line adapter backed by real tables/services. Demo,
   sample, local-only, fixture, mock, hard-coded tenant/user/organization/API-key data, or seeded fake
   responses `MUST NOT` satisfy `dependencyApiSurfaces` same-origin coverage in development, test,
   staging, or production.
 - Dependency SDK base URLs may use a configured common SDK base URL when that root is documented as
-  a gateway serving the dependency surface. They may use a product application's same-origin
+  a gateway serving the dependency surface. They may use an application's same-origin
   app/backend default only
   when `dependencyApiSurfaces` declares `same-origin` runtime mode and mount coverage has verified
   every dependency-owned method/path the SDK can call on that surface.
@@ -360,21 +360,21 @@ These names have different meanings:
 - Rust route crate names identify Rust source packages that define route/path constants, route metadata, router mount points, and handler binding for one business capability and one API surface.
 - Rust route crate names `MUST` start with `sdkwork-router-` and `MUST NOT` be used as SDK family names, generated package names, OpenAPI authority names, generator `--sdk-name` values, or frontend service package names.
 - SDK family names identify generated client SDK workspaces and generated package lineage.
-- API authority names identify runtime API products and OpenAPI authority contracts.
+- API authority names identify runtime API authoritys and OpenAPI authority contracts.
 - `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, and `sdkwork-<domain>-backend-api` are never SDK family names.
 - The SDK family generated from an `open-api` authority is `sdkwork-<domain>-sdk`, not `sdkwork-<domain>-open-api` and not `sdkwork-<domain>-open-sdk`.
-- `sdkwork-router-product-app-api` means product-related app-api route/path configuration. It does not mean the product SDK, and it does not mean the final app-api authority for the whole project.
-- `sdkwork-commerce-app-api` means the aggregated commerce app-api authority. It may aggregate multiple commerce-owned route crates such as `sdkwork-router-product-app-api`, `sdkwork-router-cart-app-api`, and `sdkwork-router-order-app-api`.
+- `sdkwork-router-merchandise-app-api` means product-related app-api route/path configuration. It does not mean the product SDK, and it does not mean the final app-api authority for the whole project.
+- `sdkwork-commerce-app-api` means the aggregated commerce app-api authority. It may aggregate multiple commerce-owned route crates such as `sdkwork-router-merchandise-app-api`, `sdkwork-router-cart-app-api`, and `sdkwork-router-order-app-api`.
 - `sdkwork-commerce-app-sdk` means the generated SDK family produced from `sdkwork-commerce-app-api`.
 
 | Surface | Package pattern |
 | --- | --- |
 | Open API | `@sdkwork/<domain>-sdk` |
-| App API | `@sdkwork/<app>-app-sdk` |
-| Backend API | `@sdkwork/<app>-backend-sdk` |
+| App API | `@sdkwork/<application-code>-app-sdk` |
+| Backend API | `@sdkwork/<application-code>-backend-sdk` |
 | RPC SDK | `@sdkwork/<sdk-family-stem>-rpc-sdk` or approved language-specific equivalent |
 | Common RPC contracts | `@sdkwork/<domain>-rpc-contracts` or approved language-specific equivalent |
-| Common generated contracts | `@sdkwork/<app>-contracts` |
+| Common generated contracts | `@sdkwork/<application-code>-contracts` |
 | Shared composed facade | `@sdkwork/<capability>-service` or appbase package |
 | Drive App SDK | `@sdkwork/drive-app-sdk` |
 | Drive Backend SDK | `@sdkwork/drive-backend-sdk` |
@@ -383,8 +383,18 @@ These names have different meanings:
 | Craw Chat App API | `@sdkwork/app-sdk` from the current appbase app SDK compatibility package |
 | IM SDK | `@sdkwork/im-sdk` from Craw Chat application root `sdks/sdkwork-im-sdk` |
 | RTC SDK | `@sdkwork/rtc-sdk` from sdkwork-rtc workspace `../sdkwork-rtc/sdks/sdkwork-rtc-sdk` |
+| Cross-language utils (TypeScript) | `@sdkwork/utils` from `sdkwork-utils/packages/sdkwork-utils-typescript` |
+| SDK generator transport runtime | `@sdkwork/sdk-common` |
 
 Rules:
+
+- `@sdkwork/utils` is a contract-backed utility library, not a generated HTTP SDK. Its npm name
+  must not include a language suffix. The repository directory remains
+  `packages/sdkwork-utils-typescript`.
+- `@sdkwork/utils/<module>` subpath exports must stay aligned with `sdkwork-utils/specs/utils.contract.json`.
+  Missing subpath exports break Vite, Node ESM resolution, and TypeScript package export resolution.
+- Application and frontend repositories must declare `@sdkwork/utils` as a normal dependency and
+  must not depend on retired `@sdkwork/utils-typescript`.
 
 - App and backend SDK packages may differ, but equivalent resources must keep identical operationId semantics.
 - HTTP SDK and RPC SDK packages may differ, but shared operations must keep identical operationId semantics through the RPC manifest.
@@ -656,7 +666,7 @@ Every SDK generation flow `MUST` verify:
   name, capability, surface, API authority, SDK family, prefix, auth mode, ownership, and duplicate
   route rules, and materialize source traceability into OpenAPI extensions.
 - [ ] The route crate -> aggregated API authority -> generated SDK family mapping is explicit, for
-  example `sdkwork-router-product-app-api` -> `sdkwork-commerce-app-api` ->
+  example `sdkwork-router-merchandise-app-api` -> `sdkwork-commerce-app-api` ->
   `sdkwork-commerce-app-sdk`.
 - [ ] Application-root `sdks/` family layout, OpenAPI authority file placement, derived generator inputs, and generated-output placement follow `SDK_WORKSPACE_GENERATION_SPEC.md`.
 - [ ] Strict SDKWork v3 profile passes for new contracts.

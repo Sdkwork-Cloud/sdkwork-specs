@@ -552,7 +552,7 @@ Knowledge-base files use `knowledge_base` spaces. Ingestion, parsing, chunking, 
 
 ### 11.2 AI Generated
 
-Generated images, audio, video, documents, model artifacts, and edited media use `ai_generated` spaces unless a product-specific app upload policy is explicitly selected. AI provenance belongs in `MediaResource.ai` and/or Drive-linked generation records. Provider URLs that expire must be imported into Drive or represented as provider assets with explicit refresh rules before becoming SDKWork-owned business state.
+Generated images, audio, video, documents, model artifacts, and edited media use `ai_generated` spaces unless a application-specific app upload policy is explicitly selected. AI provenance belongs in `MediaResource.ai` and/or Drive-linked generation records. Provider URLs that expire must be imported into Drive or represented as provider assets with explicit refresh rules before becoming SDKWork-owned business state.
 
 ### 11.3 App Upload
 

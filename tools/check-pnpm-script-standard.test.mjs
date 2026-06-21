@@ -16,7 +16,7 @@ function makeRepo(manifest) {
 function runChecker(root, productPrefix = 'demo') {
   return spawnSync(
     process.execPath,
-    [CHECKER, '--root', root, '--product-prefix', productPrefix],
+    [CHECKER, '--root', root, '--application-code-prefix', productPrefix],
     { cwd: path.resolve('.'), encoding: 'utf8' },
   );
 }
@@ -215,7 +215,7 @@ describe('check-pnpm-script-standard', () => {
     assert.match(result.stderr, /missing required root script "verify"/);
   });
 
-  it('rejects product-prefixed public scripts and gateway profile-first names', () => {
+  it('rejects application-code-prefixed public scripts and gateway profile-first names', () => {
     const root = makeRepo({
       name: 'sdkwork-demo',
       scripts: {
@@ -234,7 +234,7 @@ describe('check-pnpm-script-standard', () => {
 
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /demo:dev: first segment "demo" is not a standard public namespace/);
-    assert.match(result.stderr, /demo:dev: product-prefixed public root scripts are forbidden/);
+    assert.match(result.stderr, /demo:dev: application-code-prefixed public root scripts are forbidden/);
     assert.match(result.stderr, /gateway:cloud:bundle: use gateway:<action>\[:deploymentProfile\]/);
   });
 
@@ -589,7 +589,7 @@ describe('check-pnpm-script-standard', () => {
     const result = runChecker(root, 'demo');
 
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /README\.md:3: pnpm demo:dev: product-prefixed command examples are forbidden/);
+    assert.match(result.stderr, /README\.md:3: pnpm demo:dev: application-code-prefixed command examples are forbidden/);
     assert.match(result.stderr, /README\.md:4: pnpm server:dev: first segment "server" is not a standard public namespace/);
     assert.match(result.stderr, /README\.md:5: pnpm gateway:cloud:bundle: use gateway:<action>\[:deploymentProfile\]/);
   });
@@ -652,7 +652,7 @@ describe('check-pnpm-script-standard', () => {
     assert.notEqual(result.status, 0);
     assert.match(
       result.stderr,
-      /sdkwork\.app\.config\.json: devApp\.build\.targets\.0\.command: pnpm demo:build: product-prefixed command examples are forbidden/,
+      /sdkwork\.app\.config\.json: devApp\.build\.targets\.0\.command: pnpm demo:build: application-code-prefixed command examples are forbidden/,
     );
     assert.match(
       result.stderr,
@@ -726,7 +726,7 @@ describe('check-pnpm-script-standard', () => {
     );
     assert.match(
       result.stderr,
-      /scripts[/\\]dev\.mjs:3: pnpm demo:dev: product-prefixed command examples are forbidden/,
+      /scripts[/\\]dev\.mjs:3: pnpm demo:dev: application-code-prefixed command examples are forbidden/,
     );
   });
 

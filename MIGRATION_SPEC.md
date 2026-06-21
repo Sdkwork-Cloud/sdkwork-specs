@@ -117,3 +117,37 @@ Rules:
 - [ ] Tests cover old path, new path, and cutover when applicable.
 - [ ] Rollback or forward-fix plan is explicit.
 - [ ] Release notes and documentation explain user/operator impact.
+
+## 8. Identity And Naming Terminology Migration
+
+Public naming migrations for application identity and commerce capabilities follow `NAMING_SPEC.md` §0.
+
+| Retired | Canonical replacement | Notes |
+| --- | --- | --- |
+| `<product>` placeholder | `<application-code>` (kebab-case) or `<application_code>` (Dart) | L2 application code from `RUNTIME_DIRECTORY_SPEC.md` |
+| bare `<app>` path placeholder | `<application-code>` | `app` remains valid for `app-api`, `app.key`, app/user surface |
+| `product-specific`, `product-local`, `product-owned` | `application-specific`, `application-local`, `application-owned` | customization of one application line |
+| `product-prefix` / `product-prefixed` (pnpm) | `application-code-prefix` / `application-code-prefixed` | forbids `drive:dev`, not merchandise |
+| commerce capability `product` | `merchandise` | sibling of `catalog` and `shop`; see `DOMAIN_SPEC.md` §3.1 |
+| `sdkwork-router-product-*` | `sdkwork-router-merchandise-*` | route crates |
+| `sdkwork-commerce-product-service` | `sdkwork-commerce-merchandise-service` | domain service |
+| `sdkwork-*-pc-product`, `sdkwork-*-h5-product` | `sdkwork-*-pc-merchandise`, etc. | client packages |
+| `@sdkwork/react-backend-product` | `@sdkwork/react-backend-merchandise` | backend UI |
+| `sdkwork-<application-code>-product` crate suffix | forbidden generic suffix | not a merchandise capability rename |
+| `Product apps` / `product apps` | `consuming applications` or `application roots` | L1 product name |
+| `product prefix` (pnpm) | `application-code prefix` | commerce merchandise |
+| `product approval` | `governance approval` | L1 product name |
+| `product adapter` | `application-line adapter` | not merchandise capability |
+| `product same-origin` | `application same-origin` | runtime mount default |
+| `product copy` (i18n/config) | `L1 brand/store copy` or `message-catalog content` | not merchandise |
+| `product OpenAPI` | `application-owned OpenAPI` | authority ownership |
+| `shared foundation gateway` (without plane) | `platform connectivity-plane gateway` | domain `platform` |
+| bare `catalog` (i18n normative) | `message catalog` / `i18n catalog fragment` | commerce `catalog` capability |
+| `identity` domain packages | `iam` | identity projection headers |
+| `PRODUCT_OR_PLATFORM` env formula | `PLATFORM_OR_APPLICATION_CODE` or `SDKWORK_<APPLICATION_CODE>_` | — |
+
+Rules:
+
+- New standards and packages must use canonical terms only.
+- Compatibility aliases may exist during the compatibility window but must record removal dates and fail verification after cutover.
+- Verification uses `tools/check-identity-naming.mjs` plus existing Rust crate naming scans in `TEST_SPEC.md`.

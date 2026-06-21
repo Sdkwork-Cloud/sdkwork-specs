@@ -11,13 +11,13 @@ This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to 
 Canonical app-root H5 mobile package shape:
 
 ```text
-apps/sdkwork-<product>-h5/
+apps/sdkwork-<application-code>-h5/
   packages/
-    sdkwork-<product>-h5-core/
-    sdkwork-<product>-h5-commons/
-    sdkwork-<product>-h5-shell/
-    sdkwork-<product>-h5-<capability>/
-    sdkwork-<product>-h5-console-<capability>/
+    sdkwork-<application-code>-h5-core/
+    sdkwork-<application-code>-h5-commons/
+    sdkwork-<application-code>-h5-shell/
+    sdkwork-<application-code>-h5-<capability>/
+    sdkwork-<application-code>-h5-console-<capability>/
 ```
 
 Shared mobile React package shape:
@@ -39,8 +39,8 @@ apps/sdkwork-appbase/
 
 Rules:
 
-- Mobile React app UI `MUST` live in normalized H5 application packages such as `apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-<capability>` or shared mobile React package families such as `packages/mobile-react/<domain>/<package>`.
-- H5 user-console UI `MUST` live in `apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
+- Mobile React app UI `MUST` live in normalized H5 application packages such as `apps/sdkwork-<application-code>-h5/packages/sdkwork-<application-code>-h5-<capability>` or shared mobile React package families such as `packages/mobile-react/<domain>/<package>`.
+- H5 user-console UI `MUST` live in `apps/sdkwork-<application-code>-h5/packages/sdkwork-<application-code>-h5-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - Mobile React app and user-console UI `MUST` consume `/app/v3/api` through the generated app SDK or approved appbase wrappers.
 - Mobile React app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, or `@sdkwork/react-backend-*` packages.
 - `backend-admin` UI and operator-only workflows are forbidden in mobile React app or user-console packages unless the product is explicitly an admin mobile app with its own approved `backend-admin` package family.
@@ -50,11 +50,11 @@ Rules:
 
 | Package type | Naming | Owns | Must not own |
 | --- | --- | --- | --- |
-| mobile shell/runtime | `sdkwork-<product>-h5-shell` or app-specific mobile shell | navigation container, safe-area provider, SDK bootstrap, token storage adapter, host adapters | reusable domain services and pages |
-| mobile foundation | `sdkwork-<product>-h5-commons` or `sdkwork-<foundation>-mobile-react` | appbase, router, command, search, workspace primitives for mobile | business-domain shortcuts |
-| mobile domain package | `sdkwork-<product>-h5-<capability>` or `sdkwork-<capability>-mobile-react` | screens, components, hooks, services, i18n, navigation metadata | concrete SDK construction, backend admin logic |
-| mobile user console package | `sdkwork-<product>-h5-console-<capability>` | user-facing management console screens, components, hooks, services, i18n, navigation metadata | company-internal admin workflows, backend-only operation center behavior |
-| host adapter package | `sdkwork-<product>-h5-capacitor` or `sdkwork-<host>-mobile-react` when needed | native bridge abstraction and permissions | API business logic |
+| mobile shell/runtime | `sdkwork-<application-code>-h5-shell` or app-specific mobile shell | navigation container, safe-area provider, SDK bootstrap, token storage adapter, host adapters | reusable domain services and pages |
+| mobile foundation | `sdkwork-<application-code>-h5-commons` or `sdkwork-<foundation>-mobile-react` | appbase, router, command, search, workspace primitives for mobile | business-domain shortcuts |
+| mobile domain package | `sdkwork-<application-code>-h5-<capability>` or `sdkwork-<capability>-mobile-react` | screens, components, hooks, services, i18n, navigation metadata | concrete SDK construction, backend admin logic |
+| mobile user console package | `sdkwork-<application-code>-h5-console-<capability>` | user-facing management console screens, components, hooks, services, i18n, navigation metadata | company-internal admin workflows, backend-only operation center behavior |
+| host adapter package | `sdkwork-<application-code>-h5-capacitor` or `sdkwork-<host>-mobile-react` when needed | native bridge abstraction and permissions | API business logic |
 
 Rules:
 
@@ -69,7 +69,7 @@ Rules:
 Recommended app-root package structure:
 
 ```text
-apps/sdkwork-<product>-h5/packages/sdkwork-<product>-h5-<capability>/
+apps/sdkwork-<application-code>-h5/packages/sdkwork-<application-code>-h5-<capability>/
   package.json
   src/
     index.ts
@@ -122,7 +122,7 @@ Rules:
 - Services `MUST` use app SDK clients or approved service wrappers.
 - Runtime/bootstrap `MUST` construct generated TypeScript app SDK clients, appbase IAM clients, one global token manager, token/context stores, and mobile host adapters.
 - Mobile React IAM integration `MUST` use an appbase mobile wrapper when available. If a mobile-specific wrapper is not available, the app may use an approved adapter over `@sdkwork/iam-runtime` and `@sdkwork/appbase-app-sdk`; it must not create raw HTTP auth flows.
-- `appbaseApp`, optional `backend-admin` `appbaseBackend`, downstream product app-api SDK clients, and explicit `backend-admin` backend-api SDK clients `MUST` share the same global token manager through generated SDK credential APIs such as `setTokenManager`.
+- `appbaseApp`, optional `backend-admin` `appbaseBackend`, downstream app-api SDK clients, and explicit `backend-admin` backend-api SDK clients `MUST` share the same global token manager through generated SDK credential APIs such as `setTokenManager`.
 - Login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user self-service `MUST` use appbase app SDK resources or appbase wrappers. Verification-code delivery and verification `MUST` use the generated messaging app SDK surface or an appbase wrapper that delegates to an injected messaging client.
 - Native bridge calls `MUST` go through typed host adapters.
 - UI components `MUST NOT` construct SDK clients, call raw HTTP, manually attach auth/API key headers, or call native bridge globals directly.

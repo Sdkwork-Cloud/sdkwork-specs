@@ -41,6 +41,20 @@ Rules:
 - Runtime/bootstrap constructs concrete SDK clients and injects token managers.
 - Node scripts should be deterministic, fail fast, and avoid hidden global state.
 
+### 2.1 `@sdkwork/utils` Package Exports
+
+Rules:
+
+- The canonical TypeScript utility npm package is `@sdkwork/utils` from
+  `sdkwork-utils/packages/sdkwork-utils-typescript`.
+- `package.json#exports` must expose every contract module as `./<module>` with paired `types` and
+  `import` entries pointing at built artifacts under `dist/`.
+- Do not publish or consume retired `@sdkwork/utils-typescript`.
+- Application repositories must resolve `@sdkwork/utils` through package exports. Vite aliases and
+  `tsconfig` path overrides are compatibility shims only and must not replace missing export maps.
+- When adding a module to `specs/utils.contract.json`, update
+  `scripts/check-typescript-exports.mjs` coverage by keeping `package.json#exports` in sync.
+
 ## 3. SDK And HTTP Boundaries
 
 Rules:
