@@ -53,7 +53,8 @@ Rules:
 - JWT headers `SHOULD` carry `kid`. Key lookup by `kid` `MUST` resolve to tenant-bound signing metadata before claim authorization decisions are made.
 - If a token's verified `tenant_id`, key tenant binding, session tenant binding, or request context tenant disagree, the request `MUST` fail closed.
 - Both `authToken` and `accessToken` `MUST` include `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims or resolve those values through a trusted server-side token/session lookup.
-- `login_scope` and `organization_id` `MUST` be internally consistent: tenant-level sessions have no organization or `organization_id = 0`; organization-level sessions have a non-zero organization id.
+- `login_scope` and `organization_id` `MUST` be internally consistent: personal sessions use `login_scope = TENANT` with `organization_id = 0` or absent; organization sessions use `login_scope = ORGANIZATION` with a non-zero organization id.
+- Backend API requests `MUST` reject personal sessions (`login_scope = TENANT`) even when the principal still has persistent organization membership.
 - Tenant signing material `MUST` be encrypted or managed by an approved secret manager/KMS, rotated, revocable, and excluded from logs, generated SDK output, public runtime config, and frontend bundles.
 
 ## 2. Authorization

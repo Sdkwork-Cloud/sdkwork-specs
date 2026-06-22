@@ -381,14 +381,14 @@ Credential sources:
 | Credential | Source | Header | Env/config rule |
 | --- | --- | --- | --- |
 | Auth token | Appbase IAM session/login/refresh/current-session only | `Authorization: Bearer <auth_token>` | Forbidden in environment variables. Forbidden in browser public runtime config. |
-| Access token | Appbase IAM session/login/refresh/current-session, or private bootstrap `SDKWORK_ACCESS_TOKEN` before login | `Access-Token: <access_token>` | `SDKWORK_ACCESS_TOKEN` `SHOULD` be configured for every application root that calls protected APIs. Forbidden in browser public runtime config. Superseded by session tokens after login. |
+| Access token | Appbase IAM session/login/refresh/current-session, or private bootstrap `SDKWORK_ACCESS_TOKEN` before login | `Access-Token: <JWT access_token>` | `SDKWORK_ACCESS_TOKEN` `SHOULD` be configured for every application root that calls protected APIs. Value `MUST` be a signed JWT, not a semicolon claim string. Forbidden in browser public runtime config. Superseded by session tokens after login. |
 | Refresh token | Appbase IAM refresh flow only | Not sent on business API requests | Not allowed in env or browser public runtime config. Storage is controlled by appbase IAM runtime. |
 | API key | Open-api credential provider for `api-key` or `open-api-flexible` mode | `X-API-Key` or declared scheme | Not allowed in environment variables. Raw value may exist only in protected secret manager, server-side non-env config, OS secure storage, or test fixture. Never in browser public runtime config. |
 | OAuth bearer | Open-api credential provider for `oauth` or `open-api-flexible` mode | `Authorization: Bearer <token>` | Raw value may exist only in protected secret manager, server-side config, OS secure storage, or test fixture. Never in browser public runtime config. |
 
 Rules:
 
-- Protected app-api and backend-api SDK requests `MUST` send `Access-Token: <access_token>` whenever the runtime has an access token available from bootstrap or session state.
+- Protected app-api and backend-api SDK requests `MUST` send `Access-Token: <JWT access_token>` whenever the runtime has an access token available from bootstrap or session state.
 - Protected app-api and backend-api SDK requests `MUST` send `Authorization: Bearer <auth_token>` whenever the runtime has an auth token available from bootstrap or session state.
 - App-api and backend-api SDK clients must obtain runtime session tokens through the global TokenManager or language-equivalent credential provider. Service/bootstrap runtimes may seed that provider from `SDKWORK_ACCESS_TOKEN` only.
 - When both bootstrap/session `auth_token` and `access_token` are present, frameworks and runtimes `MUST` treat overlapping principal and tenancy claims from `auth_token` as authoritative. Overlapping fields are: `sub`/`user_id`, `sid`/`session_id`, `tenant_id`, `organization_id`, `login_scope`, and `auth_level`. Access-isolation-only fields such as `data_scope`, `permission_scope`, deployment profile, runtime target, and sharding hints remain authoritative from `access_token`.
@@ -1138,7 +1138,18 @@ PORTAL_PUBLIC_OPEN_API_BASE_URL=/v1
 PORTAL_PUBLIC_APP_API_BASE_URL=/app/v3/api
 PORTAL_PUBLIC_BACKEND_API_BASE_URL=/backend/v3/api
 PORTAL_PUBLIC_TOOL_API_ENABLED=false
+SDKWORK_CLAW_EDGE_CSP_CONNECT_SRC=
+SDKWORK_CLAW_TOOL_API_RATE_LIMIT_REQUESTS=120
+SDKWORK_CLAW_TOOL_API_RATE_LIMIT_WINDOW_SECONDS=60
+SDKWORK_CLAW_TOOL_API_SDK_GENERATOR_BASE_URL=
+SDKWORK_CLAW_TOOL_API_SDK_ARCHIVE_ROOT=
 ```
+
+Private edge-server env keys use the `SDKWORK_CLAW_EDGE_*` and `SDKWORK_CLAW_TOOL_API_*`
+prefixes. The Rust edge gateway reads these canonical names first and accepts legacy
+`PORTAL_TOOL_API_*`, `PORTAL_CSP_*`, `PORTAL_SECURITY_*`, and `PORTAL_STATIC_*` aliases
+only as a read-only migration fallback. New release-host configuration must not assign
+legacy private edge keys.
 
 Example Linux server config:
 

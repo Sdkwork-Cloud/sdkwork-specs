@@ -3,7 +3,7 @@
 - Version: 1.0
 - Status: active
 - Scope: application database lifecycle, standardized `database/` asset layout, migration and seed governance, schema drift observation, lifecycle SPI hosted in `sdkwork-database`, bootstrap and upgrade orchestration, locale-aware initialization data
-- Related: `DATABASE_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `MIGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `GOVERNANCE_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `DATABASE_SPEC.md`, `SCHEMA_REGISTRY_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `MIGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `GOVERNANCE_SPEC.md`, `DOCUMENTATION_SPEC.md`
 - Detail implementation profile: `../sdkwork-database/specs/DATABASE_FRAMEWORK_STANDARD.md` (L1 framework repository authoritative for crate APIs, SPI trait signatures, CLI commands, and verification harnesses)
 
 This standard defines how SDKWork applications **build, initialize, upgrade, observe, and govern** relational databases. `DATABASE_SPEC.md` owns table semantics, logical types, naming, indexes, tenant isolation, connection pools, and repository boundaries. This file owns **database lifecycle orchestration** and the **application asset dictionary** that lifecycle consumes.
@@ -673,7 +673,7 @@ let orchestrator = LifecycleOrchestrator::new(pool, module);
 orchestrator.bootstrap(&LocaleTag::zh_cn(), &SeedProfile::standard()).await?;
 ```
 
-Multi-module registry orchestration is reserved; v1 applications use a single `DefaultDatabaseModule` per app root `database/` directory.
+Multi-module registry orchestration is reserved for database lifecycle SPI; v1 applications use a single `DefaultDatabaseModule` per app root `database/` directory. Cross-module **schema registry** composition is governed by `SCHEMA_REGISTRY_SPEC.md` and implemented in `sdkwork-web-framework` (`sdkwork-web-schema-registry`, `tools/schema_registry/`). Application `database.manifest.json#modules[]` `SHOULD` align with schema registry dependency order.
 
 ```rust
 let registry = DatabaseModuleRegistry::builder()

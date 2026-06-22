@@ -21,7 +21,7 @@ Related specs: `IAM_SPEC.md` §7, `API_SPEC.md` §18.
 | `userSurface.app` | Active `iam_tenant_member` |
 | `userSurface.organizationMember` | Active `iam_organization_membership` |
 
-Surfaces may overlap. Backend API requires `organizationMember = true`.
+Surfaces may overlap. Backend API requires `loginScope = "ORGANIZATION"` with a non-zero `organizationId` plus route permission. Persistent `userSurface.organizationMember = true` alone does not authorize backend-api access while the active session is personal (`loginScope = "TENANT"`).
 
 ## Standard Roles
 
@@ -71,10 +71,10 @@ Authoritative implementations:
 ## Authorization Pipeline
 
 1. `WebRequestContextResolver` — credentials → principal + `permissionScope`
-2. Backend surface gate — organization membership context required
+2. Backend surface gate — `loginScope = ORGANIZATION` and non-zero `organizationId` required
 3. `ManifestAuthorizationPolicy` — route `required_permission` vs `permissionScope`
-4. `IamAuthorizationPolicy` — IAM org gate + manifest policy
-5. Handler/service — `data_scope` filtering
+4. `IamAuthorizationPolicy` — IAM org/login-scope gate + manifest policy
+5. Handler/service — `data_scope` filtering using active `loginScope` and `organizationId`
 
 UI `can()` checks are hints only. Server enforcement is mandatory.
 

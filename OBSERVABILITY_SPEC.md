@@ -74,7 +74,7 @@ Required common labels:
 | `route` | HTTP route template, not raw path. |
 | `method` | HTTP method or RPC method. |
 | `status` | Normalized HTTP status class/code or RPC status. |
-| `api_surface` | `open-api`, `app-api`, `backend-api`, or `rpc` when known. |
+| `api_surface` | `open-api`, `app-api`, `backend-api`, `internal-api`, or `rpc` when known. |
 | `backend_layer` | `router`, `handler`, `service`, `repository`, `provider`, or `materializer` when the metric is emitted by a web backend implementation layer. |
 
 Label rules:

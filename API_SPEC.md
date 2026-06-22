@@ -97,15 +97,18 @@ SDK family semantics, SDK package naming, client behavior, auth handling, and se
 
 ## 4. API Surfaces
 
-SDKWork uses three canonical API surfaces.
+SDKWork uses four canonical HTTP API surfaces. Internal RPC (`internal.v3`) remains a separate gRPC surface governed by `RPC_SPEC.md`.
 
 | Surface | Standard authority suffix | Prefix | Audience | Login endpoints |
 | --- | --- | --- | --- | --- |
-| Open API | `open-api` | Any approved SDKWork HTTP API prefix that is not `/app/v3/api` and not `/backend/v3/api`, for example `/im/v3/api` | External integrations, public/domain APIs, open platform clients, provider-facing API users | Forbidden |
+| Open API | `open-api` | Any approved SDKWork HTTP API prefix that is not `/app/v3/api`, not `/backend/v3/api`, and not `/internal/v3/api`, for example `/im/v3/api` | External integrations, public/domain APIs, open platform clients, provider-facing API users | Forbidden |
 | App API | `app-api` | `/app/v3/api` | Application development clients, desktop apps, mobile apps, H5, PC applications, and other user-facing app clients | Allowed and canonical |
 | Backend API | `backend-api` | `/backend/v3/api` | Admin consoles, internal operators, backend SDKs, control plane, automation | Forbidden |
+| Internal API | `internal-api` | `/internal/v3/api` | First-party application ingress consumers: kernel UI, embedded consoles, trusted in-app automation on `application.public-ingress` | Forbidden |
 
-The runtime request framework classifies every SDKWork HTTP API path outside `/app/v3/api` and `/backend/v3/api` as `open-api` for context resolution. Open-api does not require the literal path segment `open`; domain-specific prefixes such as `/im/v3/api` are open-api when they are not app-api or backend-api. Protected open-api operations use header-driven API key, OAuth bearer, or `open-api-flexible` context resolution according to the route manifest unless a specific contract declares `public` or a documented compatibility mode.
+The runtime request framework classifies every SDKWork HTTP API path outside `/app/v3/api`, `/backend/v3/api`, and `/internal/v3/api` as `open-api` for context resolution. Open-api does not require the literal path segment `open`; domain-specific prefixes such as `/im/v3/api` are open-api when they are not app-api, backend-api, or internal-api. Protected open-api operations use header-driven API key, OAuth bearer, or `open-api-flexible` context resolution according to the route manifest unless a specific contract declares `public` or a documented compatibility mode.
+
+Internal API is application-local HTTP on `application.public-ingress`. It is not backend-admin business API and must not be confused with RPC `internal.v3`. See `INTERNAL_API_SPEC.md`.
 
 Rules:
 
@@ -120,6 +123,7 @@ Rules:
 - Open-api authority documents `MUST` be declared as `sdkwork-<domain>-open-api` and placed under the owning `sdks/sdkwork-<domain>-sdk/openapi/` workspace when the application owns local SDK generation.
 - App API OpenAPI authority documents `MUST` be declared as `sdkwork-<domain>-app-api` and placed under the owning `sdks/sdkwork-<domain>-app-sdk/openapi/` workspace when the application owns local SDK generation.
 - Backend API OpenAPI authority documents `MUST` be declared as `sdkwork-<domain>-backend-api` and placed under the owning `sdks/sdkwork-<domain>-backend-sdk/openapi/` workspace when the application owns local SDK generation.
+- Internal API OpenAPI authority documents `MUST` be declared as `sdkwork-<domain>-internal-api` and placed under the owning `sdks/sdkwork-<domain>-internal-sdk/openapi/` workspace when the application owns local SDK generation. Authoring inputs `MAY` also live under `<application-root>/apis/internal-api/<domain>/`.
 - Login, register, refresh, logout, current session, OAuth callback, password reset, device authorization, and verification-code delivery flows `MUST` live in app-api only.
 - Open-api and backend-api `MUST NOT` expose auth/session login endpoints. They may validate credentials/tokens and consume the validated request context projection.
 - Backend-api `MUST NOT` expose auth/session login endpoints. It may validate tokens and manage resources.
@@ -141,6 +145,7 @@ App API and Backend API use global fixed prefixes. Open-api is not a literal `/o
 | Open API | The approved versioned domain prefix for that API, for example `/im/v3/api`; no literal `/open` segment is required |
 | App API | `/app/v3/api` |
 | Backend API | `/backend/v3/api` |
+| Internal API | `/internal/v3/api` |
 
 Forbidden runtime prefixes:
 
@@ -178,12 +183,13 @@ Required route crate name:
 sdkwork-router-<capability>-<surface>
 ```
 
-`<surface>` `MUST` be one of `open-api`, `app-api`, or `backend-api`. The full crate/package name therefore follows one of these shapes:
+`<surface>` `MUST` be one of `open-api`, `app-api`, `backend-api`, or `internal-api`. The full crate/package name therefore follows one of these shapes:
 
 ```text
 sdkwork-router-<capability>-open-api
 sdkwork-router-<capability>-app-api
 sdkwork-router-<capability>-backend-api
+sdkwork-router-<capability>-internal-api
 ```
 
 Examples:
@@ -199,7 +205,7 @@ Rules:
 
 - Rust route crates that define HTTP route paths, mount points, route metadata, handler bindings, or router composition for SDKWork APIs `MUST` start with `sdkwork-router-`.
 - `sdkwork-router-merchandise-app-api` owns app-api route/path definitions only. It `MUST NOT` be used as an SDK family name, generated package name, OpenAPI authority name, generator `--sdk-name`, or frontend SDK package name.
-- Route crates `MUST` declare their API surface in their name and in their route manifest. A crate whose name ends in `app-api` may mount only `/app/v3/api` routes; a crate whose name ends in `backend-api` may mount only `/backend/v3/api` routes; a crate whose name ends in `open-api` may mount only approved open-api prefixes and `MUST NOT` mount `/app/v3/api` or `/backend/v3/api`.
+- Route crates `MUST` declare their API surface in their name and in their route manifest. A crate whose name ends in `app-api` may mount only `/app/v3/api` routes; a crate whose name ends in `backend-api` may mount only `/backend/v3/api` routes; a crate whose name ends in `open-api` may mount only approved open-api prefixes and `MUST NOT` mount `/app/v3/api`, `/backend/v3/api`, or `/internal/v3/api`; a crate whose name ends in `internal-api` may mount only `/internal/v3/api` routes.
 - Route crates `MUST` use lowercase kebab-case package names. The Rust crate import may use snake case, for example package `sdkwork-router-merchandise-app-api` imports as `sdkwork_routes_product_app_api`.
 - Route crates may be split by business capability for maintainability, for example merchandise, cart, order, payment, catalog, shipment, tenant, and report. They `MUST` still preserve the canonical domain names from `DOMAIN_SPEC.md` in tags, operationIds, schemas, and route manifests.
 - Route crates `MUST` produce or feed a route manifest that can be materialized into an owner-only OpenAPI authority. Java controller mappings and Rust route crates are implementation inputs; the aggregated OpenAPI authority remains the HTTP contract source of truth for SDK generation.
@@ -654,6 +660,7 @@ components:
       type: apiKey
       in: header
       name: Access-Token
+      description: Signed JWT access_token compact serialization (`header.payload.signature`).
     ApiKey:
       type: apiKey
       in: header
@@ -673,7 +680,7 @@ Rules:
 - Public operations `MUST` explicitly set `security: []`.
 - `Authorization: Bearer <auth_token>` authenticates the principal/session on app-api/backend-api dual-token requests.
 - `Authorization: Bearer <token>` on open-api OAuth routes carries an OAuth bearer credential. It `MUST NOT` be treated as app-api `auth_token` when `Access-Token` is absent and the route declares `oauth` or `open-api-flexible`.
-- `Access-Token: <access_token>` carries access context such as tenant, organization, app, environment, and scope claims on app-api/backend-api requests.
+- `Access-Token: <JWT access_token>` carries access context such as tenant, organization, app, environment, and scope claims on app-api/backend-api requests. Semicolon claim-string values are forbidden.
 - `X-API-Key` carries an API key credential only. The server resolves tenant, organization, user, app, scope, and key identity from the validated API key object.
 - `Access-Token` is the canonical SDKWork access isolation header for v3 app-api/backend-api contracts.
 - Do not define duplicate security scheme names for the same token.
@@ -825,8 +832,8 @@ Rules:
 - API key lookup `MUST` be abstracted behind a service/interface. Implementations may use `iam_api_key`, tenant-local API key tables, encrypted secret stores, caches, or remote IAM services.
 - OAuth bearer lookup `MUST` be abstracted behind a service/interface. Implementations may validate access-token hashes against `iam_session`, OAuth JWT claims with tenant-bound signing keys, or application-specific token stores.
 - API key records `MUST` provide the principal user id, tenant id, organization id when applicable, app id, data scope, permission scope, key id, and revocation/expiry state.
-- Protected app-api and backend-api requests `MUST` include `Access-Token: <access_token>` whenever the client runtime has an access token from bootstrap or authenticated session state.
-- Protected app-api and backend-api requests `MUST` include `Authorization: Bearer <auth_token>` whenever the client runtime has an auth token from bootstrap or authenticated session state.
+- Protected app-api and backend-api requests `MUST` include `Access-Token: <JWT access_token>` whenever the client runtime has an access token from bootstrap or authenticated session state.
+- Protected app-api and backend-api requests `MUST` include `Authorization: Bearer <JWT auth_token>` whenever the client runtime has an auth token from bootstrap or authenticated session state.
 - Dual-token resolution `MUST` treat overlapping principal and tenancy claims from `auth_token` as authoritative when both tokens are present. Overlapping fields are `sub`/`user_id`, `sid`/`session_id`, `tenant_id`, `organization_id`, `login_scope`, and `auth_level`.
 - Dual-token resolution `MUST` reject requests where `access_token` carries an overlapping claim that contradicts the authoritative `auth_token` value after normalization.
 - Dual-token resolution `MUST` reject missing or conflicting `login_scope` claims and any `TENANT`/`ORGANIZATION` claim mismatch with `organization_id`.
@@ -891,8 +898,10 @@ IAM is the common base module for every app.
 | Method | Path | operationId | Security |
 | --- | --- | --- | --- |
 | `POST` | `/app/v3/api/auth/sessions` | `sessions.create` | Public |
+| `POST` | `/app/v3/api/auth/sessions/login_context_selection` | `sessions.loginContextSelection` | Public continuation |
+| `POST` | `/app/v3/api/auth/sessions/organization_selection` | `sessions.organizationSelection` | Public continuation; compatibility alias for organization login only |
 | `GET` | `/app/v3/api/auth/sessions/current` | `sessions.current.retrieve` | Dual token |
-| `PATCH` | `/app/v3/api/auth/sessions/current` | `sessions.current.update` | Dual token |
+| `PATCH` | `/app/v3/api/auth/sessions/current` | `sessions.current.update` | Dual token; supports `loginScope` personal/organization switch |
 | `DELETE` | `/app/v3/api/auth/sessions/current` | `sessions.current.delete` | Dual token |
 | `POST` | `/app/v3/api/auth/sessions/refresh` | `sessions.refresh` | Public or refresh-token proof |
 

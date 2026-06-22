@@ -117,6 +117,11 @@ Recommended application-root shape:
         sdkwork-<domain>-backend-api.openapi.yaml
         sdkwork-<domain>-backend-api.sdkgen.yaml
       ...
+    sdkwork-<domain>-internal-sdk/
+      openapi/
+        sdkwork-<domain>-internal-api.openapi.yaml
+        sdkwork-<domain>-internal-api.sdkgen.yaml
+      ...
     sdkwork-<sdk-family-stem>-rpc-sdk/
       rpc/
         sdkwork-<sdk-family-stem>-rpc.manifest.json
@@ -134,14 +139,14 @@ Rules:
   `crates/sdkwork-router-<capability>-<surface>/`.
 - Application-root `.sdkwork/` is validated by `SDKWORK_WORKSPACE_SPEC.md`; it is not an SDK family,
   not an OpenAPI authority, and not a generated transport output.
-- `<surface>` in Rust route crate placement `MUST` be exactly `open-api`, `app-api`, or
-  `backend-api`.
+- `<surface>` in Rust route crate placement `MUST` be exactly `open-api`, `app-api`, `backend-api`, or `internal-api`.
 - Rust route crate package names `MUST` follow `API_SPEC.md`:
   `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or
   `sdkwork-router-<capability>-backend-api`.
 - `sdkwork-<domain>-sdk` is the public/open domain SDK family.
 - `sdkwork-<domain>-app-sdk` is the app/client SDK family for app-api contracts.
 - `sdkwork-<domain>-backend-sdk` is the `backend-admin` SDK family for backend-api contracts.
+- `sdkwork-<domain>-internal-sdk` is the application ingress internal SDK family for `internal-api` contracts on `application.public-ingress`.
 - `sdkwork-<sdk-family-stem>-rpc-sdk` is the RPC SDK family for proto/gRPC contracts and is governed
   by `RPC_SDK_WORKSPACE_SPEC.md`.
 - `<domain>` is the application domain model, in kebab-case. It should match `DOMAIN_SPEC.md` unless the product has an approved local domain alias.
@@ -167,6 +172,7 @@ The following table repeats the canonical SDK/API naming model from `SDK_SPEC.md
 | `sdkwork-<domain>-sdk` | `sdkwork-<domain>-open-api` | Domain-defined, commonly `/im/v3/api` for IM | Public/domain integrations |
 | `sdkwork-<domain>-app-sdk` | `sdkwork-<domain>-app-api` | `/app/v3/api` | App, desktop, mobile, H5, and user-facing clients |
 | `sdkwork-<domain>-backend-sdk` | `sdkwork-<domain>-backend-api` | `/backend/v3/api` | `backend-admin` console, operators, control plane, admin integrations |
+| `sdkwork-<domain>-internal-sdk` | `sdkwork-<domain>-internal-api` | `/internal/v3/api` | First-party kernel UI, embedded consoles, trusted in-app automation on application ingress |
 | `sdkwork-<sdk-family-stem>-rpc-sdk` | `sdkwork.rpc.manifest` plus proto packages | gRPC endpoint policy | Distributed backend, native host, private/local, and service-to-service integrations |
 
 Rules:

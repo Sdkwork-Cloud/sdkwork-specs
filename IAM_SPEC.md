@@ -1,6 +1,6 @@
 # IAM Domain Standard
 
-- Version: 1.1
+- Version: 1.2
 - Scope: tenant, organization, user, authentication, authorization, sessions, devices, MFA, API keys, security events, audit events
 - Related: `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `DATABASE_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `MODULE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `PRIVACY_SPEC.md`
 
@@ -157,15 +157,15 @@ IAM uses two tokens for protected operations:
 
 | Token | Transport | Owns |
 | --- | --- | --- |
-| `auth_token` | `Authorization: Bearer <auth_token>` | Principal identity, session identity, auth strength, token expiry |
-| `access_token` | `Access-Token: <access_token>` | Tenant, organization, app, environment, deployment profile, runtime target, data scope, permission scope, sharding context |
+| `auth_token` | `Authorization: Bearer <JWT>` | Principal identity, session identity, auth strength, token expiry |
+| `access_token` | `Access-Token: <JWT>` | Tenant, organization, app, environment, deployment profile, runtime target, data scope, permission scope, sharding context |
 
 Rules:
 
 - Protected APIs `MUST` require both tokens unless a documented machine/API-key mode is explicitly selected.
-- Protected app-api and backend-api clients `MUST` send `Access-Token: <access_token>` on every protected request when an access token is available from bootstrap or authenticated session state.
-- Protected app-api and backend-api clients `MUST` send `Authorization: Bearer <auth_token>` on every protected request when an auth token is available from bootstrap or authenticated session state.
-- `Access-Token` is the canonical SDKWork access isolation header for v3 contracts.
+- Protected app-api and backend-api clients `MUST` send `Access-Token: <JWT access_token>` on every non-open-api request, including public and refresh-token entrypoints, when an access token is available from bootstrap or authenticated session state.
+- Protected app-api and backend-api clients `MUST` send `Authorization: Bearer <JWT auth_token>` on every protected dual-token request when an auth token is available from bootstrap or authenticated session state.
+- `Access-Token` values `MUST` be JWT compact serialization (`header.payload.signature`). Semicolon claim-string tokens, raw JSON objects, and query-string tokens are forbidden on v3 app-api/backend-api contracts.
 - `auth_token` parsers `MUST` validate principal identity, session identity, tenant identity, organization identity, login scope, auth strength, expiry, issuer, and revocation.
 - `access_token` parsers `MUST` validate principal identity, session identity,
   tenant identity, organization identity, login scope, app, environment,
@@ -183,18 +183,91 @@ Rules:
 
 User-facing login creates the first authenticated IAM session for an anonymous request. The login request itself is not a tenant-context authority.
 
+Login context distinguishes **who the user is** (persistent `iam_user`) from **how the user is operating in this session** (token `login_scope` + `organization_id`). A user with active `iam_organization_membership` rows `MAY` still choose a personal (`TENANT`) session or an organization (`ORGANIZATION`) session.
+
+| Login context | `login_scope` | `organization_id` | Data domain |
+| --- | --- | --- | --- |
+| Personal login | `TENANT` | `0` or absent | User-private and tenant-level data for the authenticated user |
+| Organization login | `ORGANIZATION` | non-zero organization id | Organization-scoped business and directory data for the selected organization |
+
 Rules:
 
 - Login/session-creation requests `MUST NOT` require or trust inbound credentials or SDKWork context-projection headers to choose tenant, organization, user, data scope, or permission scope. Implementations `SHOULD` reject credential/context headers on login creation endpoints unless an explicit reauthentication or continuation endpoint documents them.
 - Login credential verification `MUST` resolve a real `iam_user` and a real active tenant binding before token issuance. The tenant id used for token claims comes from persisted IAM user/tenant data, not from the login request payload.
 - If one credential can resolve to more than one active tenant, the login flow `MUST` return a tenant-selection challenge or fail closed. It `MUST NOT` silently choose a default tenant.
 - After resolving `tenant_id` and `user_id`, login `MUST` query active `iam_organization_membership` rows for that tenant and user.
-- If no active organization membership exists, login issues a tenant-level session with `organization_id = 0` or no organization claim and `login_scope = "TENANT"`.
-- If exactly one active organization membership exists, login issues an organization-level session for that organization with `login_scope = "ORGANIZATION"`.
-- If more than one active organization membership exists, login `MUST` return an organization-selection challenge containing safe organization choices and a short-lived continuation credential. It `MUST NOT` issue normal business `authToken`/`accessToken` until the user selects an organization.
-- Organization-selection continuation credentials are not business API credentials. They may call only the documented organization-selection continuation endpoint, must expire quickly, and must bind to the verified user, tenant, login attempt, and allowed organization ids.
-- The final organization-selection request `MUST` verify the selected organization belongs to the verified tenant/user membership set before issuing dual tokens.
+- If no active organization membership exists, login `MUST` issue a personal session with `organization_id = 0` or no organization claim and `login_scope = "TENANT"`.
+- If one or more active organization memberships exist, login `MUST NOT` auto-issue an organization session, even when only one organization exists. Login `MUST` return a `LOGIN_CONTEXT_SELECTION` challenge that includes at least:
+  - one personal-login option (`login_scope = "TENANT"`, `organization_id = "0"`)
+  - one organization-login option for each allowed organization (`login_scope = "ORGANIZATION"`, non-zero `organization_id`)
+- Login continuation credentials are not business API credentials. They may call only the documented login-context continuation endpoints, must expire quickly, and must bind to the verified user, tenant, login attempt, and allowed organization ids.
+- The final login-context continuation request `MUST` verify:
+  - `login_scope = "TENANT"` issues a personal session with `organization_id = 0` or absent and `login_scope = "TENANT"`
+  - `login_scope = "ORGANIZATION"` requires a non-zero `organization_id` that belongs to the verified tenant/user membership set before issuing dual tokens
+- `user_surface.organizationMember` reflects persistent membership and `MAY` remain `true` while `login_scope = "TENANT"`. Data access and backend-api authorization `MUST` use `login_scope` and `organization_id`, not `user_surface` alone.
+- Refresh and session rotation `MUST` preserve the active `login_scope` and `organization_id` unless the user explicitly switches context through the documented current-session update flow.
 - Login, registration, OAuth, QR, session-bridge, and refresh flows `MUST NOT` synthesize tenant, organization, user, chat id, display name, or relationship state from the submitted account string, email normalization, demo defaults, or mock profile objects.
+
+#### 5.1.1 Login Context Selection Protocol
+
+Standard challenge type: `LOGIN_CONTEXT_SELECTION`.
+
+Standard continuation endpoint:
+
+```text
+POST /app/v3/api/auth/sessions/login_context_selection
+```
+
+Request body:
+
+```json
+{
+  "continuationToken": "lc_xxx",
+  "loginScope": "TENANT"
+}
+```
+
+or:
+
+```json
+{
+  "continuationToken": "lc_xxx",
+  "loginScope": "ORGANIZATION",
+  "organizationId": "iamorg-aaa"
+}
+```
+
+Backward compatibility:
+
+- `POST /app/v3/api/auth/sessions/organization_selection` remains a compatibility alias for `loginScope = "ORGANIZATION"` only.
+- Legacy `ORGANIZATION_SELECTION` challenge handling `SHOULD` be treated as a subset of `LOGIN_CONTEXT_SELECTION` that omitted the personal-login option.
+
+#### 5.1.2 Post-login Context Switch
+
+Authenticated users `MAY` switch login context without re-entering credentials through:
+
+```text
+PATCH /app/v3/api/auth/sessions/current
+```
+
+Request examples:
+
+```json
+{ "loginScope": "TENANT" }
+```
+
+```json
+{
+  "loginScope": "ORGANIZATION",
+  "organizationId": "iamorg-aaa"
+}
+```
+
+Rules:
+
+- Context switch `MUST` rotate both `auth_token` and `access_token` and recompute `data_scope` and `permission_scope`.
+- Switching to `TENANT` `MUST` clear the active organization context (`organization_id = 0` or absent, `login_scope = "TENANT"`).
+- Switching to `ORGANIZATION` `MUST` verify active membership for the target organization before issuing new tokens.
 
 ### 5.2 Token Claims And Tenant Signing Keys
 
@@ -205,6 +278,7 @@ Required common claims:
 | Claim | Requirement |
 | --- | --- |
 | `token_type` | `auth` or `access`; parsers `MUST` reject the wrong token type for the header. |
+| `token_version` | Non-negative integer schema version for auth/access JWTs. Current production value is `1`. Issuers `MUST` stamp the current version; validators `MUST` reject missing, malformed, obsolete, or future versions outside the configured upgrade window. |
 | `sub` or `user_id` | Authenticated IAM user id. |
 | `sid` or `session_id` | IAM session id. |
 | `tenant_id` | Active tenant id resolved by login or validated session continuation. |
@@ -222,6 +296,7 @@ Rules:
 - Token signatures `MUST` use a tenant-bound signing key. A global shared signing secret for all tenants is forbidden for production and production-like profiles.
 - Token headers `SHOULD` include a `kid` that maps to one tenant signing key. Validation `MUST` prove that the key used to verify the token belongs to the same `tenant_id` carried by the verified claims.
 - Tenant signing keys `MUST` support rotation with overlapping validation windows. Revoked or expired keys `MUST NOT` sign new tokens.
+- `token_version` upgrades `MUST` use a coordinated rollout window where issuers stamp the new version and validators temporarily accept both the previous and next accepted versions through `TokenVersionPolicy.maximum_accepted`. After rollout completes, validators `MUST` tighten back to the current version only.
 - Signing material `MUST` be stored encrypted or in an approved secret manager/KMS. It `MUST NOT` be logged, returned by APIs, embedded in public runtime config, or stored in generated SDK output.
 
 ### 5.2.1 Bootstrap Env Credential
@@ -365,7 +440,7 @@ Rules:
 - [ ] Application login/session integration follows `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - [ ] Backend SDK clients expose `iam.*` resources and no `auth.*` namespace.
 - [ ] OperationIds are resource-style and SDK-friendly.
-- [ ] Protected operations use `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>`.
+- [ ] Protected operations use `Authorization: Bearer <JWT auth_token>` and `Access-Token: <JWT access_token>`.
 - [ ] Login/session creation does not trust inbound auth/context headers and derives tenant from real IAM user/tenant data.
 - [ ] Multi-organization login returns an organization-selection challenge instead of choosing a default organization.
 - [ ] Both `authToken` and `accessToken` include matching `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims.

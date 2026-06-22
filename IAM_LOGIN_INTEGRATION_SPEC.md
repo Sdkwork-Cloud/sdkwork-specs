@@ -178,7 +178,7 @@ SDKWork protected app-api and backend-api operations use a dual-token model. Pro
 | Token | Transport | Purpose |
 | --- | --- | --- |
 | `authToken` | `Authorization: Bearer <auth_token>` | principal identity, session identity, tenant, organization, login scope, auth strength, expiry |
-| `accessToken` | `Access-Token: <access_token>` | principal identity, session identity, tenant, organization, login scope, app, environment, deployment profile, runtime target, data scope, permission scope |
+| `accessToken` | `Access-Token: <JWT access_token>` | principal identity, session identity, tenant, organization, login scope, app, environment, deployment profile, runtime target, data scope, permission scope |
 | `refreshToken` | app-auth refresh operation only | refresh/rotation; never used for normal business APIs |
 
 Rules:
@@ -188,7 +188,7 @@ Rules:
 - Login/session-creation requests `MUST NOT` send existing credentials or SDKWork context-projection headers to select tenant or organization. Login starts anonymous and receives tenant/organization context only from the appbase login response.
 - Appbase login, registration, OAuth session creation, QR auth session creation, QR auth password completion, password reset request, and password reset completion OpenAPI operations `MUST` declare `security: []`, `x-sdkwork-auth-mode: anonymous`, and `x-sdkwork-forbid-credential-headers: true`. Generated appbase SDKs `MUST` skip automatic TokenManager credential injection for these operations, and appbase servers `MUST` reject inbound credential or SDKWork context headers for them.
 - `authToken` and `accessToken` returned by appbase login/session APIs `MUST` both carry `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims. Client-side code may decode token claims for diagnostics only; authorization and routing decisions `MUST` rely on appbase session validation and returned `AppContext`.
-- Protected SDK clients `MUST` send `Access-Token` on every protected app-api/backend-api request when an access token is available from bootstrap or authenticated session state.
+- Protected SDK clients `MUST` send `Access-Token: <JWT access_token>` on every non-open-api app-api/backend-api request when an access token is available from bootstrap or authenticated session state.
 - Protected SDK clients `MUST` send `Authorization: Bearer <auth_token>` on every protected app-api/backend-api request when an auth token is available from bootstrap or authenticated session state.
 - When both `authToken` and `accessToken` are present, server-side dual-token resolution `MUST` treat overlapping principal and tenancy claims from `authToken` as authoritative. Client runtimes `MUST` keep both tokens in sync through the single TokenManager and `MUST NOT` override token-derived scope with request fields.
 - Runtime session normalization `MUST` reject complete-looking sessions whose
@@ -225,9 +225,9 @@ appbaseAppClient.auth.sessions.current.delete()
   -> navigate to /auth/login or configured login entry
 ```
 
-### 5.1 Login Organization Selection Protocol
+### 5.1 Login Context Selection Protocol
 
-The standard login endpoint may complete immediately or return a continuation state when the verified user belongs to multiple organizations in the resolved tenant.
+The standard login endpoint may complete immediately or return a continuation state when the verified user belongs to one or more organizations in the resolved tenant.
 
 Flow:
 
@@ -237,20 +237,21 @@ anonymous login request
   -> appbase resolves real user_id and tenant_id from IAM data
   -> appbase reads active iam_organization_membership rows
   -> zero organizations: return TENANT-scoped dual-token session
-  -> one organization: return ORGANIZATION-scoped dual-token session
-  -> multiple organizations: return organization-selection challenge
-  -> app UI shows organization selection modal
-  -> user selects organization
-  -> appbase validates membership and returns final dual-token session
+  -> one or more organizations: return LOGIN_CONTEXT_SELECTION challenge
+  -> app UI shows personal vs organization login choices
+  -> user selects personal login or an organization
+  -> appbase validates the choice and returns final dual-token session
 ```
 
 Rules:
 
-- Consuming applications `MUST` treat an organization-selection challenge as an authenticated-login continuation, not as a normal authenticated session. They `MUST NOT` update the global token manager, protected SDK clients, or route guard as authenticated until appbase returns the final dual-token session.
-- The organization-selection UI may be a modal, route, or equivalent focused surface, but it `MUST` display only the safe organization choices returned by appbase and `MUST` submit the selected organization through the generated appbase app SDK continuation method.
-- Organization-selection continuation credentials `MUST NOT` be used as `authToken` or `accessToken` for application/dependency APIs. They are short-lived, single-purpose credentials for the continuation endpoint only.
-- Consuming applications `MUST NOT` choose the first organization client-side, cache an organization choice across users, or derive organization id from route/query/local storage without appbase validation.
-- Switching organization after login is a session update flow. It `MUST` use appbase session/current-session resources or an approved appbase organization-switch resource, then replace token/context state atomically.
+- Consuming applications `MUST` treat a login-context challenge as an authenticated-login continuation, not as a normal authenticated session. They `MUST NOT` update the global token manager, protected SDK clients, or route guard as authenticated until appbase returns the final dual-token session.
+- The login-context UI may be a modal, route, or equivalent focused surface. It `MUST` display the personal-login option and only the safe organization choices returned by appbase, then submit the selected context through the generated appbase app SDK continuation method.
+- Login-context continuation credentials `MUST NOT` be used as `authToken` or `accessToken` for application/dependency APIs. They are short-lived, single-purpose credentials for the continuation endpoint only.
+- Consuming applications `MUST NOT` choose the first organization client-side, cache a login-context choice across users, or derive organization id from route/query/local storage without appbase validation.
+- Personal login (`loginScope = "TENANT"`, `organizationId = "0"`) and organization login (`loginScope = "ORGANIZATION"`, non-zero `organizationId`) are both first-class outcomes. UI `MAY` highlight a primary organization, but `MUST NOT` auto-complete organization login without explicit user action.
+- Switching login context after authentication is a current-session update flow. It `MUST` use `PATCH /app/v3/api/auth/sessions/current` with `loginScope`, then replace token/context state atomically.
+- Legacy `ORGANIZATION_SELECTION` challenge handling `SHOULD` migrate to `LOGIN_CONTEXT_SELECTION`. Compatibility aliases may remain until all consuming apps are updated.
 
 ## 6. Rust Protected API Standard
 
@@ -262,7 +263,7 @@ Standard Rust HTTP guard:
 request
   -> allow explicitly public routes only
   -> require Authorization: Bearer <auth_token>
-  -> require Access-Token: <access_token>
+  -> require Access-Token: <JWT access_token>
   -> verify dual-token claims or resolve them through a trusted server-side session lookup
   -> build WebRequestContext and typed AppContext at the sdkwork-web-framework boundary
   -> insert typed context into request extensions
@@ -320,7 +321,7 @@ Forbidden client request headers include, but are not limited to:
 
 Rules:
 
-- Protected app-api and backend-api calls `MUST` send only `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>` through the global TokenManager or equivalent credential hook.
+- Protected app-api and backend-api calls `MUST` send only `Authorization: Bearer <JWT auth_token>` and `Access-Token: <JWT access_token>` through the global TokenManager or equivalent credential hook.
 - Servers `MUST` derive tenant, organization, user, actor, session, app,
   environment, deployment profile, runtime target, auth level, data scope, and
   permission scope from verified `auth_token` and `access_token` claims or a

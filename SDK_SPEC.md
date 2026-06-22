@@ -354,6 +354,7 @@ The following table is the canonical SDKWork SDK/API naming model. `SDK_WORKSPAC
 | `sdkwork-router-<capability>-open-api` | `sdkwork-<domain>-open-api` | `sdkwork-<domain>-sdk` | Approved non-app/non-backend versioned domain prefix, for example `/im/v3/api` |
 | `sdkwork-router-<capability>-app-api` | `sdkwork-<domain>-app-api` | `sdkwork-<domain>-app-sdk` | `/app/v3/api` |
 | `sdkwork-router-<capability>-backend-api` | `sdkwork-<domain>-backend-api` | `sdkwork-<domain>-backend-sdk` | `/backend/v3/api` |
+| `sdkwork-router-<capability>-internal-api` | `sdkwork-<domain>-internal-api` | `sdkwork-<domain>-internal-sdk` | `/internal/v3/api` |
 
 These names have different meanings:
 
@@ -361,7 +362,7 @@ These names have different meanings:
 - Rust route crate names `MUST` start with `sdkwork-router-` and `MUST NOT` be used as SDK family names, generated package names, OpenAPI authority names, generator `--sdk-name` values, or frontend service package names.
 - SDK family names identify generated client SDK workspaces and generated package lineage.
 - API authority names identify runtime API authoritys and OpenAPI authority contracts.
-- `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, and `sdkwork-<domain>-backend-api` are never SDK family names.
+- `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, `sdkwork-<domain>-backend-api`, and `sdkwork-<domain>-internal-api` are never SDK family names.
 - The SDK family generated from an `open-api` authority is `sdkwork-<domain>-sdk`, not `sdkwork-<domain>-open-api` and not `sdkwork-<domain>-open-sdk`.
 - `sdkwork-router-merchandise-app-api` means product-related app-api route/path configuration. It does not mean the product SDK, and it does not mean the final app-api authority for the whole project.
 - `sdkwork-commerce-app-api` means the aggregated commerce app-api authority. It may aggregate multiple commerce-owned route crates such as `sdkwork-router-merchandise-app-api`, `sdkwork-router-cart-app-api`, and `sdkwork-router-order-app-api`.
@@ -372,6 +373,7 @@ These names have different meanings:
 | Open API | `@sdkwork/<domain>-sdk` |
 | App API | `@sdkwork/<application-code>-app-sdk` |
 | Backend API | `@sdkwork/<application-code>-backend-sdk` |
+| Internal API | `@sdkwork/<application-code>-internal-sdk` |
 | RPC SDK | `@sdkwork/<sdk-family-stem>-rpc-sdk` or approved language-specific equivalent |
 | Common RPC contracts | `@sdkwork/<domain>-rpc-contracts` or approved language-specific equivalent |
 | Common generated contracts | `@sdkwork/<application-code>-contracts` |
@@ -463,7 +465,7 @@ Rules:
 Rules:
 
 - SDKs that consume protected app-api or backend-api operations `MUST` support `Authorization: Bearer <auth_token>`.
-- SDKs that consume protected app-api or backend-api operations `MUST` support `Access-Token: <access_token>`.
+- SDKs that consume protected app-api or backend-api operations `MUST` support `Access-Token: <JWT access_token>` and reject semicolon claim-string transport values.
 - Generated app-api and backend-api SDK transports `MUST` attach `Access-Token` on every protected request when the bound TokenManager or credential provider exposes an `accessToken`.
 - Generated app-api and backend-api SDK transports `MUST` attach `Authorization: Bearer <auth_token>` on every protected request when the bound TokenManager or credential provider exposes an `authToken`.
 - Application bootstrap `MAY` seed the global TokenManager from private env bootstrap credential `SDKWORK_ACCESS_TOKEN` before interactive login. After login/session bootstrap, session tokens `MUST` replace bootstrap credentials. `auth_token`, `refresh_token`, and API keys `MUST NOT` be configured in environment variables.

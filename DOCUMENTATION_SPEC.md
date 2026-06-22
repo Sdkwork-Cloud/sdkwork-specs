@@ -103,7 +103,7 @@ Rules:
 - API docs `MUST` be generated from or checked against OpenAPI.
 - SDK examples `MUST` use resource-style calls such as `client.auth.sessions.create(body)`.
 - Error examples `MUST` use `application/problem+json`.
-- Auth examples `MUST` show both `Authorization: Bearer <auth_token>` and `Access-Token: <access_token>` for protected APIs.
+- Auth examples `MUST` show both `Authorization: Bearer <JWT auth_token>` and `Access-Token: <JWT access_token>` for protected APIs.
 - Backend API docs `MUST NOT` show login/session creation endpoints.
 
 ## 3.1 RPC SDK Documentation
