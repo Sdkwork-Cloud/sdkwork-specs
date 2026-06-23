@@ -80,10 +80,10 @@ Rules:
 
 Rules:
 
-- Historical application-local prefixes such as `/api/kernel/*` `MAY` remain as legacy aliases during a documented deprecation window.
-- Legacy aliases `MUST` map to the same handlers as the canonical internal-api routes and `MUST NOT` diverge in auth, schemas, or error semantics.
+- Historical application-local prefixes such as `/api/kernel/*`, `/api/sessions/*`, and `/api/chat/*` are **retired** in `sdkwork-kernel`; they `MUST NOT` be mounted on new releases.
+- Components that have completed internal-api migration `MUST NOT` keep dual mounts or legacy aliases; unmounted retired prefixes return `404 Not Found`.
 - New consumers `MUST` target `/internal/v3/api/...` and generated `@sdkwork/<domain>-internal-sdk` clients.
-- Legacy aliases `MUST` be recorded in the owning component HTTP surface spec with removal criteria.
+- Retired prefixes `MUST` be recorded in the owning component HTTP surface spec with the removal decision and verification tests that prove they are not mounted.
 
 ## 8. Observability
 
@@ -98,5 +98,5 @@ Required evidence for internal-api changes:
 
 - OpenAPI authority and derived `*.sdkgen.yaml` present under the internal SDK family
 - `node scripts/check-agent-sdk-workspace.mjs` or the application-local equivalent passes for the internal family
-- Route mount tests prove canonical internal paths and any documented legacy aliases
+- Route mount tests prove canonical internal paths and that documented retired prefixes are not mounted
 - Topology docs still place the surface on `application.public-ingress`

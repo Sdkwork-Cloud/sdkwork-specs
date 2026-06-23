@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: API migration, database migration, SDK migration, config migration, package migration, route migration, compatibility windows, rollback
-- Related: `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `GOVERNANCE_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 This standard defines how SDKWork changes existing contracts without breaking consumers unexpectedly.
 
@@ -12,6 +12,8 @@ Rules:
 
 - API compatibility follows `API_SPEC.md`.
 - RPC compatibility follows `RPC_SPEC.md`.
+- RPC resolver migrations from static endpoints to `sdkwork-discovery` MUST record compatibility window, rollback, affected `service_name` values, and client resolver profile changes in the migration plan.
+- Discovery storage or auth policy changes MUST follow `DISCOVERY_SPEC.md` and include rollback evidence.
 - SDK compatibility follows `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, and `RPC_SDK_WORKSPACE_SPEC.md` when RPC SDKs are touched.
 - Database compatibility follows `DATABASE_SPEC.md`.
 - Runtime config compatibility follows `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`.

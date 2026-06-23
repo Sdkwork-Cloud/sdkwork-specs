@@ -1,6 +1,6 @@
 # Naming Standard
 
-- Version: 1.4
+- Version: 1.5
 - Scope: domains, capabilities, repositories, applications, components, packages, SDK families, API authorities, route crates, database identifiers, files, and test names
 - Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CODE_STYLE_SPEC.md`
 
@@ -142,6 +142,8 @@ Rules:
 | Backend/admin React package | `@sdkwork/react-backend-<domain>` | `@sdkwork/react-backend-commerce` |
 | Route crate package | `sdkwork-router-<capability>-<surface>` | `sdkwork-router-merchandise-app-api` |
 | Web framework crate | `sdkwork-web-<capability>` | `sdkwork-web-context`, `sdkwork-web-axum`, `sdkwork-web-bootstrap` |
+| RPC framework crate | `sdkwork-rpc-<capability>` | `sdkwork-rpc-core`, `sdkwork-rpc-server`, `sdkwork-rpc-client`, `sdkwork-rpc-discovery` |
+| Discovery product host | `sdkwork-discovery-service-host` | `sdkwork-discovery-service-host` |
 | Rust service crate | `sdkwork-<domain>-<capability>-service` | `sdkwork-drive-node-service` |
 | Rust SQLx repository crate | `sdkwork-<domain>-<capability>-repository-sqlx` | `sdkwork-drive-node-repository-sqlx` |
 | Rust API server crate | `sdkwork-<application-code>-api-server` | `sdkwork-drive-api-server` |
@@ -194,9 +196,48 @@ Rules:
   packages is broader, such as `communication`.
 - Public, app, backend, and RPC SDK families for the same capability line MUST share the same
   `<sdk-family-stem>` unless a migration or governance exception records the split.
-- RPC proto package names continue to use canonical `sdkwork.<domain>.*` package names. The SDK
-  family stem is linked to that domain through `.sdkwork-assembly.json`, `sdk-manifest.json` when
-  present, and `specs/component.spec.json`.
+- RPC proto `package` names use canonical domain-first `sdkwork.<domain>.<surface>.v<major>` names.
+  They MUST NOT include a transport segment such as `rpc`, `grpc`, `http`, or `openapi`.
+- The `rpc` segment is required in RPC artifact names, not in proto `package` names:
+  - contract root `apis/rpc/`
+  - SDK family `sdkwork-<sdk-family-stem>-rpc-sdk`
+  - generated module paths such as `com.sdkwork.<domain>.rpc` or `sdkwork_<domain>_rpc_proto`
+- The SDK family stem is linked to the proto domain through `.sdkwork-assembly.json`,
+  `sdk-manifest.json` when present, `specs/component.spec.json`, and `apis/rpc/parity-registry.yaml`.
+
+### 4.1 RPC Identity And Discovery Service Naming
+
+RPC invocation identity follows `RPC_SPEC.md` section 3.2 and `RPC_FRAMEWORK_SPEC.md`.
+
+Canonical RPC identity URI:
+
+```text
+sdkwork-rpc://{namespace}/{environment}/{rpc_surface}/{proto_package}/{Service}/{Method}?operationId={dotted.id}
+```
+
+Discovery `service_name` values use lowercase kebab-case:
+
+```text
+sdkwork-{domain}-{rpc_surface}-rpc
+sdkwork-{application-code}-{rpc_surface}-rpc
+sdkwork-discovery-internal-registry
+```
+
+Examples:
+
+| Axis | Canonical name |
+| --- | --- |
+| IM internal RPC discovery name | `sdkwork-communication-internal-rpc` |
+| Game internal RPC discovery name | `sdkwork-game-internal-rpc` |
+| Discovery control plane registry | `sdkwork-discovery-internal-registry` |
+| Commerce app RPC discovery name | `sdkwork-commerce-app-rpc` |
+
+Rules:
+
+- Discovery `service_name` `MUST` include the `rpc` segment and `MUST NOT` reuse HTTP API authority names such as `sdkwork-im-app-api`.
+- One discovery `service_name` `SHOULD` represent one RPC listener/process group that serves a cohesive proto surface set.
+- `instance_id` `SHOULD` be stable for the lifetime of one RPC server process and `SHOULD` include host/process identity in operational logs without embedding secrets.
+- RPC framework crate names `MUST` use the `sdkwork-rpc-<capability>` family and `MUST NOT` use generic suffixes such as `manager`, `runtime`, or `common` for framework crates.
 
 ### 4.2 Cross-Language Utility Libraries
 

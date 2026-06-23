@@ -26,7 +26,8 @@ No standard is complete until it is executable.
 | Supply chain security | Validate `SUPPLY_CHAIN_SECURITY_SPEC.md`: dependency integrity, build integrity, generator authority, SBOM, provenance, signing, checksums, attestations, and supply-chain exceptions |
 | API | OpenAPI validation, strict profile validation, request/response examples, Rust route crate naming and route-manifest aggregation checks |
 | Web backend | Controller/router path checks, handler/service/repository boundary tests, typed request-context checks, transaction/idempotency tests, static scans for raw credential parsing |
-| RPC | Proto compile, proto lint, breaking-change check, service manifest, unary server/client smoke tests, generated cross-language client checks |
+| RPC | Proto compile, proto lint, breaking-change check, service manifest, unary server/client smoke tests, generated cross-language client checks, RPC framework integration, discovery resolver integration, resilience profile checks |
+| Discovery | Registry upsert/renew/deregister, config publish/effective resolution, watch replay, permission enforcement, production config safety validation |
 | SDK | Validate `SDK_SPEC.md` semantics, validate application-root `sdks/` layout from `SDK_WORKSPACE_GENERATION_SPEC.md`, trace authored `apis/` contracts to materialized authority OpenAPI when `apis/` is used, materialize OpenAPI authority to derived generator inputs, generate SDK through `..\sdkwork-sdk-generator` (`@sdkwork/sdk-generator` / `sdkgen`), compile SDK, verify README examples and method surface |
 | App SDK composition | Validate `APP_SDK_INTEGRATION_SPEC.md`: architecture-specific SDK language, dependency SDK declarations, appbase IAM runtime wiring, one global TokenManager, explicit dependency API export policy, and no dependency API regeneration |
 | Dependency API export | Validate dependency API export policy: `dependencyApiExports` defaults to no export, configured exports reference declared `sdkDependencies`, generated application-owned SDKs stay owner-only, and exported dependency capabilities live only in approved authored facades, service ports, dependency SDK injection, host adapters, or documentation-only surfaces |
@@ -482,6 +483,38 @@ Rules:
   customer-owned internal, and production cloud configuration.
 - RPC adapter tests `MUST` verify the adapter uses runtime/service boundaries and does not depend on HTTP/Tauri adapters or direct SQLx storage unless explicitly approved.
 
+## 2.2.1 RPC Framework Integration Tests
+
+RPC framework integration tests prove every SDKWork gRPC server and approved cross-process RPC client follows `RPC_FRAMEWORK_SPEC.md`.
+
+Rules:
+
+- RPC-enabled service hosts `MUST` include framework pipeline assembly checks for server stages and approved client stages.
+- Static scans `MUST` fail when business modules construct raw gRPC channels or stubs when a generated SDKWork RPC family exists.
+- Bootstrap tests `MUST` prove RPC clients are injected into services instead of being read from environment variables in business modules.
+- Framework integration tests `MUST` verify metadata providers, deadline propagation, and error mapping on at least one unary smoke path per enabled RPC surface.
+
+## 2.2.2 Discovery Integration Tests
+
+Discovery integration tests prove registry/config/watch behavior follows `DISCOVERY_SPEC.md`.
+
+Rules:
+
+- Discovery-enabled RPC hosts `MUST` test register, renew, and deregister lifecycle ordering.
+- Resolver integration tests `MUST` prove `discovery` and approved `composite` profiles resolve healthy gRPC instances.
+- Watch replay tests `MUST` prove clients can reconnect from a prior revision.
+- Production config validation tests `MUST` reject unsigned local context, inline secrets, and non-durable storage providers for discovery.
+
+## 2.2.3 RPC Resilience Tests
+
+RPC resilience tests prove deadlines, retries, budgets, drain, and breaker behavior follow `RPC_RESILIENCE_SPEC.md`.
+
+Rules:
+
+- Non-idempotent RPC writes `MUST` have tests proving retry is blocked without idempotency metadata.
+- Graceful shutdown tests `MUST` prove deregister and drain ordering when discovery is enabled.
+- Resilience profile tests `MUST` verify retry status whitelists match manifest declarations.
+
 ## 2.3 Web Backend Implementation Tests
 
 Web backend tests prove the implementation follows `WEB_BACKEND_SPEC.md`, not only that the OpenAPI document validates.
@@ -899,6 +932,9 @@ Rules:
 - [ ] SDK workspace layout and OpenAPI authority/derived input checks pass under `SDK_WORKSPACE_GENERATION_SPEC.md` when SDK generation is touched.
 - [ ] Rust route crate naming, surface prefix, route manifest, and authority aggregation checks pass when Rust HTTP routes are touched.
 - [ ] Proto/RPC generation verification passes when RPC contracts are touched.
+- [ ] RPC framework integration verification passes when RPC servers or cross-process RPC clients are touched.
+- [ ] Discovery integration verification passes when dynamic RPC resolution or `sdkwork-discovery` behavior is touched.
+- [ ] RPC resilience verification passes when retry, breaker, or drain behavior changes.
 - [ ] RPC SDK workspace and `sdkgen --protocol rpc` verification passes when RPC SDK generation is touched.
 - [ ] HTTP SDK generation non-regression verification passes when RPC generator code changes.
 - [ ] Typecheck/build passes for touched packages.

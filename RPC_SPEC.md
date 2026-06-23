@@ -1,9 +1,9 @@
 # SDKWork RPC And gRPC Standard
 
-- Version: 1.0
+- Version: 1.2
 - Baseline: gRPC over HTTP/2, Protocol Buffers proto3, SDKWork v3 operation semantics
 - Scope: cross-language RPC contracts, Rust services, Java/Rust parity services, generated RPC clients, service-to-service calls, internal deployment APIs, local desktop host RPC
-- Related: `API_SPEC.md`, `DATABASE_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SDK_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `DOMAIN_SPEC.md`, `IAM_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `RUST_RPC_SPEC.md`
+- Related: `API_SPEC.md`, `DATABASE_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SDK_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `DISCOVERY_SPEC.md`, `DOMAIN_SPEC.md`, `IAM_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `RUST_RPC_SPEC.md`
 - Canonical location: `specs/RPC_SPEC.md`
 
 This document defines the language-neutral RPC standard for SDKWork. It adds a gRPC/protobuf contract layer for direct use by Rust, Java, Go, Python, TypeScript, Dart, C#, and other language runtimes without replacing the existing HTTP/OpenAPI app API and backend API standards.
@@ -67,6 +67,58 @@ Rules:
 - RPC SDK generation is additive to existing OpenAPI HTTP SDK generation. Existing `sdkgen generate` commands without an explicit RPC protocol remain HTTP/OpenAPI generation.
 - Missing RPC client capability `MUST` be fixed by updating proto contracts and the RPC manifest, then regenerating.
 
+## 3.2 RPC Identity
+
+SDKWork RPC identity is used consistently in logs, metrics, traces, audits, discovery metadata, manifests, and parity checks. Full invocation-runtime rules live in `RPC_FRAMEWORK_SPEC.md`.
+
+Canonical identity URI:
+
+```text
+sdkwork-rpc://{namespace}/{environment}/{rpc_surface}/{proto_package}/{Service}/{Method}?operationId={dotted.id}
+```
+
+Example:
+
+```text
+sdkwork-rpc://acme/production/internal/sdkwork.communication.internal.v1/RoomOrchestrationService/CreateRoom?operationId=rooms.create
+```
+
+Rules:
+
+- `rpc_surface` `MUST` be one of `app`, `backend`, `internal`, or `common`.
+- `operationId` `MUST` match the RPC manifest and `apis/rpc/parity-registry.yaml` when HTTP parity exists.
+- Observability and audit records `MUST` include `proto_package`, `service`, `method`, `operationId`, and `rpc_surface`.
+
+## 3.3 Discovery Registration Metadata
+
+RPC data-plane servers that use dynamic discovery `MUST` register through `DISCOVERY_SPEC.md` with metadata that links contract identity to runtime identity.
+
+Required discovery metadata for business RPC services:
+
+| Metadata key | Requirement |
+| --- | --- |
+| `rpc_surface` | `app`, `backend`, `internal`, or `common`. |
+| `sdk_family` | Owning RPC SDK family such as `sdkwork-im-rpc-sdk`. |
+| `domain` | Canonical domain from `DOMAIN_SPEC.md`. |
+| `proto_packages` | Comma-separated or JSON list of served proto packages. |
+| `operation_manifest_ref` | Path or URI to RPC manifest or service manifest used by CI. |
+
+Rules:
+
+- `service_name` `MUST` follow `NAMING_SPEC.md` discovery service naming.
+- Static endpoint configuration `MAY` be used only in approved standalone or development profiles documented by `RPC_FRAMEWORK_SPEC.md`.
+- Cloud and multi-instance production RPC `MUST` resolve peers through `sdkwork-discovery` unless a governed migration exception records a temporary static resolver.
+
+## 3.4 Resolver Selection Matrix
+
+| Caller environment | Resolver profile | Notes |
+| --- | --- | --- |
+| Browser, H5, mini program, most mobile UI | none for discovery | Continue HTTP SDKs; do not call discovery directly. |
+| Standalone loopback dev | `static` | Fixed endpoint allowed with documented local-only policy. |
+| Unified-process local orchestration | `static-composite` | Topology manifest endpoint table. |
+| Cloud or multi-instance production | `discovery` | Default through `sdkwork-discovery`. |
+| Migration window | `composite` | Discovery primary with temporary static fallback only when `MIGRATION_SPEC.md` records the window. |
+
 ## 4. Protocol Profile
 
 SDKWork standard RPC uses:
@@ -107,9 +159,72 @@ Rules:
 - Internal RPC `MUST NOT` be reachable from public app clients.
 - App and backend RPC packages MUST preserve the same semantic separation as `/app/v3/api` and `/backend/v3/api`.
 
+## 5.1 Dual-Protocol Selection Matrix
+
+SDKWork uses HTTP/OpenAPI and gRPC/protobuf as peer adapters over the same domain runtime. Choosing a transport is a boundary decision, not a business-model decision.
+
+| Caller | Callee | Preferred transport | Notes |
+| --- | --- | --- | --- |
+| Browser, H5, mini program, most mobile UI | App/backend product APIs | HTTP app-api / backend-api SDK | Default per `RPC_SPEC.md` §4 and `APP_SDK_INTEGRATION_SPEC.md`. |
+| Browser, H5, mini program, most mobile UI | IM realtime fanout | HTTP SDK + WebSocket realtime | Realtime subscriptions are not replaced by unary RPC. |
+| Desktop/native host with approved gRPC-Web policy | App RPC | gRPC-Web or local host RPC | Requires explicit product ADR and browser transport policy. |
+| Service-to-service orchestration | Another domain internal surface | Internal RPC (`internal.v1` / `internal.v3`) | Preferred over looping HTTP app SDK through a gateway with user tokens. |
+| Service-to-service orchestration | Same-domain runtime in-process | In-process port/trait | Preferred when services are co-located; RPC is for cross-process boundaries. |
+| Operator/admin console | Backend admin resources | HTTP backend-api SDK or backend RPC | Backend surface only. |
+| High-frequency game command stream | Game runtime | App RPC stream and/or dedicated game realtime channel | Do not route high-frequency game state through IM message tables. |
+
+Rules:
+
+- A missing RPC method `MUST` be fixed by updating proto contracts and the RPC manifest, then regenerating. Consumers `MUST NOT` fill the gap with raw HTTP or raw gRPC stubs when an SDKWork RPC family exists.
+- A missing HTTP app/backend method `MUST` be fixed by updating the owning OpenAPI authority and regenerating HTTP SDKs. RPC `MUST NOT` become the hidden public API for browser clients.
+- Cross-domain orchestration such as game session creation binding IM rooms or RTC media sessions `SHOULD` use internal RPC on the provider domain once available. Until the internal RPC exists, gateway HTTP with service identity `MAY` be used only behind a documented migration exception.
+- Internal RPC `MUST NOT` be exposed on public app ingress. Internal RPC servers `SHOULD` bind to private service networks or approved standalone loopback addresses per `ENVIRONMENT_SPEC.md` §15.
+
+## 5.2 HTTP And RPC Parity Registry
+
+Every domain that exposes both HTTP and RPC for the same operation `MUST` maintain a parity registry.
+
+Recommended artifact:
+
+```text
+<application-or-domain-root>/apis/rpc/parity-registry.yaml
+```
+
+Minimum fields per mapped operation:
+
+| Field | Requirement |
+| --- | --- |
+| `operationId` | Stable dotted SDKWork operation id shared by HTTP and RPC. |
+| `httpSurface` | `open-api`, `app-api`, or `backend-api` when HTTP exists. |
+| `httpPath` | OpenAPI path template when HTTP exists. |
+| `rpcPackage` | Canonical proto package name. |
+| `rpcService` | PascalCase service name. |
+| `rpcMethod` | PascalCase method name. |
+| `rpcSurface` | `app`, `backend`, `internal`, or `common`. |
+| `parityStatus` | `full`, `rpc-only`, `http-only`, `composition`, or `deprecated`. |
+| `owner` | Owning API authority or service team. |
+
+Rules:
+
+- Shared operations `MUST` use the same `operationId` on HTTP and RPC unless the RPC method is a documented composition method.
+- `http-only` entries `MUST` include a reason, for example browser-only upload workflow or provider webhook ingress.
+- `rpc-only` entries `MUST` include a reason, for example internal orchestration or host-only runtime control.
+- `composition` entries `MUST` list child `operationId` values consumed by the RPC method.
+- Parity drift `SHOULD` be checked in CI together with proto breaking-change checks and OpenAPI contract tests.
+
 ## 6. Package Naming
 
-Proto package names use this grammar:
+SDKWork separates three naming layers. They MUST NOT be collapsed into one token.
+
+| Layer | Purpose | `rpc` segment required? | Example |
+| --- | --- | --- | --- |
+| Proto `package` | Domain contract semantics | `MUST NOT` | `sdkwork.game.app.v3` |
+| Contract filesystem | Artifact kind and review boundary | `MUST` via `apis/rpc/` root | `apis/rpc/sdkwork/game/app/v3/session_service.proto` |
+| SDK / crate / module | Consumer artifact identity | `MUST` | `sdkwork-game-rpc-sdk`, `sdkwork_game_rpc_proto` |
+
+### 6.1 Proto Package Grammar
+
+Proto package names use domain-first grammar:
 
 ```text
 sdkwork.<domain>.<surface>.v<major>
@@ -124,27 +239,51 @@ package sdkwork.iam.app.v3;
 package sdkwork.iam.backend.v3;
 package sdkwork.commerce.app.v3;
 package sdkwork.commerce.backend.v3;
+package sdkwork.communication.app.v3;
+package sdkwork.communication.internal.v1;
+package sdkwork.game.app.v3;
+package sdkwork.game.internal.v1;
 package sdkwork.foundation.internal.v1;
 package sdkwork.common.v1;
 ```
 
-File paths mirror package names:
+Rules:
+
+- Proto `package` names `MUST` be lowercase dot-separated segments.
+- Proto `package` names `MUST NOT` include a transport segment such as `rpc`, `grpc`, `http`, or `openapi`.
+- Domain segment `MUST` come from `DOMAIN_SPEC.md`.
+- `<surface>` `MUST` be one of `app.v<major>`, `backend.v<major>`, or `internal.v<major>`.
+- Version segment `v3` aligns with SDKWork app/backend API v3. Common/internal packages MAY use `v1` when they do not expose product API version semantics.
+- A package `MUST NOT` mix app and backend services.
+- Putting `rpc` into the proto `package` line is forbidden because SDKWork RPC and HTTP are peer adapters over the same domain semantics. Transport belongs to directory layout, RPC manifest kind, SDK family names, env keys, and server bind config—not to the domain package namespace.
+
+### 6.2 Filesystem And SDK Naming
+
+File paths mirror proto package names under an RPC contract root:
 
 ```text
-proto/sdkwork/common/v1/context.proto
-proto/sdkwork/iam/app/v3/session_service.proto
-proto/sdkwork/iam/backend/v3/user_admin_service.proto
-proto/sdkwork/commerce/app/v3/checkout_service.proto
-proto/sdkwork/commerce/backend/v3/payment_admin_service.proto
+apis/rpc/sdkwork/common/v1/context.proto
+apis/rpc/sdkwork/iam/app/v3/session_service.proto
+apis/rpc/sdkwork/iam/backend/v3/user_admin_service.proto
+apis/rpc/sdkwork/commerce/app/v3/checkout_service.proto
+apis/rpc/sdkwork/communication/app/v3/message_service.proto
+apis/rpc/sdkwork/communication/internal/v1/room_orchestration_service.proto
+apis/rpc/sdkwork/game/app/v3/session_service.proto
+apis/rpc/sdkwork/game/internal/v1/matchmaking_service.proto
 ```
 
 Rules:
 
-- Package names `MUST` be lowercase dot-separated segments.
+- Authoritative RPC proto sources `MUST` live under `apis/rpc/` or an application-root `proto/` tree referenced by `kind: sdkwork.rpc.manifest`.
+- RPC SDK family directories `MUST` include the `-rpc-sdk` suffix per `RPC_SDK_WORKSPACE_SPEC.md`.
+- Generated language module names `MUST` include `rpc`, for example `com.sdkwork.game.rpc`, `sdkwork_game_rpc_proto`, or `@sdkwork/game-rpc-sdk`.
+- `go_package`, `java_package`, `csharp_namespace`, and Rust module layout `MUST` be explicit and `SHOULD` include an `rpc` segment in the language module path even when the proto package remains domain-first.
+- Legacy proto packages that predate this section, such as `sdkwork.communication.app.v3`, remain valid and `MUST NOT` be renamed solely to add an `rpc` proto segment.
+
+### 6.3 Proto File Rules
+
 - Proto file names `MUST` be lowercase snake_case.
-- Domain segment `MUST` come from `DOMAIN_SPEC.md`.
-- Version segment `v3` aligns with SDKWork app/backend API v3. Common/internal packages MAY use `v1` when they do not expose product API version semantics.
-- A package `MUST NOT` mix app and backend services.
+- One primary service per proto file `SHOULD` be the default; small tightly coupled services `MAY` share a file when they belong to one bounded context.
 - Generated language package options must be explicit, for example `go_package`, `java_package`, `csharp_namespace`, and Rust module layout through the Rust build.
 
 ## 7. Service Naming
@@ -345,6 +484,29 @@ Rules:
 - Method authorization MUST be enforced at the service/runtime boundary, not only in client SDKs.
 - Login/session methods MUST NOT be exposed on backend RPC.
 - Reflection and health endpoints MUST have environment-specific access control. Health may expose serving status broadly in private deployments; reflection should be restricted.
+
+## 13.1 Internal Service-To-Service Orchestration
+
+Internal RPC is the preferred cross-service integration path when a caller needs typed, low-latency orchestration behind the same domain runtime.
+
+Rules:
+
+- Internal callers `MUST` authenticate with service identity, mTLS, or another approved internal trust model. They `MUST NOT` impersonate end users by forwarding browser `authorization` and `access-token` metadata unless the RPC method is explicitly documented as a user-delegated internal proxy.
+- Internal requests `MUST` carry typed caller context through `sdkwork.common.v1.CallerContext` and business context through `sdkwork.common.v1.RequestMetadata`, including `tenant_id`, `organization_id`, `actor_user_id` or `service_actor_id`, `trace_id`, and `idempotency_key` when writes are retryable.
+- Orchestration methods that create resources in another domain, for example game session binding an IM room or RTC media session, `SHOULD` be owned by the callee domain internal package, not by ad hoc HTTP calls from the caller repository.
+- The callee domain `MUST` remain the system of record for its own tables. The caller domain `MUST` store only binding references and MUST NOT duplicate callee message, conversation, or media-session tables.
+- Internal RPC responses `MUST` return stable external identifiers (`uuid`, `room_id`, `conversation_id`, `media_session_id`) suitable for cross-domain binding tables.
+- Internal RPC servers `MUST` enforce least-privilege authorization per method. A game orchestrator `MUST NOT` receive blanket admin rights on unrelated IM or RTC resources.
+
+Recommended caller metadata shape:
+
+| Field | Source | Rule |
+| --- | --- | --- |
+| `tenant_id` | Server-resolved from service token or signed orchestration context | Caller-supplied tenant override is forbidden on internal RPC. |
+| `organization_id` | Server-resolved or explicit business input on the request body | Must match the bound game/session scope. |
+| `actor_user_id` | Business input when acting on behalf of a player | Required for user-scoped room enter/post operations. |
+| `service_actor_id` | Internal caller service name | Required for audit. |
+| `idempotency_key` | Caller-generated per orchestration step | Required for create/bind/start commands. |
 
 ## 14. Error Mapping
 
@@ -565,6 +727,106 @@ Package: `sdkwork.commerce.backend.v3`
 | `CommerceAuditService` | `ListAuditLogs`, `ListCommerceEvents` | `audit.logs.list`, `audit.commerceEvents.list` |
 | `CommerceReportService` | `ListUsageStatements`, `RetrievePaymentReconciliation`, `ListOrderRevenue`, `ListRefundReports`, `RetrieveCommerceOverview`, `ListSalesReports`, `ListPaymentReconciliationReports` | `commerceReports.usageStatements.list`, `commerceReports.paymentReconciliation.retrieve`, `commerceReports.orderRevenue.list`, `commerceReports.refunds.list`, `reports.commerceOverview.retrieve`, `reports.sales.list`, `reports.paymentReconciliation.list` |
 
+### 20.6 Communication RPC Services
+
+Communication covers IM, conversation, message, room, call, notification, social, stream, and automation surfaces. Proto packages use canonical domain `communication` even when the public SDK family stem is `im`.
+
+#### 20.6.1 Communication App RPC
+
+Package: `sdkwork.communication.app.v3`
+
+| Service | Target methods | HTTP/OpenAPI parity |
+| --- | --- | --- |
+| `ConversationService` | Conversation lifecycle, members, preferences, read cursor | Shared with IM app/open HTTP where published |
+| `MessageService` | Create/retrieve/list/update message operations | Shared with IM HTTP message operations |
+| `RealtimeService` | Subscription sync and event delivery control plane | Complements IM WebSocket realtime; does not replace browser WS |
+| `CallService` | RTC session lifecycle exposed through IM calls facade | Shared with `/im/v3/api/calls/*` where published |
+| `NotificationService` | Notification delivery and inbox control | Shared where published |
+| `SocialService` | Social graph and contact-facing operations | Shared where published |
+| `StreamService` | Stream control and stream-scoped operations | Shared where published |
+| `AutomationService` | Agent/automation control plane | Shared where published |
+| `RoomService` | `CreateRoom`, `RetrieveRoom`, `EnterRoom`, `LeaveRoom` | `MUST` map to `rooms.create`, `rooms.get`, `rooms.enter`, `rooms.leave` |
+
+Rules:
+
+- `RoomService` `MUST` support `roomKind` values `live`, `chat`, and `game`.
+- Game move fanout over IM `MUST` use message custom schema `urn:sdkwork:sdkwork-im:message:custom:game.{gameKey}`; authoritative validation remains in the owning game runtime.
+- Browser clients `SHOULD` continue using `@sdkwork/im-sdk` HTTP + realtime for rooms and messages unless gRPC-Web is explicitly approved.
+
+#### 20.6.2 Communication Internal RPC
+
+Package: `sdkwork.communication.internal.v1`
+
+| Service | Purpose |
+| --- | --- |
+| `RuntimeTopologyService` | Runtime node and capability discovery |
+| `RouteLeaseService` | Route lease claim/renew/release |
+| `DomainEventRelayService` | Internal domain-event publish/ack/watch |
+| `RoomOrchestrationService` | Service-to-service room create/enter/leave and conversation binding for `live`, `chat`, and `game` rooms |
+| `MessageDispatchService` | Service-to-service validated custom message dispatch, including game move fanout |
+
+`RoomOrchestrationService` and `MessageDispatchService` are required for cross-domain orchestration such as `sdkwork-gameengine` binding IM rooms without HTTP app SDK loops.
+
+### 20.7 Game RPC Services
+
+Package examples:
+
+```text
+sdkwork.game.app.v3
+sdkwork.game.internal.v1
+```
+
+#### 20.7.1 Game App RPC
+
+| Service | Methods | operationIds |
+| --- | --- | --- |
+| `CatalogQueryService` | `ListGames`, `RetrieveGame` | `games.list`, `games.retrieve` |
+| `LobbyService` | `CreateLobby`, `RetrieveLobby`, `JoinLobby`, `LeaveLobby` | `lobbies.create`, `lobbies.retrieve`, `lobbies.join`, `lobbies.leave` |
+| `SessionService` | `CreateSession`, `RetrieveSession`, `SubmitSessionCommand`, `RetrieveSessionState`, `EndSession` | `sessions.create`, `sessions.retrieve`, `sessions.commands.submit`, `sessions.state.retrieve`, `sessions.end` |
+| `LeaderboardQueryService` | `ListLeaderboardEntries`, `RetrievePlayerRank` | `leaderboards.entries.list`, `leaderboards.rank.retrieve` |
+
+Rules:
+
+- `SubmitSessionCommand` `MUST` declare idempotency and `MUST` remain the authoritative write path for game commands. IM custom messages are fanout/transport, not the authority layer.
+- `SessionService` `MAY` expose `StreamSessionEvents` as server streaming for MOBA/FPS-style clients. Browser clients `SHOULD` continue using HTTP unless gRPC-Web is explicitly approved.
+- Game app RPC `MUST NOT` redefine IM conversation/message APIs or RTC media-session APIs. Bindings are returned as references and resolved through communication/RTC domains.
+
+#### 20.7.2 Game Internal RPC
+
+| Service | Purpose |
+| --- | --- |
+| `MatchmakingService` | Matchmaking, room allocation, participant assignment |
+| `SessionRuntimeService` | Authoritative state transitions and snapshot checkpoints for co-located workers |
+| `BindingQueryService` | Resolve `game_comms_binding` and `game_rtc_binding` references for internal callers |
+
+### 20.8 RTC RPC Services
+
+RTC proto packages use canonical domain `rtc` or approved communication-domain extension only when recorded in the RPC manifest and parity registry. Public SDK family stem remains `rtc`.
+
+#### 20.8.1 RTC App RPC
+
+Package: `sdkwork.rtc.app.v3`
+
+| Service | Target methods | HTTP parity |
+| --- | --- | --- |
+| `RoomService` | `ListRooms`, `RetrieveRoom` | `rtc.rooms.list`, `rtc.rooms.retrieve` |
+| `MediaSessionService` | `CreateMediaSession`, `RetrieveMediaSession`, `IssueParticipantCredential`, `ListRecordingArtifacts`, `RetrieveCompletionRecord` | Shared with `/app/v3/api/rtc/*` |
+| `ProviderProfileService` | `ListActiveProviderProfiles` | Shared where published |
+
+#### 20.8.2 RTC Internal RPC
+
+Package: `sdkwork.rtc.internal.v1`
+
+| Service | Purpose |
+| --- | --- |
+| `MediaSessionOrchestrationService` | Service-to-service media session create/bind/end for game voice/video orchestration |
+| `ProviderWebhookIngressService` | Internal provider event normalization when not exposed through public HTTP ingress |
+
+Rules:
+
+- RTC RPC introduction `MUST` preserve HTTP/OpenAPI as the browser-facing source of truth until gRPC-Web is explicitly approved.
+- Recording artifacts `MUST` continue to use Drive-backed `MediaResource` semantics from `MEDIA_RESOURCE_SPEC.md`.
+
 ## 21. Proto Example
 
 ```proto
@@ -631,12 +893,17 @@ Every RPC contract change `MUST` verify:
 - [ ] Proto lint passes.
 - [ ] Breaking-change check passes against the previous released proto set.
 - [ ] RPC manifest contains every service/method/operationId mapping.
+- [ ] `apis/rpc/parity-registry.yaml` is updated when HTTP/RPC parity changes.
+- [ ] Proto `package` names remain domain-first and do not include `rpc`, `grpc`, `http`, or `openapi` transport segments.
+- [ ] RPC contract files live under `apis/rpc/` or another manifest-declared RPC root.
 - [ ] Generated Rust code compiles.
 - [ ] At least one non-Rust generated client compiles for public RPC packages.
 - [ ] Unary server/client smoke tests pass.
 - [ ] Auth metadata, deadlines, cancellation, idempotency, and error mapping are tested.
+- [ ] Internal orchestration tests prove service identity and forbid user-token impersonation unless explicitly documented.
 - [ ] Health check and reflection behavior match environment policy.
-- [ ] HTTP/OpenAPI operationId parity is preserved for shared operations.
+- [ ] RPC identity URI fields are present in manifest, discovery metadata, or observability smoke evidence when dynamic discovery is enabled.
+- [ ] Discovery registration metadata is present when production RPC uses dynamic resolution.
 
 ## 23. External Baselines
 

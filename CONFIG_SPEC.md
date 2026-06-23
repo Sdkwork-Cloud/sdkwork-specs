@@ -640,6 +640,8 @@ Rules:
 - [ ] Runtime config contains SDK base URL values and token-manager behavior, but does not contain actual auth/access/refresh tokens or raw API keys.
 - [ ] Runtime config contains only i18n locale strategy and message-catalog manifest references, not translated message content or monolithic locale bundles.
 - [ ] Dependency SDK base URLs are keyed by SDK family id and are injected during bootstrap instead of hard-coded in services.
+- [ ] RPC client inventory classifies every consumed RPC SDK family, resolver profile, resilience profile, and discovery endpoint before feature services are constructed when RPC is enabled.
+- [ ] Discovery registration and renew loops are wired in bootstrap for RPC servers that use dynamic resolution.
 - [ ] `dependencyApiExports` is explicit and defaults to `[]`; dependency API exports with
   `runtimeRequired: true` have verified same-origin `dependencyApiSurfaces` coverage or explicit
   dependency SDK base URL config before feature services are constructed.

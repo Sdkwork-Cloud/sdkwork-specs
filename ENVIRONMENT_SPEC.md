@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: environment variables, runtime config files, public browser runtime config, secrets, database selection, standalone/cloud deployment profiles, desktop/server/container/H5/Flutter/mini-program/native Android/native iOS/native Harmony runtime targets, SDK base URLs, locale strategy, Access-Token and TokenManager credential config rules, RPC endpoints
-- Related: `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DATABASE_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
+- Related: `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DATABASE_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RUST_RPC_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the canonical environment and runtime configuration model for SDKWork applications. It exists to prevent each application from inventing different `.env` names, database defaults, SDK base URL rules, config file locations, and secret handling behavior.
 
@@ -942,6 +942,8 @@ SDKWORK_<APPLICATION_CODE>_SERVER_BIND=0.0.0.0:3900
 
 The SdkWork Claw Router product uses the `SDKWORK_CLAW_` prefix for private process values and `PORTAL_PUBLIC_` for browser-visible portal values.
 
+Claw Router release and operations docs also reference the cross-product shorthand aliases `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE`; these map to the canonical `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` keys defined in section 4.
+
 Standalone server/single-container and cloud deployments default to PostgreSQL.
 Desktop runtime targets default to SQLite.
 
@@ -1323,6 +1325,9 @@ RPC runtime variables are private process variables unless explicitly documented
 | `SDKWORK_<APPLICATION_CODE>_RPC_HEALTH_ENABLED` | private | SHOULD | Enables gRPC health service. |
 | `SDKWORK_<APPLICATION_CODE>_RPC_GRPC_WEB_ENABLED` | private | MAY | Enables gRPC-Web bridge for approved browser clients. |
 | `SDKWORK_<APPLICATION_CODE>_RPC_DEFAULT_DEADLINE_MS` | private | MAY | Default client/server deadline in milliseconds. |
+| `SDKWORK_<APPLICATION_CODE>_RPC_RESOLVER_PROFILE` | private | SHOULD when RPC clients use dynamic resolution | `static`, `static-composite`, `discovery`, or `composite`. |
+| `SDKWORK_<APPLICATION_CODE>_RPC_RESILIENCE_PROFILE` | private | MAY | Default resilience profile from `RPC_RESILIENCE_SPEC.md`. |
+| `SDKWORK_<APPLICATION_CODE>_DISCOVERY_ENDPOINT` | private | SHOULD when resolver profile is `discovery` or `composite` | gRPC endpoint for `sdkwork-discovery` application ingress. |
 
 Rules:
 
@@ -1330,3 +1335,34 @@ Rules:
 - TLS certificate paths and private keys are secrets or secret-bearing config and MUST NOT be exposed to browser runtime config.
 - `PORTAL_PUBLIC_*_RPC_ENDPOINT` variables MAY exist only for approved gRPC-Web clients and must follow the same public-runtime validation rules as HTTP SDK base URLs.
 - Shared modules MUST receive RPC clients through bootstrap/service injection; they must not read RPC environment variables directly.
+- Discovery process variables use the `SDKWORK_DISCOVERY_` prefix and are defined in section 16.
+
+## 16. Discovery Environment Variables
+
+Discovery runtime variables are private process variables for `sdkwork-discovery` and discovery-aware RPC resolvers.
+
+| Variable | Visibility | Required | Description |
+| --- | --- | --- | --- |
+| `SDKWORK_DISCOVERY_CONFIG_FILE` | private | MAY | Host-local discovery config file path selector. |
+| `SDKWORK_DISCOVERY_ENVIRONMENT` | private | SHOULD | Lifecycle environment for registry/config scope. |
+| `SDKWORK_DISCOVERY_CONFIG_PROFILE` | private | MAY | Config profile alias such as `dev`, `test`, `staging`, `prod`. |
+| `SDKWORK_DISCOVERY_HOSTING` | private | MAY | Hosting archetype such as `self-hosted` or `cloud-hosted`. |
+| `SDKWORK_DISCOVERY_SERVICE_LAYOUT` | private | MAY | Service layout such as `unified-process` or split services. |
+| `SDKWORK_DISCOVERY_APPLICATION_PUBLIC_INGRESS_BIND` | private | SHOULD | Bind address for application registry/config ingress. |
+| `SDKWORK_DISCOVERY_APPLICATION_PUBLIC_GRPC_URL` | private | SHOULD | Published gRPC URL for registry/config clients. |
+| `SDKWORK_DISCOVERY_OPERATIONS_CONTROL_INGRESS_BIND` | private | MAY | Bind address for operator/admin ingress. |
+| `SDKWORK_DISCOVERY_OPERATIONS_CONTROL_GRPC_URL` | private | MAY | Published gRPC URL for admin clients. |
+| `SDKWORK_DISCOVERY_STORAGE_PROVIDER` | private | SHOULD | `memory`, `sqlite`, `postgres`, `redis`, `etcd`, or `consul`. |
+| `SDKWORK_DISCOVERY_DATABASE_ENGINE` | private | MAY | Canonical database engine alias that must agree with storage provider when both are set. |
+| `SDKWORK_DISCOVERY_RPC_TLS_ENABLED` | private | SHOULD for production | Enables discovery server TLS. |
+| `SDKWORK_DISCOVERY_RPC_MTLS_ENABLED` | private | SHOULD for service-to-service production | Requires client certificates on discovery ingress. |
+| `SDKWORK_DISCOVERY_RPC_AUTH_MODE` | private | SHOULD | Discovery RPC auth mode such as service-token. |
+| `SDKWORK_DISCOVERY_RPC_ALLOW_UNSIGNED_LOCAL_CONTEXT` | private | MAY | Development/test loopback-only unsigned caller context. |
+| `SDKWORK_DISCOVERY_WATCH_ENABLED` | private | MAY | Enables watch RPC services. |
+| `SDKWORK_DISCOVERY_METRICS_BIND` | private | MAY | Prometheus metrics bind address when enabled. |
+
+Rules:
+
+- Application-owned RPC services MUST NOT overload `SDKWORK_DISCOVERY_*` keys for non-discovery behavior.
+- Production discovery config MUST reject unsigned local context, inline secrets, and non-durable storage providers per `DISCOVERY_SPEC.md`.
+- RPC client resolvers SHOULD read `SDKWORK_<APPLICATION_CODE>_DISCOVERY_ENDPOINT` or topology-provided discovery URLs instead of hard-coded peer lists.

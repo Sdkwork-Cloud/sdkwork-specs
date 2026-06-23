@@ -3,7 +3,7 @@
 - Version: 1.0
 - Baseline: Rust `tonic`/`prost` gRPC stack over SDKWork proto contracts
 - Scope: Rust standalone/cloud RPC server crates, generated proto crates, typed RPC clients, runtime adapters, bootstrap, tests, and packaging
-- Related: `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `DRIVE_SPEC.md`, `SDK_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `DATABASE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `DISCOVERY_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `DRIVE_SPEC.md`, `SDK_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `DATABASE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
 - Canonical location: `specs/RUST_RPC_SPEC.md`
 
 This document defines how SDKWork Rust services implement the language-neutral RPC standard. Rust RPC is an adapter layer. It exposes gRPC services and generated clients while preserving the existing SDKWork domain/runtime/storage boundaries.
@@ -15,6 +15,9 @@ Rust RPC exists to make SDKWork standalone and internal services callable by oth
 Rules:
 
 - Rust RPC `MUST` implement `RPC_SPEC.md`.
+- Rust RPC servers and approved internal/backend clients `MUST` integrate `sdkwork-rpc-framework` per `RPC_FRAMEWORK_SPEC.md`.
+- Discovery-enabled hosts `MUST` register, renew, and deregister through `DISCOVERY_SPEC.md`.
+- Resilience behavior `MUST` follow `RPC_RESILIENCE_SPEC.md` profiles rather than ad hoc retry loops in domain crates.
 - Rust RPC `MUST` call the same runtime/service/port abstractions as HTTP and Tauri adapters.
 - Rust RPC `MUST NOT` call SQLx pools, database queries, HTTP routers, or Tauri commands directly.
 - Rust RPC service code `MUST` be thin: metadata/context mapping, proto validation, runtime dispatch, typed response mapping, error mapping, tracing.
@@ -88,7 +91,10 @@ Responsibility:
 
 Rules:
 
+- `sdkwork-rpc-core-rust` is the Rust-facing foundation crate and `MUST` align with `sdkwork-rpc-framework` primitives defined by `RPC_FRAMEWORK_SPEC.md`.
 - `sdkwork-rpc-core-rust` MUST NOT depend on business-domain crates.
+- Domain repositories `MUST` depend on framework/server/client crates for pipeline assembly instead of copying interceptor chains locally.
+- It MAY depend on `tonic`, `tower`, `prost-types`, `tracing`, and shared Rust foundation crates.
 - It MAY depend on `tonic`, `tower`, `prost-types`, `tracing`, and shared Rust foundation crates.
 - It MUST expose reusable primitives for IAM, commerce, and future domains.
 

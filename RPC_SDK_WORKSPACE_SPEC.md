@@ -1,8 +1,8 @@
 # RPC SDK Workspace And Proto Generation Detail Standard
 
-- Version: 1.0
+- Version: 1.1
 - Scope: proto contract workspace layout, RPC SDK family naming, RPC manifest shape, generated RPC SDK output, multi-language generation, SDKWork RPC generation verification
-- Related: `RPC_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RUST_RPC_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `QUALITY_GATE_SPEC.md`, `MIGRATION_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `DISCOVERY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RUST_RPC_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `QUALITY_GATE_SPEC.md`, `MIGRATION_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 This detail standard implements the RPC SDK workspace and generation parts of `RPC_SPEC.md` and `SDK_SPEC.md`. It defines how SDKWork applications and reusable domains keep proto contracts, RPC manifests, generated RPC SDK packages, and verification evidence discoverable without changing the existing OpenAPI HTTP SDK generation workflow.
 
@@ -93,8 +93,10 @@ sdkwork.common.v<major>
 Rules:
 
 - The `<domain>` segment MUST come from `DOMAIN_SPEC.md` unless an app-local extension domain is approved and recorded.
+- Proto `package` names `MUST NOT` include `rpc`, `grpc`, `http`, or `openapi` segments.
 - App, backend, and internal services MUST NOT be mixed in the same proto package.
-- Proto file paths MUST mirror package names.
+- Proto file paths MUST mirror package names under an `apis/rpc/` or manifest-declared RPC root.
+- Generated SDK and module names MUST include `rpc`; proto package names remain domain-first.
 - Removed fields MUST reserve both field number and name.
 - Public business RPC methods SHOULD be unary by default. Streaming methods require the additional policy defined by `RPC_SPEC.md`.
 
@@ -139,6 +141,8 @@ Every RPC SDK family MUST have a manifest:
   "kind": "sdkwork.rpc.manifest",
   "domain": "communication",
   "sdkFamily": "sdkwork-im-rpc-sdk",
+  "discoveryServiceName": "sdkwork-communication-internal-rpc",
+  "defaultResilienceProfile": "rpc-default",
   "services": [
     {
       "package": "sdkwork.communication.app.v3",
@@ -169,6 +173,9 @@ Rules:
 - Write commands that can be retried MUST declare `idempotency: "required"` or document why idempotency is not applicable.
 - Shared HTTP/RPC operations MUST preserve the same SDKWork operationId semantics.
 - `sdkFamily` MUST equal the RPC SDK family directory and generator `--sdk-name` value.
+- `discoveryServiceName` MUST be present when the RPC family is resolved through `sdkwork-discovery` in production paths.
+- `defaultResilienceProfile` MUST name a profile from `RPC_RESILIENCE_SPEC.md` when the family is consumed across process boundaries.
+- Method entries SHOULD declare `resilienceProfile` when they differ from the family default.
 
 ## 6. Generation Workflow
 
@@ -289,6 +296,8 @@ Every RPC SDK family change MUST verify the relevant subset:
 - [ ] Proto source path and RPC manifest path are documented.
 - [ ] RPC SDK family name follows `sdkwork-<sdk-family-stem>-rpc-sdk` and shares the same stem as sibling public/app/backend SDK families.
 - [ ] Manifest uses `kind: sdkwork.rpc.manifest`.
+- [ ] `discoveryServiceName` is present when production dynamic resolution is used.
+- [ ] `defaultResilienceProfile` is present when the RPC family is consumed across process boundaries.
 - [ ] Every service/method maps to exactly one operationId unless documented as composition.
 - [ ] Generated protobuf output is separate from SDKWork authored wrappers and optional control-plane files.
 - [ ] Normal source output does not require committed `.sdkwork/sdkwork-generator-*` files.

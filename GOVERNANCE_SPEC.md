@@ -52,6 +52,9 @@ removal_plan: regenerate app SDK with sdkwork-v3 profile
 - API compatibility follows `API_SPEC.md`.
 - Database compatibility follows `DATABASE_SPEC.md`.
 - SDK compatibility follows `SDK_SPEC.md`.
+- RPC compatibility follows `RPC_SPEC.md`.
+- RPC framework compatibility follows `RPC_FRAMEWORK_SPEC.md`.
+- Discovery compatibility follows `DISCOVERY_SPEC.md`.
 - Domain naming and ownership follows `DOMAIN_SPEC.md`.
 - Reusable module compatibility follows `MODULE_SPEC.md`.
 - App manifest compatibility follows `APP_MANIFEST_SPEC.md`.

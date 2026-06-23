@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: standalone/cloud application deployment profiles, Java Spring, Rust backend, HTTP/RPC runtime bootstrap, frontend bootstrap, environment config
-- Related: `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `RELEASE_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `RELEASE_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `RUST_RPC_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `SDK_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`
 
 SDKWork applications must deploy through one of two standardized application deployment profiles: `standalone` or `cloud`. Shared module APIs, route contracts, generated SDKs, IAM request context, and runtime bootstrap must remain the same across both profiles.
 
@@ -177,6 +177,25 @@ Rules:
 - Health checks MAY be exposed to private operators, but must not leak tenant data, schema details, secrets, or internal dependency names.
 - RPC and HTTP adapters in the same process MUST share runtime/service/storage wiring instead of creating divergent implementations.
 
+## 4.2 Discovery Deployment
+
+Rules:
+
+- Cloud and multi-instance production deployments that use dynamic RPC resolution MUST declare a `sdkwork-discovery` endpoint or approved topology-provided discovery ingress.
+- Discovery production deployments MUST use durable PostgreSQL storage per `DISCOVERY_SPEC.md`.
+- Discovery horizontally scaled deployments SHOULD document watch stream stickiness or revision-based reconnect policy.
+- RPC data-plane services MUST register with discovery before accepting cross-service traffic when dynamic resolution is enabled.
+- RPC data-plane graceful shutdown MUST deregister from discovery and drain in-flight calls per `RPC_RESILIENCE_SPEC.md`.
+
+## 4.3 RPC Framework Deployment
+
+Rules:
+
+- RPC servers and approved RPC clients MUST integrate `sdkwork-rpc-framework` per `RPC_FRAMEWORK_SPEC.md`.
+- Service hosts MUST wire RPC bootstrap stages before feature services start when RPC is enabled.
+- Production RPC clients MUST use framework resolver profiles; static peer lists are development-only unless a migration exception is recorded.
+- Framework TLS/mTLS, reflection, health, and resilience profiles MUST be declared in runtime config and verified in deployment tests.
+
 ## 5. SdkWork Claw Router Release Deployment Standard
 
 SdkWork Claw Router release packages must support fast installation on Linux,
@@ -276,6 +295,9 @@ Rules:
   `SDKWORK_<APPLICATION_CODE>_DATABASE_NAME`, `SDKWORK_<APPLICATION_CODE>_DATABASE_SCHEMA`,
   `SDKWORK_<APPLICATION_CODE>_DATABASE_USERNAME`, `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD_FILE`,
   and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE`.
+- Claw Router release docs and install tooling may also reference the shorthand
+  aliases `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE`
+  when describing cross-product database standards.
 - `DATABASE_PROVIDER` and `DATABASE_SSLMODE` are not standard names and must
   not be accepted by new SDKWork applications.
 - `SDKWORK_CLAW_DATABASE_URL` remains an explicit private override and must not be exposed through `PORTAL_PUBLIC_*` or any browser runtime script.
@@ -381,4 +403,6 @@ Claw Router upstream is `http://127.0.0.1:3900`, and certificate material uses
 - [ ] Shared modules do not hard-code backend type.
 - [ ] Standalone/cloud API parity is tested.
 - [ ] Standalone/cloud RPC parity is tested when shared proto services are exposed.
+- [ ] Discovery endpoint and registration lifecycle are declared when dynamic RPC resolution is enabled.
+- [ ] RPC framework integration is verified for RPC-enabled service hosts.
 - [ ] Environment config is documented and typed.
