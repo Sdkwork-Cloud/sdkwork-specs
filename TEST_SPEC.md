@@ -207,11 +207,35 @@ Rules:
   are valid only below generated SDK output and are governed by `SDK_SPEC.md` and
   `SDK_WORKSPACE_GENERATION_SPEC.md`.
 
-## 2.0.1 Code Style And Naming Tests
+## 2.0.1 Repository Documentation Layout Tests
+
+Repository documentation tests make `DOCUMENTATION_SPEC.md` section 2 executable.
+
+Rules:
+
+- Every independent git repository root and every independent SDKWork application root with active `docs/` `MUST` be checked for `docs/README.md`, `docs/product/prd/PRD.md`, and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
+- Tests `MUST` fail when root `README.md` or `AGENTS.md` does not link to the Canon documentation paths.
+- Tests `MUST` fail when new architecture decision records are added under `docs/adr/` instead of `docs/architecture/decisions/`.
+- Tests `SHOULD` verify `docs/product/requirements/REQ-*` and `docs/architecture/decisions/ADR-*` filenames follow the documented id patterns when those directories contain tracked records.
+- Tests `SHOULD` verify `docs/INDEX.yaml` Canon paths when the file is present.
+- Standards repositories `MUST` still provide Canon documentation, but `docs/product/prd/PRD.md` may describe standards governance instead of an end-user product.
+- Narrow-purpose tool repositories `MAY` use a short non-product PRD stub when `docs/architecture/tech/TECH_ARCHITECTURE.md` documents integration boundaries.
+
+Recommended commands:
+
+```bash
+node ../sdkwork-specs/tools/bootstrap-repository-docs.mjs --root .
+node ../sdkwork-specs/tools/migrate-legacy-canon-paths.mjs --root .
+node ../sdkwork-specs/tools/align-repository-docs.mjs --root .
+node ../sdkwork-specs/tools/check-repository-docs-standard.mjs --root .
+node ../sdkwork-specs/tools/audit-repository-docs-workspace.mjs --workspace <workspace-root>
+```
+
+## 2.0.2 Code Style And Naming Tests
 
 Code style tests make `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, and language specs executable.
 
-## 2.0.2 pnpm Script Tests
+## 2.0.3 pnpm Script Tests
 
 pnpm script tests make `PNPM_SCRIPT_SPEC.md` executable.
 
@@ -274,11 +298,18 @@ Rules:
 - Component manifest tests `MUST` verify authored components include `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, and only the language-specific specs required by `component.languages`.
 - Rust code scans `MUST` fail when `src/lib.rs` contains handlers, repositories, SQL queries, provider clients, large DTO definitions, long business services, or test fixtures instead of module declarations and re-exports.
 - Rust crate naming scans `MUST` verify authored Rust crates use one of the responsibility-specific
-  families from `RUST_CODE_SPEC.md`: `sdkwork-<domain>-<capability>-service`,
+  families from `RUST_CODE_SPEC.md` and `APPLICATION_GATEWAY_SPEC.md`: `sdkwork-<domain>-<capability>-service`,
   `sdkwork-<domain>-<capability>-repository-sqlx`, `sdkwork-router-<capability>-<surface>`,
   `sdkwork-<application-code>-api-server`, `sdkwork-<application-code>-service-host`,
   `sdkwork-<application-code>-native-host`, `sdkwork-<application-code>-tauri-host`,
-  `sdkwork-<domain>-<capability>-worker`, or `sdkwork-<application-code>-gateway`.
+  `sdkwork-<domain>-<capability>-worker`, `sdkwork-<application-code>-standalone-gateway`,
+  `sdkwork-<application-code>-cloud-gateway`, or platform `sdkwork-api-cloud-gateway`.
+- Rust crate naming scans `MUST` fail on bare application gateway crate names such as
+  `sdkwork-<application-code>-gateway` without a `standalone` or `cloud` qualifier.
+- Rust crate naming scans `MUST` fail on bare platform gateway crate names such as
+  `sdkwork-api-cloud-gateway` without the `cloud` qualifier.
+- Application gateway crate scans `MUST` verify gateway crates live under `crates/` and declare
+  `component.type` of `rust-standalone-gateway` or `rust-cloud-gateway` per `APPLICATION_GATEWAY_SPEC.md`.
 - Rust crate naming scans `MUST` fail on forbidden generic crate names such as
   `sdkwork-<application-code>-product`, `sdkwork-<application-code>-runtime`,
   `sdkwork-<domain>-<capability>-runtime`, `sdkwork-<application-code>-backend`,
@@ -290,7 +321,8 @@ Rules:
   schema, row mapping, query bodies, and repository implementations under `db/`, `mapper/`, and
   `repository/`, and do not parse HTTP context or own business authorization.
 - Rust route crate scans `MUST` verify `paths.rs`, `routes.rs`, `handlers.rs`, and `manifest.rs` exist when a crate owns SDKWork HTTP routes.
-- Rust API server, service host, native host, worker, and gateway scans `MUST` verify runnable
+- Rust API server, service host, native host, worker, standalone gateway, cloud gateway, and
+  platform gateway scans `MUST` verify runnable
   crates use the standard directories from `RUST_CODE_SPEC.md` and do not collapse business rules,
   SQL query bodies, route authority, and process startup into one catch-all crate.
 - Java code scans `MUST` verify Spring controllers stay thin and do not own business logic, persistence, or provider calls.
@@ -493,6 +525,8 @@ Rules:
 - Static scans `MUST` fail when business modules construct raw gRPC channels or stubs when a generated SDKWork RPC family exists.
 - Bootstrap tests `MUST` prove RPC clients are injected into services instead of being read from environment variables in business modules.
 - Framework integration tests `MUST` verify metadata providers, deadline propagation, and error mapping on at least one unary smoke path per enabled RPC surface.
+- Standards repositories and `sdkwork-rpc-framework` `MUST` run `node tools/check-rpc-framework-standard.mjs` from the parent workspace root.
+- Discovery-aligned repositories `MUST` run `node tools/check-discovery-standard.mjs` from the parent workspace root.
 
 ## 2.2.2 Discovery Integration Tests
 
@@ -598,7 +632,7 @@ Rules:
 - Profile tests `MUST` prove `dev` normalizes to `development`, `prod` normalizes to `production`, unknown profile aliases fail, and Vite/Tauri/Spring build modes do not replace the SDKWork runtime environment model.
 - SDK base URL tests `MUST` prove private env, browser public runtime env, and Vite dev env resolve independent open-api, app-api, backend-api, and dependency SDK base URLs without falling back to one ambiguous global URL.
 - Shared gateway launch tests `MUST` prove foundation dependency SDK defaults use the declared
-  common gateway root or managed `sdkwork-api-gateway` process, application-owned app/backend/open
+  common gateway root or managed `sdkwork-api-cloud-gateway` process, application-owned app/backend/open
   API base URLs remain application-owned, and per-module foundation upstream env vars are explicit
   overrides rather than default materialized config.
 - Credential config tests `MUST` prove private bootstrap `SDKWORK_ACCESS_TOKEN` is documented for application roots that call protected APIs, is rejected from `VITE_*` and `PORTAL_PUBLIC_*`, and is superseded by appbase session tokens after login. `AUTH_TOKEN`, `REFRESH_TOKEN`, `API_KEY`, `VITE_*_TOKEN`, and `PORTAL_PUBLIC_*_TOKEN` remain rejected in environment configuration outside explicitly marked test fixtures.
@@ -797,6 +831,20 @@ Rules:
 - Topology tests `MUST` fail when profile ids begin with `self-hosted.` or
   `cloud-hosted.`, or when they do not follow
   `<deploymentProfile>.<serviceLayout>.<environment>`.
+- Workspace topology parity checks `MUST` run
+  `node tools/check-topology-deployment-profiles.mjs --workspace ..` and pass
+  for every application repository with `specs/topology.spec.json`.
+- Workspace hosting-debt checks `MUST` run
+  `node tools/check-app-runtime-hosting-debt.mjs --workspace ..` and pass for
+  every application repository with active dev scripts, packaging targets, or
+  topology script metadata. Retired vocabulary recorded under `retired` sections
+  is allowed; active `--hosting`, `self-hosted`, and `cloud-hosted` usage is not.
+- Application topology alignment `MAY` use
+  `node tools/align-app-topology-deployment-profiles.mjs --workspace ..` before
+  manual review of orchestration and gateway crate bindings.
+- Application hosting-debt alignment `MAY` use
+  `node tools/align-app-runtime-hosting-debt.mjs --workspace ..` before manual
+  review of dev orchestrators and packaging profile ids.
 - Runtime config tests `MUST` prove lifecycle environment, config profile,
   build mode, deployment profile, and runtime target are normalized separately.
 - App manifest tests `MUST` prove `runtime.supportedDeploymentProfiles` is

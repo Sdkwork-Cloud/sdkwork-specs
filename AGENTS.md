@@ -28,6 +28,7 @@ This repository is a standards repository, not an SDKWork application. If a futu
 - `CODEX.md`: Codex compatibility shim that points to `AGENTS.md` and must not duplicate rules.
 - `SOUL.md`: shared agent execution soul.
 - `README.md`: canonical standards index and task matrix.
+- `docs/`: Canon documentation; see [docs/README.md](docs/README.md), [docs/product/prd/PRD.md](docs/product/prd/PRD.md), and [docs/architecture/tech/TECH_ARCHITECTURE.md](docs/architecture/tech/TECH_ARCHITECTURE.md).
 - `*_SPEC.md`: root standards.
 - `.sdkwork/`: repository-local skills, plugins, and manifests.
 
@@ -84,6 +85,19 @@ Spec files use concise Markdown, RFC-style `MUST`/`SHOULD`/`MAY` language where 
 ## Build, Test, and Verification
 
 This repository currently contains Markdown standards. Before completion, verify that new spec files are listed in `README.md`, linked from related specs, and referenced by `TEST_SPEC.md` when they define executable rules.
+
+```bash
+node tools/bootstrap-repository-docs.mjs --root .
+node tools/align-repository-docs.mjs --root .
+node tools/check-repository-docs-standard.mjs --root .
+node tools/audit-repository-docs-workspace.mjs --workspace ..
+node tools/check-topology-deployment-profiles.mjs --workspace ..
+node tools/check-app-runtime-hosting-debt.mjs --workspace ..
+node tools/align-app-gateway-integration.mjs --workspace ..
+node --test tools/check-repository-docs-standard.test.mjs
+node --test tools/bootstrap-repository-docs.test.mjs
+node --test tools/align-repository-docs.test.mjs
+```
 
 ## Agent Execution Rules
 

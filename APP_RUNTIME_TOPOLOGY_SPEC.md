@@ -2,7 +2,7 @@
 
 - Version: 3.0
 - Scope: cross-application deployment entrypoints, multi-plane routing, multi-protocol surfaces, dev orchestration contracts, and client bootstrap URL authority
-- Related: `APP_RUNTIME_TOPOLOGY_NAMING.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `CONFIG_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `../sdkwork-app-topology/README.md`
+- Related: `APPLICATION_GATEWAY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `CONFIG_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `../sdkwork-app-topology/README.md`
 
 This standard defines where clients, operators, devices, and SDKs connect for
 each SDKWork application. `DEPLOYMENT_SPEC.md` owns the application deployment
@@ -57,7 +57,7 @@ Rules:
 | Plane | Owner | Protocols | Terminated by |
 | --- | --- | --- | --- |
 | `application` | Application repository | `http`, `ws`, future `sse` | Application public ingress (`sdkwork-<application-code>-api-server` or equivalent) |
-| `platform` | Shared SDKWork platform | `http` | `sdkwork-api-gateway` or an approved embedded standalone adapter |
+| `platform` | Shared SDKWork platform | `http` | `sdkwork-api-cloud-gateway` or an approved embedded standalone adapter |
 | `operations` | Application operator APIs | `http` | Operations control ingress |
 | `edge` | Device or edge gateway | `ws`, `mqtt`, `udp`, device `http` | Edge device ingress |
 
@@ -66,7 +66,7 @@ Rules:
 - Application realtime WebSocket `MUST` terminate on `application.public-ingress`.
 - Platform APIs `MUST` use `platform.api-gateway` URLs in client bootstrap
   unless the standalone profile explicitly embeds an approved platform adapter.
-- Edge protocols `MUST NOT` be routed through `sdkwork-api-gateway` unless a
+- Edge protocols `MUST NOT` be routed through `sdkwork-api-cloud-gateway` unless a
   future platform spec adds an edge tier.
 - Each plane `MUST` have distinct env keys from `APP_RUNTIME_TOPOLOGY_NAMING.md`.
 
@@ -224,7 +224,9 @@ cloud-application-public-ingress
 Rules:
 
 - Surface roles may be appended for deployable config bundles.
-- Ambiguous application-code-prefixed gateway names are forbidden.
+- Ambiguous application-code-prefixed gateway names are forbidden. Application gateway crates must
+  use `sdkwork-<application-code>-standalone-gateway` or
+  `sdkwork-<application-code>-cloud-gateway` per `NAMING_SPEC.md` §4.3.1.
 - Matrix planners must pass `SDKWORK_DEPLOYMENT_PROFILE` to lifecycle steps.
 
 ## 11. Verification

@@ -1,8 +1,8 @@
 # Naming Standard
 
-- Version: 1.5
+- Version: 1.7
 - Scope: domains, capabilities, repositories, applications, components, packages, SDK families, API authorities, route crates, database identifiers, files, and test names
-- Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CODE_STYLE_SPEC.md`
+- Related: `APPLICATION_GATEWAY_SPEC.md`, `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CODE_STYLE_SPEC.md`
 
 This standard is the naming entrypoint for SDKWork. It indexes naming rules that are also governed by more specific specs. If this file conflicts with a more specific root spec, the more specific spec wins and this file must be updated.
 
@@ -17,7 +17,7 @@ SDKWork names use a fixed identity lattice. Do not collapse these layers into on
 | L3 process name | process name | `<process-name>` | `clawrouter` | application code |
 | L4 manifest key | `app.key` | (manifest field, not a path placeholder) | `commerce-pc` | application code alone |
 | L5 repository stem | SDKWork repository | `sdkwork-<application-code>` when they match | `sdkwork-drive` | guaranteed equal to L2 |
-| L6 client architecture | client-arch | `<client-arch>` | `pc`, `h5`, `flutter-mobile` | — |
+| L6 client architecture | client-arch | `<client-arch>` | `pc`, `h5`, `flutter-mobile` | ??|
 | L7 domain | domain | `<domain>` | `commerce`, `iam` | product name |
 | L8 capability | capability | `<capability>` | `cart`, `merchandise` | `product`, `common`, `manager` |
 | L9 API owner | owner code | `<owner-code>` | `sdkwork-commerce` | SDK family name |
@@ -28,7 +28,7 @@ Rules:
 - `app` in SDKWork already means application root, `app-api`, `app.key`, app/user surface, `apps/`, or PlusApp registration. Do not use bare `<app>` as a naming placeholder.
 - `product` is retired as a naming placeholder. It remains valid only as L1 **product name** in prose, or in the forbidden generic suffix `sdkwork-<application-code>-product`.
 - Commerce sellable-item work uses capability token **`merchandise`**. Public catalog browsing uses **`catalog`**. Shop configuration uses **`shop`**. See `DOMAIN_SPEC.md`.
-- Retired synonyms: `<product>` → `<application-code>`; use `application-specific` instead of retired `product-specific`; use `application-code-prefix` / `application-code-prefixed` instead of retired pnpm prefix terms.
+- Retired synonyms: `<product>` ??`<application-code>`; use `application-specific` instead of retired `product-specific`; use `application-code-prefix` / `application-code-prefixed` instead of retired pnpm prefix terms.
 
 ### 0.1 Naming Formula Summary
 
@@ -37,7 +37,8 @@ apps/sdkwork-<application-code>-<client-arch>/
 sdkwork-<application-code>-<client-arch>-<capability>
 sdkwork_<application_code>_<client_arch>_<capability>    # Dart only
 
-sdkwork-<application-code>-gateway | -api-server | -service-host | -native-host | -tauri-host
+sdkwork-<application-code>-standalone-gateway | -cloud-gateway | -api-server | -service-host | -native-host | -tauri-host
+sdkwork-api-cloud-gateway                                              # platform plane only
 sdkwork-<domain>-<capability>-service
 sdkwork-router-<capability>-<surface>
 sdkwork-<domain>-app-api | sdkwork-<domain>-backend-api | sdkwork-<domain>-open-api
@@ -59,22 +60,22 @@ After `product`, these words are the most common sources of naming drift. Each r
 | `app` | `app-api` surface, `app.key`, app/user UI surface, `apps/` directory, PlusApp registration, prose "application root" | bare placeholder `<app>`; path/env token for L2 | `<application-code>` / `application code` |
 | `application` | application root, application-owned API ingress, application packages | shortening L2 to just "application" in package tokens | `application code` for L2; `application-owned` for ingress |
 | `catalog` | commerce browse/category capability; i18n **message catalog**; permission/route **metadata catalog**; DB **catalog** name | generic folder name `catalog/` without domain | `i18n catalog`, `message catalog`, commerce `catalog` capability |
-| `console` | user-facing **management console** package role (`*-console-*`) | company-internal operator UI; `backend-admin`; capability token | `*-console-*` + app-api; internal ops → `*-admin-*` + `backend-admin` |
+| `console` | user-facing **management console** package role (`*-console-*`) | company-internal operator UI; `backend-admin`; capability token | `*-console-*` + app-api; internal ops ??`*-admin-*` + `backend-admin` |
 | `admin` | package role segment only when paired with `backend-admin` surface rules | bare capability token `admin`; synonym for console | `*-admin-*` packages + `backend-admin` API/SDK |
 | `backend` | `backend-api` surface; `backend-admin` surface; Rust crate suffix only in forbidden list context | vague crate suffix `sdkwork-<application-code>-backend`; capability token | `backend-api`, `backend-admin`, or `sdkwork-<domain>-<capability>-service` |
 | `service` | business **service crate** `sdkwork-<domain>-<capability>-service`; OS/service manager prose | package profile alias for `server`; pnpm `service:*` namespace | package profile `server`; action-first `dev:server` |
 | `server` | `runtimeTarget=server`; package profile `server`; `sdkwork-<application-code>-api-server` | deployment profile; domain name; generic "backend" | `deploymentProfile`, `runtimeTarget`, `api-server` |
-| `platform` | domain `platform`; connectivity plane `platform`; OS platform in package ids | application line name; product name | domain `platform` or plane `platform` — state which |
+| `platform` | domain `platform`; connectivity plane `platform`; OS platform in package ids | application line name; product name | domain `platform` or plane `platform` ??state which |
 | `profile` | full topology profile id; **config profile alias** `dev`/`prod`; GitHub package **profile** segment | lifecycle environment alone; deployment profile alone | `environment`, `deploymentProfile`, `configProfile`, or full profile id |
 | `runtime` | `runtimeTarget`; forbidden crate suffix `*-runtime` | synonym for application or environment | `runtimeTarget`, `environment`, or responsibility-specific crate |
-| `gateway` | `sdkwork-<application-code>-gateway` crate; `gateway:*` pnpm namespace; platform **API gateway** ingress | any HTTP server; SDK family name | `api-server` vs `gateway` vs `platform.api-gateway` — pick one role |
+| `gateway` | application `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway`; platform `sdkwork-api-cloud-gateway`; `gateway:*` pnpm namespace | bare `sdkwork-<application-code>-gateway`; bare `sdkwork-api-cloud-gateway`; any HTTP server; SDK family name | `standalone-gateway` vs `cloud-gateway` vs `api-cloud-gateway` vs `api-server` vs `platform.api-gateway` ? pick one role |
 | `foundation` | shared foundation **domain/module** tier (L3); foundation dependency SDKs | package name `foundation` without domain | `sdkwork-<domain>-*` or `shared foundation module` |
 | `portal` | browser **portal** public config (`PORTAL_PUBLIC_*`, `[portal.public]`); static portal assets | application code; IAM domain | `PORTAL_PUBLIC_*`, `browser public runtime` |
 | `identity` | prose "identity projection" in HTTP headers | domain name instead of `iam` | domain `iam` |
 | `core` | reserved package role `*-core` (runtime/bootstrap) | business capability token; forbidden `sdkwork-<application-code>-core` crate | `*-core` role or `sdkwork-<domain>-<capability>-service` |
-| `common` / `manager` | — | capability or crate catch-alls | concrete domain capability |
+| `common` / `manager` | ??| capability or crate catch-alls | concrete domain capability |
 | `open` | approved **open-api** prefix/path; `open-api` surface | shorthand package name `open` | `open-api`, `sdkwork-<domain>-open-api` |
-| `domain` (L7) | bounded context `commerce`, `iam`, … | application code; repository stem | `<domain>` vs `<application-code>` — commerce can be both; document which axis |
+| `domain` (L7) | bounded context `commerce`, `iam`, ??| application code; repository stem | `<domain>` vs `<application-code>` ??commerce can be both; document which axis |
 | `owner-code` (L9) | API aggregation owner `sdkwork-commerce` | SDK family; application code when they differ | `owner` in route manifest; not `sdkFamily` |
 | `sdk-family-stem` | generated SDK workspace stem `im`, `commerce` | route crate name; API authority directory; application code | `sdkwork-<sdk-family-stem>-app-sdk` family table |
 | `utils` | TypeScript npm package `@sdkwork/utils`; cross-language repo `sdkwork-utils` | language suffix in TypeScript npm name such as `@sdkwork/utils-typescript` | `@sdkwork/utils`, directory `packages/sdkwork-utils-typescript` |
@@ -84,7 +85,7 @@ After `product`, these words are the most common sources of naming drift. Each r
 Rules:
 
 - When two columns in this table could both apply, the name must encode the axis explicitly (`pc-console-order` = console role, not domain).
-- Specs that still use retired overloads must be updated or listed in `MIGRATION_SPEC.md` §8.
+- Specs that still use retired overloads must be updated or listed in `MIGRATION_SPEC.md` ?8.
 - `tools/check-identity-naming.mjs` enforces the highest-risk retired patterns; this table is the human-readable authority for the rest.
 
 ## 1. General Rules
@@ -150,7 +151,9 @@ Rules:
 | Rust service host crate | `sdkwork-<application-code>-service-host` | `sdkwork-drive-service-host` |
 | Rust native host crate | `sdkwork-<application-code>-native-host` or `sdkwork-<application-code>-tauri-host` | `sdkwork-drive-native-host` |
 | Rust worker crate | `sdkwork-<domain>-<capability>-worker` | `sdkwork-drive-maintenance-worker` |
-| Rust gateway crate | `sdkwork-<application-code>-gateway` | `sdkwork-drive-gateway` |
+| Rust standalone application gateway crate | `sdkwork-<application-code>-standalone-gateway` | `sdkwork-drive-standalone-gateway` |
+| Rust cloud application gateway crate | `sdkwork-<application-code>-cloud-gateway` | `sdkwork-im-cloud-gateway` |
+| Rust platform gateway crate | `sdkwork-api-cloud-gateway` | `sdkwork-api-cloud-gateway` |
 | Open API authority | `sdkwork-<domain>-open-api` | `sdkwork-im-open-api` |
 | App API authority | `sdkwork-<domain>-app-api` | `sdkwork-commerce-app-api` |
 | Backend API authority | `sdkwork-<domain>-backend-api` | `sdkwork-commerce-backend-api` |
@@ -173,7 +176,8 @@ Rules:
 
 - Rust packages use kebab-case and Rust modules/imports use snake_case. Rust crate names must use
   the responsibility-specific families from `RUST_CODE_SPEC.md`, such as `service`,
-  `repository-sqlx`, `api-server`, `service-host`, `native-host`, `worker`, or `gateway`.
+  `repository-sqlx`, `api-server`, `service-host`, `native-host`, `worker`,
+  `standalone-gateway`, `cloud-gateway`, or platform `api-gateway`.
 - Java packages use lowercase dotted names under an approved SDKWork root; Java classes use PascalCase.
 - TypeScript packages use kebab-case or approved scoped names; exported types/classes/components use PascalCase; functions and variables use camelCase.
 - Dart and Flutter package names use lowercase snake_case; SDKWork Flutter mobile packages use the `sdkwork_<application_code>_flutter_mobile_<capability>` family from `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`.
@@ -349,9 +353,33 @@ Rules:
   adapter boundaries.
 - `sdkwork-<domain>-<capability>-worker` owns background jobs, schedulers, queues, maintenance
   loops, retries, locks, and cursors.
-- `sdkwork-<application-code>-gateway` owns upstream routing, route precedence, proxy behavior, and dependency
-  API surface aggregation.
+- Application gateway crates `MUST` encode the deployment profile they serve. Use
+  `sdkwork-<application-code>-standalone-gateway` for `deploymentProfile=standalone`
+  application ingress, and `sdkwork-<application-code>-cloud-gateway` for
+  `deploymentProfile=cloud` application ingress. Bare
+  `sdkwork-<application-code>-gateway` is retired.
+- `sdkwork-api-cloud-gateway` is the platform-plane gateway for `platform.api-gateway`.
+  It uses scope token `api` and deployment qualifier `cloud`. Bare `sdkwork-api-cloud-gateway`
+  is retired.
+- Platform gateway support crates `MUST` mirror the parent family:
+  `sdkwork-api-cloud-gateway-config`, `sdkwork-api-cloud-gateway-registry`, and
+  `sdkwork-api-cloud-gateway-observability`.
+- Standalone and cloud application gateway crates own upstream routing, route
+  precedence, proxy behavior, dependency API surface aggregation, and
+  fail-closed upstream validation for their deployment profile.
+- An application repository `MAY` own both gateway crate families when it ships
+  both standalone and cloud deployment profiles.
+- Gateway support crates `MUST` mirror the parent gateway family:
+  `sdkwork-<application-code>-standalone-gateway-config`,
+  `sdkwork-<application-code>-standalone-gateway-observability`,
+  `sdkwork-<application-code>-cloud-gateway-config`, and
+  `sdkwork-<application-code>-cloud-gateway-observability`.
+- Gateway crates `MUST` live under `crates/`, not `services/` or other ad hoc
+  process directories.
 - The following Rust crate names are forbidden and are not compatibility exceptions:
+  `sdkwork-api-cloud-gateway` (bare platform gateway without `cloud` qualifier),
+  `sdkwork-<application-code>-gateway` (bare application gateway without
+  `standalone` or `cloud` qualifier),
   `sdkwork-<application-code>-product`, `sdkwork-<application-code>-runtime`,
   `sdkwork-<domain>-<capability>-runtime`, `sdkwork-<application-code>-backend`,
   `sdkwork-<application-code>-core`, `sdkwork-<application-code>-common`, `sdkwork-<application-code>-manager`, and
@@ -359,6 +387,45 @@ Rules:
 - Commerce merchandise capability uses `merchandise` for sellable-item master data, SKU, and attributes, for example `sdkwork-commerce-merchandise-service` and `sdkwork-router-merchandise-app-api`. The forbidden form is using `product` as the application entrypoint or runtime suffix, such as `sdkwork-drive-product`, or reviving capability token `product` for commerce merchandise.
 - Repositories must not preserve forbidden Rust crate names through wrapper crates, package aliases,
   feature aliases, or public re-export aliases.
+
+### 4.3.1 Gateway Deployment Qualifiers
+
+Normative gateway structure, topology binding, component contracts, and verification live in
+`APPLICATION_GATEWAY_SPEC.md`. Every gateway crate `MUST` follow
+`sdkwork-<scope>-<deploymentProfile>-gateway`. Application scope uses
+`<application-code>`; platform scope uses `api`.
+
+| Crate family | `deploymentProfile` | Typical `serviceLayout` | Primary surface | When to use |
+| --- | --- | --- | --- | --- |
+| `sdkwork-<application-code>-standalone-gateway` | `standalone` | `unified-process` (default) or approved `split-services` | `application.public-ingress` | Local dev, desktop/private appliance, single-container, or other self-contained application ingress that may embed an approved platform adapter |
+| `sdkwork-<application-code>-cloud-gateway` | `cloud` | `split-services` (default) or approved `unified-process` | `application.public-ingress` | Cloud release, scale-out, or private-cloud application ingress that proxies to decomposed internal services |
+| `sdkwork-api-cloud-gateway` | platform | n/a | `platform.api-gateway` | Shared SDKWork platform APIs such as IAM, Drive, and Notary |
+
+Rules:
+
+- `sdkwork-<application-code>-api-server` and application gateway crates are different
+  responsibilities. Use `api-server` when the process only mounts application-owned route
+  crates. Use `standalone-gateway` or `cloud-gateway` when the process also composes,
+  proxies, or fail-closes dependency or platform surfaces for that deployment profile.
+- `gateway:run:standalone`, `gateway:build:standalone`, `gateway:package:standalone`, and
+  `gateway:validate:standalone` `MUST` target
+  `sdkwork-<application-code>-standalone-gateway`.
+- `gateway:run:cloud`, `gateway:build:cloud`, `gateway:package:cloud`, and
+  `gateway:validate:cloud` `MUST` target `sdkwork-<application-code>-cloud-gateway`.
+- Retired application gateway crate name: `sdkwork-<application-code>-gateway`. Retired platform
+  gateway crate name: `sdkwork-api-cloud-gateway`. Migration mapping follows `MIGRATION_SPEC.md` section 8.
+- Internal service names such as `session-gateway` remain capability/process names and
+  `MUST NOT` replace application gateway crate naming unless they terminate
+  `application.public-ingress` for a declared deployment profile.
+
+Examples:
+
+| Application | Standalone gateway | Cloud gateway | Platform gateway |
+| --- | --- | --- | --- |
+| `drive` | `sdkwork-drive-standalone-gateway` | optional when cloud split ingress exists | consumes `sdkwork-api-cloud-gateway` |
+| `im` | `sdkwork-im-standalone-gateway` | `sdkwork-im-cloud-gateway` | consumes `sdkwork-api-cloud-gateway` |
+| `clawrouter` | optional when standalone ingress exists | `sdkwork-clawrouter-cloud-gateway` | consumes `sdkwork-api-cloud-gateway` |
+| `aiot` | optional when standalone ingress exists | `sdkwork-aiot-cloud-gateway` | consumes `sdkwork-api-cloud-gateway` |
 
 ## 5. Component Naming
 
@@ -383,6 +450,9 @@ Rules:
 
 - [ ] Domain and capability names are canonical.
 - [ ] Package, route crate, SDK family, and API authority names follow the required patterns.
+- [ ] Application gateway crates use `sdkwork-<application-code>-standalone-gateway` or
+      `sdkwork-<application-code>-cloud-gateway`; bare `sdkwork-<application-code>-gateway` is not used.
+- [ ] Platform gateway uses `sdkwork-api-cloud-gateway`; bare `sdkwork-api-cloud-gateway` is not used.
 - [ ] Rust crate names use responsibility-specific families and do not use forbidden generic
       `product`, `runtime`, `backend`, `core`, `common`, or `manager` suffixes on application-code crates.
 - [ ] Commerce sellable-item capabilities use `merchandise`, not retired capability token `product`.

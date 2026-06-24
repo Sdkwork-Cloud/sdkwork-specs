@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: mandatory integration of `sdkwork-web-framework` for every SDKWork HTTP `*-api` runtime surface, including `open-api`, `app-api`, `backend-api`, Rust route crates, API servers, gateways, and Java Spring parallel runtime semantics
-- Related: `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SECURITY_SPEC.md` section 5.1, `RUST_CODE_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`, `COMPONENT_SPEC.md`, `APPLICATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `MIGRATION_SPEC.md`
+- Related: `API_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SECURITY_SPEC.md` section 5.1, `RUST_CODE_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`, `COMPONENT_SPEC.md`, `APPLICATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `MIGRATION_SPEC.md`
 - Detail standard: `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md` (L1 framework repository authoritative for crate APIs, pipeline stages, extension traits, and capability matrix)
 
 This standard defines when and how SDKWork applications **must** integrate the `sdkwork-web-framework` repository. `API_SPEC.md` owns HTTP contract semantics. This file owns **runtime framework integration**. `WEB_BACKEND_SPEC.md` owns handler/service/repository layering after the framework boundary.
@@ -42,7 +42,9 @@ The following artifacts `MUST` integrate `sdkwork-web-framework` or its language
 | `sdkwork-router-<capability>-app-api` | Same |
 | `sdkwork-router-<capability>-backend-api` | Same |
 | `sdkwork-<application-code>-api-server` | Framework bootstrap, pipeline assembly, route mounting, adapter registration, and preflight |
-| `sdkwork-<application-code>-gateway` | Framework pipeline for proxied, dependency, or composed HTTP `*-api` surfaces before proxying or dispatch |
+| `sdkwork-<application-code>-standalone-gateway` | Framework pipeline for proxied, dependency, or composed HTTP `*-api` surfaces in `deploymentProfile=standalone` before proxying or dispatch |
+| `sdkwork-<application-code>-cloud-gateway` | Framework pipeline for proxied, dependency, or composed HTTP `*-api` surfaces in `deploymentProfile=cloud` before proxying or dispatch |
+| `sdkwork-api-cloud-gateway` | Framework pipeline for shared `platform.api-gateway` surfaces |
 | Java/Spring `*ApiController` module | Typed `WebRequestContext` equivalent, standard interceptor order, and OpenAPI/manifest metadata parity |
 | Contract-only `apis/` source | OpenAPI operations still declare `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface` before SDK generation |
 

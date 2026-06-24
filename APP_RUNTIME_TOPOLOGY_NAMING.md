@@ -1,6 +1,6 @@
 # Application Runtime Topology Naming Registry
 
-- Version: 3.0
+- Version: 3.1
 - Scope: canonical names for deployment profile, runtime topology vocabulary, profiles, surfaces, environment keys, CLI flags, and documentation
 - Related: `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `NAMING_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`
 
@@ -113,7 +113,7 @@ CLI:
 | Plane | Owns | Example routes / protocols |
 | --- | --- | --- |
 | `application` | Application-owned APIs and application realtime | `/im/v3/api/*`, HTTP + WebSocket on same ingress |
-| `platform` | Shared SDKWork platform APIs | IAM, Drive, Notary, Agent through `sdkwork-api-gateway` or approved embedded standalone adapter |
+| `platform` | Shared SDKWork platform APIs | IAM, Drive, Notary, Agent through `sdkwork-api-cloud-gateway` or approved embedded standalone adapter |
 | `operations` | Operator / control APIs | Governance, drain, provider registry |
 | `edge` | Device and edge protocols | Device WebSocket, MQTT bridge, UDP |
 
@@ -238,11 +238,51 @@ Rules:
 - Do not reuse `chat.sdkwork.com` for IM.
 - Platform SDKs use `api.sdkwork.com` in cloud deployments.
 
-## 10. Version History
+## 10. Gateway Crate Registry
+
+Gateway crate names `MUST` encode scope and deployment profile. Naming authority lives in
+`APPLICATION_GATEWAY_SPEC.md` and `NAMING_SPEC.md` §4.3.1.
+
+| Scope | Deployment profile | Canonical crate | Primary surface | Platform dependency |
+| --- | --- | --- | --- | --- |
+| application | `standalone` | `sdkwork-<application-code>-standalone-gateway` | `application.public-ingress` | may embed approved platform adapter |
+| application | `cloud` | `sdkwork-<application-code>-cloud-gateway` | `application.public-ingress` | uses external `sdkwork-api-cloud-gateway` for `platform.api-gateway` |
+| platform | `cloud` | `sdkwork-api-cloud-gateway` | `platform.api-gateway` | n/a |
+
+Rules:
+
+- Bare `sdkwork-<application-code>-gateway` and bare `sdkwork-api-cloud-gateway` are retired. Say
+  `standalone-gateway`, `cloud-gateway`, or `api-cloud-gateway` explicitly in reviews, scripts,
+  manifests, and topology docs.
+- `gateway:run:standalone` and related `gateway:*:standalone` commands target the standalone
+  gateway crate; `gateway:run:cloud` and related `gateway:*:cloud` commands target the cloud
+  gateway crate.
+- `sdkwork-<application-code>-api-server` is not a substitute for an application gateway crate when
+  the process composes or proxies dependency/platform surfaces for a deployment profile.
+- Internal capability gateways such as `session-gateway` remain internal service names and do not
+  replace application gateway crate naming unless they terminate `application.public-ingress` for
+  a declared deployment profile.
+
+Retired crate naming:
+
+| Retired | Replacement |
+| --- | --- |
+| `sdkwork-api-cloud-gateway` | `sdkwork-api-cloud-gateway` |
+| `sdkwork-api-cloud-gateway` repository | `sdkwork-api-cloud-gateway` |
+| `SDKWORK_API_CLOUD_GATEWAY_BIND` | `SDKWORK_API_CLOUD_GATEWAY_BIND` |
+| `SDKWORK_API_CLOUD_GATEWAY_CONFIG` | `SDKWORK_API_CLOUD_GATEWAY_CONFIG` |
+| `sdkwork-<application-code>-gateway` | `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` |
+| `sdkwork-im-cloud-gateway` | `sdkwork-im-cloud-gateway` |
+| `sdkwork-clawrouter-cloud-gateway` | `sdkwork-clawrouter-cloud-gateway` |
+| `sdkwork-aiot-cloud-gateway` | `sdkwork-aiot-cloud-gateway` |
+
+## 11. Version History
 
 | Version | Change |
 | --- | --- |
 | 1.0 | Initial topology / distribution / product-foundation planes |
 | 2.0 | Renamed to hosting / serviceLayout / connectivityPlane; surface and env key registry |
 | 2.1 | SaaS public host registry |
+| 3.2 | Platform gateway crate renamed to `sdkwork-api-cloud-gateway`; retired bare `sdkwork-api-cloud-gateway` |
+| 3.1 | Gateway crates must use scope plus `standalone` or `cloud` deployment qualifiers |
 | 3.0 | Promoted `deploymentProfile = standalone | cloud` as the application deployment architecture and retired hosting/self-hosted/cloud-hosted as topology axes |

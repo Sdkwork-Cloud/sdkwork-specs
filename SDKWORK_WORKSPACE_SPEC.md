@@ -94,7 +94,7 @@ Directory meanings:
 | `configs/` | Source-controlled safe config templates, profile examples, config schemas, and non-secret runtime defaults | The repository defines config templates or app/runtime configuration |
 | `deployments/` | Deployment descriptors, environment topology, packaging handoff files, infrastructure examples, and release deployment documentation | The repository ships, deploys, or documents deployable artifacts |
 | `scripts/` | Thin command entrypoints for build, verification, generation, migration, packaging, and release workflows | Shell/Node/Python/PowerShell command wrappers are needed |
-| `docs/` | Repository/application documentation, architecture decisions, runbooks, design notes, changelogs, and user/developer guides | Documentation is authored beyond root README files |
+| `docs/` | Repository/application documentation layout, Canon product PRD, technical architecture, requirements, architecture decisions, guides, runbooks, changelogs, and user/developer docs | Documentation is authored beyond root README files |
 | `tests/` | Cross-package tests, contract tests, integration tests, end-to-end tests, fixtures, and static verification inputs | Verification exists outside package-local test directories |
 
 Recommended initial skeleton:
@@ -148,7 +148,8 @@ Recommended initial skeleton:
     sdkwork-<application-code>-native-host/
     sdkwork-<application-code>-tauri-host/
     sdkwork-<domain>-<capability>-worker/
-    sdkwork-<application-code>-gateway/
+    sdkwork-<application-code>-standalone-gateway/
+    sdkwork-<application-code>-cloud-gateway/
   sdks/
     README.md
     sdkwork-<domain>-sdk/
@@ -222,9 +223,51 @@ Recommended initial skeleton:
     README.md
   docs/
     README.md
-    adr/
+    INDEX.yaml
+    product/
+      README.md
+    prd/
+      README.md
+      PRD.md
+    requirements/
+        README.md
+      roadmap/
+        README.md
+    architecture/
+      README.md
+    tech/
+      README.md
+      TECH_ARCHITECTURE.md
+    decisions/
+        README.md
+      views/
+        README.md
+    engineering/
+      README.md
+      plans/
+        README.md
+      reviews/
+        README.md
+    guides/
+      README.md
+      developer/
+        README.md
+      operator/
+        README.md
+      integrator/
+        README.md
     runbooks/
+      README.md
     changelogs/
+      README.md
+    migrations/
+      README.md
+    releases/
+      README.md
+    domains/
+      README.md
+    archive/
+      README.md
   tests/
     README.md
     contract/
@@ -259,8 +302,14 @@ Capability activation signals:
 | `configs/` | Safe config templates, schemas, profiles, or non-secret defaults are committed |
 | `deployments/` | Docker, Kubernetes, systemd, nginx, environment topology, release handoff, or deployment runbook content is owned |
 | `scripts/` | Thin shell/Node/Python/PowerShell entrypoints are committed |
-| `docs/` | Documentation beyond root README files is authored |
+| `docs/` | Canon PRD, technical architecture, requirements, ADRs, guides, runbooks, changelogs, migrations, releases, domain extensions, or archives are authored |
 | `tests/` | Cross-package, contract, integration, end-to-end, fixture, or static verification content exists |
+
+Documentation boundary rules:
+
+- `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md` are the fixed Canon entrypoints defined by `DOCUMENTATION_SPEC.md`.
+- Architecture decision records belong in `docs/architecture/decisions/`, not `docs/adr/`.
+- Machine contracts belong in `specs/`, `apis/`, and manifests; `docs/` must not become the only source of truth for those contracts.
 
 Boundary rules:
 
@@ -600,6 +649,8 @@ Repository/application workspace verification `MUST` check:
 - `plugins/` application/runtime source and `.sdkwork/plugins/` agent plugin workspaces are distinct.
 - `configs/`, `deployments/`, and any architecture-local `config/` contain no live secrets, local overrides, user-private runtime config, or runtime state.
 - Root `tests/` contains cross-package/contract/integration/e2e/static verification and safe fixtures, while package-local unit tests remain package-local.
+- When `docs/` is active, repository and application roots `MUST` provide `docs/README.md`, `docs/product/prd/PRD.md`, and `docs/architecture/tech/TECH_ARCHITECTURE.md`, and `AGENTS.md` `MUST` link to those Canon documents.
+- `docs/adr/` is a retired layout. New ADRs `MUST` use `docs/architecture/decisions/`.
 
 ## 9. Acceptance Checklist
 
@@ -621,3 +672,5 @@ Repository/application workspace verification `MUST` check:
 - [ ] Narrow roots that omit inactive standard directories document the active layout in the root README.
 - [ ] Active repository/application capabilities use only the standard top-level directory names: `apis/`, `apps/`, `crates/`, `sdks/`, `jobs/`, `tools/`, `plugins/`, `examples/`, `configs/`, `deployments/`, `scripts/`, `docs/`, and `tests/`; `config/` and `packages/` are used only as architecture-local directories for the selected app surface root.
 - [ ] API contract sources, generated SDK workspaces, application/runtime plugins, agent plugins, source config templates, deployment descriptors, job definitions, worker implementations, and runtime private config are placed in their distinct standard directories.
+- [ ] Active `docs/` layouts provide Canon `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`, and new ADRs use `docs/architecture/decisions/`.
+- [ ] New repositories bootstrap `docs/` with `tools/bootstrap-repository-docs.mjs` or an equivalent tracked skeleton.

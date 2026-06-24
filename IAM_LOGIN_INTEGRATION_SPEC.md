@@ -232,9 +232,10 @@ The standard login endpoint may complete immediately or return a continuation st
 Flow:
 
 ```text
-anonymous login request
-  -> appbase validates credentials
-  -> appbase resolves real user_id and tenant_id from IAM data
+anonymous login request with bootstrap Access-Token tenant isolation
+  -> appbase scopes credential verification to bootstrap tenant_id
+  -> appbase validates credentials within that tenant
+  -> appbase resolves real user_id from IAM data
   -> appbase reads active iam_organization_membership rows
   -> zero organizations: return TENANT-scoped dual-token session
   -> one or more organizations: return LOGIN_CONTEXT_SELECTION challenge
@@ -246,6 +247,7 @@ anonymous login request
 Rules:
 
 - Consuming applications `MUST` treat a login-context challenge as an authenticated-login continuation, not as a normal authenticated session. They `MUST NOT` update the global token manager, protected SDK clients, or route guard as authenticated until appbase returns the final dual-token session.
+- Credential-entry login and registration `MUST` send bootstrap `Access-Token` through the SDK credential hook. Applications `MUST NOT` present tenant-selection UI for these flows; tenant scope is fixed before credential verification.
 - The login-context UI may be a modal, route, or equivalent focused surface. It `MUST` display the personal-login option and only the safe organization choices returned by appbase, then submit the selected context through the generated appbase app SDK continuation method.
 - Login-context continuation credentials `MUST NOT` be used as `authToken` or `accessToken` for application/dependency APIs. They are short-lived, single-purpose credentials for the continuation endpoint only.
 - Consuming applications `MUST NOT` choose the first organization client-side, cache a login-context choice across users, or derive organization id from route/query/local storage without appbase validation.

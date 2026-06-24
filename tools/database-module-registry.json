@@ -119,7 +119,7 @@
     ]
   },
   {
-    "repo": "sdkwork-deploy-server",
+    "repo": "sdkwork-deployments",
     "moduleId": "deploy",
     "serviceCode": "DEPLOY",
     "tablePrefix": "deploy_",

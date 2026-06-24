@@ -144,6 +144,10 @@ Public naming migrations for application identity and commerce capabilities foll
 | `product copy` (i18n/config) | `L1 brand/store copy` or `message-catalog content` | not merchandise |
 | `product OpenAPI` | `application-owned OpenAPI` | authority ownership |
 | `shared foundation gateway` (without plane) | `platform connectivity-plane gateway` | domain `platform` |
+| `sdkwork-<application-code>-gateway` | `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` | application gateway crate; see `APPLICATION_GATEWAY_SPEC.md` and `NAMING_SPEC.md` §4.3.1 |
+| `sdkwork-api-cloud-gateway` | `sdkwork-api-cloud-gateway` | platform gateway crate and repository; see `APPLICATION_GATEWAY_SPEC.md` |
+| `sdkwork-api-cloud-gateway-*` support crates | `sdkwork-api-cloud-gateway-*` | platform gateway config, registry, observability, api-server |
+| bare `gateway` in crate/script names | `standalone-gateway`, `cloud-gateway`, or `api-cloud-gateway` | deployment-profile-qualified gateway ingress |
 | bare `catalog` (i18n normative) | `message catalog` / `i18n catalog fragment` | commerce `catalog` capability |
 | `identity` domain packages | `iam` | identity projection headers |
 | `PRODUCT_OR_PLATFORM` env formula | `PLATFORM_OR_APPLICATION_CODE` or `SDKWORK_<APPLICATION_CODE>_` | — |

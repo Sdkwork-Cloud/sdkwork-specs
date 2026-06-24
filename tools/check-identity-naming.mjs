@@ -80,6 +80,27 @@ function scanText(file, text, rules, root) {
   return issues;
 }
 
+function isRetiredGatewayDocumentation(rel, lineText) {
+  if (!rel.endsWith('.md')) return false;
+  const trimmed = lineText.trimStart();
+  if (trimmed.startsWith('|')) return true;
+  return (
+    /Retired/i.test(lineText) ||
+    /forbidden/i.test(lineText) ||
+    /MUST NOT[`]?\s*invent/i.test(lineText) ||
+    /invent a bare/i.test(lineText) ||
+    /MUST fail on bare/i.test(lineText) ||
+    /Bare `/i.test(lineText) ||
+    /bare `/i.test(lineText) ||
+    /without\s+(?:a\s+)?[`]?standalone/i.test(lineText) ||
+    /without\s+(?:the\s+)?(?:a\s+)?[`]?cloud[`]?\s+qualifier/i.test(lineText) ||
+    /for brevity/i.test(lineText) ||
+    /Retired platform/i.test(lineText) ||
+    /preserve compatib/i.test(lineText) ||
+    /Migration mapping/i.test(lineText)
+  );
+}
+
 function isLegacyTableRow(rel, line, text, index) {
   if (!rel.endsWith('MIGRATION_SPEC.md') && !rel.endsWith('NAMING_SPEC.md')) return false;
   const lineStart = text.lastIndexOf('\n', index) + 1;
@@ -211,6 +232,49 @@ const standardsRules = [
     message: 'retired product app-api qualifier; use app-api',
   },
   {
+    pattern: /sdkwork-api-cloud-gateway(?!-cloud)/gu,
+    message: 'retired bare platform gateway crate sdkwork-api-cloud-gateway; use sdkwork-api-cloud-gateway',
+    allow: (snippet, rel, line, text, index) => {
+      const lineStart = text.lastIndexOf('\n', index) + 1;
+      const lineEnd = text.indexOf('\n', index);
+      const lineText = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
+      const prevLineStart = text.lastIndexOf('\n', lineStart - 2) + 1;
+      const prevLineText = text.slice(prevLineStart, lineStart - 1);
+      const context = `${prevLineText}\n${lineText}`;
+      return (
+        snippet.includes('Retired') ||
+        snippet.includes('retired') ||
+        isLegacyTableRow(rel, line, text, index) ||
+        isRetiredGatewayDocumentation(rel, lineText) ||
+        isRetiredGatewayDocumentation(rel, context)
+      );
+    },
+    onlySpecs: true,
+  },
+  {
+    pattern: /sdkwork-<application-code>-gateway(?!-(?:standalone|cloud))/gu,
+    message: 'retired bare application gateway crate sdkwork-<application-code>-gateway; use -standalone-gateway or -cloud-gateway',
+    allow: (snippet, rel, line, text, index) => {
+      const lineStart = text.lastIndexOf('\n', index) + 1;
+      const lineEnd = text.indexOf('\n', index);
+      const lineText = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
+      const prevLineStart = text.lastIndexOf('\n', lineStart - 2) + 1;
+      const prevLineText = text.slice(prevLineStart, lineStart - 1);
+      const context = `${prevLineText}\n${lineText}`;
+      return (
+        snippet.includes('sdkwork-api-cloud-gateway') ||
+        snippet.includes('-standalone-gateway') ||
+        snippet.includes('-cloud-gateway') ||
+        snippet.includes('Retired') ||
+        snippet.includes('retired') ||
+        isLegacyTableRow(rel, line, text, index) ||
+        isRetiredGatewayDocumentation(rel, lineText) ||
+        isRetiredGatewayDocumentation(rel, context)
+      );
+    },
+    onlySpecs: true,
+  },
+  {
     pattern: /shared foundation gateway/giu,
     message: 'ambiguous shared foundation gateway; use platform connectivity-plane gateway',
     allow: (snippet) => snippet.includes('platform connectivity-plane'),
@@ -252,6 +316,18 @@ const consumerRules = [
     pattern: /sdkwork-[a-z0-9]+-(?:pc|h5)-product(?:[^a-z]|$)/gu,
     message: 'retired client package *-pc-product/*-h5-product; migrate to *-merchandise',
   },
+  {
+    pattern: /name = "sdkwork-api-gateway"/gu,
+    message: 'retired bare platform gateway crate; use sdkwork-api-cloud-gateway',
+  },
+  {
+    pattern: /name = "sdkwork-[a-z0-9]+-gateway"/gu,
+    message: 'retired bare application gateway crate; use sdkwork-<application-code>-standalone-gateway or sdkwork-<application-code>-cloud-gateway',
+    allow: (snippet) =>
+      snippet.includes('sdkwork-api-cloud-gateway') ||
+      snippet.includes('-standalone-gateway') ||
+      snippet.includes('-cloud-gateway'),
+  },
 ];
 
 function scanStandards(root) {
@@ -275,7 +351,7 @@ function scanStandards(root) {
 
 function scanConsumer(root) {
   const targets = [];
-  for (const sub of ['packages', 'apps', 'crates', 'sdks']) {
+  for (const sub of ['packages', 'apps', 'crates', 'services', 'sdks']) {
     const dir = path.join(root, sub);
     if (fs.existsSync(dir)) targets.push(...walk(dir));
   }

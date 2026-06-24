@@ -142,9 +142,9 @@ Rules:
   common SDK root that points at the shared gateway, and the gateway proxies or serves the required
   dependency surfaces.
 - Application dev runners, server launchers, and local all-in-one commands that need shared foundation
-  APIs `MUST` start a managed `sdkwork-api-gateway` process by default or fail fast with an explicit
+  APIs `MUST` start a managed `sdkwork-api-cloud-gateway` process by default or fail fast with an explicit
   configured gateway root. They must not silently fall back to application-local foundation API mounts.
-- A Rust application may depend on `sdkwork-api-gateway` only through its public router
+- A Rust application may depend on `sdkwork-api-cloud-gateway` only through its public router
   builders. It must not copy gateway route registry code, dependency handlers, or foundation module
   internals into the application server.
 - Gateway executable integration evidence comes from native build-tool metadata, such as Cargo

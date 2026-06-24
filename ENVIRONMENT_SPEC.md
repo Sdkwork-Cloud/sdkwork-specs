@@ -495,7 +495,7 @@ Rules:
   validating local SQLite behavior for the application server runtime. Desktop
   client commands such as `pnpm dev:desktop:sqlite` must remain gateway-backed
   client commands when the application standard assigns default API serving to
-  sdkwork-api-gateway.
+  sdkwork-api-cloud-gateway.
 - PostgreSQL secrets should use `password_file` or a platform secret; direct `password` is allowed only when the runtime config file is protected as a secret-bearing file.
 - Development PostgreSQL profiles must use a checked-in `.env.postgres.example`
   file with local-only placeholder values and an ignored `.env.postgres`

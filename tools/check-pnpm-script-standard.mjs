@@ -387,7 +387,7 @@ function pushCommandNameIssues(
   if (!ALLOWED_FIRST_SEGMENTS.has(first)) {
     issues.push(`${prefix}${scriptName}: first segment "${first}" is not a standard public namespace`);
   }
-  if (productPrefixes.includes(first)) {
+  if (productPrefixes.includes(first) && !ALLOWED_FIRST_SEGMENTS.has(first)) {
     issues.push(`${prefix}${scriptName}: ${productPrefixMessage}`);
   }
   pushActionFirstRuntimeTargetIssues(scriptName, issues, prefix);

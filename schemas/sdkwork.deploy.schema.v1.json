@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdkwork.dev/schemas/sdkwork.deploy.schema.v1.json",
+  "title": "SDKWork Deploy Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "profile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "defaultProfile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/profileBlock"
+      }
+    },
+    "install": {
+      "$ref": "#/$defs/install"
+    },
+    "expose": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/exposeItem"
+      }
+    },
+    "packages": {
+      "$ref": "#/$defs/packages"
+    },
+    "overrides": {
+      "$ref": "#/$defs/overrides"
+    }
+  },
+  "oneOf": [
+    {
+      "required": ["profile", "expose"],
+      "not": {
+        "required": ["profiles"]
+      }
+    },
+    {
+      "required": ["profiles", "defaultProfile"],
+      "not": {
+        "anyOf": [
+          { "required": ["profile"] },
+          { "required": ["expose"] },
+          { "required": ["packages"] },
+          { "required": ["overrides"] },
+          { "required": ["install"] }
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "install": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "layout": {
+          "type": "string",
+          "enum": ["source-tree", "binary-package"]
+        }
+      }
+    },
+    "profileBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "$ref": "#/$defs/install"
+        },
+        "expose": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/exposeItem"
+          }
+        },
+        "packages": {
+          "$ref": "#/$defs/packages"
+        },
+        "overrides": {
+          "$ref": "#/$defs/overrides"
+        }
+      }
+    },
+    "exposeItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domain"],
+      "properties": {
+        "domain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tls": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["web", "api", "web+api"]
+        },
+        "web": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": ["adaptive", "auto", "pc", "h5"]
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["pc", "h5"]
+              },
+              "minItems": 1,
+              "maxItems": 2,
+              "uniqueItems": true
+            }
+          ]
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "apiPathStyle": {
+          "type": "string",
+          "enum": ["full-prefix", "strip-prefix"]
+        }
+      }
+    },
+    "packages": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "flutter-mobile",
+              "harmony-mobile",
+              "android-mobile",
+              "ios-mobile",
+              "mini-program-weixin",
+              "mini-program-alipay",
+              "desktop-windows",
+              "desktop-macos",
+              "desktop-linux"
+            ]
+          },
+          "uniqueItems": true
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "overrides": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "allowInsecureTls": {
+          "type": "boolean"
+        },
+        "install": {
+          "$ref": "#/$defs/install"
+        },
+        "proxy": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "web": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "nginx": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "packages": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

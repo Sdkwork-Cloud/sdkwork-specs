@@ -163,7 +163,9 @@ Required crate families for Rust HTTP backends:
 | SQL repository implementation | `sdkwork-<domain>-<capability>-repository-sqlx` | SQLx row mapping, SQL queries, tenant/data-scope-safe repository implementation |
 | HTTP API server process | `sdkwork-<application-code>-api-server` | config, state, dependency wiring, route mounting, listener, preflight |
 | In-process service host | `sdkwork-<application-code>-service-host` | service container for standalone/native usage, no HTTP route mounting |
-| Gateway/proxy | `sdkwork-<application-code>-gateway` | upstream routing, route precedence, dependency API surface proxying |
+| Standalone gateway/proxy | `sdkwork-<application-code>-standalone-gateway` | standalone application ingress, upstream routing, route precedence, dependency API surface proxying |
+| Cloud gateway/proxy | `sdkwork-<application-code>-cloud-gateway` | cloud application ingress, upstream routing, route precedence, dependency API surface proxying |
+| Platform gateway | `sdkwork-api-cloud-gateway` | shared `platform.api-gateway` ingress |
 
 Required route crate shape:
 
@@ -235,7 +237,8 @@ Rules:
   crates. They must not fork appbase IAM/session/context behavior into application route crates.
 - Rust crates `MUST NOT` use generic `product`, `runtime`, `backend`, `core`, `common`, or
   `manager` suffixes for application entrypoints, service aggregation, or backend implementation.
-  Use `api-server`, `service-host`, `native-host`, `worker`, or `gateway` according to
+  Use `api-server`, `service-host`, `native-host`, `worker`, `standalone-gateway`,
+  `cloud-gateway`, or platform `sdkwork-api-cloud-gateway` according to
   `RUST_CODE_SPEC.md`.
 
 ## 4.3 Backend Anti-Patterns

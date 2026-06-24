@@ -248,7 +248,7 @@ Rules:
   service URLs. Dependency-specific upstream env keys are allowed as explicit split-deployment
   overrides, and tests must make that override status visible.
 - Managed gateway startup `MUST` use the native build command for the gateway application, such as
-  `cargo run -p sdkwork-api-gateway-service --bin sdkwork-api-gateway`, from the gateway workspace.
+  `cargo run -p sdkwork-api-cloud-gateway-service --bin sdkwork-api-cloud-gateway`, from the gateway workspace.
   Application launchers must not introduce a second machine-readable gateway catalog to discover
   foundation surfaces.
 - If the application edge server uses the gateway's standard local port, the application may choose a

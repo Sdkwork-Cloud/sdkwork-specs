@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: Rust crates, workspaces, route crates, Tauri/native Rust, Rust services, Rust SDK facades, and Rust tests
-- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`
+- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`
 
 This standard applies only when Rust source, Cargo manifests, Rust route crates, Tauri Rust code, or Rust RPC code is touched.
 
@@ -30,10 +30,13 @@ Allowed authored Rust crate families:
 | In-process service host | `sdkwork-<application-code>-service-host` | standalone/native service container, no HTTP route mounting |
 | Native/Tauri host | `sdkwork-<application-code>-native-host` or `sdkwork-<application-code>-tauri-host` | native commands, host state, platform adapters |
 | Background job process | `sdkwork-<domain>-<capability>-worker` | jobs, scheduling, queues, retries, cursors, locks |
-| API gateway/proxy | `sdkwork-<application-code>-gateway` | upstream routing, route precedence, dependency API surface proxying |
+| API gateway/proxy (standalone deployment) | `sdkwork-<application-code>-standalone-gateway` | standalone application ingress, upstream routing, route precedence, dependency API surface proxying, optional embedded platform adapter |
+| API gateway/proxy (cloud deployment) | `sdkwork-<application-code>-cloud-gateway` | cloud application ingress, upstream routing, route precedence, dependency API surface proxying |
+| Platform API gateway | `sdkwork-api-cloud-gateway` | shared `platform.api-gateway` ingress for SDKWork platform APIs |
 
 Forbidden Rust crate suffixes for new and existing SDKWork Rust crates:
 
+- `sdkwork-<application-code>-gateway` (bare application gateway without `standalone` or `cloud` qualifier)
 - `sdkwork-<application-code>-product`
 - `sdkwork-<application-code>-runtime`
 - `sdkwork-<domain>-<capability>-runtime`
@@ -300,12 +303,48 @@ Rules:
 - Worker crates `MUST NOT` expose HTTP route authority unless they are split into an `api-server`
   crate.
 
-Standard gateway crate layout:
+Standard standalone application gateway crate layout:
 
 ```text
-crates/sdkwork-<application-code>-gateway/
+crates/sdkwork-<application-code>-standalone-gateway/
   Cargo.toml
   README.md
+  specs/
+    component.spec.json
+  src/
+    main.rs
+    lib.rs
+    routing/
+      mod.rs
+      table.rs
+      precedence.rs
+      upstreams.rs
+    proxy/
+      mod.rs
+      request.rs
+      response.rs
+    auth/
+      mod.rs
+      context_forwarding.rs
+    preflight/
+      mod.rs
+      upstreams.rs
+    health.rs
+  tests/
+    route_precedence_smoke.rs
+    upstream_config_smoke.rs
+    dependency_surface_smoke.rs
+    fail_closed_smoke.rs
+```
+
+Standard cloud application gateway crate layout:
+
+```text
+crates/sdkwork-<application-code>-cloud-gateway/
+  Cargo.toml
+  README.md
+  specs/
+    component.spec.json
   src/
     main.rs
     lib.rs
@@ -334,8 +373,11 @@ crates/sdkwork-<application-code>-gateway/
 
 Rules:
 
-- Gateway crates own upstream routing, route precedence, proxying, dependency API surface routing,
-  and fail-closed upstream validation.
+- Standalone and cloud application gateway crates own upstream routing, route precedence,
+  proxying, dependency API surface routing, and fail-closed upstream validation for their
+  declared deployment profile.
+- Application gateway crates `MUST NOT` use a bare `-gateway` suffix without `standalone` or
+  `cloud`.
 - Gateway crates `MUST NOT` own business service rules, business repositories, or
   application-owned SDK generation authority.
 

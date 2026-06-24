@@ -26,7 +26,9 @@ Rules:
 
 Rules:
 
-- Intake follows `REQUIREMENTS_SPEC.md`.
+- Intake follows `REQUIREMENTS_SPEC.md` and `DOCUMENTATION_SPEC.md` section 2.
+- Product scope `MUST` be reflected in `docs/product/prd/PRD.md` before non-trivial work begins.
+- Implementable units `MUST` be captured as `docs/product/requirements/REQ-*` records or as an explicit PRD section with acceptance criteria when the work remains a single reviewable unit.
 - Clarification should identify goals, non-goals, affected surfaces, constraints, risk level, required specs, and expected evidence.
 - Product, security, data, migration, release, and generated SDK implications must be identified before implementation when relevant.
 - If the task spans unrelated subsystems, split it into separate work items unless one end-to-end workflow is the deliverable.
@@ -36,6 +38,8 @@ Rules:
 Rules:
 
 - Architecture decisions follow `ARCHITECTURE_DECISION_SPEC.md`.
+- Repository baseline architecture `MUST` stay current in `docs/architecture/tech/TECH_ARCHITECTURE.md` when accepted ADRs change boundaries or technology choices.
+- Implementation plans `SHOULD` live under `docs/engineering/plans/PLAN-*` when the work spans multiple reviewable units.
 - Implementation plans should be small enough to review and verify incrementally.
 - Plans should name exact files or component areas, expected commands, expected evidence, and rollback or recovery steps when relevant.
 - Plans must not propose hand-editing generated SDK output.

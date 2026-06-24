@@ -10,7 +10,9 @@ This standard defines how SDKWork work enters the engineering system. Requiremen
 
 Rules:
 
-- Work that changes user behavior, public contracts, runtime behavior, security posture, data shape, release behavior, or cross-repository behavior `MUST` have an explicit requirement record before implementation.
+- Product scope and outcomes for a repository or application `MUST` be captured in `docs/product/prd/PRD.md` before non-trivial engineering work begins.
+- `docs/product/prd/PRD.md` is the product authority. `docs/product/requirements/REQ-*` records are the engineering authority for implementable units of work.
+- Work that changes user behavior, public contracts, runtime behavior, security posture, data shape, release behavior, or cross-repository behavior `MUST` have an explicit `REQ-*` record under `docs/product/requirements/` before implementation, unless the change is captured as a new or updated section inside `docs/product/prd/PRD.md` with explicit acceptance criteria and the work remains small enough for a single reviewable unit.
 - Small clarifications and mechanical standard updates may use the task message as the requirement record only when scope, acceptance criteria, and affected files are unambiguous.
 - Requirements `MUST` cite the relevant root specs instead of restating them.
 - Requirements `MUST` distinguish product behavior from engineering implementation constraints.
@@ -18,6 +20,12 @@ Rules:
 - If the requirement conflicts with a root spec, implementation stops until `GOVERNANCE_SPEC.md` records an approved exception or the requirement is revised.
 
 ## 2. Requirement Shape
+
+Recommended path:
+
+```text
+docs/product/requirements/REQ-YYYY-NNNN-<short-title>.md
+```
 
 Every non-trivial requirement record should include:
 
@@ -64,6 +72,7 @@ verification:
 Rules:
 
 - Requirement ids `MUST` be stable once referenced by design, tests, release notes, or migration plans.
+- `docs/product/prd/PRD.md` `SHOULD` link to active `REQ-*` records in its linked requirements section.
 - Acceptance criteria `MUST` be testable or reviewable. "Improve", "optimize", "make better", or "support as needed" is not sufficient without a measurable or observable boundary.
 - Non-goals are required when a requested change could be interpreted across multiple domains, surfaces, app roots, or SDK families.
 - Security, privacy, performance, and reliability entries may explicitly say "none beyond root standards" only after the relevant root spec has been checked.
@@ -115,6 +124,7 @@ Requirements verification should prove:
 
 ## 7. Acceptance Checklist
 
+- [ ] `docs/product/prd/PRD.md` exists and states product goals, non-goals, and linked `REQ-*` records when applicable.
 - [ ] Requirement id, owner, status, source, goals, and non-goals are defined.
 - [ ] Affected app/repository/component and root specs are known.
 - [ ] Acceptance criteria are testable or reviewable.

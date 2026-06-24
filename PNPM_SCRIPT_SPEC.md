@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: public `package.json#scripts` command names for SDKWork application repositories, application roots, app surface roots, and TypeScript/JavaScript packages
-- Related: `README.md`, `SOUL.md`, `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `RELEASE_SPEC.md`, `TEST_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`
+- Related: `README.md`, `SOUL.md`, `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `RELEASE_SPEC.md`, `TEST_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`
 
 This standard defines the public `pnpm` command surface for SDKWork. It prevents each application from inventing application-code-prefixed or locally ordered commands such as `drive:dev`, `clawrouter:dev`, or `im:dev`.
 
@@ -280,8 +280,11 @@ gateway:plan:standalone
 gateway:build:standalone
 gateway:package:standalone
 gateway:validate:standalone
-gateway:package:cloud
+gateway:run:cloud
+gateway:plan:cloud
+gateway:build:cloud
 gateway:validate:cloud
+gateway:package:cloud
 gateway:matrix
 gateway:matrix:standalone
 gateway:matrix:cloud
@@ -292,6 +295,17 @@ Rules:
 - Use `gateway:package:cloud`, not `gateway:cloud:bundle`.
 - Use `gateway:package:standalone`, not `gateway:standalone:pack`.
 - Use `gateway:validate:<deploymentProfile>` for package/bundle validation.
+- `gateway:*:standalone` commands `MUST` target
+  `sdkwork-<application-code>-standalone-gateway` when the repository owns an application
+  standalone gateway crate.
+- `gateway:*:cloud` commands `MUST` target `sdkwork-<application-code>-cloud-gateway` when
+  the repository owns an application cloud gateway crate.
+- Repositories that only package `platform.api-gateway` config bundles and do not own an
+  application gateway crate `MAY` expose `gateway:package:cloud` and
+  `gateway:validate:cloud` without a local gateway binary, but `MUST NOT` invent a bare
+  `sdkwork-<application-code>-gateway` crate name in scripts or docs.
+- Retired gateway script names `gateway:bundle:*` and `gateway:bundle:validate:*` `MUST` be
+  renamed to `gateway:package:*` and `gateway:validate:*`.
 
 ## 8. Release And Deployment Commands
 

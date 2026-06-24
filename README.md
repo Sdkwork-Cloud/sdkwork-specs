@@ -4,6 +4,16 @@ This directory is the canonical standards entrypoint for SDKWork application and
 
 All applications, API modules, SDK generator inputs, Java services, Rust local services, frontend shared packages, and agent instructions must reference these files instead of maintaining divergent local standards.
 
+## Documentation Canon
+
+This standards repository follows the repository documentation layout in `DOCUMENTATION_SPEC.md` section 2:
+
+- [docs/README.md](docs/README.md) �?documentation index and audience routing
+- [docs/product/prd/PRD.md](docs/product/prd/PRD.md) �?standards governance and documentation goals
+- [docs/architecture/tech/TECH_ARCHITECTURE.md](docs/architecture/tech/TECH_ARCHITECTURE.md) �?standards repository technical architecture
+
+Consumer repositories must adopt the same Canon layout. Scaffold with `node tools/bootstrap-repository-docs.mjs --root <repo>`.
+
 ## 1. Spec Layers
 
 | Layer | Spec files | Responsibility |
@@ -14,7 +24,7 @@ All applications, API modules, SDK generator inputs, Java services, Rust local s
 | Foundation contracts | `DOMAIN_SPEC.md`, `API_SPEC.md`, `INTERNAL_API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `DISCOVERY_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RUST_RPC_SPEC.md`, `DATABASE_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `SCHEMA_REGISTRY_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md` | Domain boundaries, HTTP contracts, internal application ingress HTTP contracts, mandatory web framework integration, web backend implementation boundaries, RPC/gRPC contracts, mandatory RPC framework integration and invocation runtime, RPC resilience profiles, service discovery and versioned runtime config control plane, RPC SDK workspace generation, Rust RPC implementation profile, persistence contracts, database lifecycle and SPI orchestration, compositional schema registry ownership and assembly, Drive file/storage lifecycle, media resource contracts, primary SDK semantics, and SDK workspace generation details |
 | Reusable app modules | `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `I18N_SPEC.md` | App shell, cross-client architecture alignment, compositional SDK/appbase integration, PC browser/desktop/tablet roots, H5/Capacitor application roots, Flutter mobile roots, mini program roots, native Android roots, native iOS roots, native HarmonyOS roots, reusable building blocks, local component specs, common UI-service-SDK layering, UI architecture selection, architecture-specific UI package rules, desktop/tablet Tauri host architecture, dev/test/staging/prod runtime config, client/server/container/browser environment variables, user-facing and operator-facing language |
 | Core platform capabilities | `IAM_SPEC.md`, `IAM_RBAC_FEDERATION_SPEC.md`, `IAM_MODULE_MANIFEST_SPEC.md`, `IAM_DIRECTORY_TEMPLATE_SPEC.md`, `IAM_CATALOG_GOVERNANCE_SPEC.md`, `PERMISSION_STANDARD_SPEC.md`, `IAM_APPLICATION_BOOTSTRAP_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md` | Tenants, organizations, users, auth, IMF RBAC federation, IAM application bootstrap, appbase IAM login integration, app registration, security and data protection |
-| Runtime and integration | `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `APP_RUNTIME_TOPOLOGY_ADOPTION.md`, `NGINX_SPEC.md`, `INTEGRATION_SPEC.md`, `EVENT_SPEC.md` | Runtime filesystem layout, database/Redis host config, standalone/cloud deployment parity, application mode/runtime target coverage, application runtime connectivity topology (deployment profile, service layout, connectivity planes, surfaces, profiles), naming registry, archetype catalog, adoption guide, public reverse proxy deployment, external providers, events, async contracts |
+| Runtime and integration | `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SDKWORK_DEPLOY_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `APP_RUNTIME_TOPOLOGY_ADOPTION.md`, `NGINX_SPEC.md`, `INTEGRATION_SPEC.md`, `EVENT_SPEC.md` | Runtime filesystem layout, database/Redis host config, standalone/cloud deployment parity, per-application `deployments/deploy.yaml` contract and deployctl tooling, application gateway naming and structure, application mode/runtime target coverage, application runtime connectivity topology (deployment profile, service layout, connectivity planes, surfaces, profiles), naming registry, archetype catalog, adoption guide, public reverse proxy deployment, external providers, events, async contracts |
 | GitHub packaging workflows | `GITHUB_WORKFLOW_SPEC.md` | Standard reusable GitHub Actions packaging, release, artifact publication, dependency checkout, deployment environment, and supply-chain policy integration |
 | Production readiness | `CACHE_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `TEST_SPEC.md` | Cache runtime, logs, metrics, traces, performance budgets, verification |
 | Governance and knowledge | `GOVERNANCE_SPEC.md`, `DOCUMENTATION_SPEC.md` | Spec ownership, exceptions, changelogs, module docs, runbooks |
@@ -93,11 +103,13 @@ All applications, API modules, SDK generator inputs, Java services, Rust local s
 | `IAM_DIRECTORY_TEMPLATE_SPEC.md` | Federated org/dept/position/membership seed templates | Seeding operational directory trees through IMF |
 | `IAM_CATALOG_GOVERNANCE_SPEC.md` | Catalog versioning, deprecation, lock snapshots, release gates | Changing permission lifecycle, registry lock policy, or catalog breaking changes |
 | `PERMISSION_STANDARD_SPEC.md` | Standard roles, permission code grammar, operation mapping summary | Implementing authorization checks, role seeds, or OpenAPI `x-sdkwork-permission` |
-| `IAM_APPLICATION_BOOTSTRAP_SPEC.md` | Registered application templates, tenant applications, register → provision → enable → access credential bootstrap, `@sdkwork/iam-application-bootstrap`, manifest mapping, bootstrap auth, and application onboarding enforcement | Onboarding new SDKWork applications, provisioning tenant runtime instances, issuing bootstrap access credentials, or wiring IAM application bootstrap scripts |
+| `IAM_APPLICATION_BOOTSTRAP_SPEC.md` | Registered application templates, tenant applications, register �?provision �?enable �?access credential bootstrap, `@sdkwork/iam-application-bootstrap`, manifest mapping, bootstrap auth, and application onboarding enforcement | Onboarding new SDKWork applications, provisioning tenant runtime instances, issuing bootstrap access credentials, or wiring IAM application bootstrap scripts |
 | `IAM_LOGIN_INTEGRATION_SPEC.md` | Fast IAM login/session integration through sdkwork-appbase, generated app SDK wiring, anonymous login creation, organization-selection continuation, AuthGate/logout behavior, Rust AppContext validation, and Tauri/standalone/cloud runtime boundaries | Integrating login validation into an app, wiring appbase auth UI/runtime, adding route guards, validating Rust protected APIs, fixing logout/session behavior, or adding tenant/organization login behavior |
 | `SECURITY_SPEC.md` | Token model, tenant-bound token signing, authn/authz, secrets, rate limits, CORS, input validation, secure logging | Any protected API, token validation/signing behavior, tenant isolation behavior, or sensitive UI flow |
 | `PRIVACY_SPEC.md` | Data classification, minimization, retention, export/delete, residency | Handling tenant, personal, sensitive, or regulated data |
 | `DEPLOYMENT_SPEC.md` | Standalone/cloud deployment profile parity, full application mode/runtime target matrix, Java/Rust switching, runtime bootstrap | Supporting standardized application deployment architecture across browser, desktop, server, container, mobile, tablet, mini program, and test targets |
+| `APPLICATION_GATEWAY_SPEC.md` | Application and platform gateway roles, deployment-profile-qualified crate naming (`standalone-gateway`, `cloud-gateway`, `sdkwork-api-cloud-gateway`), repository layout, topology bindings, component contracts, pnpm command mapping, and gateway verification | Creating, renaming, structuring, orchestrating, packaging, or validating any application or platform HTTP gateway crate, script, or release artifact |
+| `SDKWORK_DEPLOY_SPEC.md` | Per-application `deployments/deploy.yaml`, install layouts, adaptive Web, API/WebSocket inference, Nginx site generation, client package orchestration, deployctl validation | Creating or maintaining application deploy manifests, nginx publish plans, or SDKWork Deploy Server integration |
 | `GITHUB_WORKFLOW_SPEC.md` | SDKWork GitHub Actions packaging and deployment workflow standard: `sdkwork.workflow.json`, thin application workflow entrypoint, reusable `sdkwork-github-workflow`, matrix planning, dependency checkout, lifecycle execution, artifact publication, Release upload, attestations, and deployment environments | Creating, standardizing, or maintaining application packaging/release/deployment GitHub workflows or the `sdkwork-github-workflow` framework |
 | `NGINX_SPEC.md` | nginx reverse proxy path convention, generated site configs, TLS certificate paths, release proxy handoff | Publishing an app through nginx or changing public proxy config |
 | `INTEGRATION_SPEC.md` | External providers, connectors, OAuth links, webhooks, retries, provider IDs | Integrating third-party systems |
@@ -106,7 +118,7 @@ All applications, API modules, SDK generator inputs, Java services, Rust local s
 | `OBSERVABILITY_SPEC.md` | Logs, metrics, traces, audit correlation, operational diagnostics | Adding production behavior |
 | `PERFORMANCE_SPEC.md` | Latency budgets, pagination, scalability, frontend and SDK performance | Adding high-traffic or interactive behavior |
 | `TEST_SPEC.md` | Contract tests, SDK generation tests, module tests, security tests, parity tests | Closing any feature or standard change |
-| `DOCUMENTATION_SPEC.md` | Module README, API examples, ADRs, changelogs, runbooks | Making a capability reusable by other apps |
+| `DOCUMENTATION_SPEC.md` | Repository documentation layout, Canon PRD, technical architecture, module README, API examples, ADRs, changelogs, runbooks | Making a capability reusable by other apps or onboarding a repository/application |
 | `GOVERNANCE_SPEC.md` | Spec ownership, exception register, compatibility, migration and review process | Changing standards or making exceptions |
 
 ## 3. Development Entry Matrix
@@ -116,7 +128,8 @@ Use this table before starting new application work.
 | Task | Read first | Then read |
 | --- | --- | --- |
 | Execute any agentic repository task | `SOUL.md` | nearest `AGENTS.md`, then `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, and the task-specific specs |
-| Create or maintain a git repository root or application root | `SDKWORK_WORKSPACE_SPEC.md` | `PNPM_SCRIPT_SPEC.md`, `AGENTS_SPEC.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, and the root specs for the repository/application capabilities |
+| Create or maintain a git repository root or application root | `SDKWORK_WORKSPACE_SPEC.md` | `DOCUMENTATION_SPEC.md`, `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `AGENTS_SPEC.md`, `GOVERNANCE_SPEC.md`, and the root specs for the repository/application capabilities |
+| Create or maintain repository documentation layout, PRD, or technical architecture | `DOCUMENTATION_SPEC.md` | `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `TEST_SPEC.md`; scaffold with `tools/bootstrap-repository-docs.mjs` |
 | Create or maintain `AGENTS.md` or compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` | `AGENTS_SPEC.md` | `SOUL.md`, `SDKWORK_WORKSPACE_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md` |
 | Make any authored code change | `CODE_STYLE_SPEC.md` | `NAMING_SPEC.md`, then only the language/framework spec for touched files |
 | Touch Rust source, Cargo manifests, Rust route crates, Tauri Rust, or Rust RPC code | `RUST_CODE_SPEC.md` | `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, and `RUST_RPC_SPEC.md` only when RPC is touched |
@@ -175,9 +188,11 @@ Use this table before starting new application work.
 | Build frontend UI/business logic | `FRONTEND_SPEC.md` | `MODULE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md` |
 | Add or change user-facing copy/i18n | `I18N_SPEC.md` | `FRONTEND_SPEC.md`, `IAM_SPEC.md`, `SECURITY_SPEC.md` for auth/security copy, `TEST_SPEC.md` for catalog fragmentation, duplicate-key, missing-key, and fallback validation |
 | Switch standalone/cloud deployment profile | `DEPLOYMENT_SPEC.md` | `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `API_SPEC.md`, `DATABASE_SPEC.md`, `TEST_SPEC.md` |
-| Define application ingress, multi-plane URLs, dev orchestration profiles, or gateway surface ownership | `APP_RUNTIME_TOPOLOGY_SPEC.md` | `APP_RUNTIME_TOPOLOGY_NAMING.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `APP_RUNTIME_TOPOLOGY_ADOPTION.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `CONFIG_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `../sdkwork-app-topology/README.md` |
+| Define application ingress, multi-plane URLs, dev orchestration profiles, or gateway surface ownership | `APP_RUNTIME_TOPOLOGY_SPEC.md` | `APPLICATION_GATEWAY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `APP_RUNTIME_TOPOLOGY_ADOPTION.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `CONFIG_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `../sdkwork-app-topology/README.md` |
+| Create, rename, or validate application/platform gateway crates, scripts, or release artifacts | `APPLICATION_GATEWAY_SPEC.md` | `NAMING_SPEC.md` §4.3.1, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md` §10, `WEB_FRAMEWORK_SPEC.md`, `RUST_CODE_SPEC.md`, `PNPM_SCRIPT_SPEC.md` §7, `SDKWORK_WORKSPACE_SPEC.md`, `COMPONENT_SPEC.md`, `MIGRATION_SPEC.md` §8, `TEST_SPEC.md` |
 | Create or maintain GitHub packaging, release, artifact, or deployment workflows | `GITHUB_WORKFLOW_SPEC.md` | `RELEASE_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `QUALITY_GATE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, and `TYPESCRIPT_CODE_SPEC.md` when changing the framework planner or Node tooling |
-| Publish through nginx | `NGINX_SPEC.md` | `DEPLOYMENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md` |
+| Publish through nginx | `NGINX_SPEC.md` | `SDKWORK_DEPLOY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md` |
+| Create or maintain application deploy manifest, install layout, adaptive Web, or deployctl/nginx plans | `SDKWORK_DEPLOY_SPEC.md` | `DEPLOYMENT_SPEC.md`, `NGINX_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `RELEASE_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `TEST_SPEC.md` |
 | Add or change runtime directories, service install paths, desktop private paths, database config, Redis config, logs, cache, or secret files | `RUNTIME_DIRECTORY_SPEC.md` | `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md` |
 | Add or change env variables, `.env` files, runtime config files, or SDK base URL config | `ENVIRONMENT_SPEC.md` | `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md` |
 | Add or change cache runtime, Redis/local cache, cache invalidation, QR/login temporary cache, or admin cache management | `CACHE_SPEC.md` | `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md` |
@@ -204,8 +219,10 @@ Use this table before starting new application work.
   `sdkwork-router-<capability>-<surface>`, HTTP server processes use
   `sdkwork-<application-code>-api-server`, in-process service containers use `sdkwork-<application-code>-service-host`,
   native hosts use `sdkwork-<application-code>-native-host` or `sdkwork-<application-code>-tauri-host`, background jobs use
-  `sdkwork-<domain>-<capability>-worker`, and gateway/proxy processes use
-  `sdkwork-<application-code>-gateway`. Generic Rust crate names such as `sdkwork-<application-code>-product`,
+  `sdkwork-<domain>-<capability>-worker`, standalone application gateways use
+  `sdkwork-<application-code>-standalone-gateway`, cloud application gateways use
+  `sdkwork-<application-code>-cloud-gateway`, and the platform gateway remains
+  `sdkwork-api-cloud-gateway`. Generic Rust crate names such as `sdkwork-<application-code>-product`,
   `sdkwork-<application-code>-runtime`, `sdkwork-<application-code>-backend`, `sdkwork-<application-code>-core`,
   `sdkwork-<application-code>-common`, and `sdkwork-<application-code>-manager` are not compliant names.
 - Domain naming starts from `DOMAIN_SPEC.md`; do not invent `identity` when the standard domain is `iam`.
@@ -332,9 +349,11 @@ If an app keeps a local copy for convenience, the root `specs/` version remains 
       services use `sdkwork-<domain>-<capability>-service`, SQLx repositories use
       `sdkwork-<domain>-<capability>-repository-sqlx`, runnable HTTP servers use
       `sdkwork-<application-code>-api-server`, in-process service containers use
-      `sdkwork-<application-code>-service-host`, native hosts use `sdkwork-<application-code>-native-host` or
-      `sdkwork-<application-code>-tauri-host`, workers use `sdkwork-<domain>-<capability>-worker`, and
-      gateways use `sdkwork-<application-code>-gateway`. Do not create or retain Rust crates named with generic
+      `sdkwork-<application-code>-service-host`, native hosts use       `sdkwork-<application-code>-native-host` or
+      `sdkwork-<application-code>-tauri-host`, workers use `sdkwork-<domain>-<capability>-worker`,
+      standalone gateways use `sdkwork-<application-code>-standalone-gateway`, cloud gateways use
+      `sdkwork-<application-code>-cloud-gateway`, and the platform gateway remains
+      `sdkwork-api-cloud-gateway`. Do not create or retain Rust crates named with generic
       `product`, `runtime`, `backend`, `core`, `common`, or `manager` suffixes.
 - [ ] Define RPC services with `RPC_SPEC.md` before proto/client generation when cross-language direct calls are required.
 - [ ] Integrate RPC framework, resolver, and bootstrap stages with `RPC_FRAMEWORK_SPEC.md` when serving or consuming gRPC across process boundaries.
@@ -370,6 +389,7 @@ If an app keeps a local copy for convenience, the root `specs/` version remains 
       target coverage with `DEPLOYMENT_SPEC.md`, `APP_MANIFEST_SPEC.md`,
       `GITHUB_WORKFLOW_SPEC.md`, and `TEST_SPEC.md`.
 - [ ] Add module README, examples, changelog, and runbook using `DOCUMENTATION_SPEC.md`.
+- [ ] Add or update `docs/product/prd/PRD.md`, `docs/architecture/tech/TECH_ARCHITECTURE.md`, and `docs/README.md` using `DOCUMENTATION_SPEC.md`.
 
 ## 6. Future Standards Roadmap
 

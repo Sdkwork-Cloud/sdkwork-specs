@@ -4,7 +4,7 @@
 - Scope: architecture decisions, architecture descriptions, decision records, views, tradeoffs, consequences, architecture evidence
 - Related: `REQUIREMENTS_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `DATABASE_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `QUALITY_GATE_SPEC.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork records architecture decisions. It aligns with the ISO/IEC/IEEE 42010 architecture-description model without requiring heavyweight ceremony for small changes.
+This standard defines how SDKWork records architecture decisions. Repository baseline architecture lives in `docs/architecture/tech/TECH_ARCHITECTURE.md`. Point-in-time decisions live in `docs/architecture/decisions/`. It aligns with the ISO/IEC/IEEE 42010 architecture-description model without requiring heavyweight ceremony for small changes.
 
 ## 1. When Required
 
@@ -21,8 +21,36 @@ Rules:
 - Do not use architecture decisions to bypass root standards. Exceptions follow `GOVERNANCE_SPEC.md`.
 - For simple additive work, a short decision section inside the requirement or implementation plan is enough if no long-lived architecture consequence exists.
 - Architecture records must cite the more specific SDKWork spec that owns the technical rule.
+- `docs/architecture/tech/TECH_ARCHITECTURE.md` `MUST` summarize the current baseline architecture and link to active `ADR-*` records. It `MUST` be updated when accepted ADRs change the baseline.
+- `docs/adr/` is a retired layout. New ADRs `MUST` use `docs/architecture/decisions/`.
 
-## 2. Decision Record Shape
+## 2. Baseline Technical Architecture
+
+Every independent SDKWork git repository root and every independent SDKWork application root with active `docs/` `MUST` maintain:
+
+```text
+docs/architecture/tech/TECH_ARCHITECTURE.md
+```
+
+Rules:
+
+- `TECH_ARCHITECTURE.md` explains repository-specific technology choices, module boundaries, runtime topology, and the SDKWork standards selected for this repository.
+- `TECH_ARCHITECTURE.md` `MUST NOT` duplicate root `sdkwork-specs` bodies. It cites them and documents only local choices and boundaries.
+- Standard architecture views `MAY` live in `docs/architecture/views/` and `MUST` be linked from `TECH_ARCHITECTURE.md` when used.
+- When a decision changes the long-lived baseline, update `TECH_ARCHITECTURE.md` and record or supersede the corresponding `ADR-*`.
+
+Recommended `TECH_ARCHITECTURE.md` header:
+
+```md
+# <Product Name> Technical Architecture
+
+Status: draft | active | deprecated
+Owner: <team-or-person>
+Updated: YYYY-MM-DD
+Specs: ARCHITECTURE_DECISION_SPEC.md, DOCUMENTATION_SPEC.md, <selected architecture standards>
+```
+
+## 3. Decision Record Shape
 
 Recommended path:
 
@@ -58,7 +86,7 @@ Rules:
 - `Verification` names tests, static scans, manifests, diagrams, or review gates that keep the decision true.
 - Superseded records remain in history and point to the replacement.
 
-## 3. Architecture Views
+## 4. Architecture Views
 
 Architecture descriptions should include only the views needed for the decision:
 
@@ -79,7 +107,7 @@ Rules:
 - Diagrams must not become the only source of truth for API paths, SDK names, database identifiers, route ids, or package names.
 - Architecture views must not contain secrets, live tokens, private keys, or private environment endpoints.
 
-## 4. Decision Boundaries
+## 5. Decision Boundaries
 
 Rules:
 
@@ -91,7 +119,7 @@ Rules:
 - Security and privacy decisions follow `SECURITY_SPEC.md` and `PRIVACY_SPEC.md`.
 - Deployment and runtime decisions follow `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, and `DEPLOYMENT_SPEC.md`.
 
-## 5. Review And Governance
+## 6. Review And Governance
 
 Rules:
 
@@ -100,8 +128,9 @@ Rules:
 - If implementation discovers that a decision is wrong, update or supersede the decision before expanding the change.
 - Decisions may be validated by tests, static scans, manifest checks, dependency graph checks, generated SDK checks, and release preflight checks.
 
-## 6. Acceptance Checklist
+## 7. Acceptance Checklist
 
+- [ ] `docs/architecture/tech/TECH_ARCHITECTURE.md` exists and cites the relevant SDKWork architecture, API, SDK, database, security, and deployment standards.
 - [ ] Decision has context, chosen approach, alternatives, consequences, owner, status, and date.
 - [ ] Relevant SDKWork specs are cited.
 - [ ] Required architecture views are present and scoped.

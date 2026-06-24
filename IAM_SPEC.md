@@ -194,7 +194,8 @@ Rules:
 
 - Login/session-creation requests `MUST NOT` require or trust inbound credentials or SDKWork context-projection headers to choose tenant, organization, user, data scope, or permission scope. Implementations `SHOULD` reject credential/context headers on login creation endpoints unless an explicit reauthentication or continuation endpoint documents them.
 - Login credential verification `MUST` resolve a real `iam_user` and a real active tenant binding before token issuance. The tenant id used for token claims comes from persisted IAM user/tenant data, not from the login request payload.
-- If one credential can resolve to more than one active tenant, the login flow `MUST` return a tenant-selection challenge or fail closed. It `MUST NOT` silently choose a default tenant.
+- Credential-entry routes that require bootstrap `Access-Token` for tenant isolation `MUST` scope credential verification to the resolved bootstrap `tenant_id`. Cross-tenant credential matches outside that tenant `MUST` fail closed with invalid credentials. These routes `MUST NOT` emit `TENANT_SELECTION` challenges.
+- Credential-entry routes without a valid bootstrap `Access-Token` `MUST` fail closed. They `MUST NOT` emit `TENANT_SELECTION` challenges or silently choose a default tenant.
 - After resolving `tenant_id` and `user_id`, login `MUST` query active `iam_organization_membership` rows for that tenant and user.
 - If no active organization membership exists, login `MUST` issue a personal session with `organization_id = 0` or no organization claim and `login_scope = "TENANT"`.
 - If one or more active organization memberships exist, login `MUST NOT` auto-issue an organization session, even when only one organization exists. Login `MUST` return a `LOGIN_CONTEXT_SELECTION` challenge that includes at least:

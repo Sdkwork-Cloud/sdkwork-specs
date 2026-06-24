@@ -174,7 +174,7 @@ gateway when consoles use IAM.
 
 Rules:
 
-- Edge ingress is never proxied by `sdkwork-api-gateway`.
+- Edge ingress is never proxied by `sdkwork-api-cloud-gateway`.
 - OTA/device activation responses `MUST` use public URLs from the active profile.
 - Standalone edge deployments must still use explicit edge/device surfaces
   instead of hiding device protocols behind application HTTP URLs.

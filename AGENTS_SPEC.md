@@ -128,6 +128,7 @@ Language specs are on-demand. Do not require agents to load Rust, Java, TypeScri
 - `sdkwork.app.config.json`: application identity, app metadata, release surfaces, and owned capabilities.
 - `.sdkwork/`: local skills, plugins, manifests, and repository/application AI workspace metadata.
 - `specs/`: local app/component contracts and narrowing rules.
+- `docs/`: repository/application documentation layout; Canon entrypoints are `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 - `sdks/`: SDK families, OpenAPI authorities, derived generator inputs, route manifests, SDK assembly, and generated outputs.
 - language manifests such as `package.json`, `Cargo.toml`, `pom.xml`, `pyproject.toml`, or `pubspec.yaml`.
 
@@ -155,6 +156,7 @@ Read `sdkwork.app.config.json` before changing application behavior, runtime con
 - `AGENTS.md`: agent execution rules.
 - `.sdkwork/`: local skills, plugins, and manifests.
 - `specs/`: local application or component contracts.
+- `docs/`: Canon documentation at `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 - `sdks/`: OpenAPI authorities and SDK generation artifacts.
 
 ## Spec Resolution Order
@@ -207,9 +209,11 @@ Validation should check:
 - `AGENTS.md` does not retain "Existing Local Guidance" or legacy preserved
   rule blocks; durable local rules are moved to local specs or linked docs.
 - `AGENTS.md` does not duplicate root spec bodies or embed secrets.
+- When `docs/` is active, `AGENTS.md` and root `README.md` link to `docs/README.md`, `docs/product/prd/PRD.md`, and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 
-Application repositories may call the canonical validator with:
+Application repositories may call the canonical validators with:
 
 ```text
 node ../sdkwork-specs/tools/check-agent-workflow-standard.mjs --root .
+node ../sdkwork-specs/tools/check-repository-docs-standard.mjs --root .
 ```
