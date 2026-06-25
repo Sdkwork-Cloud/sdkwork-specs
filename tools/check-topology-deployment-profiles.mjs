@@ -12,11 +12,18 @@ const DEFAULT_WORKSPACE = path.resolve(SPECS_ROOT, '..');
 
 function requiredProfiles(spec) {
   const layouts = spec.vocabulary?.serviceLayout?.allowed ?? ['unified-process', 'split-services'];
+  const profiles = spec.vocabulary?.deploymentProfile?.allowed ?? ['standalone', 'cloud'];
+  const environments = spec.vocabulary?.environment?.allowed ?? ['development', 'production'];
   const standaloneLayout = layouts.includes('unified-process') ? 'unified-process' : layouts[0];
-  return [
-    `standalone.${standaloneLayout}.development`,
-    'cloud.split-services.production',
-  ];
+  const cloudLayout = layouts.includes('split-services') ? 'split-services' : layouts[layouts.length - 1];
+  const required = [`standalone.${standaloneLayout}.development`];
+  if (profiles.includes('cloud')) {
+    required.push(`cloud.${cloudLayout}.production`);
+  }
+  if (environments.includes('development') && profiles.includes('cloud')) {
+    required.push(`cloud.${cloudLayout}.development`);
+  }
+  return required;
 }
 
 function fail(message, details = []) {
@@ -58,10 +65,10 @@ function checkSpec(repoRoot, specPath) {
   }
 
   if (spec.surfaces?.['platform.api-gateway']) {
-    const slug = (spec.components?.cloudGateway?.configGlob ?? '')
-      .replace(/^.*sdkwork-api-cloud-gateway\./, '')
-      .replace(/\.\{profile\}\.toml$/, '')
-      || (spec.appId ?? '').replace(/^sdkwork-/, '');
+    const slugMatch = /sdkwork-api-cloud-gateway\.([^.]+)\.\{profile\}/.exec(
+      spec.components?.cloudGateway?.configGlob ?? '',
+    );
+    const slug = slugMatch?.[1] ?? (spec.appId ?? '').replace(/^sdkwork-/, '');
     const devConfig = path.join(repoRoot, 'configs', `sdkwork-api-cloud-gateway.${slug}.development.toml`);
     const prodConfig = path.join(repoRoot, 'configs', `sdkwork-api-cloud-gateway.${slug}.production.toml`);
     if (!fs.existsSync(devConfig)) {
@@ -119,15 +126,13 @@ function main() {
         .filter((name) => name.startsWith('sdkwork-'))
         .map((name) => path.join(workspace, name))
         .filter(
-          (repo) =>
-            fs.existsSync(path.join(repo, 'specs/topology.spec.json')) &&
-            fs.existsSync(path.join(repo, 'sdkwork.app.config.json')),
+          (repo) => fs.existsSync(path.join(repo, 'specs/topology.spec.json')),
         );
 
   const allIssues = [];
   for (const repoRoot of repos) {
     const name = path.basename(repoRoot);
-    if (name === 'sdkwork-deployments' || name === 'sdkwork-discovery') continue;
+    if (name === 'sdkwork-deployments' || name === 'sdkwork-api-cloud-gateway') continue;
     allIssues.push(...checkSpec(repoRoot, path.join(repoRoot, 'specs/topology.spec.json')));
   }
 

@@ -4,7 +4,7 @@
 - Scope: distributed permission catalogs, role catalogs, directory templates, module discovery, registry materialization, and RBAC evaluation boundaries
 - Related: `IAM_SPEC.md`, `PERMISSION_STANDARD_SPEC.md`, `IAM_MODULE_MANIFEST_SPEC.md`, `IAM_DIRECTORY_TEMPLATE_SPEC.md`, `IAM_CATALOG_GOVERNANCE_SPEC.md`, `DATABASE_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `API_SPEC.md`, `SECURITY_SPEC.md`, `APP_MANIFEST_SPEC.md`
 
-SDKWork adopts **IAM Module Federation (IMF)**. Platform kernel capabilities stay in `sdkwork-appbase`. Product domains declare permissions, domain-standard roles, role-grant extensions, and directory tree templates through `iam.module.manifest.json`. Applications compose enabled modules; the registry orchestrator discovers, validates, merges, and materializes catalogs into `iam_*` tables.
+SDKWork adopts **IAM Module Federation (IMF)**. Platform kernel capabilities stay in `sdkwork-iam` (`iam-kernel` module). Product domains declare permissions, domain-standard roles, role-grant extensions, and directory tree templates through `iam.module.manifest.json`. Applications compose enabled modules; the registry orchestrator discovers, validates, merges, and materializes catalogs into `iam_*` tables.
 
 ## 1. Layer Model
 
@@ -31,7 +31,7 @@ Rules:
 
 ## 2. Ownership Boundaries
 
-| Artifact | `sdkwork-appbase` / `iam-kernel` | Domain module | Application root |
+| Artifact | `sdkwork-iam` / `iam-kernel` | Domain module | Application root |
 | --- | --- | --- | --- |
 | RBAC evaluation / wildcard semantics | yes | no | no |
 | Eight platform standard roles | yes | no | no |
@@ -80,7 +80,7 @@ Materialization writes:
 | Resource hierarchy | tenant → organization → department → position |
 | Group | `iam_group` / `iam_group_member` |
 | Service account | `iam_service_account` |
-| Deny | `iam_role_binding.effect = deny` (evaluated in `sdkwork-appbase-iam-bootstrap::rbac_scope`) |
+| Deny | `iam_role_binding.effect = deny` (evaluated in `sdkwork-iam-bootstrap::rbac_scope`) |
 | SoD | `iam_role_exclusion` (materialized from module manifests) |
 | ABAC | `iam_policy`, binding `condition_json` |
 | Managed catalog registry | `iam_module_registry_*` |
@@ -88,7 +88,7 @@ Materialization writes:
 ## 5. Acceptance Checklist
 
 - [x] Every bundled domain permission is declared in an `iam.module.manifest.json` owned by that domain.
-- [x] `sdkwork-appbase-iam-bootstrap` no longer owns non-`iam.*` permission seeds directly.
+- [x] `sdkwork-iam-bootstrap` no longer owns non-`iam.*` permission seeds directly.
 - [x] `pnpm run iam:modules:validate` passes in CI.
 - [x] `import_postgres_default_iam_seed` delegates to the module registry orchestrator.
 - [x] OpenAPI protected operations reconcile to manifest permissions.

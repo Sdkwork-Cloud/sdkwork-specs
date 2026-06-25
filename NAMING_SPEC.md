@@ -331,6 +331,24 @@ Rules:
 - Optional `core`, `commons`, `shell`, `console-core`, `console-shell`, `admin-core`, `admin-shell`, and `host` suffixes are reserved role names inside each client root package family.
 - The `<capability>` token is the concrete business module token. It `MUST` use canonical domain/capability vocabulary and `MUST NOT` be a catch-all such as `common`, `misc`, `manager`, `backend`, `console`, or `admin`.
 
+### 4.2.1 npm Package Names And Surface Metadata
+
+For packages under `apps/sdkwork-<application-code>-pc/packages/`, the npm `package.json#name` `MUST` mirror the directory name with the `sdkwork-` prefix removed:
+
+| Directory | npm `name` |
+| --- | --- |
+| `sdkwork-iam-pc-admin-oauth` | `@sdkwork/iam-pc-admin-oauth` |
+| `sdkwork-iam-pc-console-settings` | `@sdkwork/iam-pc-console-settings` |
+| `sdkwork-iam-pc-auth` | `@sdkwork/iam-pc-auth` |
+
+Rules:
+
+- Application-root packages `MUST` encode the surface role in the directory/npm name: default app (`pc-<capability>`), user console (`pc-console-<capability>`), or internal admin (`pc-admin-<capability>`).
+- `package.json#sdkwork.architecture` `MUST` be `pc-react` for app/console packages and `pc-admin` for `pc-admin-*` infrastructure and capability packages.
+- `package.json#sdkwork.surface` `MUST` be `app` for default app packages, `console` for `pc-console-*`, and `backend-admin` for `pc-admin-*`.
+- Forbidden npm names for new admin modules include `@sdkwork/<domain>-<capability>-pc-react`, `@sdkwork/<application-code>-admin-<capability>` without the `pc` segment, and any name that omits `pc-admin` while implementing `backend-admin` operator UI.
+- Legacy shared-library names such as `@sdkwork/auth-pc-react` remain valid only in appbase foundation trees, not as replacements for `sdkwork-<application-code>-pc-admin-*` inside application roots.
+
 ## 4.3 Rust Crate Responsibility Naming
 
 Rust crate names must describe engineering responsibility, not a vague application tier.

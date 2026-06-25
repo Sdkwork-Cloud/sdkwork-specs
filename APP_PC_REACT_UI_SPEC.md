@@ -12,7 +12,7 @@ This standard is selected through `UI_ARCHITECTURE_SPEC.md` and applies only to 
 
 Use `DESKTOP_APP_ARCHITECTURE_SPEC.md` for desktop shell, Tauri host, native capability adapter, session/bootstrap, desktop packaging, and release boundaries. This file owns PC React UI packages and app-facing interaction rules.
 
-Use `IAM_LOGIN_INTEGRATION_SPEC.md` for appbase IAM login/session integration, AuthGate behavior, generated app SDK token wiring, logout clearing, and Rust protected API validation. This file owns PC React package placement and user-facing UI rules.
+Use `IAM_LOGIN_INTEGRATION_SPEC.md` for sdkwork-iam login/session integration, AuthGate behavior, generated app SDK token wiring, logout clearing, and Rust protected API validation. This file owns PC React package placement and user-facing UI rules.
 
 Use `APP_SDK_INTEGRATION_SPEC.md` when PC React apps compose generated TypeScript app SDKs, appbase IAM runtime, dependency SDKs, and product service facades.
 
@@ -41,7 +41,8 @@ apps/sdkwork-appbase/
 | --- | --- | --- | --- | --- |
 | App PC React UI | `sdkwork-<capability>-pc-react` or `sdkwork-<application-code>-pc-<capability>` | `/app/v3/api` | `legacy-java-plus-app-api` generated SDK | end users and app users |
 | PC user console React UI | `sdkwork-<application-code>-pc-console-<capability>` | `/app/v3/api` or approved console-facing app SDK surface | generated app SDK or approved appbase wrapper | customers, tenants, app owners, business users managing their own resources |
-| Backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | `legacy-java-plus-backend-api` generated SDK for `backend-admin` | admins and operators |
+| PC internal admin React UI | `sdkwork-<application-code>-pc-admin-<capability>` | `/backend/v3/api` | generated backend SDK or approved backend wrapper | internal staff, operators, support, auditors (`backend-admin`) |
+| Standalone backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | `legacy-java-plus-backend-api` generated SDK for `backend-admin` | admins and operators in standalone backend console hosts |
 
 Rules:
 
@@ -54,6 +55,8 @@ Rules:
 - App PC React packages and PC user console packages are non-admin unless their package boundary is explicitly `backend-admin`. They `MUST` use generated app SDK clients or approved app SDK wrappers and `MUST NOT` import, export, construct, proxy, or route through backend SDK clients, appbase backend SDK clients, backend wrapper functions, backend generated SDK packages, or backend base URL resolvers.
 - Login, registration, sessions, OAuth, password reset, QR login, current user flows, and messaging-owned verification-code delivery belong to app UI and app-api.
 - Operator-only resource management, tenant administration, platform settings, and audit consoles belong to `backend-admin` backend UI.
+- New internal admin modules inside a PC application root `MUST NOT` use legacy names such as `sdkwork-<domain>-<capability>-pc-react` or `@sdkwork/<domain>-<capability>-pc-react`. Use `sdkwork-<application-code>-pc-admin-<capability>` and follow `BACKEND_UI_SPEC.md`.
+- PC user console modules `MUST NOT` be named `pc-admin-*`. Console and admin surfaces are different users, routes, SDK clients, and permission models.
 
 ## 2. Package Split
 
@@ -81,7 +84,7 @@ Rules:
 Recommended package structure:
 
 ```text
-packages/pc-react/<domain>/<package>/
+apps/sdkwork-<application-code>-pc/packages/<package>/
   package.json
   src/
     index.ts
@@ -118,7 +121,7 @@ Rules:
 - Runtime/bootstrap `MUST` construct generated TypeScript app SDK clients, appbase app SDK clients, one global token manager, appbase IAM runtime, and product service providers. It may construct appbase backend SDK clients only inside a `backend-admin` runtime boundary.
 - The PC React IAM runtime `MUST` use `@sdkwork/iam-runtime` / `@sdkwork/iam-react` or an approved wrapper with the same `createIamRuntime` semantics.
 - `appbaseApp`, optional `backend-admin` `appbaseBackend`, downstream app-api SDK clients, and explicit `backend-admin` backend-api SDK clients `MUST` share the same global token manager through `setTokenManager` or equivalent generated SDK credential APIs.
-- Login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user profile reads `MUST` use `@sdkwork/appbase-app-sdk` resources or appbase PC React auth wrappers built on those resources. Verification-code delivery and verification `MUST` use the generated messaging app SDK surface or an appbase auth wrapper that delegates to an injected messaging client.
+- Login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user profile reads `MUST` use `@sdkwork/iam-app-sdk` resources or appbase PC React auth wrappers built on those resources. Verification-code delivery and verification `MUST` use the generated messaging app SDK surface or an appbase auth wrapper that delegates to an injected messaging client.
 - Contacts, address books, workspace navigation, organization trees, department trees, memberships, assignments, positions, and role-binding read views in app PC React or PC user console packages `MUST` use appbase app SDK resources or approved app SDK wrappers. They `MUST NOT` use appbase backend SDK, application-owned backend SDK, backend wrapper functions, or backend base URL resolvers.
 - App/user-facing PC React core exports `MUST` keep the application-owned app SDK and appbase app SDK wrappers available to frontend app integration. Removing app SDK exports to avoid backend SDK leakage is forbidden; move backend wrappers to a `backend-admin` export boundary instead.
 - Backend SDK and appbase backend SDK wrappers may be constructed only by `backend-admin` packages or their admin-core providers. App auth runtime and user-facing app/console packages `MUST NOT` construct them.

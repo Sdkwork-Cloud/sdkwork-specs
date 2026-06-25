@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: cross-client application architecture alignment for SDKWork PC, H5/mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, backend/admin UI, and future client roots
-- Related: `APPLICATION_SPEC.md`, `NAMING_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `I18N_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `APP_DEPENDENCY_COMPOSITION_SPEC.md`, `NAMING_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `I18N_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the common client architecture contract that keeps SDKWork application roots readable, composable, and aligned across PC, H5/Capacitor, Flutter, mini program, native Android, native iOS, native HarmonyOS, and future client surfaces.
 
@@ -38,6 +38,7 @@ SDKWork client roots use stable architecture identifiers.
 
 | Client architecture | Application root | Package segment | Root standard |
 | --- | --- | --- | --- |
+| Cross-architecture shared packages | `apps/sdkwork-<application-code>-common` | `common` | `APPLICATION_SPEC.md`, `MODULE_SPEC.md` |
 | PC browser/desktop/large-screen tablet | `apps/sdkwork-<application-code>-pc` | `pc` | `APP_PC_ARCHITECTURE_SPEC.md` |
 | H5 mobile plus Capacitor iOS/Android | `apps/sdkwork-<application-code>-h5` | `h5` | `APP_H5_ARCHITECTURE_SPEC.md` |
 | Flutter mobile app | `apps/sdkwork-<application-code>-flutter-mobile` | `flutter-mobile` root segment; `flutter_mobile` Dart package segment | `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` |
@@ -48,7 +49,8 @@ SDKWork client roots use stable architecture identifiers.
 
 Rules:
 
-- `apps/` is the application-root collection under a larger repository or workspace. Each child directory is the root of one runnable application surface for a selected language and architecture, such as PC React/Tauri, H5 React/Capacitor, Flutter, mini program, native Android, native iOS, or native HarmonyOS. Do not treat `apps/` itself as the source root for one language or collapse multiple architecture roots into one child directory.
+- The `-common` application root is a shared package-family root, not a runnable client surface. It owns contracts, service ports, runtime, bootstrap, SDK adapter boundaries, and domain RPC proto packages with no UI runtime dependency.
+- `apps/` is the application-root collection under a larger repository or workspace. Each child directory is the root of one runnable application surface for a selected language and architecture, such as PC React/Tauri, H5 React/Capacitor, Flutter, mini program, native Android, native iOS, or native HarmonyOS, or one shared `-common` package-family root. Do not treat `apps/` itself as the source root for one language or collapse multiple architecture roots into one child directory.
 - New application roots `MUST` use the root naming in this table unless `GOVERNANCE_SPEC.md` records an exception.
 - The package segment `MUST` appear in every app-root package name owned by that architecture.
 - Architecture standards may define language-specific package naming, such as lower snake case for Dart packages.
@@ -78,6 +80,8 @@ apps/sdkwork-<application-code>-<client-arch>/
   scripts/
   sdks/
   specs/
+    component.spec.json
+    dependency.composition.json
   src/ or lib/
     main.*
     App.* or app.*
@@ -112,7 +116,9 @@ Rules:
 - `config/browser/` owns browser-visible public runtime config. H5 application roots use this because H5 is a browser runtime.
 - `config/app/` is allowed for non-browser app runtime public templates where the architecture standard defines it, such as Flutter, native Android, native iOS, and native HarmonyOS.
 - `config/host/` owns native, platform, or container-host packaging metadata and permission references. It is not a business runtime config store.
-- `src/bootstrap/` or `lib/bootstrap/` is the concrete composition boundary.
+- `src/bootstrap/` or `lib/bootstrap/` is the application bootstrap entry. It assembles providers, routes, and shell wiring only.
+- `specs/dependency.composition.json` is the semantic dependency manifest required by `APP_DEPENDENCY_COMPOSITION_SPEC.md`.
+- Architecture `-core`, `-console-core`, and `-admin-core` packages are the library dependency composition entry. Feature packages import SDK clients, reusable modules, and host contracts through those core public exports only.
 - `packages/` owns reusable runtime, shell, surface, capability, and host packages.
 - Flutter roots use the same logical package roles, but their physical Dart package names use lower snake case such as `sdkwork_<application_code>_flutter_mobile_core`.
 - Native Android, iOS, and HarmonyOS roots use the same logical package roles with kebab-case SDKWork package directories. Language/toolchain module identifiers may use Kotlin dotted namespaces, Swift PascalCase modules, or ArkTS/ohpm aliases only when they preserve the SDKWork package identity.
@@ -124,7 +130,7 @@ All client roots use the same package roles.
 
 | Package role | Owns | Must not own |
 | --- | --- | --- |
-| `core` | runtime config types, SDK client factories, TokenManager binding, appbase IAM runtime, session/context stores, route registry, service registry, host adapter contracts | screens, pages, widgets, business workflows, concrete feature state |
+| `core` | runtime config types, dependency composition entry, SDK client factories, TokenManager binding, appbase IAM runtime, session/context stores, route registry, service registry, host adapter contracts | screens, pages, widgets, business workflows, concrete feature state |
 | `commons` | domain-neutral UI primitives, design-system adapters, layout helpers, formatters, empty/error/retry primitives, i18n helpers | domain screens, domain services, SDK construction |
 | `shell` | app surface shell, navigation container, AuthGate integration, route contribution assembly, app layout, tab/stack/sidebar ownership | business SDK orchestration, reusable business workflows |
 | `<capability>` | one domain capability: screens/pages/widgets/components, hooks/controllers, services, state, i18n, routes/navigation metadata, local view models | concrete SDK construction, unrelated capability behavior, backend/admin-only workflows |
@@ -320,7 +326,8 @@ Required cross-client architecture checks:
 | --- | --- |
 | Root layout | Static check proves the client root has `.sdkwork/`, config, bootstrap, packages, sdks, specs, scripts, and tests according to the architecture standard. |
 | Package taxonomy | Static check proves package names use the architecture segment and reserved package roles correctly. |
-| Dependency direction | Static scan proves core/commons do not depend on capability packages, capability packages do not deep import each other, and host packages do not own business API transport. |
+| Dependency direction | Static scan proves core/commons do not depend on capability packages, capability packages do not deep import each other, capability packages do not import generated SDK packages directly, and host packages do not own business API transport. |
+| Dependency composition | Static check proves `specs/dependency.composition.json` exists, matches core `sdkDependencies`, and core packages expose the required composition import entry per `APP_DEPENDENCY_COMPOSITION_SPEC.md`. |
 | Route identity | Tests or static checks prove route ids follow `<surface>.<domain>.<capability>.<screen>` and route metadata avoids API paths. |
 | Cross-architecture alignment | When multiple client roots implement the same workflow, route ids, title keys, permission hints, SDK surfaces, and i18n keys align. |
 | SDK boundary | Static scan proves no raw HTTP, manual auth/API key headers, generated SDK edits, or architecture SDK mismatches were introduced. |

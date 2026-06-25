@@ -401,7 +401,7 @@ Rules:
 - Bootstrap `MUST` classify every SDK before constructing feature services: authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake. The presence of `backendApiBaseUrl` alone is not permission to construct a backend SDK client.
 - Token providers for app-api and backend-api SDKs `MUST` support both `Authorization: Bearer <JWT auth_token>` and `Access-Token: <JWT access_token>`.
 - Token providers `MUST` send both headers on protected requests whenever both credentials are available.
-- Application bootstrap `MAY` seed TokenManager from private `SDKWORK_ACCESS_TOKEN` before interactive login. Login/session bootstrap `MUST` replace that bootstrap credential with appbase-issued session tokens. `auth_token`, `refresh_token`, and API keys `MUST NOT` be configured in environment variables.
+- Application bootstrap `MAY` seed TokenManager from private `SDKWORK_ACCESS_TOKEN` before interactive login. Login/session bootstrap `MUST` replace that bootstrap credential with IAM-issued session tokens. `auth_token`, `refresh_token`, and API keys `MUST NOT` be configured in environment variables.
 - In an authenticated application session context, every app-api SDK client and every explicit `backend-admin` backend-api SDK client `MUST` receive credentials from the same global `TokenManager`. This includes appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, application/dependency backend SDKs, and approved composed wrappers backed by those SDKs.
 - Server service-context runtimes that do not represent a user login session `MUST` use one request/service credential provider per service context. They must not create per-domain or per-SDK credential providers for calls that share the same context.
 - App-api and backend-api SDK clients `MUST NOT` receive live session `authToken`, `accessToken`, or `refreshToken` through browser public runtime config, feature flags, app manifests, or per-call manual headers. Private bootstrap env credentials are allowed only according to `ENVIRONMENT_SPEC.md` section 6.1.
@@ -484,7 +484,7 @@ Rules:
   `PORTAL_PUBLIC_APPBASE_BACKEND_API_BASE_URL` only when it is a gateway that serves
   `/backend/v3/api/iam/*`. An application backend default such as
   `PORTAL_PUBLIC_BACKEND_API_BASE_URL` or `VITE_CLAWROUTER_BACKEND_API_BASE_URL` may be used for
-  `@sdkwork/appbase-backend-sdk` only when `dependencyApiSurfaces` records verified same-origin
+  `@sdkwork/iam-backend-sdk` only when `dependencyApiSurfaces` records verified same-origin
   mount coverage for a production-capable appbase backend IAM router/controller/service adapter.
   Appbase app SDK configuration, route metadata, local/demo routers, and fake response handlers are
   not evidence for appbase backend IAM availability.

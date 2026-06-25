@@ -94,7 +94,11 @@ node tools/audit-repository-docs-workspace.mjs --workspace ..
 node tools/check-topology-deployment-profiles.mjs --workspace ..
 node tools/check-app-runtime-hosting-debt.mjs --workspace ..
 node tools/align-app-gateway-integration.mjs --workspace ..
+node tools/check-dependency-composition.mjs --root .
+node tools/check-dependency-composition.mjs --workspace ..
+node tools/align-dependency-composition.mjs --workspace ..
 node --test tools/check-repository-docs-standard.test.mjs
+node --test tools/check-dependency-composition.test.mjs
 node --test tools/bootstrap-repository-docs.test.mjs
 node --test tools/align-repository-docs.test.mjs
 ```

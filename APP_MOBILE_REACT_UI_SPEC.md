@@ -39,7 +39,7 @@ apps/sdkwork-appbase/
 
 Rules:
 
-- Mobile React app UI `MUST` live in normalized H5 application packages such as `apps/sdkwork-<application-code>-h5/packages/sdkwork-<application-code>-h5-<capability>` or shared mobile React package families such as `packages/mobile-react/<domain>/<package>`.
+- Mobile React app UI `MUST` live in normalized H5 application packages such as `apps/sdkwork-<application-code>-h5/packages/sdkwork-<application-code>-h5-<capability>`.
 - H5 user-console UI `MUST` live in `apps/sdkwork-<application-code>-h5/packages/sdkwork-<application-code>-h5-console-<capability>` packages and follow the same package-internal UI/service/state/i18n shape as app packages.
 - Mobile React app and user-console UI `MUST` consume `/app/v3/api` through the generated app SDK or approved appbase wrappers.
 - Mobile React app and user-console UI `MUST NOT` consume `/backend/v3/api`, backend SDK packages, or `@sdkwork/react-backend-*` packages.
@@ -89,7 +89,7 @@ apps/sdkwork-<application-code>-h5/packages/sdkwork-<application-code>-h5-<capab
 Recommended shared package structure:
 
 ```text
-packages/mobile-react/<domain>/<package>/
+apps/sdkwork-<application-code>-h5/packages/<package>/
   package.json
   src/
     index.ts
@@ -121,7 +121,7 @@ Rules:
 
 - Services `MUST` use app SDK clients or approved service wrappers.
 - Runtime/bootstrap `MUST` construct generated TypeScript app SDK clients, appbase IAM clients, one global token manager, token/context stores, and mobile host adapters.
-- Mobile React IAM integration `MUST` use an appbase mobile wrapper when available. If a mobile-specific wrapper is not available, the app may use an approved adapter over `@sdkwork/iam-runtime` and `@sdkwork/appbase-app-sdk`; it must not create raw HTTP auth flows.
+- Mobile React IAM integration `MUST` use an appbase mobile wrapper when available. If a mobile-specific wrapper is not available, the app may use an approved adapter over `@sdkwork/iam-runtime` and `@sdkwork/iam-app-sdk`; it must not create raw HTTP auth flows.
 - `appbaseApp`, optional `backend-admin` `appbaseBackend`, downstream app-api SDK clients, and explicit `backend-admin` backend-api SDK clients `MUST` share the same global token manager through generated SDK credential APIs such as `setTokenManager`.
 - Login, registration, current session, refresh, logout, OAuth, QR auth, password reset, runtime metadata, and current-user self-service `MUST` use appbase app SDK resources or appbase wrappers. Verification-code delivery and verification `MUST` use the generated messaging app SDK surface or an appbase wrapper that delegates to an injected messaging client.
 - Native bridge calls `MUST` go through typed host adapters.

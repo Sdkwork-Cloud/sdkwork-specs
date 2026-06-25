@@ -283,6 +283,34 @@ sdkwork-commerce-pc-admin-inventory
 sdkwork-commerce-pc-desktop
 ```
 
+### 3.1 Forbidden Anti-Patterns
+
+The following directory and npm package names are **forbidden for new PC application work**. They usually mean the surface role (`app`, `console`, or `admin`) was omitted or placed after a legacy `-pc-react` suffix.
+
+| Anti-pattern | Why it is wrong | Correct replacement |
+| --- | --- | --- |
+| `sdkwork-<application-code>-<capability>-pc-react` | Uses legacy appbase shared-library suffix instead of application-root surface naming | App: `sdkwork-<application-code>-pc-<capability>` |
+| `sdkwork-<domain>-<capability>-pc-react` inside `apps/sdkwork-<application-code>-pc/packages/` | Domain token replaces application code and hides the surface role | App: `sdkwork-<application-code>-pc-<capability>`; Admin: `sdkwork-<application-code>-pc-admin-<capability>` |
+| `@sdkwork/<domain>-<capability>-pc-react` for tenant/org/oauth admin UI | npm name encodes `-pc-react` instead of `pc-admin` surface | `@sdkwork/<application-code>-pc-admin-<capability>` (example: `@sdkwork/iam-pc-admin-oauth`) |
+| `sdkwork-<application-code>-admin-<capability>` or `sdkwork-<application-code>-console-<capability>` without `pc` | Missing architecture segment; cannot distinguish PC from H5/Flutter/mobile admin families | `sdkwork-<application-code>-pc-admin-<capability>` or `sdkwork-<application-code>-pc-console-<capability>` |
+| Putting `backend-admin` operator pages in app packages (`sdkwork-<application-code>-pc-<capability>`) or user console packages (`pc-console-*`) | Wrong API/SDK surface and permission model | `sdkwork-<application-code>-pc-admin-<capability>` |
+| Putting customer/tenant self-service management in `pc-admin-*` | `pc-admin` is company-internal `backend-admin`, not user console | `sdkwork-<application-code>-pc-console-<capability>` |
+
+Decision table:
+
+| Users | API/SDK | Directory pattern | npm pattern (example app code `iam`) |
+| --- | --- | --- | --- |
+| End users / app users | app-api / app SDK | `sdkwork-iam-pc-<capability>` | `@sdkwork/iam-pc-<capability>` |
+| Customers / tenant owners / app owners (self-service management) | app-api / app SDK | `sdkwork-iam-pc-console-<capability>` | `@sdkwork/iam-pc-console-<capability>` |
+| Internal staff / operators / auditors | backend-api / backend SDK | `sdkwork-iam-pc-admin-<capability>` | `@sdkwork/iam-pc-admin-<capability>` |
+
+Rules:
+
+- When a capability is operator-only (tenant administration, platform OAuth config, internal audit), it `MUST` use `pc-admin-*`, not `pc-*` or `*-pc-react`.
+- When a capability lets customers manage their own resources, it `MUST` use `pc-console-*`, not `pc-admin-*`.
+- Legacy `sdkwork-<capability>-pc-react` names under appbase `packages/pc-react/` remain valid **only** for cross-application foundation libraries (router, shell, auth runtime). They `MUST NOT` be copied into application roots for domain admin or console modules.
+- Static verification `SHOULD` reject new directories matching `sdkwork-*-pc-react` under `apps/sdkwork-<application-code>-pc/packages/` except documented migration exceptions.
+
 ## 4. App, Console, And Admin Surface Rules
 
 The three PC surfaces share the same root and renderer stack, but they have different users, API surfaces, SDK clients, routes, and permission models.
@@ -343,6 +371,12 @@ Core package shape:
 packages/sdkwork-<application-code>-pc-core/
   src/
     index.ts
+    composition/
+      dependency-manifest.ts
+      sdk-inventory.ts
+      module-registry.ts
+      host-registry.ts
+      index.ts
     config/
     host/
     runtime/

@@ -33,11 +33,13 @@ All bootstrap operations live in backend-api only. Static path segments use `low
 | Provision tenant application | `POST` | `/backend/v3/api/iam/tenant_applications` | `tenantApplications.provision` | `bootstrap-body` |
 | Update tenant application | `PATCH` | `/backend/v3/api/iam/tenant_applications/{tenantApplicationId}` | `tenantApplications.update` | `bootstrap-body` |
 | Enable tenant application | `POST` | `/backend/v3/api/iam/tenant_applications/{tenantApplicationId}/enable` | `tenantApplications.enable` | `bootstrap-body` |
+| Retrieve tenant application | `GET` | `/backend/v3/api/iam/tenant_applications/{tenantApplicationId}` | `tenantApplications.retrieve` | `dual-token` |
 | Issue access credential | `POST` | `/backend/v3/api/iam/access_credentials` | `accessCredentials.create` | `bootstrap-body` |
 
 Rules:
 
 - Bootstrap operations `MUST NOT` require dual-token headers.
+- `tenantApplications.retrieve` is an authenticated admin read (dual-token) for runtime inspection; it is not part of the bootstrap-body flow and returns redacted `runtimeConfig` (including `[redacted]` for `oauth.relyingParty.clientSecretHash`).
 - Bootstrap body authentication `MUST` use super-admin credentials in the JSON body through `authToken` or username/email/phone plus `password`.
 - Handlers `MUST` enforce bootstrap-operator checks, per-operation permission codes, and tenant scope before business rules run.
 - Consumers `MUST NOT` hand-craft raw HTTP to these paths when `@sdkwork/iam-application-bootstrap` or generated backend SDK clients are available.
@@ -52,12 +54,20 @@ iam.tenant_applications.enable
 iam.access_credentials.create
 ```
 
+Admin read permission for `tenantApplications.retrieve` reuses `iam.tenant_applications.update` so OAuth relying-party administrators can read back redacted runtime config without bootstrap-body credentials.
+
 ## 3. Reusable Framework Package
 
 The canonical reusable module is:
 
 ```text
 @sdkwork/iam-application-bootstrap
+```
+
+Physical package root in `sdkwork-iam`:
+
+```text
+apps/sdkwork-iam-common/packages/sdkwork-iam-application-bootstrap
 ```
 
 Rules:
@@ -97,6 +107,7 @@ Minimum manifest fields for IAM bootstrap:
 | `app.identifiers.*` | optional template identifiers |
 | `backend.accessTokenPermissionScope` or `backend.permissionScope` | required non-empty default access permissions |
 | `backend.tenantId`, `backend.organizationId` | tenant application scope defaults |
+| `backend.appId` | tenant application runtime `app_id`; must match the PC/H5/mobile auth runtime `appId` and bootstrap `Access-Token` JWT `app_id` claim when the surface uses credential-entry |
 | `backend.primaryDomain` or runtime `--domain` / env | tenant application domain |
 | `artifacts.installConfig.packages[]` | optional template package metadata |
 | `release.notes[]` | template version/channel |
@@ -114,9 +125,45 @@ The same framework `MUST` work across these environments by swapping only the tr
 | Environment | Required adapter | Notes |
 | --- | --- | --- |
 | Local CLI / CI bootstrap | `createFetchIamApplicationBootstrapClient` | Uses `admin:bootstrap:app` or equivalent thin script |
-| SaaS/private backend SDK runtime | `createIamApplicationBootstrapClientFromBackend` | Uses generated `@sdkwork/appbase-backend-sdk` or approved backend SDK |
+| SaaS/private backend SDK runtime | `createIamApplicationBootstrapClientFromBackend` | Uses generated `@sdkwork/iam-backend-sdk` or approved backend SDK |
 | Existing IAM service runtime | `createIamApplicationBootstrapClientFromIamService` | Uses `@sdkwork/iam-service` without raw HTTP |
 | Server/container service bootstrap | fetch or backend SDK adapter | May write `.sdkwork.local.env` or inject env through approved secret store |
+| Embedded unified-process / installer runtime | `sdkwork-iam-embedded-application-bootstrap` (Rust) | Reads `sdkwork.app.config.json`, calls `ensure_tenant_application_runtime` directly on the IAM Postgres profile |
+
+### 5.1 Embedded Rust Runtime Bootstrap
+
+Naming follows `NAMING_SPEC.md`: the retired `product-*` bootstrap prefix is forbidden. Use `tenant application` for IAM registry rows and `embedded application bootstrap` for the shared Rust crate.
+
+When IAM runs inside an application process or installer (`unified-process`, standalone gateway, database ensure), applications `MUST` use the shared Rust crate:
+
+```text
+sdkwork-iam/crates/sdkwork-iam-embedded-application-bootstrap
+```
+
+Rules:
+
+- Application repositories `MUST NOT` duplicate manifest mapping, Postgres `search_path` wiring, tenant-application reconcile logic, or raw SQL against `iam_application_template` / `iam_tenant_application`.
+- Application repositories `MAY` keep a thin adapter crate that supplies additional runtime bindings (for example IM PC + H5) but `MUST` delegate to `ensure_tenant_application_from_app_root` or `ensure_tenant_application_from_app_root_with_env_and_fallback`.
+- `ensure_tenant_application_from_app_root_with_env` without a repository-root fallback `MUST NOT` be used in application adapters; it silently skips provisioning when `SDKWORK_*_APP_ROOT` env vars are unset.
+- `sdkwork-iam-database-host` `MUST` invoke `ensure_tenant_application_from_app_root_if_configured` after IAM migrations when `SDKWORK_APP_ROOT` (or an approved app-root env alias) points at a manifest-bearing application root.
+- Embedded bootstrap `MUST` derive `instance_key` through `tenant_application_instance_key(runtime_app_id, environment)` so tenant applications do not collide with platform defaults such as `default`.
+- Embedded bootstrap `MUST` upsert tenant applications by stable row id and reconcile org-template, runtime app id, and instance-key conflicts before enable.
+
+Forbidden in application-owned embedded bootstrap code:
+
+- copied manifest-to-command mapping outside the shared crate
+- per-app Postgres pool helpers that omit unified schema `search_path`
+- blind `INSERT` tenant application rows without reconcile/upsert
+
+Embedded IAM integration checklist for application repositories that call `build_sdkwork_iam_app_api_router()`:
+
+1. Bootstrap IAM schema with `sdkwork_iam_database_host::bootstrap_iam_database_from_env()` before tenant application provisioning when the process owns IAM lifecycle.
+2. Call `ensure_tenant_application_from_app_root_with_env_and_fallback(...)` (or an approved thin adapter) before building the IAM router on every startup path (standalone gateway, unified-process, installer, direct API server).
+3. Inject `SDKWORK_APP_ROOT` and the approved app-root alias (such as `SDKWORK_DRIVE_APP_ROOT` or `SDKWORK_IM_APP_ROOT`) at the **consumer application manifest root** for tenant application provisioning. Inject `SDKWORK_IAM_APP_ROOT` at the sibling `sdkwork-iam` repository root so IAM database-host post-bootstrap hooks can materialize IMF catalog and IAM database assets from the canonical IAM ownership boundary.
+4. Keep manifest mapping, Postgres `search_path`, reconcile/upsert, and `instance_key` derivation in `sdkwork-iam-embedded-application-bootstrap` / `sdkwork-iam-web-adapter`; application adapters only supply repo-root fallback and optional runtime bindings.
+5. Add a repository governance test under `scripts/dev/*-iam-application-bootstrap-standard.test.mjs` that asserts the adapter, startup ordering, dependencies, and dev env injection.
+
+Cloud split-services repositories `MUST` inject `SDKWORK_APP_ROOT` on every dev and gateway startup path (directly or through `@sdkwork/app-topology` `resolveIamDevEnv()`). Repository topology contract tests `SHOULD` assert `IAM_APPLICATION_BOOTSTRAP_ENV`, `resolveIamDevEnv`, and the app-specific `SDKWORK_<APP>_APP_ROOT` alias in dev orchestrators.
 
 Rules:
 
@@ -172,14 +219,24 @@ Application repositories with IAM bootstrap `MUST` also run:
 pnpm --filter @sdkwork/iam-application-bootstrap test
 ```
 
+Embedded IAM application repositories under `sdkwork-space` `MUST` run the workspace audit before merge:
+
+```bash
+node ../sdkwork-specs/tools/audit-iam-embedded-bootstrap-workspace.mjs
+```
+
+Each embedded IAM repository `MUST` provide `scripts/dev/*-iam-application-bootstrap-standard.test.mjs` and keep startup ordering aligned with section 5.1. Cloud split-services repositories `MUST` inject `SDKWORK_APP_ROOT` on every dev and gateway startup path (directly or through `@sdkwork/app-topology` `resolveIamDevEnv()`).
+
 ## 8. New Application Checklist
 
 - [ ] Declare non-empty `backend.accessTokenPermissionScope` in `sdkwork.app.config.json`.
 - [ ] Use `@sdkwork/iam-application-bootstrap` for bootstrap orchestration.
 - [ ] Keep CLI/bootstrap scripts thin; no raw bootstrap HTTP in app code.
 - [ ] Wire backend SDK or IAM service adapter for non-CLI environments.
+- [ ] For embedded unified-process/installer runtimes, delegate to `sdkwork-iam-embedded-application-bootstrap` instead of local SQL/bootstrap copies.
 - [ ] Document `admin:bootstrap:app` or approved equivalent in the app runbook.
 - [ ] Run `check-iam-application-bootstrap-standard.mjs` before merge.
+- [ ] For embedded IAM runtimes, run `audit-iam-embedded-bootstrap-workspace.mjs` and the repository `*-iam-application-bootstrap-standard.test.mjs` governance test before merge.
 - [ ] Run `@sdkwork/iam-application-bootstrap` contract tests when the framework package is present in the workspace.
 
 ## 9. Acceptance Checklist
@@ -189,5 +246,6 @@ pnpm --filter @sdkwork/iam-application-bootstrap test
 - [ ] Backend bootstrap paths use `lower_snake_case` static segments.
 - [ ] Generated backend SDK and `@sdkwork/iam-service` expose `iam.applications.register`, `iam.tenantApplications.*`, and `iam.accessCredentials.create`.
 - [ ] Application-owned scripts import `@sdkwork/iam-application-bootstrap` instead of raw bootstrap HTTP.
+- [ ] Embedded Rust runtimes import `sdkwork-iam-embedded-application-bootstrap` instead of local tenant-application SQL.
 - [ ] Manifest mapping and auth merge live in the framework package.
 - [ ] Governance checker passes for the application root.

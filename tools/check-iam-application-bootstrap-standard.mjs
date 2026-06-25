@@ -3,9 +3,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { IAM_PACKAGE_PATHS } from './iam-workspace-paths.mjs';
 
 const FRAMEWORK_PACKAGE = '@sdkwork/iam-application-bootstrap';
-const FRAMEWORK_PACKAGE_PATH = 'packages/common/iam/sdkwork-iam-application-bootstrap';
+const FRAMEWORK_PACKAGE_PATHS = [
+  IAM_PACKAGE_PATHS[FRAMEWORK_PACKAGE],
+  'apps/sdkwork-iam-common/packages/sdkwork-iam-application-bootstrap',
+];
 const REQUIRED_BOOTSTRAP_SCRIPT = 'admin:bootstrap:app';
 const FORBIDDEN_BOOTSTRAP_HTTP_MARKERS = [
   '/backend/v3/api/iam/applications/register',
@@ -119,12 +123,17 @@ export function validateIamApplicationBootstrapStandard(rootDir) {
   const packageJson = packageJsonAt(rootDir);
   const manifests = findAppManifests(rootDir);
   const bootstrapScripts = findBootstrapScripts(rootDir);
-  const hasFrameworkPackageDir = fs.existsSync(path.join(rootDir, FRAMEWORK_PACKAGE_PATH));
+  const hasFrameworkPackageDir = FRAMEWORK_PACKAGE_PATHS.some((relativePath) =>
+    fs.existsSync(path.join(rootDir, relativePath)),
+  );
+  const frameworkPackagePath = FRAMEWORK_PACKAGE_PATHS.find((relativePath) =>
+    fs.existsSync(path.join(rootDir, relativePath)),
+  );
 
-  if (hasFrameworkPackageDir) {
-    const frameworkPackageJson = packageJsonAt(path.join(rootDir, FRAMEWORK_PACKAGE_PATH));
+  if (hasFrameworkPackageDir && frameworkPackagePath) {
+    const frameworkPackageJson = packageJsonAt(path.join(rootDir, frameworkPackagePath));
     if (!frameworkPackageJson || frameworkPackageJson.name !== FRAMEWORK_PACKAGE) {
-      failures.push(`${FRAMEWORK_PACKAGE_PATH}/package.json must declare name ${FRAMEWORK_PACKAGE}`);
+      failures.push(`${frameworkPackagePath}/package.json must declare name ${FRAMEWORK_PACKAGE}`);
     }
     if (!packageJson?.scripts?.[REQUIRED_BOOTSTRAP_SCRIPT]) {
       failures.push(`root package.json must expose ${REQUIRED_BOOTSTRAP_SCRIPT} for IAM application bootstrap`);

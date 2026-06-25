@@ -2,21 +2,21 @@
 
 - Version: 1.0
 - Scope: app SDK integration across PC React, H5 mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, desktop/native, Rust-enabled apps, Drive Uploader, app dependency composition, appbase IAM runtime, and global token-manager wiring
-- Related: `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `APP_DEPENDENCY_COMPOSITION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork applications integrate generated SDKs and reusable appbase capabilities without copying APIs, forking clients, or creating local auth behavior. Applications are composition roots. Applications compose dependency SDKs, shared modules, appbase IAM runtime, Rust route/service crates, and architecture-specific UI packages through explicit boundaries. The application root owns one SDK credential topology for every runtime target; feature packages only receive injected clients, services, or ports.
 
-The normative IAM reference is `sdkwork-appbase`:
+The normative IAM reference is `sdkwork-iam`:
 
-- `packages/common/iam/sdkwork-iam-runtime/src/index.ts`
-- `packages/common/iam/sdkwork-iam-runtime/tests/iam-runtime.standard.test.ts`
-- `packages/common/iam/sdkwork-iam-sdk-adapter/src/index.ts`
-- `packages/pc-react/iam/sdkwork-iam-react/src/index.tsx`
-- `packages/pc-react/iam/sdkwork-auth-pc-react/src/auth-service.ts`
+- `sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-runtime/src/index.ts`
+- `sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-runtime/tests/iam-runtime.standard.test.ts`
+- `sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-adapter/src/index.ts`
+- `sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-iam-react/src/index.tsx`
+- `sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-pc-react/src/auth-service.ts`
 
 Those packages implement the standard runtime shape: `createIamRuntime(...)` creates or receives one `AuthTokenManager` from `@sdkwork/sdk-common/createTokenManager`, binds the same manager to `appbaseApp`, optional `backend-admin` `appbaseBackend`, and every downstream `sdkClients` entry through `setTokenManager`, persists tokens in a `tokenStore`, persists `AppContext` in a `contextStore`, emits standard dual-token headers through `getAuthHeaders()`, and clears local token/context state even when remote logout fails.
 
-Applications normally consume a higher-level appbase auth runtime factory for their architecture, for example `@sdkwork/auth-runtime-pc-react` `createSdkworkAppbasePcAuthRuntime(...)` on PC React. The low-level `@sdkwork/iam-runtime` and `@sdkwork/iam-sdk-adapter` packages are appbase implementation details or approved wrapper internals. Application bootstrap code provides app identity, runtime config, generated SDK clients, the global TokenManager, and session bridge hooks to the high-level factory; it must not reassemble appbase IAM adapters locally when an architecture-level appbase runtime factory exists.
+Applications normally consume a higher-level IAM auth runtime factory for their architecture, for example `@sdkwork/auth-runtime-pc-react` `createSdkworkAppbasePcAuthRuntime(...)` on PC React. The low-level `@sdkwork/iam-runtime` and `@sdkwork/iam-sdk-adapter` packages are appbase implementation details or approved wrapper internals. Application bootstrap code provides app identity, runtime config, generated SDK clients, the global TokenManager, and session bridge hooks to the high-level factory; it must not reassemble appbase IAM adapters locally when an architecture-level appbase runtime factory exists.
 
 Every SDKWork application uses this as the TokenManager closure rule: within one authenticated session context, every SDK client that sends SDKWork app-api or explicit `backend-admin` backend-api dual-token credentials `MUST` share the same `TokenManager` instance. This includes appbase app SDKs, application/dependency app SDKs such as Drive, Messaging, and IM, explicit `backend-admin` backend SDKs, and any approved composed wrapper backed by those SDKs. Public SDKs that need no credentials receive no token manager. Protected open-api SDKs receive separate credential providers matching their declared auth mode (`api-key`, `oauth`, or `open-api-flexible`) and `MUST NOT` be added to the login TokenManager client list.
 
@@ -53,12 +53,12 @@ Applications depend on each other through stable artifacts.
 
 | Dependency kind | Consume through | Forbidden |
 | --- | --- | --- |
-| Appbase IAM/session/workspace/bootstrap | `sdkwork-appbase` packages, generated appbase SDKs, appbase Rust crates | application-local login routes, copied auth UI, regenerated appbase APIs |
+| Appbase IAM/session/workspace/bootstrap | `sdkwork-iam` packages, generated IAM SDKs (`sdkwork-iam-app-sdk`, `sdkwork-iam-backend-sdk`), IAM Rust crates | application-local login routes, copied auth UI, regenerated IAM APIs |
 | Drive upload/download/storage | Client upload through `sdkwork-drive-app-sdk client.uploader.*`; server-side Rust upload through `DriveUploaderService` or an approved Drive server-side uploader facade; application-owned SDKs accept Drive references or `MediaResource` | application-local upload endpoints, raw Drive HTTP, provider SDK calls, app-local upload tables/counters, regenerating Drive APIs into application-owned SDKs |
 | Application-owned app API | generated `sdkwork-<domain>-app-sdk` for the target language | raw HTTP, backend SDK, route constants |
 | Application-owned backend API | generated `sdkwork-<domain>-backend-sdk` for `backend-admin` clients | app SDK for operator resources, raw HTTP, app/user/console runtime construction |
-| Appbase app API | generated `sdkwork-appbase-app-sdk` and approved appbase app wrappers, including user-visible IAM directory/contact read resources | backend SDK, application-local appbase forks, deleting app SDK exports to hide backend leakage |
-| Appbase backend API | generated `sdkwork-appbase-backend-sdk` for `backend-admin` IAM management | app/user/console login flows, app auth runtime construction, user-facing directory reads |
+| IAM app API | generated `sdkwork-iam-app-sdk` and approved IAM app wrappers, including user-visible IAM directory/contact read resources | backend SDK, application-local IAM forks, deleting app SDK exports to hide backend leakage |
+| IAM backend API | generated `sdkwork-iam-backend-sdk` for `backend-admin` IAM management | app/user/console login flows, app auth runtime construction, user-facing directory reads |
 | Application-owned open/domain API | generated `sdkwork-<domain>-sdk` with declared open-api credential mode | app login token manager unless explicitly declared by contract |
 | Rust route capability | route manifest, aggregated authority, generated SDK family | frontend import of Rust route crates or path constants |
 | Reusable UI/service package | package root export and component spec | imports from private package internals |
@@ -172,7 +172,7 @@ Each application architecture uses the SDK family and IAM wrapper that match its
 
 | Architecture | SDK language | Required SDK boundary | IAM/appbase boundary |
 | --- | --- | --- | --- |
-| App PC React | TypeScript | generated TypeScript app SDKs plus service ports | `@sdkwork/iam-runtime`, `@sdkwork/iam-react`, `@sdkwork/auth-pc-react`, `@sdkwork/appbase-app-sdk` |
+| App PC React | TypeScript | generated TypeScript app SDKs plus service ports | `@sdkwork/iam-runtime`, `@sdkwork/iam-react`, `@sdkwork/auth-pc-react`, `@sdkwork/iam-app-sdk` |
 | H5 mobile React | TypeScript | generated TypeScript app SDKs plus typed H5/Capacitor host adapters | appbase mobile wrapper when available, otherwise the same generated appbase app SDK through an approved mobile runtime adapter |
 | App Flutter | Dart/Flutter | generated Dart/Flutter app SDKs plus platform adapters | generated Dart/Flutter appbase app SDK or approved appbase Flutter wrapper |
 | Mini program app | TypeScript | generated TypeScript app SDKs adapted for mini program runtime plus typed mini program host adapters | appbase mini program wrapper when available, otherwise the same generated appbase app SDK through an approved mini program runtime adapter |
@@ -245,7 +245,7 @@ const iamRuntime = createIamRuntime({
 Rules:
 
 - Every authenticated application runtime `MUST` create exactly one global `TokenManager` or language-equivalent token manager per authenticated session context.
-- Application bootstrap `MUST` consume the approved high-level appbase auth runtime/factory for its architecture when one exists, for example `createSdkworkAppbasePcAuthRuntime(...)` for PC React.
+- Application bootstrap `MUST` consume the approved high-level IAM auth runtime/factory for its architecture when one exists, for example `createSdkworkAppbasePcAuthRuntime(...)` for PC React.
 - IAM application registration and tenant runtime provisioning `MUST` use `@sdkwork/iam-application-bootstrap` per `IAM_APPLICATION_BOOTSTRAP_SPEC.md`. Application code `MUST NOT` hand-craft raw HTTP to `/backend/v3/api/iam/applications/register`, `/backend/v3/api/iam/tenant_applications`, or `/backend/v3/api/iam/access_credentials`.
 - Application bootstrap `MUST NOT` import `@sdkwork/iam-sdk-adapter`, call `createIamAppSdkAdapter(...)`, call `createIamBackendSdkAdapter(...)`, or locally wire appbase SDK resources into IAM ports when an appbase high-level runtime/factory can do that wiring.
 - Application bootstrap `MUST NOT` call `createIamRuntime(...)` directly except inside an approved appbase-owned wrapper package that exposes the same high-level inputs.
@@ -254,7 +254,8 @@ Rules:
 - A common SDK root is not the same as an arbitrary application `API_BASE_URL`. It must be a root/origin/path prefix that can safely derive standard SDK surface URLs by appending prefixes such as `/v1`, `/app/v3/api`, and `/backend/v3/api`; a surface URL such as `/v1` must not be reused as the root for app/backend SDKs.
 - Base URL config may come from private process env, public browser runtime env, or runtime TOML depending on target, but token values must never come from these config sources.
 - Runtime/bootstrap `MUST` build an SDK inventory before constructing feature services. The inventory classifies each SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake.
-- The same `TokenManager` instance `MUST` be passed to `@sdkwork/appbase-app-sdk`, every application/dependency app SDK client, and only those `@sdkwork/appbase-backend-sdk`, application-owned backend SDK, or dependency backend SDK clients that are present in an explicit `backend-admin` authenticated SDK inventory.
+- Runtime/bootstrap `MUST` derive the SDK inventory from `specs/dependency.composition.json` and the architecture core package composition entry defined by `APP_DEPENDENCY_COMPOSITION_SPEC.md`. Bootstrap `MUST NOT` maintain a second handwritten inventory that can drift from the semantic manifest.
+- The same `TokenManager` instance `MUST` be passed to `@sdkwork/iam-app-sdk`, every application/dependency app SDK client, and only those `@sdkwork/iam-backend-sdk`, application-owned backend SDK, or dependency backend SDK clients that are present in an explicit `backend-admin` authenticated SDK inventory.
 - App auth/login runtime for user-facing application sessions `MUST` construct appbase app SDK and downstream app SDK clients required for login/session/current-user/directory app-side behavior. It `MUST NOT` construct appbase backend SDK or application-owned backend SDK clients just because the application root also contains admin packages.
 - Generated SDK clients that support `setTokenManager(manager)` `MUST` receive the same instance during bootstrap. Generated SDK clients that accept `tokenManager` in a constructor `MUST` receive that same instance instead of a package-local manager.
 - The appbase app SDK client `MUST` be named `appbaseApp` or `appbaseAppClient` in runtime code so it cannot be confused with application-owned app SDK clients.
@@ -269,7 +270,7 @@ Rules:
 - New session flows `MUST NOT` inherit an old `refreshToken` when appbase does not return one.
 - Current-session bootstrap, current-session update, refresh continuation, and equivalent restoration flows may preserve the existing refresh token only through `commitSession(session, { preserveRefreshToken: true })`.
 - `getAuthHeaders()` or the language-equivalent runtime helper may expose `Authorization: Bearer <JWT authToken>`, `Access-Token: <JWT accessToken>`, and optional locale headers for approved runtime bridges. Protected SDK transports must send JWT `Access-Token` whenever an access token is available. UI and feature services must not manually assemble these headers or semicolon claim-string tokens.
-- Application roots `MUST` document private bootstrap `SDKWORK_ACCESS_TOKEN` in env templates when protected app-api or backend-api surfaces are consumed. Service-context runtimes may seed TokenManager from that value before interactive login. Browser/renderer runtimes must obtain session tokens from appbase IAM instead of public env. `AUTH_TOKEN`, `REFRESH_TOKEN`, `API_KEY`, `VITE_*_TOKEN`, and `PORTAL_PUBLIC_*_TOKEN` remain forbidden in environment variables outside explicit test fixtures.
+- Application roots `MUST` document private bootstrap `SDKWORK_ACCESS_TOKEN` in env templates when protected app-api or backend-api surfaces are consumed. Service-context runtimes may seed TokenManager from that value before interactive login. Browser/renderer runtimes must obtain session tokens from sdkwork-iam instead of public env. `AUTH_TOKEN`, `REFRESH_TOKEN`, `API_KEY`, `VITE_*_TOKEN`, and `PORTAL_PUBLIC_*_TOKEN` remain forbidden in environment variables outside explicit test fixtures.
 - Logout and refresh failure `MUST` clear local token store, global token manager, context store, sensitive caches, realtime/session bridges, and native secure storage when present, even when remote session deletion fails.
 
 ## 5. Rust Backend Composition
@@ -350,10 +351,10 @@ Appbase app SDK integration and appbase backend IAM integration are separate run
 
 Rules:
 
-- Integrating `sdkwork-appbase-app-sdk` or `@sdkwork/appbase-app-sdk` satisfies app-api IAM
+- Integrating `sdkwork-iam-app-sdk` or `@sdkwork/iam-app-sdk` satisfies app-api IAM
   responsibilities such as login, session, current-user, workspace, contacts, and user-visible
   directory reads. It does not satisfy backend-admin IAM management route availability.
-- `backend-admin` packages that call `@sdkwork/appbase-backend-sdk` for users, organizations,
+- `backend-admin` packages that call `@sdkwork/iam-backend-sdk` for users, organizations,
   departments, roles, permissions, policies, tenants, API keys, audit events, or security events
   `MUST` receive an appbase backend API base URL that serves `/backend/v3/api/iam/*`.
 - A consuming application may satisfy that base URL through a common SDK gateway only when the
@@ -389,8 +390,8 @@ Required checks for app SDK composition:
 
 | Verification | Evidence |
 | --- | --- |
-| Appbase IAM boundary | Static scan shows login/register/session/refresh/logout/current-user calls use appbase SDK resources or appbase wrappers, and application bootstrap uses the approved high-level appbase auth runtime/factory instead of low-level IAM SDK adapters. |
-| SDK inventory closure | Tests or deterministic static checks list every appbase, application-owned, and dependency SDK consumed by the app and classify its credential mode before service construction. |
+| Appbase IAM boundary | Static scan shows login/register/session/refresh/logout/current-user calls use appbase SDK resources or appbase wrappers, and application bootstrap uses the approved high-level IAM auth runtime/factory instead of low-level IAM SDK adapters. |
+| SDK inventory closure | Tests or deterministic static checks list every appbase, application-owned, and dependency SDK consumed by the app, prove they are declared in `specs/dependency.composition.json`, and classify credential mode before service construction. |
 | Global TokenManager | Tests prove one `TokenManager` is bound to appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend/application backend/dependency backend SDKs, and approved composed wrappers through `setTokenManager`, constructor injection, or the language equivalent. |
 | Session commit order | Tests prove persistence failure does not update token manager, context propagation failure rolls back token/context state, stale context is cleared, and continuation flows preserve refresh token only when allowed. |
 | Logout clearing | Tests prove local token/context state clears even when remote logout fails. |
@@ -435,7 +436,7 @@ rg -n "createTokenManager\\(|new .*TokenManager|setAuthToken|setAccessToken" app
 - [ ] Application servers consume shared platform foundation APIs through the SDKWork API gateway
   common SDK root or gateway runtime embedding, instead of directly composing foundation runtime
   crates in each application.
-- [ ] Runtime/bootstrap uses the approved high-level appbase auth runtime/factory for the architecture and does not locally wire low-level IAM SDK adapters in application code.
+- [ ] Runtime/bootstrap uses the approved high-level IAM auth runtime/factory for the architecture and does not locally wire low-level IAM SDK adapters in application code.
 - [ ] IAM application bootstrap uses `@sdkwork/iam-application-bootstrap` and passes `check-iam-application-bootstrap-standard.mjs`.
 - [ ] Runtime/bootstrap creates exactly one global `TokenManager` per authenticated session context.
 - [ ] Appbase app SDK, every application/dependency app SDK, explicit `backend-admin` appbase backend/application backend/dependency backend SDKs, and every approved composed wrapper backed by those SDKs share that same `TokenManager`.

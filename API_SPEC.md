@@ -754,9 +754,9 @@ interactive login.
 Rules:
 
 - `SDKWORK_ACCESS_TOKEN` `MUST` contain a signed SDKWork `access_token` whose claims carry the ambient request context: at minimum `tenant_id`, `organization_id`, `app_id`, `environment`, `deployment_profile`, `runtime_target`, and applicable scope metadata.
-- `auth_token`, `refresh_token`, and API keys `MUST NOT` be configured through environment variables. They are obtained only from appbase IAM login, refresh, and current-session flows.
+- `auth_token`, `refresh_token`, and API keys `MUST NOT` be configured through environment variables. They are obtained only from sdkwork-iam login, refresh, and current-session flows.
 - Bootstrap env credentials seed the global TokenManager or service-context credential provider only. They `MUST NOT` be copied into browser public runtime config, URLs, logs, UI, or feature state.
-- Login, registration, refresh, current-session bootstrap, and organization-selection completion `MUST` replace bootstrap credentials with appbase-issued session tokens.
+- Login, registration, refresh, current-session bootstrap, and organization-selection completion `MUST` replace bootstrap credentials with IAM-issued session tokens.
 - Client request bodies, query parameters, path parameters, and SDKWork context-projection headers `MUST NOT` select current tenant, organization, user, session, or app scope when token claims already define that scope.
 
 ### 10.1 Recommended Token Claims
@@ -1228,7 +1228,7 @@ SDKWork governance tools may read these extensions.
 | `x-sdkwork-deployment-profile` | `standalone`, `cloud`, or `all` |
 | `x-sdkwork-runtime-target` | Optional runtime target qualifier when an operation is intentionally runtime-target-specific. Shared app/backend/open APIs should normally omit it. |
 | `x-sdkwork-owner` | Owning application, repository, or reusable platform module that publishes this operation in its own SDK family |
-| `x-sdkwork-api-authority` | Logical API authority that owns the operation, for example `sdkwork-appbase-app-api`, `sdkwork-im.app`, `sdkwork-drive.backend` |
+| `x-sdkwork-api-authority` | Logical API authority that owns the operation, for example `sdkwork-iam-app-api`, `sdkwork-im.app`, `sdkwork-drive.backend` |
 | `x-sdkwork-source` | Physical source or scanned module that produced the operation |
 | `x-sdkwork-source-route-crate` | Rust route crate package name when the operation was materialized from `sdkwork.route.manifest` |
 | `x-sdkwork-integration-source` | Integrated dependency source when an operation is present only for runtime composition or compatibility |
@@ -1245,7 +1245,7 @@ Rules:
 - `security: []` alone does not imply `x-sdkwork-forbid-credential-headers: true`; public metadata and bootstrap endpoints may be anonymous without rejecting irrelevant credentials unless their contract explicitly sets the extension.
 - Every operation used as input to HTTP SDK generation `MUST` declare `x-sdkwork-owner` and `x-sdkwork-api-authority`.
 - `x-sdkwork-owner` is the SDK generation ownership key. It identifies the app/repo/module that is allowed to generate the operation into its SDK family.
-- `x-sdkwork-api-authority` identifies the logical API authority and should include both owner and surface, for example `sdkwork-appbase-app-api`, `sdkwork-appbase-backend-api`, `sdkwork-im.im`, or `sdkwork-drive.app`.
+- `x-sdkwork-api-authority` identifies the logical API authority and should include both owner and surface, for example `sdkwork-iam-app-api`, `sdkwork-iam-backend-api`, `sdkwork-im.im`, or `sdkwork-drive.app`.
 - `x-sdkwork-source` and `x-sdkwork-integration-source` may describe where the operation was scanned from, but they `MUST NOT` replace `x-sdkwork-owner` for generation decisions.
 - OpenAPI documents may temporarily include dependency-owned operations for runtime integration inspection only when those operations are clearly marked with the dependency owner. The generated SDK input for an app/repo `MUST` filter them out unless the current SDK family owner matches the operation owner.
 - Path prefix, tag, Rust crate name, Java controller package, or filesystem location `MUST NOT` be the only authority for SDK ownership. Those signals may help infer metadata during migration, but the materialized OpenAPI operation must carry explicit ownership before generation.

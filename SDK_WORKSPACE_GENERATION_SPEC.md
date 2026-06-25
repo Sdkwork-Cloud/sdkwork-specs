@@ -314,12 +314,8 @@ Rules:
 - Generator-specific normalization, language quirks, and Flutter-specific adjustments belong in derived inputs, not runtime API code.
 - Authority and derived inputs `MUST` preserve operationId, tag, path, schema, security, problem-detail semantics, `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and `x-sdkwork-rate-limit-tier`.
 - OpenAPI documents for app-api and backend-api `MUST` use dual-token security where required by `API_SPEC.md` and `IAM_LOGIN_INTEGRATION_SPEC.md`.
-- Public SDK-generated operations `MUST` preserve `security: []` and
-  `x-sdkwork-auth-mode: anonymous` into every derived `*.sdkgen.*` input so SDK credential
-  injection can skip those calls.
-- Login-like anonymous credential-entry operations `MUST` preserve
-  `x-sdkwork-forbid-credential-headers: true` into every derived `*.sdkgen.*` input, and runtime
-  verification must prove the corresponding route rejects inbound credential/context headers.
+- Public SDK-generated operations `MUST` preserve `security: []` and the declared `x-sdkwork-auth-mode` into every derived `*.sdkgen.*` input so SDK credential injection can apply the correct transport mode (`anonymous`, `refresh-token`, or `credential-entry-bootstrap`).
+- Login-like credential-entry operations backed by `HttpRoute::credential_entry_public` `MUST` preserve `x-sdkwork-auth-mode: credential-entry-bootstrap` and `x-sdkwork-forbid-credential-headers: true` into every derived `*.sdkgen.*` input, and runtime verification must prove the corresponding route rejects inbound session credential/context headers while still requiring bootstrap `Access-Token` JWT.
 - OpenAPI documents `MUST NOT` expose `X-Request-Id` or client-supplied request correlation IDs for app/backend SDKs.
 - Authority OpenAPI and derived `*.sdkgen.*` inputs `MUST NOT` expose current-tenant selectors named `tenant_id`, `tenantId`, `tenant`, `tenant-id`, `X-Tenant-Id`, or equivalent in path, query, header, cookie, or client-writable request bodies. Tenant context is resolved by dual-token, API-key, or typed request-context infrastructure.
 
@@ -346,8 +342,8 @@ Rules:
   native/Tauri host crates, route crates, repository crates, service crates, or worker crates `MUST`
   declare `sdkwork-appbase` SDK dependencies before generating application-owned SDKs. At minimum,
   app/user-facing app-api consumers declare
-  `sdkwork-appbase/sdks/sdkwork-appbase-app-sdk`; `backend-admin` consumers also declare
-  `sdkwork-appbase/sdks/sdkwork-appbase-backend-sdk`.
+  `sdkwork-iam/sdks/sdkwork-iam-app-sdk`; `backend-admin` consumers also declare
+  `sdkwork-iam/sdks/sdkwork-iam-backend-sdk`.
 - Those Rust-enabled independent apps `MUST` include the Rust package mapping for each required
   appbase SDK dependency when Rust code consumes appbase HTTP SDKs, and their Rust workspace
   manifests must depend on the appbase Rust runtime crates needed for shared context, auth,
@@ -357,8 +353,8 @@ Rules:
   union of top-level `.sdkwork-assembly.json sdkDependencies` plus per-surface `sdkDependencies`.
   SDK families with no dependencies `MUST` declare `contracts.sdkDependencies: []`.
 - Dependency SDK families themselves `MUST` be discoverable by the same standards checker as
-  consuming SDK families. For example, `sdkwork-appbase/sdks/sdkwork-appbase-app-sdk` and
-  `sdkwork-appbase/sdks/sdkwork-appbase-backend-sdk` declare their own assembly metadata and
+  consuming SDK families. For example, `sdkwork-iam/sdks/sdkwork-iam-app-sdk` and
+  `sdkwork-iam/sdks/sdkwork-iam-backend-sdk` declare their own assembly metadata and
   operation ownership; applications only reference them through `sdkDependencies`.
 - Any committed or materialized `generated/server-openapi` output `MUST` belong to a discoverable
   SDK family with `.sdkwork-assembly.json`. Existing generated output without assembly metadata is
@@ -379,7 +375,7 @@ Rules:
   `apiPrefix`, those values `MUST` match the referenced SDK family. `apiPrefix: null` is valid only
   when the referenced SDK family has no HTTP API prefix; it cannot be used to bypass app/backend/open
   prefix matching. Historical authority aliases such as `sdkwork-appbase.app` and
-  `sdkwork-appbase-app-api` may normalize to the same authority, but app/backend/open authority
+  `sdkwork-iam-app-api` may normalize to the same authority, but app/backend/open authority
   mismatches are invalid.
 - Generated transport output `MUST NOT` import dependency SDK packages, vendor their generated
   transport code, re-export dependency SDK clients, or retain stale API/model/doc files for
@@ -461,9 +457,9 @@ Example metadata:
 {
   "sdkDependencies": [
     {
-      "workspace": "../sdkwork-appbase/sdks/sdkwork-appbase-app-sdk",
-      "sdkFamily": "sdkwork-appbase-app-sdk",
-      "apiAuthority": "sdkwork-appbase-app-api",
+      "workspace": "../sdkwork-iam/sdks/sdkwork-iam-app-sdk",
+      "sdkFamily": "sdkwork-iam-app-sdk",
+      "apiAuthority": "sdkwork-iam-app-api",
       "surface": "app-api",
       "apiPrefix": "/app/v3/api",
       "required": true,
@@ -473,9 +469,9 @@ Example metadata:
   ],
   "dependencyApiExports": [
     {
-      "workspace": "../sdkwork-appbase/sdks/sdkwork-appbase-app-sdk",
-      "sdkFamily": "sdkwork-appbase-app-sdk",
-      "apiAuthority": "sdkwork-appbase-app-api",
+      "workspace": "../sdkwork-iam/sdks/sdkwork-iam-app-sdk",
+      "sdkFamily": "sdkwork-iam-app-sdk",
+      "apiAuthority": "sdkwork-iam-app-api",
       "surface": "app-api",
       "apiPrefix": "/app/v3/api",
       "exportMode": "composed-wrapper",
@@ -493,8 +489,8 @@ Example:
 If `sdkwork-im` depends on `sdkwork-appbase`, then `sdkwork-im/sdks/sdkwork-im-app-sdk` and
 `sdkwork-im/sdks/sdkwork-im-backend-sdk` generate only Craw Chat-owned app/backend APIs.
 `sdkwork-appbase` app/backend auth, IAM, session, QR auth, and backend management APIs remain in
-`sdkwork-appbase/sdks/sdkwork-appbase-app-sdk` and
-`sdkwork-appbase/sdks/sdkwork-appbase-backend-sdk`. Craw Chat records those SDKs as dependencies
+`sdkwork-iam/sdks/sdkwork-iam-app-sdk` and
+`sdkwork-iam/sdks/sdkwork-iam-backend-sdk`. Craw Chat records those SDKs as dependencies
 and consumes them at the composition layer.
 
 For an independent Rust-enabled app under `apps/`, the same dependency rule applies even when the
@@ -594,7 +590,7 @@ Rules:
 - Dart, Python, Go, Java, Kotlin, Swift, C#, Rust, PHP, Ruby, and similar targets should keep handwritten helpers thin and outside generated output.
 - Android requests route to Kotlin as the generator target unless a separate Android wrapper is explicitly approved.
 - iOS requests route to Swift as the generator target unless a separate iOS wrapper is explicitly approved.
-- Appbase-owned reusable SDK families `sdkwork-appbase-app-sdk` and `sdkwork-appbase-backend-sdk` `MUST` generate the full language baseline unless a governance exception explicitly narrows the supported consumer set.
+- IAM-owned reusable SDK families `sdkwork-iam-app-sdk` and `sdkwork-iam-backend-sdk` `MUST` generate the full language baseline unless a governance exception explicitly narrows the supported consumer set.
 - Independent Rust-enabled app repositories under `apps/` that consume appbase capabilities `MUST`
   declare the Rust-language package names for the required appbase SDK dependencies and must not
   omit Rust simply because TypeScript/React is the primary UI language.
@@ -730,7 +726,7 @@ node .\sdks\sdkwork-<domain>-backend-sdk\bin\verify-sdk.mjs
   approved export mode, and points only to authored composed/application/service-port/documentation
   surfaces outside generated transport.
 - [ ] Independent Rust-enabled `apps/` repositories declare `sdkwork-appbase` dependencies, required
-  appbase Rust crates, `sdkwork-appbase-app-sdk`, and `sdkwork-appbase-backend-sdk` when `backend-admin`
+  appbase Rust crates, `sdkwork-iam-app-sdk`, and `sdkwork-iam-backend-sdk` when `backend-admin`
   appbase capabilities are used.
 - [ ] Every `sdkDependencies[].workspace` resolves to exactly one SDK family in the same global
   ownership check, is unique within its dependency list, and declared owner, authority, authority

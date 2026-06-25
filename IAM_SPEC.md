@@ -29,7 +29,7 @@ IAM does not own:
 - Content/resource ownership beyond generic owner references and authorization claims.
 - Native host secret storage internals.
 - Product-specific permission catalogs outside their registered permission codes.
-- Product permission and role seed catalogs must be declared through IMF manifests (`IAM_MODULE_MANIFEST_SPEC.md`) and materialized by `sdkwork-iam-module-registry`; `sdkwork-appbase-iam-bootstrap` owns only `iam-kernel` catalog seeds.
+- Product permission and role seed catalogs must be declared through IMF manifests (`IAM_MODULE_MANIFEST_SPEC.md`) and materialized by `sdkwork-iam-module-registry`; `sdkwork-iam-bootstrap` owns only `iam-kernel` catalog seeds.
 
 ## 2. Canonical Package Boundary
 
@@ -47,7 +47,22 @@ Reusable IAM modules use layered packages so each application can switch generat
 | Rust backend-api route | `sdkwork_router_iam_backend_api` | Rust backend-api route contract parity with Java backend APIs across standalone/cloud profiles |
 | Rust open-api route | `sdkwork_router_iam_open_api` | Rust open-api route contract parity when IAM exposes public integration APIs |
 | Rust SQLx directory repository | `sdkwork_iam_directory_repository_sqlx` | Rust SQL migration and persistence contract |
-| Rust Tauri host | `sdkwork_appbase_tauri_host` | Tauri host adapter boundary for standalone IAM |
+| Rust Tauri host | `sdkwork_iam_tauri_host` | Tauri host adapter boundary for standalone IAM |
+
+### 2.1 Repository And SDK Ownership
+
+IAM domain code, IMF registry, database module, HTTP/RPC authorities, and generated SDK families `MUST` live in the `sdkwork-iam` repository. `sdkwork-appbase` `MUST NOT` host IAM crates, IAM TypeScript packages, IAM database assets, or IAM SDK families.
+
+| Artifact | Owner repository | Canonical name |
+| --- | --- | --- |
+| App SDK family | `sdkwork-iam` | `sdkwork-iam-app-sdk` / `@sdkwork/iam-app-sdk` |
+| Backend SDK family | `sdkwork-iam` | `sdkwork-iam-backend-sdk` / `@sdkwork/iam-backend-sdk` |
+| Open SDK family | `sdkwork-iam` | `sdkwork-iam-open-sdk` / `@sdkwork/iam-open-sdk` |
+| App API authority | `sdkwork-iam` | `sdkwork-iam-app-api` |
+| Backend API authority | `sdkwork-iam` | `sdkwork-iam-backend-api` |
+| Open API authority | `sdkwork-iam` | `sdkwork-iam-open-api` |
+
+Consumer applications integrate IAM through `sdkwork-iam` crates, packages, and generated SDK clients. They consume `sdkwork-appbase` only for platform shell, runtime bootstrap, i18n, and other non-IAM foundation capabilities.
 
 Rules:
 
@@ -56,7 +71,7 @@ Rules:
 - Runtime/bootstrap creates the concrete SDK clients for each lifecycle
   environment, deployment profile, and runtime target.
 - App SDK constructors may differ by application, but injected method surfaces `MUST` remain resource-oriented and stable.
-- Reusable UI IAM capability work belongs in `pc-react/iam` and common IAM packages; do not introduce compatibility package roots outside the canonical IAM boundary.
+- Reusable UI IAM capability work belongs in `apps/sdkwork-iam-pc/packages/` and cross-architecture IAM packages in `apps/sdkwork-iam-common/packages/`; do not introduce compatibility package roots outside the canonical IAM boundary.
 
 ## 3. Core Model
 
@@ -178,6 +193,7 @@ Rules:
 - Refresh token handling `MUST` be server-controlled, revocable, rotated where possible, and unavailable to normal business operation handlers.
 - Passwords, verification codes, recovery secrets, private tokens, API key raw values, and MFA secrets `MUST` be write-only and never appear in response schemas.
 - MFA, OAuth, SSO, passkeys, and device authorization extend sessions; they are not separate unrelated domains.
+- Third-party OAuth consumption and SDKWork OAuth provider behavior `MUST` follow `IAM_OAUTH_SPEC.md`.
 
 ### 5.1 Login Context Resolution
 
@@ -312,8 +328,8 @@ Rules:
 
 - Service-context runtimes (`server`, `container`, `test-runner`, and approved desktop service contexts) `SHOULD` configure `SDKWORK_ACCESS_TOKEN` before interactive login.
 - `auth_token`, `refresh_token`, and API keys `MUST NOT` be configured in environment variables.
-- Browser/renderer runtimes `MUST` obtain session tokens from appbase IAM login flows and TokenManager storage. They `MUST NOT` read live tokens from `VITE_*` or `PORTAL_PUBLIC_*`.
-- Login, registration, refresh, current-session bootstrap, and organization-selection completion `MUST` replace bootstrap env credentials with appbase-issued session tokens.
+- Browser/renderer runtimes `MUST` obtain session tokens from sdkwork-iam login flows and TokenManager storage. They `MUST NOT` read live tokens from `VITE_*` or `PORTAL_PUBLIC_*`.
+- Login, registration, refresh, current-session bootstrap, and organization-selection completion `MUST` replace bootstrap env credentials with IAM-issued session tokens.
 
 ## 5.3 API Key Context Resolution (Open-api)
 

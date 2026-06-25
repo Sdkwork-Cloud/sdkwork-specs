@@ -347,7 +347,7 @@ Rules:
   this declaration must be treated as not serving the dependency API for SDK base URL defaults.
 - Split/server runtimes `MUST` declare dependency surfaces as `external-service` and provide
   dependency-specific upstream/base URL configuration. An upstream id such as
-  `sdkwork-appbase-app-api` is valid only when it resolves before the proxy/router starts.
+  `sdkwork-iam-app-api` is valid only when it resolves before the proxy/router starts.
 - Embedded or same-process runtimes `MUST` import the dependency-owned executable router,
   controller, handler adapter, or service builder through a public component export. Starting the
   application API server, Tauri dev command, or local workspace command does not prove dependency API
@@ -359,7 +359,7 @@ Rules:
 - If the dependency exports route metadata but no executable router export, the consuming backend
   must configure that dependency SDK as an external service or add an approved handler adapter before
   same-origin dependency SDK calls are allowed.
-- A backend runtime that serves admin UI modules using `@sdkwork/appbase-backend-sdk` for appbase
+- A backend runtime that serves admin UI modules using `@sdkwork/iam-backend-sdk` for appbase
   backend IAM `MUST` either mount a production-capable appbase backend router/controller/service
   adapter for `/backend/v3/api/iam/*` and declare verified `dependencyApiSurfaces` evidence, or
   route those SDK calls to an explicit appbase backend service/gateway. Mounting only appbase

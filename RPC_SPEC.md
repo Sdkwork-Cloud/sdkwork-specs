@@ -610,29 +610,28 @@ Rules:
 
 ## 19. Standard Proto Repository Layout
 
-Recommended shared contract layout:
+Recommended shared contract layout for domain multi-surface repositories:
+
+```text
+apps/sdkwork-<application-code>-common/packages/sdkwork-rpc-contracts/
+  proto/sdkwork/common/v1/*.proto
+  buf.yaml
+  buf.gen.yaml
+  README.md
+
+apps/sdkwork-<application-code>-common/packages/sdkwork-<domain>-rpc-contracts/
+  proto/sdkwork/<domain>/app/v3/*.proto
+  proto/sdkwork/<domain>/backend/v3/*.proto
+  buf.yaml
+  buf.gen.yaml
+  README.md
+```
+
+Legacy repository-root layout (migration only; do not add new packages here):
 
 ```text
 packages/common/rpc/sdkwork-rpc-contracts/
-  proto/sdkwork/common/v1/*.proto
-  proto/sdkwork/foundation/internal/v1/*.proto
-  buf.yaml
-  buf.gen.yaml
-  README.md
-
-packages/common/iam/sdkwork-iam-rpc-contracts/
-  proto/sdkwork/iam/app/v3/*.proto
-  proto/sdkwork/iam/backend/v3/*.proto
-  buf.yaml
-  buf.gen.yaml
-  README.md
-
-packages/common/commerce/sdkwork-commerce-rpc-contracts/
-  proto/sdkwork/commerce/app/v3/*.proto
-  proto/sdkwork/commerce/backend/v3/*.proto
-  buf.yaml
-  buf.gen.yaml
-  README.md
+packages/common/<domain>/sdkwork-<domain>-rpc-contracts/
 ```
 
 Rules:

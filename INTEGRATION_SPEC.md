@@ -25,8 +25,8 @@ Standard SDK families:
 
 | SDK family | API authority | Prefix | Audience |
 | --- | --- | --- | --- |
-| `sdkwork-appbase-app-sdk` | `sdkwork-appbase-app-api` | `/app/v3/api` | App, desktop, mobile, H5, and user-facing clients |
-| `sdkwork-appbase-backend-sdk` | `sdkwork-appbase-backend-api` | `/backend/v3/api` | Admin consoles, backend services, operators, and control-plane automation |
+| `sdkwork-iam-app-sdk` | `sdkwork-iam-app-api` | `/app/v3/api` | App, desktop, mobile, H5, and user-facing clients |
+| `sdkwork-iam-backend-sdk` | `sdkwork-iam-backend-api` | `/backend/v3/api` | Admin consoles, backend services, operators, and control-plane automation |
 
 Rules:
 

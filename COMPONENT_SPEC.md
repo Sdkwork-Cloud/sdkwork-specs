@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: local `specs/` directories for apps, reusable packages, language modules, SDK families, services, host adapters, and componentized integration units under `apps/`
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `AGENTS_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `MODULE_SPEC.md`, `APPLICATION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `CONFIG_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `AGENTS_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `MODULE_SPEC.md`, `APPLICATION_SPEC.md`, `APP_DEPENDENCY_COMPOSITION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `CONFIG_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
 This standard defines the local specification boundary for every authored SDKWork component. The root `specs/` directory remains authoritative; a component-local `specs/` directory exists to make the component discoverable, maintainable, and safe to integrate without reading its internals first.
 
@@ -51,7 +51,7 @@ Rules:
     "displayName": "SDKWork Example",
     "version": "0.1.0",
     "type": "react-package",
-    "root": "sdkwork-appbase/packages/pc-react/iam/example",
+    "root": "sdkwork-iam/apps/sdkwork-iam-pc/packages/example",
     "domain": "iam",
     "capability": "auth",
     "surface": "app",
@@ -72,6 +72,7 @@ Rules:
     "routeManifest": null,
     "sdkClients": [],
     "sdkDependencies": [],
+    "dependencyComposition": "specs/dependency.composition.json",
     "dependencyApiExports": [],
     "dependencyApiSurfaces": [],
     "events": [],
@@ -112,6 +113,9 @@ Rules:
   or composed facade. It `MUST` be an explicit array for every authored SDK family, composed facade,
   application core package, or runtime component that consumes dependency SDKs; use `[]` when there
   are no dependency SDKs.
+- `contracts.dependencyComposition`, when present, points to the owning client root semantic
+  dependency manifest. Client app roots `MUST` set this to `specs/dependency.composition.json`.
+  Core packages `SHOULD` point to the app-root manifest with a relative path.
 - `contracts.dependencyApiExports` lists dependency-owned API capabilities intentionally exposed by
   this component's public exports, composed wrappers, service ports, or application core surface.
   It `MUST` be explicit for authored SDK families and composed facades. The default is `[]`, which
@@ -159,11 +163,13 @@ Architecture UI spec selection:
 
 | Component root pattern | Required architecture spec |
 | --- | --- |
+| `apps/sdkwork-<application-code>-common/**` | `APPLICATION_SPEC.md`, `MODULE_SPEC.md` |
+| `apps/sdkwork-<application-code>-common/packages/sdkwork-<capability>` | `APPLICATION_SPEC.md`, `MODULE_SPEC.md` |
 | `apps/sdkwork-<application-code>-pc/**` | `APP_PC_ARCHITECTURE_SPEC.md` |
 | `apps/sdkwork-<application-code>-pc/packages/sdkwork-<application-code>-pc-<capability>` without `pc-console` or `pc-admin` | `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md` |
 | `apps/sdkwork-<application-code>-pc/packages/sdkwork-<application-code>-pc-console-*` | `APP_PC_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md` |
 | `apps/sdkwork-<application-code>-pc/packages/sdkwork-<application-code>-pc-admin-*` | `APP_PC_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md` |
-| `packages/pc-react/**` | `APP_PC_REACT_UI_SPEC.md` |
+| `packages/pc-react/**` | `APP_PC_REACT_UI_SPEC.md` (legacy migration-only; do not add new components) |
 | `apps/sdkwork-<application-code>-h5/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md` |
 | `apps/sdkwork-<application-code>-h5/packages/sdkwork-<application-code>-h5-*` | `APP_H5_ARCHITECTURE_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md` |
 | `apps/sdkwork-<application-code>-flutter-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` |
@@ -176,12 +182,13 @@ Architecture UI spec selection:
 | `apps/sdkwork-<application-code>-ios-mobile/packages/sdkwork-<application-code>-ios-mobile-*` | `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md` |
 | `apps/sdkwork-<application-code>-harmony-mobile/**` | `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md` |
 | `apps/sdkwork-<application-code>-harmony-mobile/packages/sdkwork-<application-code>-harmony-mobile-*` | `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md` |
-| `packages/mobile-react/**` | `APP_MOBILE_REACT_UI_SPEC.md` |
-| `packages/mobile-flutter/**` | `APP_FLUTTER_UI_SPEC.md` |
-| `packages/mini-program/**` | `APP_MINI_PROGRAM_UI_SPEC.md` |
-| `packages/android-native/**` | `APP_ANDROID_NATIVE_UI_SPEC.md` |
-| `packages/ios-native/**` | `APP_IOS_NATIVE_UI_SPEC.md` |
-| `packages/harmony-native/**` | `APP_HARMONY_NATIVE_UI_SPEC.md` |
+| `packages/mobile-react/**` | `APP_MOBILE_REACT_UI_SPEC.md` (legacy migration-only; do not add new components) |
+| `packages/mobile-flutter/**` | `APP_FLUTTER_UI_SPEC.md` (legacy migration-only; do not add new components) |
+| `packages/mini-program/**` | `APP_MINI_PROGRAM_UI_SPEC.md` (legacy migration-only; do not add new components) |
+| `packages/android-native/**` | `APP_ANDROID_NATIVE_UI_SPEC.md` (legacy migration-only; do not add new components) |
+| `packages/ios-native/**` | `APP_IOS_NATIVE_UI_SPEC.md` (legacy migration-only; do not add new components) |
+| `packages/harmony-native/**` | `APP_HARMONY_NATIVE_UI_SPEC.md` (legacy migration-only; do not add new components) |
+| `packages/common/**` | `APPLICATION_SPEC.md`, `MODULE_SPEC.md` (legacy migration-only; canonical target is `apps/sdkwork-<application-code>-common/packages/`) |
 | `apps/sdkwork-backend-react-web/**` or `packages/sdkwork-react-backend-*` | `BACKEND_UI_SPEC.md` |
 
 Rules:

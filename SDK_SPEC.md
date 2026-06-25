@@ -68,6 +68,7 @@ Rules:
 - Generated or composed SDKs are the only transport boundary for appbase modules. Consumers `MUST NOT` replace missing SDK methods with raw HTTP, manual auth headers, local DTO forks, or app-local generated-output edits.
 - SDKWork-owned file upload, download, object-storage provider, and storage lifecycle operations `MUST` use generated Drive SDKs from contracts governed by `DRIVE_SPEC.md`. Business SDKs consume Drive references and `MediaResource`; they `MUST NOT` grow duplicate upload clients.
 - Generated SDKs `MUST` honor OpenAPI `x-sdkwork-auth-mode: anonymous` and `x-sdkwork-auth-mode: refresh-token` by suppressing normal automatic user credential injection for that operation, including global TokenManager auth tokens and access tokens. They `MUST NOT` attach AppContext projection headers. Refresh-token operations may carry a refresh token only through the operation's declared request body or a dedicated refresh-token credential channel; they must not inherit stale auth/access token headers. The generated operation call site must pass a language-specific `skipAuth` or equivalent option into the shared transport layer, and that transport layer must enforce the skip.
+- Generated SDKs `MUST` honor OpenAPI `x-sdkwork-auth-mode: credential-entry-bootstrap` by injecting bootstrap `Access-Token` from TokenManager while suppressing session `Authorization`, API keys, and SDKWork context projection headers. The generated operation call site must pass a language-specific `credentialEntryBootstrap` or equivalent option into the shared transport layer.
 - Every OpenAPI-generated SDK family `MUST` declare `sdkOwner` and `apiAuthority` in its `.sdkwork-assembly.json`.
 - Any SDK family directory that contains `openapi/*.sdkgen.json`, `openapi/*.sdkgen.yaml`, or
   `openapi/*.sdkgen.yml` `MUST` have a sibling `.sdkwork-assembly.json`. Missing assembly metadata
@@ -148,7 +149,7 @@ Rules:
   those values `MUST` match the referenced dependency SDK family. `apiPrefix: null` is valid only
   when the referenced SDK family has no HTTP API prefix; it cannot be used to bypass app/backend/open
   prefix matching. The checker treats historical API authority aliases such as `sdkwork-appbase.app`
-  and `sdkwork-appbase-app-api` as equivalent, but mismatched app/backend/open authorities are standards
+  and `sdkwork-iam-app-api` as equivalent, but mismatched app/backend/open authorities are standards
   failures.
 - When two authorities use the same prefix, route ownership still belongs to the authority that
   declares the route. The consuming SDK's derived generator input `MUST` subtract dependency-owned
@@ -169,8 +170,8 @@ Rules:
 - Adding more third-party or reusable-module dependencies `MUST` extend `sdkDependencies` and the
   materialization exclusion set. It `MUST NOT` broaden the consuming SDK's OpenAPI input.
 - Appbase examples are normative: appbase identity, session, IAM, verification, QR auth, and
-  appbase backend management capabilities remain in `sdkwork-appbase-app-sdk` and
-  `sdkwork-appbase-backend-sdk`. Applications such as `sdkwork-im`, `sdkwork-claw-router`, and
+  IAM backend management capabilities remain in `sdkwork-iam-app-sdk` and
+  `sdkwork-iam-backend-sdk`. Applications such as `sdkwork-im`, `sdkwork-claw-router`, and
   `sdkwork-birdcoder` consume those SDKs and generate only their application-owned app/backend APIs.
 - Rust-enabled independent apps must also declare the Rust language packages for those appbase SDK
   families when Rust code calls appbase HTTP APIs directly, and must depend on appbase Rust runtime
@@ -270,8 +271,8 @@ Rules:
   evidence.
 - Dependency API authorities remain separate exports by surface: open-api, app-api, and backend-api
   are distinct even when they share an origin or a versioned path prefix. Importing
-  `sdkwork-appbase-app-sdk` never implies backend IAM management APIs, and importing
-  `sdkwork-appbase-backend-sdk` never implies user-facing auth/session APIs.
+  `sdkwork-iam-app-sdk` never implies backend IAM management APIs, and importing
+  `sdkwork-iam-backend-sdk` never implies user-facing auth/session APIs.
 - A dependency Rust route contract, route metadata function, route manifest, or OpenAPI document is
   not an executable router. A same-process runtime may use those artifacts for coverage checks, but
   it still needs an executable router, controller, service adapter, or approved handler export before
@@ -311,10 +312,10 @@ Rules:
   running backend returns 404 for dependency-owned management routes. They `MAY` use a common SDK
   base URL only when that root is explicitly configured as a gateway that serves the dependency
   backend API surface.
-- Appbase backend-admin IAM dependency rule: integrating `sdkwork-appbase-app-sdk` or
-  `@sdkwork/appbase-app-sdk` satisfies only app-api login, session, current-user, workspace, and
-  user-visible directory behavior. It does not make `@sdkwork/appbase-backend-sdk` IAM management
-  operations available. An application that constructs `@sdkwork/appbase-backend-sdk` for
+- Appbase backend-admin IAM dependency rule: integrating `sdkwork-iam-app-sdk` or
+  `@sdkwork/iam-app-sdk` satisfies only app-api login, session, current-user, workspace, and
+  user-visible directory behavior. It does not make `@sdkwork/iam-backend-sdk` IAM management
+  operations available. An application that constructs `@sdkwork/iam-backend-sdk` for
   `backend-admin` IAM must either mount a production-capable appbase-owned backend
   router/controller/service adapter, or an approved application adapter backed by real appbase IAM
   tables/services, with verified `dependencyApiSurfaces` coverage for `/backend/v3/api/iam/*`; or it
@@ -380,8 +381,8 @@ These names have different meanings:
 | Shared composed facade | `@sdkwork/<capability>-service` or appbase package |
 | Drive App SDK | `@sdkwork/drive-app-sdk` |
 | Drive Backend SDK | `@sdkwork/drive-backend-sdk` |
-| Appbase App SDK | `@sdkwork/appbase-app-sdk` from `sdkwork-appbase/sdks/sdkwork-appbase-app-sdk` |
-| Appbase Backend SDK | `@sdkwork/appbase-backend-sdk` from `sdkwork-appbase/sdks/sdkwork-appbase-backend-sdk` |
+| IAM App SDK | `@sdkwork/iam-app-sdk` from `sdkwork-iam/sdks/sdkwork-iam-app-sdk` |
+| IAM Backend SDK | `@sdkwork/iam-backend-sdk` from `sdkwork-iam/sdks/sdkwork-iam-backend-sdk` |
 | Craw Chat App API | `@sdkwork/app-sdk` from the current appbase app SDK compatibility package |
 | IM SDK | `@sdkwork/im-sdk` from Craw Chat application root `sdks/sdkwork-im-sdk` |
 | RTC SDK | `@sdkwork/rtc-sdk` from sdkwork-rtc workspace `../sdkwork-rtc/sdks/sdkwork-rtc-sdk` |
@@ -414,18 +415,18 @@ Rules:
 - Standalone and cloud implementations may use different runtime clients, but
   shared API SDK surfaces must remain semantically identical.
 - Deprecated `openchat` SDK sources `MUST NOT` be used for new integrations. IM integrations use the active `sdkwork-im` SDK workspaces, and RTC integrations use the active `sdkwork-rtc` SDK workspace at `../sdkwork-rtc/sdks/sdkwork-rtc-sdk`, while preserving public package names.
-- Craw Chat appbase-owned `/app/v3/api` consumers `MUST` use the current `sdkwork-appbase` app SDK or an approved wrapper on top of it. Craw Chat `MUST NOT` create a local app SDK fork for appbase-owned IAM, workspace, login, registration, bootstrap, or session capabilities.
-- Craw Chat domain-owned `/app/v3/api` extensions may be generated through its application-root `sdks/sdkwork-im-app-sdk` only when the authority is declared as `sdkwork-im-app-api` and the routes are not appbase-owned capabilities.
-- Craw Chat `/im/v3/api` consumers `MUST` use its application-root `sdks/sdkwork-im-sdk`. Appbase IAM, workspace, and app/client bootstrap capabilities remain outside the IM SDK.
-- `sdkwork-appbase` owns the standard reusable appbase app/backend SDK families: `sdkwork-appbase-app-sdk` generated from `sdkwork-appbase-app-api` and `sdkwork-appbase-backend-sdk` generated from `sdkwork-appbase-backend-api`.
-- Applications that consume appbase API capabilities `MUST` integrate those generated SDKs or approved composed wrappers. They `MUST NOT` create app-local raw HTTP clients, local SDK forks, or duplicate appbase OpenAPI authority files for the same capabilities.
+- Craw Chat IAM-owned `/app/v3/api` consumers `MUST` use `sdkwork-iam/sdks/sdkwork-iam-app-sdk` or an approved wrapper on top of it. Craw Chat `MUST NOT` create a local app SDK fork for IAM login, registration, bootstrap, or session capabilities.
+- Craw Chat domain-owned `/app/v3/api` extensions may be generated through its application-root `sdks/sdkwork-im-app-sdk` only when the authority is declared as `sdkwork-im-app-api` and the routes are not IAM-owned capabilities.
+- Craw Chat `/im/v3/api` consumers `MUST` use its application-root `sdks/sdkwork-im-sdk`. IAM workspace and app/client bootstrap capabilities remain outside the IM SDK.
+- `sdkwork-iam` owns the standard reusable IAM app/backend/open SDK families: `sdkwork-iam-app-sdk` generated from `sdkwork-iam-app-api`, `sdkwork-iam-backend-sdk` generated from `sdkwork-iam-backend-api`, and `sdkwork-iam-open-sdk` generated from `sdkwork-iam-open-api`. `sdkwork-appbase` does not host IAM SDK families.
+- Applications that consume IAM API capabilities `MUST` integrate those generated SDKs from `sdkwork-iam` or approved composed wrappers. They `MUST NOT` create app-local raw HTTP clients, local SDK forks, or duplicate IAM OpenAPI authority files for the same capabilities.
 - Independent `apps/` repositories with Rust services, Tauri hosts, native/Tauri host
   crates, route crates, repository crates, service crates, or worker crates `MUST` list
-  `sdkwork-appbase-app-sdk` and, when `backend-admin` capabilities are used,
-  `sdkwork-appbase-backend-sdk` as SDK dependencies. Their Rust manifests must also declare the
-  required appbase Rust crates instead of reimplementing appbase request context, token validation,
+  `sdkwork-iam-app-sdk` and, when `backend-admin` capabilities are used,
+  `sdkwork-iam-backend-sdk` as SDK dependencies. Their Rust manifests must also declare the
+  required IAM Rust crates from `sdkwork-iam` instead of reimplementing IAM request context, token validation,
   session restoration, workspace/bootstrap, or IAM helper logic locally.
-- For example, if `sdkwork-im` depends on `sdkwork-appbase`, the `sdkwork-im` app/backend SDK generation inputs must contain only `sdkwork-im`-owned app/backend operations. `sdkwork-appbase` IAM app/backend operations remain in appbase SDKs and are declared as dependencies, never regenerated into `sdkwork-im` SDKs.
+- For example, if `sdkwork-im` depends on IAM capabilities, the `sdkwork-im` app/backend SDK generation inputs must contain only `sdkwork-im`-owned app/backend operations. IAM app/backend operations remain in `sdkwork-iam` SDK families and are declared as dependencies, never regenerated into `sdkwork-im` SDKs.
 
 ## 3. Client Surface
 
@@ -476,15 +477,15 @@ Rules:
 - Generated protected open-api SDKs `MUST NOT` expose per-call `tenant_id` or `tenantId` to select tenant context. Tenant context is resolved from the validated API key record or OAuth bearer token/session lookup through the declared SDK credential provider.
 - Generated open-api SDKs `MUST` expose a credential provider or constructor option matching the declared open-api auth mode (API key provider, OAuth bearer provider, or flexible provider). They `MUST NOT` reuse the app login token manager unless a documented compatibility contract explicitly requires dual-token mode.
 - Frontend service modules `MUST` set tokens or API keys through SDK credential APIs, not manual headers.
-- IAM login/session token wiring `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`: the appbase auth runtime, `@sdkwork/appbase-app-sdk`, and one global token manager own token injection, route guards, refresh, logout, and session clearing.
-- Appbase login, registration, session validation, current-session retrieval/update/delete, refresh, OAuth, QR auth, password reset, verification-code operations, runtime metadata, and current-user self-service `MUST` use `@sdkwork/appbase-app-sdk` generated from `sdkwork-appbase-app-api`.
+- IAM login/session token wiring `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`: the IAM auth runtime, `@sdkwork/iam-app-sdk`, and one global token manager own token injection, route guards, refresh, logout, and session clearing.
+- Appbase login, registration, session validation, current-session retrieval/update/delete, refresh, OAuth, QR auth, password reset, verification-code operations, runtime metadata, and current-user self-service `MUST` use `@sdkwork/iam-app-sdk` generated from `sdkwork-iam-app-api`.
 - Appbase login, registration, OAuth session creation, QR auth session creation, QR auth password completion, password reset request, and password reset completion operations `MUST` be generated from `security: []` plus `x-sdkwork-auth-mode: anonymous`; generated clients must not send stale global TokenManager credentials to those operations. Operations marked `x-sdkwork-forbid-credential-headers: true` must also be enforced by the server or gateway.
-- Appbase app-side IAM directory resources that are visible to authenticated application users `MUST` remain app SDK capabilities. This includes organization, department, membership, assignment, position, role-binding, and tree read/list resources used for contacts, address books, workspace selection, and customer-owned management views. They `MUST` be exported through `@sdkwork/appbase-app-sdk` or an approved app SDK wrapper when the frontend app needs them; they `MUST NOT` be removed from the app SDK merely because appbase backend SDK also owns administrator IAM management resources.
-- Appbase `backend-admin` IAM management operations `MUST` use `@sdkwork/appbase-backend-sdk` generated from `sdkwork-appbase-backend-api`; backend SDKs `MUST NOT` expose or own user-facing login/session creation.
+- Appbase app-side IAM directory resources that are visible to authenticated application users `MUST` remain app SDK capabilities. This includes organization, department, membership, assignment, position, role-binding, and tree read/list resources used for contacts, address books, workspace selection, and customer-owned management views. They `MUST` be exported through `@sdkwork/iam-app-sdk` or an approved app SDK wrapper when the frontend app needs them; they `MUST NOT` be removed from the app SDK merely because appbase backend SDK also owns administrator IAM management resources.
+- Appbase `backend-admin` IAM management operations `MUST` use `@sdkwork/iam-backend-sdk` generated from `sdkwork-iam-backend-api`; backend SDKs `MUST NOT` expose or own user-facing login/session creation.
 - Backend SDKs and appbase backend SDK wrappers are `backend-admin` surfaces. `backend-admin` means admin-only backend/API/SDK use for internal staff, operators, support, auditors, platform administrators, or trusted backend services acting for those admin workflows. They `MUST` be exported only from `backend-admin` package boundaries such as backend service modules, backend-core packages, standalone backend/admin UI core packages, or PC `pc-admin-core` SDK subpaths. App packages, user-facing console packages, frontend app core packages, and app auth runtime public exports `MUST NOT` expose backend SDK wrapper functions, backend SDK generated packages, backend base URL resolvers, or appbase backend SDK clients.
 - Except for explicit `backend-admin` package or service boundaries, SDKWork application consumers `MUST` use the generated app SDK family or an approved app SDK wrapper for SDKWork remote capabilities. Non-admin modules `MUST NOT` import, export, construct, wrap, re-export, proxy, or indirectly call backend SDK clients, appbase backend SDK clients, backend SDK wrapper functions, backend generated SDK packages, or backend base URL resolvers.
 - Application and frontend core packages that compose SDK clients `MUST` continue to export the application-owned app SDK and required dependency app SDK wrappers for app integration, including appbase app SDK wrappers. Fixing backend SDK leakage by deleting app SDK exports is forbidden. If a user-facing app or console workflow needs a missing method, add the method to the owning app-api/app SDK or move the workflow to a `backend-admin` surface; do not route the workflow through backend SDK from a non-admin module.
-- Every application runtime `MUST` create exactly one global `TokenManager` per authenticated session context and pass that same instance to `@sdkwork/appbase-app-sdk`, every application/dependency app SDK, and only those appbase backend SDK, application-owned backend SDK, or dependency backend SDK clients that are present in an explicit `backend-admin` authenticated SDK inventory.
+- Every application runtime `MUST` create exactly one global `TokenManager` per authenticated session context and pass that same instance to `@sdkwork/iam-app-sdk`, every application/dependency app SDK, and only those appbase backend SDK, application-owned backend SDK, or dependency backend SDK clients that are present in an explicit `backend-admin` authenticated SDK inventory.
 - Application bootstrap `MUST` classify every consumed SDK before service construction: authenticated app-api SDKs and explicit `backend-admin` backend-api SDKs join the single TokenManager closure; protected open-api SDKs use separate credential providers matching their declared auth mode (`api-key`, `oauth`, or `open-api-flexible`); public SDKs receive no credentials; local/native adapters stay outside HTTP credential injection.
 - Other app-api SDKs and backend-api SDKs `MUST NOT` accept a separate login client, parse auth/access tokens, persist login state, refresh tokens independently, expose app-local session stores, or create their own `TokenManager`. They only receive the global `TokenManager` and use it for request auth headers.
 - Login, registration, OAuth session creation, refresh, current-session retrieval/update, and session restoration `MUST` update the global token manager, central session store, and context store through the ordered appbase IAM runtime lifecycle. The standard commit order is: validate the appbase session payload, persist normalized tokens in the central session store, write returned AppContext or clear stale AppContext, then sync the global token manager. Token persistence failure `MUST NOT` expose new in-memory tokens; context propagation failure `MUST` roll back token/context stores and clear the global token manager.
@@ -617,7 +618,7 @@ Rules:
 - Service facades `SHOULD` expose domain methods that are stable across app SDK and backend SDK package differences.
 - Frontend components should depend on service contracts, not generated SDK constructors.
 - App PC React, H5 mobile React, Flutter, mini program, Android native, iOS native, and Harmony native UI packages `MUST` use app SDK clients for user-facing capabilities and follow `UI_ARCHITECTURE_SPEC.md` plus the matching root architecture standard and detailed UI/package standard.
-- Appbase current-user profile and self-service facades `MUST` depend on generated `appbaseApp.iam.users.current.*` resources. If update or password-change resources are missing, fix `sdkwork-appbase-app-api`, OpenAPI, and generated SDKs for every supported language before integrating editable UI.
+- Appbase current-user profile and self-service facades `MUST` depend on generated `appbaseApp.iam.users.current.*` resources. If update or password-change resources are missing, fix `sdkwork-iam-app-api`, OpenAPI, and generated SDKs for every supported language before integrating editable UI.
 - `backend-admin` UI packages `MUST` use backend SDK clients for operator capabilities and follow `UI_ARCHITECTURE_SPEC.md` plus the package split rules in `BACKEND_UI_SPEC.md`.
 - UI architecture packages `MUST NOT` bridge a missing SDK method with raw HTTP; fix the owning API contract and regenerate the SDK.
 

@@ -80,6 +80,23 @@ Rules:
 - If an existing backend package has become a catch-all, new work must first choose the owning `@sdkwork/react-backend-<domain>` target and leave a migration note for the old package.
 - A cross-domain backend workflow may have a composition package only when each domain still owns its service and page fragments through public exports.
 
+### 2.2 Forbidden Client Admin Naming
+
+Forbidden for new client-side admin modules (inside application roots):
+
+| Forbidden pattern | Example | Use instead |
+| --- | --- | --- |
+| `sdkwork-<domain>-<capability>-pc-react` under `apps/sdkwork-<application-code>-pc/packages/` | `sdkwork-iam-oauth-pc-react` | `sdkwork-<application-code>-pc-admin-<capability>` |
+| `@sdkwork/<domain>-<capability>-pc-react` for operator UI | `@sdkwork/iam-tenant-pc-react` | `@sdkwork/<application-code>-pc-admin-<capability>` |
+| `sdkwork-<application-code>-admin-<capability>` without architecture segment | `sdkwork-iam-admin-oauth` | `sdkwork-<application-code>-pc-admin-<capability>` |
+| User console workflow in `pc-admin-*` | tenant self-service in admin package | `sdkwork-<application-code>-pc-console-<capability>` |
+
+Rules:
+
+- Client internal admin UI `MUST` declare `backend-admin` surface metadata in `component.spec.json` and `package.json#sdkwork.surface`.
+- Client internal admin capability packages `MUST` use the internal shape from `APP_PC_ARCHITECTURE_SPEC.md` §5: `pages/`, `components/`, `services/`, `types/`, `routes/`, thin `src/index.ts(x)`.
+- Static verification in application repositories `SHOULD` fail when legacy admin directory names remain under the PC application root packages tree.
+
 ## 3. Standard Backend Domain Packages
 
 The following backend package names are standard for the current backend console. New packages should align with this catalog or extend it through `DOMAIN_SPEC.md`.

@@ -83,15 +83,15 @@ halfOpenMaxAttempts = 1
 `;
 
 const APPBASE_SURFACE = `[[dependencySurfaces]]
-serviceId = "sdkwork-appbase-app-api"
+serviceId = "sdkwork-iam-app-api"
 workspace = "sdkwork-appbase"
-sdkFamily = "sdkwork-appbase-app-sdk"
-apiAuthority = "sdkwork-appbase-app-api"
+sdkFamily = "sdkwork-iam-app-sdk"
+apiAuthority = "sdkwork-iam-app-api"
 surface = "app"
 apiPrefix = "/app/v3/api"
 runtimeMode = "split-or-embedded"
 sameOriginAllowed = true
-executableExport = "sdkwork_router_iam_app_api::build_sdkwork_appbase_app_api_router"
+executableExport = "sdkwork_router_iam_app_api::build_sdkwork_iam_app_api_router"
 cargoFeature = "foundation-appbase"
 cargoDependency = "sdkwork_router_iam_app_api"
 coverage = "appbase-iam-routes"
@@ -387,11 +387,12 @@ function ensurePackageScripts(repoRoot, spec, dryRun, actions) {
 
   let changed = false;
   for (const [key, value] of Object.entries(additions)) {
-    if (pkg.scripts[key] === value) continue;
-    if (pkg.scripts[key] && key.startsWith('gateway:') && pkg.scripts[key].includes('gateway-cloud-bundle')) {
-      continue;
+    if (pkg.scripts[key]) {
+      if (key.startsWith('gateway:') || key === 'topology:validate' || key === 'topology:plan') {
+        continue;
+      }
     }
-    if (pkg.scripts[key] && key === 'topology:validate') continue;
+    if (pkg.scripts[key] === value) continue;
     pkg.scripts[key] = value;
     actions.push(`add script ${key}`);
     changed = true;
@@ -455,7 +456,7 @@ function main() {
     const actions = alignRepo(repoRoot, dryRun);
     if (actions.length === 0) continue;
     console.log(`\n${path.basename(repoRoot)}${dryRun ? ' (dry-run)' : ''}:`);
-    for (const action of actions) actions.forEach((a) => console.log(`  - ${a}`));
+    for (const action of actions) console.log(`  - ${action}`);
     total += actions.length;
   }
   console.log(`\nTotal integration actions: ${total}`);

@@ -18,13 +18,20 @@ const HOSTING_TO_PROFILE = {
   'cloud-hosted': 'cloud',
 };
 
-const CANONICAL_PROFILES = [
-  'standalone.unified-process.development',
-  'standalone.unified-process.production',
-  'standalone.split-services.development',
-  'cloud.split-services.development',
-  'cloud.split-services.production',
-];
+function canonicalProfileIds(spec) {
+  const layouts = spec.vocabulary?.serviceLayout?.allowed ?? ['unified-process', 'split-services'];
+  const profiles = spec.vocabulary?.deploymentProfile?.allowed ?? ['standalone', 'cloud'];
+  const environments = spec.vocabulary?.environment?.allowed ?? ['development', 'production'];
+  const ids = [];
+  for (const deploymentProfile of profiles) {
+    for (const serviceLayout of layouts) {
+      for (const environment of environments) {
+        ids.push(`${deploymentProfile}.${serviceLayout}.${environment}`);
+      }
+    }
+  }
+  return ids;
+}
 
 function usage() {
   return [
@@ -237,38 +244,63 @@ function cloneOrchestrationForCloud(spec, standaloneProfileId, cloudProfileId) {
   return { processes, healthSurfaces: [...health] };
 }
 
+function pruneOrchestrationProfiles(spec) {
+  const profiles = spec.orchestration?.profiles;
+  if (!profiles) return spec;
+  for (const profileId of Object.keys(profiles)) {
+    if (!spec.profileFiles?.[profileId]) {
+      delete profiles[profileId];
+    }
+  }
+  return spec;
+}
+
 function ensureOrchestrationProfiles(spec) {
   spec.orchestration ??= {};
   spec.orchestration.profiles ??= {};
 
+  const layouts = spec.vocabulary?.serviceLayout?.allowed ?? ['unified-process', 'split-services'];
   const standaloneDev =
     spec.orchestration.profiles['standalone.unified-process.development'] ??
     spec.orchestration.profiles['standalone.split-services.development'];
   const api = primaryApiProcess(spec);
 
   if (!standaloneDev && api) {
-    spec.orchestration.profiles['standalone.unified-process.development'] = {
-      processes: [
-        { id: 'application.public-ingress', crate: api.crate, binary: api.binary, required: true },
-      ],
-      healthSurfaces: ['application.public-ingress'],
-    };
+    const defaultLayout = layouts.includes('unified-process') ? 'unified-process' : layouts[0];
+    const profileId = `standalone.${defaultLayout}.development`;
+    if (spec.profileFiles?.[profileId] || !spec.profileFiles || Object.keys(spec.profileFiles).length === 0) {
+      spec.orchestration.profiles[profileId] = {
+        processes: [
+          { id: 'application.public-ingress', crate: api.crate, binary: api.binary, required: true },
+        ],
+        healthSurfaces: ['application.public-ingress'],
+      };
+    }
   }
 
-  for (const cloudProfileId of ['cloud.split-services.development', 'cloud.split-services.production']) {
-    if (spec.orchestration.profiles[cloudProfileId]) continue;
-    const sourceStandalone =
-      spec.orchestration.profiles['standalone.split-services.development'] ??
-      spec.orchestration.profiles['standalone.unified-process.development'];
-    if (!sourceStandalone) continue;
-    const sourceId = spec.orchestration.profiles['standalone.split-services.development']
-      ? 'standalone.split-services.development'
-      : 'standalone.unified-process.development';
-    const cloned = cloneOrchestrationForCloud(spec, sourceId, cloudProfileId);
-    if (cloned) spec.orchestration.profiles[cloudProfileId] = cloned;
+  const environments = spec.vocabulary?.environment?.allowed ?? ['development', 'production'];
+  for (const serviceLayout of layouts) {
+    for (const environment of environments) {
+      const cloudProfileId = `cloud.${serviceLayout}.${environment}`;
+      if (!spec.profileFiles?.[cloudProfileId]) continue;
+      if (spec.orchestration.profiles[cloudProfileId]) continue;
+      const standaloneProfileId = `standalone.${serviceLayout}.${environment}`;
+      const sourceStandalone =
+        spec.orchestration.profiles[standaloneProfileId] ??
+        spec.orchestration.profiles['standalone.unified-process.development'] ??
+        spec.orchestration.profiles['standalone.split-services.development'];
+      if (!sourceStandalone) continue;
+      const sourceId = spec.orchestration.profiles[standaloneProfileId]
+        ? standaloneProfileId
+        : (spec.orchestration.profiles['standalone.split-services.development']
+          ? 'standalone.split-services.development'
+          : 'standalone.unified-process.development');
+      const cloned = cloneOrchestrationForCloud(spec, sourceId, cloudProfileId);
+      if (cloned) spec.orchestration.profiles[cloudProfileId] = cloned;
+    }
   }
 
-  return spec;
+  return pruneOrchestrationProfiles(spec);
 }
 
 function ensureProfileFiles(spec, repoRoot) {
@@ -276,7 +308,7 @@ function ensureProfileFiles(spec, repoRoot) {
   const profileRoot = spec.profileRoot ?? 'configs/topology';
   const pattern = spec.profilePattern ?? '{deploymentProfile}.{serviceLayout}.{environment}.env';
 
-  for (const profileId of CANONICAL_PROFILES) {
+  for (const profileId of canonicalProfileIds(spec)) {
     const [deploymentProfile, serviceLayout, environment] = profileId.split('.');
     const layouts = spec.vocabulary?.serviceLayout?.allowed ?? ['unified-process', 'split-services'];
     const profiles = spec.vocabulary?.deploymentProfile?.allowed ?? ['standalone', 'cloud'];
@@ -400,6 +432,45 @@ function updateAppConfig(repoRoot, dryRun, actions) {
   }
 }
 
+function ensureRootAppConfig(repoRoot, meta, dryRun, actions) {
+  const rootPath = path.join(repoRoot, 'sdkwork.app.config.json');
+  if (fs.existsSync(rootPath)) return;
+
+  let source = null;
+  const appsDir = path.join(repoRoot, 'apps');
+  if (fs.existsSync(appsDir)) {
+    for (const name of fs.readdirSync(appsDir, { withFileTypes: true })) {
+      if (!name.isDirectory()) continue;
+      const candidate = path.join(appsDir, name.name, 'sdkwork.app.config.json');
+      if (fs.existsSync(candidate)) {
+        source = readJson(candidate);
+        break;
+      }
+    }
+  }
+
+  const manifest = source
+    ? structuredClone(source)
+    : {
+        schemaVersion: 3,
+        kind: 'sdkwork.app',
+        app: { key: meta.appId, name: meta.appId },
+        runtime: {},
+      };
+  manifest.app ??= {};
+  manifest.app.key = meta.appId;
+  manifest.runtime ??= {};
+  manifest.runtime.supportedDeploymentProfiles = [
+    ...new Set([...(manifest.runtime.supportedDeploymentProfiles ?? []), 'standalone', 'cloud']),
+  ];
+  if (!manifest.runtime.defaultDeploymentProfile) {
+    manifest.runtime.defaultDeploymentProfile = 'cloud';
+  }
+
+  actions.push('create sdkwork.app.config.json at repository root');
+  if (!dryRun) writeJson(rootPath, manifest, false);
+}
+
 function ensurePackageScripts(repoRoot, dryRun, actions) {
   const pkgPath = path.join(repoRoot, 'package.json');
   if (!fs.existsSync(pkgPath)) return;
@@ -425,10 +496,16 @@ function ensurePackageScripts(repoRoot, dryRun, actions) {
 }
 
 function deriveAppMeta(repoRoot) {
-  const manifestPath = path.join(repoRoot, 'sdkwork.app.config.json');
-  if (!fs.existsSync(manifestPath)) return null;
-  const manifest = readJson(manifestPath);
-  const appId = manifest.app?.key ?? path.basename(repoRoot);
+  const repoAppId = path.basename(repoRoot);
+  if (!repoAppId.startsWith('sdkwork-')) return null;
+
+  const rootManifestPath = path.join(repoRoot, 'sdkwork.app.config.json');
+  let manifest = null;
+  if (fs.existsSync(rootManifestPath)) {
+    manifest = readJson(rootManifestPath);
+  }
+
+  const appId = repoAppId;
   const appPrefix = `SDKWORK_${appId.replace(/^sdkwork-/, '').replace(/-/g, '_').toUpperCase()}`;
   return { appId, appPrefix, manifest };
 }
@@ -555,6 +632,8 @@ function alignRepo(repoRoot, dryRun) {
 
   migrateEnvFilesOnDisk(spec, repoRoot, dryRun, actions);
   createMissingEnvFiles(spec, repoRoot, dryRun, actions);
+  const meta = deriveAppMeta(repoRoot);
+  if (meta) ensureRootAppConfig(repoRoot, meta, dryRun, actions);
   updateAppConfig(repoRoot, dryRun, actions);
   ensurePackageScripts(repoRoot, dryRun, actions);
 

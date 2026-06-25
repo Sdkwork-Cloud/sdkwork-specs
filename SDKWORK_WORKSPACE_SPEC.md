@@ -44,15 +44,23 @@ SDKWork uses a two-layer source layout:
   `apps/sdkwork-<application-code>-pc/`, `apps/sdkwork-<application-code>-h5/`,
   `apps/sdkwork-<application-code>-flutter-mobile/`, `apps/sdkwork-<application-code>-mini-program/`,
   `apps/sdkwork-<application-code>-android-mobile/`, `apps/sdkwork-<application-code>-ios-mobile/`, or
-  `apps/sdkwork-<application-code>-harmony-mobile/`. Architecture-local `src/`, `lib/`, `App/`,
-  `entry/`, `packages/`, `config/`, and platform directories belong inside that child root.
+  `apps/sdkwork-<application-code>-harmony-mobile/`. Cross-architecture TypeScript contracts, service
+  ports, runtime, bootstrap, and domain RPC proto packages belong in
+  `apps/sdkwork-<application-code>-common/packages/` when the repository owns multiple client surfaces.
+  Architecture-local `src/`, `lib/`, `App/`, `entry/`, `packages/`, `config/`, and platform
+  directories belong inside that child root.
 
 Top-level `src/`, `packages/`, and `config/` are not generic SDKWork project-root directories. They
 are allowed at the repository root only when the repository root is itself the primary
-architecture-specific app surface root, or when a shared package repository is explicitly governed by
-an architecture/package standard that names `packages/` as its root collection. In both cases the
-root README `MUST` state the active architecture standard and explain that those paths are
-architecture-local, not replacements for the project-root dictionary.
+architecture-specific app surface root, or when the repository is a **dedicated shared package-family
+repository** whose sole primary deliverable is reusable package families and whose governing standard
+explicitly names repository-root `packages/` as the collection root. A domain repository that also
+owns `apis/`, `apps/`, `crates/`, and `sdks/` for one application line `MUST NOT` treat repository-root
+`packages/` as its shared package-family root; those package families belong under the appropriate
+`apps/sdkwork-<application-code>-common/packages/` or `apps/sdkwork-<application-code>-<client-arch>/packages/`
+paths instead. In both allowed root-`packages/` cases the root README `MUST` state the active
+architecture standard and explain that those paths are architecture-local, not replacements for the
+project-root dictionary.
 
 Every independent SDKWork git repository root and every independent SDKWork application root `MUST`
 use the following reserved top-level directory names when the corresponding capability exists:
@@ -356,9 +364,11 @@ Boundary rules:
   itself the selected app surface root and that architecture standard requires `config/`. Otherwise
   project-root config content belongs in `configs/`.
 - Top-level `packages/` is allowed only when the repository root is itself the selected app surface
-  root or a shared package-family repository whose governing architecture/package standard requires
-  `packages/`. Otherwise package families belong under the appropriate project-root capability such
-  as `apps/`, `crates/`, `sdks/`, or `plugins/`.
+  root or a dedicated shared package-family repository whose governing architecture/package standard
+  requires repository-root `packages/`. Domain repositories that also own `apis/`, `apps/`, `crates/`,
+  and `sdks/` `MUST NOT` keep repository-root `packages/` after migration cutover. Otherwise package
+  families belong under the appropriate project-root capability such as `apps/`, `crates/`, `sdks/`,
+  or `plugins/`.
 
 Standard root examples:
 
@@ -389,6 +399,12 @@ Standard root examples:
   sdkwork.app.config.json
   .sdkwork/
   apis/app-api/<domain>/openapi.yaml
+  apps/sdkwork-<application-code>-common/
+    README.md
+    AGENTS.md
+    .sdkwork/
+    specs/
+    packages/
   apps/sdkwork-<application-code>-pc/
     sdkwork.app.config.json
     packages/
@@ -409,6 +425,44 @@ Standard root examples:
   docs/
   tests/
 ```
+
+```text
+<domain-multi-surface-repository>/
+  AGENTS.md
+  .sdkwork/
+  apis/
+  apps/
+    README.md
+    sdkwork-<application-code>-common/packages/   # cross-architecture contracts, runtime, service, RPC proto
+    sdkwork-<application-code>-pc/packages/       # PC React capability packages
+    sdkwork-<application-code>-h5/packages/       # H5/mobile React capability packages
+    sdkwork-<application-code>-flutter-mobile/packages/
+  crates/
+  sdks/
+  jobs/
+  tools/
+  plugins/
+  examples/
+  configs/
+  deployments/
+  scripts/
+  docs/
+  tests/
+```
+
+Rules for `<domain-multi-surface-repository>`:
+
+- Repository-root `packages/` `MUST NOT` exist after migration cutover.
+- Cross-architecture TypeScript and domain RPC proto packages `MUST` live under
+  `apps/sdkwork-<application-code>-common/packages/`.
+- Client-architecture UI and host packages `MUST` live under
+  `apps/sdkwork-<application-code>-<client-arch>/packages/`.
+- Legacy repository-root families such as `packages/common/<domain>/`, `packages/pc-react/<domain>/`,
+  and `packages/mobile-react/<domain>/` are migration-only paths. New work `MUST NOT` add them.
+- Each direct child under `apps/` `MUST` be an application root with its own `README.md`, `AGENTS.md`,
+  `.sdkwork/`, and `specs/component.spec.json` when the root owns authored packages.
+- The `-common` application root is not a runnable client surface. It owns shared package families
+  consumed by every client architecture root for the same `<application-code>`.
 
 ```text
 <rust-backend-or-local-service-repository>/

@@ -33,6 +33,7 @@ No standard is complete until it is executable.
 | Dependency API export | Validate dependency API export policy: `dependencyApiExports` defaults to no export, configured exports reference declared `sdkDependencies`, generated application-owned SDKs stay owner-only, and exported dependency capabilities live only in approved authored facades, service ports, dependency SDK injection, host adapters, or documentation-only surfaces |
 | Dependency API surface | Validate dependency SDK runtime composition: every `sdkDependencies` HTTP entry has a `dependencyApiSurfaces` runtime declaration, same-origin dependency SDK defaults have verified executable mount coverage, route metadata is not treated as an executable router, external dependency SDKs fail fast without explicit base URLs, and missing mounts/upstreams fail before `502` or `404` user requests |
 | Client architecture alignment | Validate `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`: package taxonomy, dependency direction, route identity, host adapter boundary, SDK/IAM/runtime composition, and cross-client workflow alignment |
+| Dependency composition | Validate `APP_DEPENDENCY_COMPOSITION_SPEC.md`: `specs/dependency.composition.json`, core-package composition layout, bootstrap SDK inventory derivation, frontend/backend dependency chains, and feature-package import boundaries |
 | PC application architecture | Validate `APP_PC_ARCHITECTURE_SPEC.md`: application root layout, normalized `sdkwork-<application-code>-pc-*` package names, app/console/admin separation, shared renderer, desktop/tablet host placement, SDK/IAM boundaries |
 | H5 application architecture | Validate `APP_H5_ARCHITECTURE_SPEC.md`: `sdkwork-<application-code>-h5-*`, `sdkwork-<application-code>-h5-console-*`, and `sdkwork-<application-code>-h5-admin-*` package names, shared H5/Capacitor renderer, typed host adapters, SDK/IAM boundaries, mobile config, and release metadata |
 | Flutter app mobile architecture | Validate `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`: default, console, and admin Dart package naming, thin root `lib/`, generated Dart app/backend SDK boundary, platform adapters, route identity, and Flutter release metadata |
@@ -95,7 +96,7 @@ Rules:
   or API key, or synthetic success handler. Verified mount coverage must exercise real
   stores/services/upstreams or explicitly prove that unimplemented commands fail closed.
 - Appbase backend IAM dependency tests `MUST` prove that backend-admin consumers of
-  `@sdkwork/appbase-backend-sdk` either receive an explicit appbase backend/gateway base URL that
+  `@sdkwork/iam-backend-sdk` either receive an explicit appbase backend/gateway base URL that
   serves `/backend/v3/api/iam/*` or inherit the application backend base URL only after a
   production-capable appbase backend IAM router/controller/service adapter is verified in
   `dependencyApiSurfaces`. The tests must also prove appbase app SDK integration alone is not
@@ -154,9 +155,15 @@ Rules:
   architecture-specific app surface root and that architecture standard requires `config/`;
   otherwise project-root config content uses `configs/`.
 - Tests `MUST` allow top-level `packages/` only when the repository root is itself the selected
-  architecture-specific app surface root or a shared package-family repository whose governing
-  architecture/package standard requires `packages/`; otherwise package families use the matching
-  project-root capability directory.
+  architecture-specific app surface root or a dedicated shared package-family repository whose governing
+  architecture/package standard requires repository-root `packages/`; otherwise package families use the
+  matching project-root capability directory.
+- Tests `MUST` fail when a domain multi-surface repository that owns `apis/`, `apps/`, `crates/`, or
+  `sdks/` still contains repository-root `packages/`, `packages/common/`, `packages/pc-react/`, or other
+  legacy architecture-family directories after migration cutover.
+- Tests `MUST` fail when authored documentation, component specs, workspace manifests, or migration-free
+  source still reference legacy repository-root package paths where canonical `apps/sdkwork-<application-code>-common/packages/`
+  or `apps/sdkwork-<application-code>-<client-arch>/packages/` replacements exist.
 - Tests `MUST` fail when authored API contracts, API manifests, API examples, API changelogs, or API
   validation fixtures are placed outside `apis/` without an approved local spec, or when generated
   SDK transport output or SDK family directories are placed inside `apis/`.
@@ -658,6 +665,18 @@ Rules:
 - Host adapter tests `MUST` prove feature packages depend on adapter contracts instead of platform globals or native plugin APIs.
 - SDK/IAM tests `MUST` prove bootstrap/core constructs SDK clients, binds the authenticated token manager, and injects SDK/service ports into feature packages.
 
+Dependency composition tests make `APP_DEPENDENCY_COMPOSITION_SPEC.md` executable across client application roots.
+
+Rules:
+
+- Client app roots `MUST` include `specs/dependency.composition.json` and set `specs/component.spec.json#contracts.dependencyComposition` to that path.
+- Dependency composition tests `MUST` prove every core package `sdkDependencies[]` entry appears in the matching manifest `surfaces[].sdkClients[]` workspace list and vice versa.
+- Dependency composition tests `MUST` prove backend SDK clients appear only under `backend-admin` surfaces.
+- Core package tests `MUST` prove `src/composition/` or `lib/composition/` exists and required public export subpaths are declared for TypeScript/React core packages.
+- Bootstrap tests `MUST` prove runtime SDK inventory is derived from the semantic manifest and core composition entry rather than a second handwritten inventory.
+- Feature package import tests `MUST` fail when capability packages import generated SDK packages or sibling capability private paths directly.
+- Workspace verification `MUST` include `node tools/check-dependency-composition.mjs --workspace ..`.
+
 ## 2.4.2 H5 Application Architecture Tests
 
 H5 application architecture tests make `APP_H5_ARCHITECTURE_SPEC.md` executable.
@@ -901,7 +920,7 @@ Rules:
 - App SDK composition tests `MUST` prove every dependency API export with `runtimeRequired: true`
   has either verified same-origin `dependencyApiSurfaces` coverage or dependency-specific base URL
   config before feature services are constructed.
-- App SDK composition tests `MUST` prove application auth runtime integration uses the approved high-level appbase auth runtime/factory for the architecture when one exists, for example `createSdkworkAppbasePcAuthRuntime(...)` on PC React.
+- App SDK composition tests `MUST` prove application auth runtime integration uses the approved high-level IAM auth runtime/factory for the architecture when one exists, for example `createSdkworkAppbasePcAuthRuntime(...)` on PC React.
 - Appbase IAM runtime tests `MUST` prove token persistence failure does not update the global token manager, context propagation failure rolls back token/context state, stale AppContext is cleared when a committed session has no context, new sessions do not inherit old refresh tokens, and refresh/current-session continuation preserves refresh tokens only when allowed.
 - Logout tests `MUST` prove local token store, global token manager, context store, sensitive caches, realtime/session bridges, and native/platform secure storage clear even when remote session deletion fails.
 - `backend-admin` SDK tests `MUST` prove backend IAM SDK clients do not expose user-facing `auth.sessions.create`, `auth.registrations.create`, refresh, logout, or equivalent login/session creation resources.

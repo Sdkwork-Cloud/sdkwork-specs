@@ -157,3 +157,26 @@ Rules:
 - New standards and packages must use canonical terms only.
 - Compatibility aliases may exist during the compatibility window but must record removal dates and fail verification after cutover.
 - Verification uses `tools/check-identity-naming.mjs` plus existing Rust crate naming scans in `TEST_SPEC.md`.
+
+## 9. Package Directory Migration
+
+Domain and multi-surface repositories `MUST` migrate repository-root package families into `apps/` application roots.
+
+| Retired repository-root path | Canonical replacement | Notes |
+| --- | --- | --- |
+| `packages/common/<domain>/sdkwork-<capability>` | `apps/sdkwork-<application-code>-common/packages/sdkwork-<capability>` | cross-architecture contracts, runtime, service, bootstrap, SDK ports |
+| `packages/common/rpc/sdkwork-rpc-contracts` | `apps/sdkwork-<application-code>-common/packages/sdkwork-rpc-contracts` | shared RPC proto only |
+| `packages/pc-react/<domain>/sdkwork-<capability>-pc-react` | `apps/sdkwork-<application-code>-pc/packages/sdkwork-<capability>-pc-react` or `apps/sdkwork-<domain>-pc/packages/...` in a domain repository | PC React UI modules |
+| `packages/mobile-react/<domain>/...` | `apps/sdkwork-<application-code>-h5/packages/...` | H5/mobile React modules |
+| `packages/mobile-flutter/<domain>/...` | `apps/sdkwork-<application-code>-flutter-mobile/packages/...` | Flutter modules |
+| `packages/mini-program/<domain>/...` | `apps/sdkwork-<application-code>-mini-program/packages/...` | mini program modules |
+| `packages/android-native/<domain>/...` | `apps/sdkwork-<application-code>-android-mobile/packages/...` | Android native modules |
+| `packages/ios-native/<domain>/...` | `apps/sdkwork-<application-code>-ios-mobile/packages/...` | iOS native modules |
+| `packages/harmony-native/<domain>/...` | `apps/sdkwork-<application-code>-harmony-mobile/packages/...` | Harmony native modules |
+
+Rules:
+
+- Migration plans `MUST` name producer paths, consumer workspace links, proto materialization targets, and verification commands.
+- After cutover, repository-root `packages/` `MUST NOT` remain in domain multi-surface repositories.
+- Repath scripts and compatibility aliases may exist only during the documented compatibility window.
+- New standards, templates, and authored documentation `MUST` cite canonical `apps/` paths only.

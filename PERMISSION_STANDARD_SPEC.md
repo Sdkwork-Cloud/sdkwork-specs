@@ -90,7 +90,19 @@ UI `can()` checks are hints only. Server enforcement is mandatory.
 - Tenants may define custom roles (`standard = false`)
 - Custom role grants cannot exceed assigner's effective `permissionScope`
 - Product permissions register under `{product}.{resource}.{action}` through `IAM_MODULE_MANIFEST_SPEC.md` and IMF discovery
-- Platform kernel permissions remain in `iam-kernel`; product domains must not be seeded from `sdkwork-appbase-iam-bootstrap` monolith catalogs
+- Platform kernel permissions remain in `iam-kernel`; product domains must not be seeded from `sdkwork-iam-bootstrap` monolith catalogs
+
+## Consumer Permission Composition
+
+Consumer applications compose dependency modules as building blocks. See `APP_PERMISSION_COMPOSITION_SPEC.md`.
+
+Rules:
+
+- Consumers **inherit** dependency permission catalogs through `dependency.composition.json` `permissionComposition.moduleCatalogRefs[]`.
+- Consumers **must not** duplicate dependency permission code lists in local TypeScript/Rust constants or feature-package catalogs.
+- Consumers **may** declare application-owned permissions in their own `specs/iam.module.manifest.json`.
+- Explicit **overrides** (aliases, route hints, bootstrap supplements) must be listed in `permissionComposition`; hidden local overrides are forbidden.
+- Frontend route/menu hints may reference inherited codes; server enforcement remains mandatory per the Authorization Pipeline above.
 
 ## IMF Commands
 

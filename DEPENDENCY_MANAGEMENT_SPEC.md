@@ -2,7 +2,7 @@
 
 - Version: 1.1
 - Scope: native build-tool dependency management, cross-repository source paths, release dependency refs, supply-chain evidence, and dependency-owned SDK/API boundaries
-- Related: `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APP_DEPENDENCY_COMPOSITION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 This standard defines how SDKWork repositories depend on other SDKWork repositories without creating a second SDKWork-specific dependency system. SDKWork dependency management is build-tool-first: pnpm, Cargo, Flutter/Dart, Gradle, Maven, Python, and other package managers remain the dependency authorities for their language and runtime. SDKWork standards add cross-repository consistency, SDK/API ownership, release refs, and supply-chain evidence only where native tools do not cover SDKWork semantics.
 
@@ -22,7 +22,7 @@ SDKWork distinguishes these dependency concerns:
 | Language/package dependency | Packages, crates, modules, SDK packages, generated client packages, and shared build inputs consumed by code | Native build-tool files such as `pnpm-workspace.yaml`, root `package.json`, `Cargo.toml`, `pubspec.yaml`, `settings.gradle.kts`, `libs.versions.toml`, parent `pom.xml`, `pyproject.toml`, and lockfiles |
 | SDKWork release dependency | Git repository and ref that must be checked out or otherwise resolved for packaging, release, or reproducible CI | `sdkwork.workflow.json` and the reusable SDKWork workflow framework |
 | SDKWork verification dependency | Git repository and ref that must be checked out only for CI, migration, or boundary verification and is not consumed by runtime, package, API, SDK, or release artifacts | `sdkwork.workflow.json` `verificationDependencies[]` and the reusable SDKWork workflow framework |
-| SDK/API ownership dependency | Dependency-owned APIs, SDK families, and composed wrappers consumed by an app | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, SDK assembly metadata, and component specs |
+| SDK/API ownership dependency | Dependency-owned APIs, SDK families, and composed wrappers consumed by an app | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_DEPENDENCY_COMPOSITION_SPEC.md`, SDK assembly metadata, and component specs |
 | Runtime SDK dependency surface | Base URLs, credential modes, same-origin mount proof, and SDK client bootstrap for dependency SDKs | `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md` |
 | Runtime install path | Deployed binary, config, cache, database, service, or user-state path | `DEPLOYMENT_SPEC.md`, install package plans, runtime config |
 | Documentation placeholder | Portable examples that describe a path without binding to a machine | `DOCUMENTATION_SPEC.md` |
@@ -34,6 +34,18 @@ Rules:
 - JSON, YAML, TOML, package manifests, workspace manifests, and SDKWork config files `MUST` use POSIX-style `/` separators for source/build paths unless a native tool format requires otherwise.
 - Runtime install paths may be OS-specific when they are the actual target system contract, for example `/etc/sdkwork/...`, `/var/lib/sdkwork/...`, `%ProgramFiles%/...`, or `%USERPROFILE%/...`; they must not be reused as source dependency paths.
 - Documentation `MUST` use placeholders such as `<workspace-root>`, `<repository-root>`, `<application-root>`, `<release-root>`, and `<dependency-id>` when describing variable local or release paths.
+- Client application roots `MUST` declare semantic dependency composition in `specs/dependency.composition.json` per `APP_DEPENDENCY_COMPOSITION_SPEC.md`. That manifest references native package names/coordinates only; it does not replace L0 workspace path authority.
+
+## 1.1 Semantic Dependency Composition Bridge
+
+L0 native build-tool files remain the only authority for source paths and versions. L1 semantic manifests describe what those packages mean to the application.
+
+Rules:
+
+- `specs/dependency.composition.json` `MUST` list consumed packages through `buildToolEntries` using native package names or coordinates, not duplicated sibling path strings.
+- Every `buildToolEntries.pnpm.workspacePackages[]` entry `MUST` resolve to a package declared in the repository's root `pnpm-workspace.yaml` `packages:` list or to a workspace member package name.
+- Core packages `MUST` expose the library dependency import entry defined by `APP_DEPENDENCY_COMPOSITION_SPEC.md`. Feature packages `MUST NOT` import L0 SDK packages directly when a core composition entry exists.
+- Align and verify with `node tools/align-dependency-composition.mjs --workspace ..` and `node tools/check-dependency-composition.mjs --workspace ..`.
 
 ## 2. Native Build-Tool Dependency Authorities
 
@@ -86,9 +98,9 @@ Examples:
 ```yaml
 # pnpm-workspace.yaml  (declared ONCE at the workspace root)
 packages:
-  - "packages/*"
-  - "../sdkwork-appbase/packages/common/iam/sdkwork-iam-contracts"
-  - "../sdkwork-appbase/packages/pc-react/iam/sdkwork-auth-pc-react"
+  - "apps/*"
+  - "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts"
+  - "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-pc-react"
   - "../sdkwork-core/sdkwork-core-pc-react"
   - "../sdkwork-ui/sdkwork-ui-pc-react"
   - "../sdkwork-rtc/sdks/sdkwork-rtc-sdk/sdkwork-rtc-sdk-typescript"
@@ -108,6 +120,36 @@ catalog:
   }
 }
 ```
+
+## 3.1 IAM Source Dependency Layout
+
+IAM domain packages and SDK families `MUST` be consumed from `sdkwork-iam` using the canonical paths below. Consumer repositories `MUST NOT` reference retired `apps/sdkwork-iam-common/packages/`, `apps/sdkwork-iam-pc/packages/`, or `sdkwork-appbase` IAM package paths.
+
+Canonical sibling layout (paths relative to consuming repository root):
+
+| Package | pnpm-workspace `packages:` entry |
+| --- | --- |
+| `@sdkwork/iam-contracts` | `../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts` |
+| `@sdkwork/iam-runtime` | `../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-runtime` |
+| `@sdkwork/iam-sdk-ports` | `../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-ports` |
+| `@sdkwork/iam-sdk-adapter` | `../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-adapter` |
+| `@sdkwork/iam-service` | `../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-service` |
+| `@sdkwork/iam-application-bootstrap` | `../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-application-bootstrap` |
+| `@sdkwork/iam-rpc-contracts` | `../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-rpc-contracts` |
+| `@sdkwork/auth-pc-react` | `../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-pc-react` |
+| `@sdkwork/auth-runtime-pc-react` | `../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-runtime-pc-react` |
+| `@sdkwork/iam-react` | `../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-iam-react` |
+| `@sdkwork/iam-app-sdk` | `../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi` |
+| `@sdkwork/iam-backend-sdk` | `../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/generated/server-openapi` |
+
+Rules:
+
+- Declare each IAM source package **once** in the consuming workspace root `pnpm-workspace.yaml`.
+- Member `package.json` files `MUST` consume IAM packages with `workspace:*` only.
+- Vite, Vitest, and `tsconfig` path aliases `MUST` resolve IAM packages through `../sdkwork-iam/...` canonical paths, not through `sdkwork-appbase`.
+- Legacy repository-root IAM paths are migration-only. See `MIGRATION_SPEC.md` §9.
+- The machine-readable constant list lives in `sdkwork-specs/tools/iam-workspace-paths.mjs`.
+- Workspace-wide compliance is checked by `node sdkwork-specs/tools/check-iam-workspace-paths.mjs` from the multi-repo workspace root.
 
 ```toml
 # Root Cargo.toml  (declared ONCE in [workspace.dependencies])
