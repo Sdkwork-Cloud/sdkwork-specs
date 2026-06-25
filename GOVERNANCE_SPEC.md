@@ -59,6 +59,7 @@ removal_plan: regenerate app SDK with sdkwork-v3 profile
 - Reusable module compatibility follows `MODULE_SPEC.md`.
 - App manifest compatibility follows `APP_MANIFEST_SPEC.md`.
 - Repository/application workspace compatibility follows `SDKWORK_WORKSPACE_SPEC.md`.
+- Repository baseline compatibility follows `REPOSITORY_BASELINE_SPEC.md`.
 - Agent entrypoint compatibility follows `AGENTS_SPEC.md`.
 - Code style compatibility follows `CODE_STYLE_SPEC.md` and the relevant language-specific spec only for touched languages.
 - Naming compatibility follows `NAMING_SPEC.md`.
