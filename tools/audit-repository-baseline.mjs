@@ -72,7 +72,9 @@ function main(argv = process.argv.slice(2)) {
   return failures.length === 0 ? 0 : 1;
 }
 
-if (import.meta.url === new URL(process.argv[1], 'file:').href) {
+const isDirectRun = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
+
+if (isDirectRun || process.argv[1]?.includes('audit-repository-baseline.mjs')) {
   process.exitCode = main();
 }
 
