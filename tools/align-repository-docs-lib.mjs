@@ -7,8 +7,11 @@ import {
   ensureCanonDirReadmes,
   migrateLegacyCanonPaths,
 } from './migrate-legacy-canon-paths-lib.mjs';
-import { CANON_PATHS, LEGACY_CANON_PATHS, REQUIRED_CANON_LINKS } from './repository-docs-paths.mjs';
+import { CANON_PATHS, LEGACY_CANON_PATHS, REQUIRED_CANON_LINKS, TECH_SHARD_PATTERN } from './repository-docs-paths.mjs';
 
+const TECH_ENTRY_FILE = 'TECH_ARCHITECTURE.md';
+const TECH_SHARD_DIR = 'docs/architecture/tech';
+const PRD_ENTRY_FILE = 'PRD.md';
 const CANON_LINKS = REQUIRED_CANON_LINKS;
 
 const CANON_SECTION = `## Documentation Canon
@@ -70,6 +73,161 @@ function isStubCanonContent(text) {
     return true;
   }
   return false;
+}
+
+function listCanonShardFiles(root, dirRelativePath, entryFileName) {
+  const absoluteDir = path.join(root, dirRelativePath);
+  if (!fs.existsSync(absoluteDir)) {
+    return [];
+  }
+  return fs.readdirSync(absoluteDir)
+    .filter((name) => name.endsWith('.md') && name !== entryFileName && name !== 'README.md')
+    .sort();
+}
+
+function canonicalTechShardName(fileName) {
+  if (TECH_SHARD_PATTERN.test(fileName)) {
+    return fileName;
+  }
+  const stem = fileName.replace(/\.md$/iu, '');
+  return `TECH-${stem.toLowerCase().replace(/_/gu, '-').replace(/[^a-z0-9-]+/gu, '-').replace(/-+/gu, '-')}.md`;
+}
+
+function replaceMarkdownReferences(root, oldName, newName) {
+  function walk(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === 'node_modules' || entry.name === '.git') {
+        continue;
+      }
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (!entry.name.endsWith('.md')) {
+        continue;
+      }
+      const text = readText(full);
+      if (!text.includes(oldName)) {
+        continue;
+      }
+      writeText(full, text.replaceAll(oldName, newName));
+    }
+  }
+  const docsDir = path.join(root, 'docs');
+  if (fs.existsSync(docsDir)) {
+    walk(docsDir);
+  }
+}
+
+function alignTechShardFilenames(root) {
+  const changed = [];
+  for (const fileName of listCanonShardFiles(root, TECH_SHARD_DIR, TECH_ENTRY_FILE)) {
+    const canonical = canonicalTechShardName(fileName);
+    if (canonical === fileName) {
+      continue;
+    }
+    const from = path.join(root, TECH_SHARD_DIR, fileName);
+    const to = path.join(root, TECH_SHARD_DIR, canonical);
+    if (fs.existsSync(to)) {
+      continue;
+    }
+    fs.renameSync(from, to);
+    replaceMarkdownReferences(root, fileName, canonical);
+    changed.push(`${TECH_SHARD_DIR}/${fileName} -> ${canonical}`);
+  }
+  return changed;
+}
+
+function ensureTechArchitectureCompliance(root) {
+  const relativePath = CANON_PATHS.techArchitecture;
+  const filePath = path.join(root, relativePath);
+  if (!fs.existsSync(filePath)) {
+    return false;
+  }
+
+  let text = readText(filePath);
+  let changed = false;
+
+  if (!/ARCHITECTURE_DECISION_SPEC\.md/iu.test(text)) {
+    if (/^Specs:\s*.+$/mu.test(text)) {
+      text = text.replace(/^Specs:\s*.+$/mu, (line) => (
+        line.includes('ARCHITECTURE_DECISION_SPEC') ? line : `${line.trimEnd()}, ARCHITECTURE_DECISION_SPEC.md`
+      ));
+    } else {
+      text = text.replace(/^(#[^\n]+\n)/u, `$1Specs: ARCHITECTURE_DECISION_SPEC.md, DOCUMENTATION_SPEC.md\n`);
+    }
+    changed = true;
+  }
+
+  if (!/##\s+.*(Technology|Architecture|Overview|Module|Boundary)/iu.test(text)) {
+    const overview = '\n## 1. Architecture Overview\n\nDescribe the repository/application architecture.\n\n';
+    const firstSection = text.search(/\n##\s+/u);
+    if (firstSection === -1) {
+      text = `${text.replace(/\s*$/u, '')}${overview}`;
+    } else {
+      text = `${text.slice(0, firstSection)}${overview}${text.slice(firstSection)}`;
+    }
+    changed = true;
+  }
+
+  const shards = listCanonShardFiles(root, TECH_SHARD_DIR, TECH_ENTRY_FILE)
+    .filter((fileName) => TECH_SHARD_PATTERN.test(fileName));
+  const missing = shards.filter((shard) => !text.includes(shard));
+  if (missing.length > 0) {
+    const links = missing.map((shard) => `- [${shard}](${shard})`).join('\n');
+    if (/##\s+8\.\s+Architecture Decision Index/mu.test(text)) {
+      text = text.replace(
+        /(##\s+8\.\s+Architecture Decision Index\s*\n)/mu,
+        `$1\n${links}\n`,
+      );
+    } else if (/##\s+Document Map/mu.test(text)) {
+      text = text.replace(/(##\s+Document Map\s*\n)/mu, `$1\n${links}\n`);
+    } else {
+      text = `${text.replace(/\s*$/u, '')}\n\n## 8. Architecture Decision Index\n\n${links}\n`;
+    }
+    changed = true;
+  }
+
+  if (changed) {
+    writeText(filePath, text);
+  }
+  return changed;
+}
+
+function ensurePrdCompliance(root) {
+  const relativePath = CANON_PATHS.prd;
+  const filePath = path.join(root, relativePath);
+  if (!fs.existsSync(filePath)) {
+    return false;
+  }
+  let text = readText(filePath);
+  if (/REQUIREMENTS_SPEC\.md/iu.test(text)) {
+    return false;
+  }
+  if (/^Specs:\s*.+$/mu.test(text)) {
+    text = text.replace(/^Specs:\s*.+$/mu, (line) => (
+      line.includes('REQUIREMENTS_SPEC') ? line : `${line.trimEnd()}, REQUIREMENTS_SPEC.md`
+    ));
+  } else {
+    text = text.replace(/^(#[^\n]+\n)/u, `$1Specs: REQUIREMENTS_SPEC.md, DOCUMENTATION_SPEC.md\n`);
+  }
+  writeText(filePath, text);
+  return true;
+}
+
+function alignCanonShardCompliance(root) {
+  const changed = [];
+  for (const item of alignTechShardFilenames(root)) {
+    changed.push(item);
+  }
+  if (ensureTechArchitectureCompliance(root)) {
+    changed.push(CANON_PATHS.techArchitecture);
+  }
+  if (ensurePrdCompliance(root)) {
+    changed.push(CANON_PATHS.prd);
+  }
+  return changed;
 }
 
 function titleCaseFromRepo(repoName) {
@@ -471,6 +629,10 @@ export function alignRepositoryDocs(root, options = {}) {
   }
   if (ensureCanonLinksInFile(root, 'README.md')) {
     changed.push('README.md');
+  }
+
+  for (const item of alignCanonShardCompliance(root)) {
+    changed.push(item);
   }
 
   const validation = validateRepositoryDocsStandard(root, {

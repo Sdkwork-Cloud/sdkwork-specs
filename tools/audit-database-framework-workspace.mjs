@@ -78,7 +78,7 @@ function scriptCoverage(packageJsonPath) {
   if (!fs.existsSync(packageJsonPath)) {
     return { present: [], missing: REQUIRED_DB_SCRIPTS };
   }
-  const scripts = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')).scripts ?? {};
+  const scripts = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8').replace(/^\uFEFF/u, '')).scripts ?? {};
   const present = REQUIRED_DB_SCRIPTS.filter((name) => Boolean(scripts[name]));
   const missing = REQUIRED_DB_SCRIPTS.filter((name) => !scripts[name]);
   return { present, missing };

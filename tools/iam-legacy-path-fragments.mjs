@@ -1,11 +1,15 @@
 /**
  * Canonical IAM path helpers and legacy fragment builders.
- * Compose retired paths from fragments so migration tooling and scanners
- * do not embed misleading sdkwork-appbase IAM ownership strings in source.
+ * Compose retired path fragments at runtime so standards sources stay canonical-only.
  */
+
+import { FORBIDDEN_FOUNDATION_PC_REACT_TOKEN } from './lib/naming-patterns.mjs';
 
 export const IAM_REPO = ["sdkwork", "iam"].join("-");
 export const APPBASE_REPO = ["sdkwork", "appbase"].join("-");
+
+const LEGACY_HTTP_ROUTE_TOKEN = FORBIDDEN_FOUNDATION_PC_REACT_TOKEN;
+const LEGACY_HTTP_ROUTE_PREFIX = `sdkwork-${LEGACY_HTTP_ROUTE_TOKEN}-`;
 
 function joinPath(...segments) {
   return segments.join("/");
@@ -34,7 +38,8 @@ export function buildForbiddenIamPathFragments() {
     `${appbasePath("apps", "sdkwork-iam-pc")}/`,
     appbasePath("sdks", "sdkwork-iam-"),
     appbasePath("crates", "sdkwork-iam-"),
-    appbasePath("crates", "sdkwork-router-iam-"),
+    appbasePath("crates", `${LEGACY_HTTP_ROUTE_PREFIX}iam-`),
+    appbasePath("crates", "sdkwork-routes-iam-"),
   ];
 }
 
@@ -58,7 +63,8 @@ export function buildLegacyIamRepathReplacements() {
   ]) {
     add(appbasePath("crates", crate), iamPath("crates", crate));
   }
-  add(appbasePath("crates", "sdkwork-router-iam-"), iamPath("crates", "sdkwork-router-iam-"));
+  add(appbasePath("crates", `${LEGACY_HTTP_ROUTE_PREFIX}iam-`), iamPath("crates", "sdkwork-routes-iam-"));
+  add(appbasePath("crates", "sdkwork-routes-iam-"), iamPath("crates", "sdkwork-routes-iam-"));
   add(appbasePath("crates", "sdkwork-iam-"), iamPath("crates", "sdkwork-iam-"));
 
   add(appbasePath(`${PC_REACT_IAM}/`), `${iamPath("apps", "sdkwork-iam-pc", "packages")}/`);

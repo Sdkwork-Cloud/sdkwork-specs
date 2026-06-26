@@ -295,9 +295,11 @@ Rules:
   `SDKWORK_<APPLICATION_CODE>_DATABASE_NAME`, `SDKWORK_<APPLICATION_CODE>_DATABASE_SCHEMA`,
   `SDKWORK_<APPLICATION_CODE>_DATABASE_USERNAME`, `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD_FILE`,
   and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE`.
-- Claw Router release docs and install tooling may also reference the shorthand
+- Claw Router release docs and install tooling may also reference the legacy shorthand
   aliases `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE`
-  when describing cross-product database standards.
+  when describing cross-product database standards. New standards and application
+  env `MUST` use the canonical `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` and
+  `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` keys.
 - `DATABASE_PROVIDER` and `DATABASE_SSLMODE` are not standard names and must
   not be accepted by new SDKWork applications.
 - `SDKWORK_CLAW_DATABASE_URL` remains an explicit private override and must not be exposed through `PORTAL_PUBLIC_*` or any browser runtime script.

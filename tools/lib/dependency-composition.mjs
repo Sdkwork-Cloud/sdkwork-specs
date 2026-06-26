@@ -49,7 +49,8 @@ export function toPosix(filePath) {
 }
 
 export function readJson(filePath) {
-  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const raw = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/u, '');
+  return JSON.parse(raw);
 }
 
 export function readText(filePath) {

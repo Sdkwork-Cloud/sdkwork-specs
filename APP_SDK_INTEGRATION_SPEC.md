@@ -143,9 +143,9 @@ Rules:
   dependency surfaces.
 - Application dev runners, server launchers, and local all-in-one commands that need shared foundation
   APIs `MUST` start a managed `sdkwork-api-cloud-gateway` process by default or fail fast with an explicit
-  configured gateway root. They must not silently fall back to application-local foundation API mounts.
-- A Rust application may depend on `sdkwork-api-cloud-gateway` only through its public router
-  builders. It must not copy gateway route registry code, dependency handlers, or foundation module
+  `api-cloud-gateway` root. They must not silently fall back to application-local foundation API mounts.
+- A Rust application may depend on `sdkwork-api-cloud-gateway` only through the platform `api-cloud-gateway`
+  router builders. It must not copy gateway route registry code, dependency handlers, or foundation module
   internals into the application server.
 - Gateway executable integration evidence comes from native build-tool metadata, such as Cargo
   workspace dependencies and Cargo features. SDKWork semantic evidence remains in
@@ -278,7 +278,7 @@ Rules:
 Rust backends participate in composition through route crates, service crates, dependency SDKs, and appbase runtime crates.
 
 ```text
-packages/sdkwork-router-merchandise-app-api
+packages/sdkwork-routes-merchandise-app-api
   -> route manifest
   -> sdkwork-commerce-app-api
   -> sdkwork-commerce-app-sdk
@@ -287,7 +287,7 @@ packages/sdkwork-router-merchandise-app-api
 
 Rules:
 
-- Rust route crates `MUST` follow `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
+- Rust route crates `MUST` follow `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`.
 - Rust route crates own route/path configuration, handler binding, and route manifests for one capability and one surface. They do not become frontend path libraries.
 - Application shells aggregate route manifests into project/domain API authorities such as `sdkwork-commerce-app-api`, then generate owner-only SDK families.
 - Rust implementations that expose or validate appbase IAM/session/context
@@ -411,7 +411,7 @@ Suggested scan categories:
 rg -n "fetch\\(|axios\\.|Authorization|Access-Token|X-API-Key" apps/<application-code>
 rg -n "/drive/uploader|/drive/upload_sessions|client\\.uploader|DriveUploaderService|sdkwork_drive_uploader_service" apps/<application-code>
 rg -n "auth\\.sessions|auth\\.registrations|iam\\.users\\.current|openPlatform\\.qrAuth" apps/<application-code>
-rg -n "sdkwork-router-.*-(app-api|backend-api|open-api)" apps/<application-code>/packages
+rg -n "sdkwork-routes-.*-(app-api|backend-api|open-api)" apps/<application-code>/packages
 rg -n "createSdkworkAppbase.*AuthRuntime|setTokenManager|tokenManager|createIamRuntime|createTokenManager|commitSession" apps/<application-code> apps/sdkwork-appbase
 rg -n "@sdkwork/iam-sdk-adapter|createIamAppSdkAdapter|createIamBackendSdkAdapter" apps/<application-code>
 rg -n "createTokenManager\\(|new .*TokenManager|setAuthToken|setAccessToken" apps/<application-code>

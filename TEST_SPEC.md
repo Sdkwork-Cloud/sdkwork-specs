@@ -164,6 +164,12 @@ Rules:
 - Tests `MUST` fail when authored documentation, component specs, workspace manifests, or migration-free
   source still reference legacy repository-root package paths where canonical `apps/sdkwork-<application-code>-common/packages/`
   or `apps/sdkwork-<application-code>-<client-arch>/packages/` replacements exist.
+- Every independent SDKWork application git repository `MUST` be checked for `apps/README.md`.
+- Tests `MUST` fail when an independent application repository is missing `apps/` or `apps/README.md`.
+- Tests `MUST` fail when `apps/README.md` does not index a direct child application root directory.
+- Tests `MUST` fail when `apps/README.md` does not state primary app surface placement or cite
+  `APPLICATION_SPEC.md` and `SDKWORK_WORKSPACE_SPEC.md`.
+- Tests `MUST` fail when repository root `README.md` does not link to `apps/README.md` while `apps/` exists.
 - Tests `MUST` fail when authored API contracts, API manifests, API examples, API changelogs, or API
   validation fixtures are placed outside `apis/` without an approved local spec, or when generated
   SDK transport output or SDK family directories are placed inside `apis/`.
@@ -235,6 +241,9 @@ node ../sdkwork-specs/tools/bootstrap-repository-docs.mjs --root .
 node ../sdkwork-specs/tools/migrate-legacy-canon-paths.mjs --root .
 node ../sdkwork-specs/tools/align-repository-docs.mjs --root .
 node ../sdkwork-specs/tools/check-repository-docs-standard.mjs --root .
+node ../sdkwork-specs/tools/check-apps-directory-index.mjs --root .
+node ../sdkwork-specs/tools/align-apps-directory-index.mjs --root .
+node ../sdkwork-specs/tools/audit-apps-directory-index-workspace.mjs --workspace <workspace-root>
 node ../sdkwork-specs/tools/audit-repository-docs-workspace.mjs --workspace <workspace-root>
 ```
 
@@ -306,17 +315,20 @@ Rules:
 - Rust code scans `MUST` fail when `src/lib.rs` contains handlers, repositories, SQL queries, provider clients, large DTO definitions, long business services, or test fixtures instead of module declarations and re-exports.
 - Rust crate naming scans `MUST` verify authored Rust crates use one of the responsibility-specific
   families from `RUST_CODE_SPEC.md` and `APPLICATION_GATEWAY_SPEC.md`: `sdkwork-<domain>-<capability>-service`,
-  `sdkwork-<domain>-<capability>-repository-sqlx`, `sdkwork-router-<capability>-<surface>`,
+  `sdkwork-<domain>-<capability>-repository-sqlx`, `sdkwork-routes-<capability>-<surface>`,
   `sdkwork-<application-code>-api-server`, `sdkwork-<application-code>-service-host`,
   `sdkwork-<application-code>-native-host`, `sdkwork-<application-code>-tauri-host`,
   `sdkwork-<domain>-<capability>-worker`, `sdkwork-<application-code>-standalone-gateway`,
-  `sdkwork-<application-code>-cloud-gateway`, or platform `sdkwork-api-cloud-gateway`.
+  `sdkwork-<application-code>-cloud-gateway`, or platform `sdkwork-api-cloud-gateway` as the
+  platform `api-cloud-gateway`.
 - Rust crate naming scans `MUST` fail on bare application gateway crate names such as
   `sdkwork-<application-code>-gateway` without a `standalone` or `cloud` qualifier.
 - Rust crate naming scans `MUST` fail on bare platform gateway crate names such as
   `sdkwork-api-cloud-gateway` without the `cloud` qualifier.
 - Application gateway crate scans `MUST` verify gateway crates live under `crates/` and declare
   `component.type` of `rust-standalone-gateway` or `rust-cloud-gateway` per `APPLICATION_GATEWAY_SPEC.md`.
+- Rust HTTP route crate naming scans `MUST` verify Cargo package names follow
+  `sdkwork-routes-<capability>-<surface>` per `API_SPEC.md` §4.2.
 - Rust crate naming scans `MUST` fail on forbidden generic crate names such as
   `sdkwork-<application-code>-product`, `sdkwork-<application-code>-runtime`,
   `sdkwork-<domain>-<capability>-runtime`, `sdkwork-<application-code>-backend`,
@@ -472,7 +484,7 @@ Rules:
   `packageName`, `surface`, `owner`, `domain`, `capability`, `apiAuthority`, `sdkFamily`, `prefix`,
   and a non-empty `routes` list.
 - Route manifest tests `MUST` prove `packageName` follows
-  `sdkwork-router-<capability>-<surface>`, the source directory follows
+  `sdkwork-routes-<capability>-<surface>`, the source directory follows
   `packages/<packageName>/`, and the normalized artifact path follows
   `sdks/_route-manifests/<surface>/<packageName>.route-manifest.json` when normalized artifacts are
   produced.
@@ -853,6 +865,25 @@ Rules:
 - Workspace topology parity checks `MUST` run
   `node tools/check-topology-deployment-profiles.mjs --workspace ..` and pass
   for every application repository with `specs/topology.spec.json`.
+- Single HTTP ingress checks `MUST` run
+  `node tools/check-single-http-ingress.mjs --root .` for repositories with
+  topology specs or dev orchestration scripts, and
+  `node tools/audit-single-http-ingress-workspace.mjs --workspace ..` across
+  SDKWork application repositories per `APPLICATION_GATEWAY_SPEC.md` §5.6 and
+  `APP_RUNTIME_TOPOLOGY_SPEC.md` §8. Workspace audit `MUST` pass with zero
+  multi-listener orchestration errors; gateway crate migration warnings may
+  remain until `--strict` is enabled repository-wide.
+- Gateway assembly checks `MUST` run
+  `node tools/validate-gateway-assembly.mjs --root .` for repositories that own
+  `crates/sdkwork-routes-<application-code>-*` members, and `MUST` fail when
+  `sdkwork-<application-code>-gateway-assembly` is missing, `assembly-manifest.json`
+  drifts from workspace discovery, or standalone/cloud gateway sources hand-merge
+  `sdkwork_routes_*` / `sdkwork-routes-*` routers.
+- Workspace gateway assembly audits `MUST` run
+  `node tools/audit-gateway-assembly-workspace.mjs --workspace ..` and pass with
+  zero errors and zero warnings before claiming gateway assembly alignment is complete.
+- Repositories with assembly crates `MUST` run `pnpm gateway:assembly:validate` in CI
+  or root `pnpm verify` when gateway crates or route crates change.
 - Workspace hosting-debt checks `MUST` run
   `node tools/check-app-runtime-hosting-debt.mjs --workspace ..` and pass for
   every application repository with active dev scripts, packaging targets, or
@@ -944,7 +975,7 @@ Rules:
 - Static env/config scans MUST fail when `.env`, runtime TOML examples, `/runtime-env.js`, `PORTAL_PUBLIC_*`, or `VITE_*` contain live auth tokens, access tokens, refresh tokens, API keys, generated auth headers, or SDK credential DTOs.
 - Static env/config scans MUST fail when application runtime source, IAM runtime bootstrap, tracked `.env.example`, or public runtime config reads `SDKWORK_IAM_BOOTSTRAP_*`, `SDKWORK_IAM_LOCAL_*`, `SDKWORK_USER_CENTER_BOOTSTRAP_*`, runtime `SDKWORK_APP_ID`, `VITE_SDKWORK_APP_ID`, or equivalent fixed tenant/organization/user/owner bootstrap variables for current IAM scope. Tenant, organization, user, session, and app scope MUST be asserted through dual-token claim tests instead.
 - Static frontend/service scans MUST fail when UI packages or service facades manually assemble auth/API key headers such as `Authorization`, `Access-Token`, or `X-API-Key` instead of using SDK credential APIs.
-- Static frontend/service scans MUST fail when UI packages or service facades import Rust route crates such as `sdkwork-router-*-app-api` or assemble URLs from route constants instead of calling generated SDK clients.
+- Static frontend/service scans MUST fail when UI packages or service facades import Rust route crates such as `sdkwork-routes-*-app-api` or assemble URLs from route constants instead of calling generated SDK clients.
 - Static frontend scans MUST fail when browser or service code uses raw object-storage provider SDKs, persists presigned URLs as business identity, or bypasses generated Drive SDK methods for SDKWork-owned uploads/downloads.
 - Static frontend scans MUST fail when feature code outside the Drive SDK composed uploader calls raw `fetch`, `axios`, generic HTTP clients, or handwritten SDKs against `/app/v3/api/drive/uploader`, `/app/v3/api/drive/upload_sessions`, S3, OSS, MinIO, local object-storage, or provider presign endpoints.
 - Static frontend scans MUST fail when UI components or feature services persist `File`, object URL, presigned URL, provider URL, bucket, object key, upload part list, or local uploader state as business identity.
@@ -970,7 +1001,7 @@ Rules:
 - SDK workspace tests `MUST` verify authored API contracts under `apis/` trace to the materialized
   authority OpenAPI under the owning `sdks/` SDK family when `apis/` is used as the source contract
   location.
-- SDK workspace tests `MUST` verify route crate -> aggregated API authority -> generated SDK family mappings when Rust route crates participate in API generation, for example `sdkwork-router-merchandise-app-api` -> `sdkwork-commerce-app-api` -> `sdkwork-commerce-app-sdk`.
+- SDK workspace tests `MUST` verify route crate -> aggregated API authority -> generated SDK family mappings when Rust route crates participate in API generation, for example `sdkwork-routes-merchandise-app-api` -> `sdkwork-commerce-app-api` -> `sdkwork-commerce-app-sdk`.
 - Observability tests `MUST` prove logs, metrics, traces, health checks, and
   dashboard projections use `deployment_profile` and exact
   `CONFIG_SPEC.md` `runtime_target` label values without introducing
@@ -989,6 +1020,7 @@ Rules:
 - [ ] Code style, naming, identity lattice terminology (`tools/check-identity-naming.mjs`), and only relevant language-specific checks pass when authored code is touched.
 - [ ] Repository/application `.sdkwork/skills/` and `.sdkwork/plugins/` checks pass when a repository root or application root is created or maintained.
 - [ ] Standard top-level directory checks pass when a repository root or application root is created or maintained.
+- [ ] `apps/README.md` directory index checks pass for independent application repositories.
 - [ ] `apis/` and `sdks/` boundary checks pass when API contracts or SDK generation are touched.
 - [ ] OpenAPI/SDK generation verification passes under `SDK_SPEC.md`.
 - [ ] OpenAPI/SDK scans prove current tenant context is not generated as `tenant_id` or `tenantId` inputs.

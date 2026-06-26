@@ -43,9 +43,9 @@ Reusable IAM modules use layered packages so each application can switch generat
 | Runtime | `@sdkwork/iam-runtime` | Environment/deployment config, token store, context store, auth header provider |
 | React | `@sdkwork/iam-react` | React provider and hooks over the IAM runtime |
 | Rust IAM context | `sdkwork_iam_context_service` | Local/private Rust IAM context and token parity contracts |
-| Rust app-api route | `sdkwork_router_iam_app_api` | Local/private Rust app-api route contract parity with Java app APIs |
-| Rust backend-api route | `sdkwork_router_iam_backend_api` | Rust backend-api route contract parity with Java backend APIs across standalone/cloud profiles |
-| Rust open-api route | `sdkwork_router_iam_open_api` | Rust open-api route contract parity when IAM exposes public integration APIs |
+| Rust app-api route | `sdkwork_routes_iam_app_api` | Local/private Rust app-api route contract parity with Java app APIs |
+| Rust backend-api route | `sdkwork_routes_iam_backend_api` | Rust backend-api route contract parity with Java backend APIs across standalone/cloud profiles |
+| Rust open-api route | `sdkwork_routes_iam_open_api` | Rust open-api route contract parity when IAM exposes public integration APIs |
 | Rust SQLx directory repository | `sdkwork_iam_directory_repository_sqlx` | Rust SQL migration and persistence contract |
 | Rust Tauri host | `sdkwork_iam_tauri_host` | Tauri host adapter boundary for standalone IAM |
 
@@ -363,7 +363,7 @@ Rules:
 
 Rules:
 
-- `sdkwork-iam-web-adapter` `MUST` provide `IamOpenApiWebRequestContextResolver` (alias of `IamDatabaseWebRequestContextResolver`) for standard IAM open-api wiring.
+- `sdkwork-iam-web-adapter` `MUST` provide `IamWebRequestContextResolver` (canonical application integration alias; concrete type `IamDatabaseWebRequestContextResolver`) and `IamOpenApiWebRequestContextResolver` for standard IAM open-api wiring.
 - Open-api bootstrap `MUST` pass the route manifest to `build_iam_open_api_web_framework_layer(resolver, route_manifest)` so `RouteAuth::ApiKey`, `RouteAuth::OAuth`, and `RouteAuth::OpenApiFlexible` are enforced consistently.
 - Session/token SQL against IAM foundation tables `MUST` follow `DATABASE_SPEC.md` section 8.1.1 for TEXT-stored `instant` comparisons.
 

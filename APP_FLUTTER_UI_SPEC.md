@@ -50,8 +50,8 @@ Rules:
 
 | Package type | Naming | Owns | Must not own |
 | --- | --- | --- | --- |
-| Flutter app shell | `sdkwork_<application_code>_flutter_mobile_shell` or app-specific Flutter shell | `MaterialApp`/router, providers, SDK bootstrap, token store, platform adapters | reusable domain features |
-| Flutter foundation package | `sdkwork_<application_code>_flutter_mobile_commons` or `sdkwork_<foundation>_flutter` | appbase, router, workspace, command/search primitives | business-domain shortcuts |
+| Flutter app shell | `sdkwork_<application_code>_flutter_mobile_shell` or app-specific Flutter shell | `MaterialApp`/client navigation, providers, SDK bootstrap, token store, platform adapters | reusable domain features |
+| Flutter foundation package | `sdkwork_<application_code>_flutter_mobile_commons` or `sdkwork_<foundation>_flutter` | appbase, workspace, command/search primitives | business-domain shortcuts |
 | Flutter domain package | `sdkwork_<application_code>_flutter_mobile_<capability>` or `sdkwork_<capability>_flutter` | screens, widgets, controllers/blocs, repositories, services, i18n | concrete SDK construction, backend admin logic |
 | Flutter user console package | `sdkwork_<application_code>_flutter_mobile_console_<capability>` | user-facing management console screens, widgets, controllers/blocs, repositories, services, i18n | company-internal admin workflows, backend-only operation center behavior |
 | platform adapter package | `sdkwork_<application_code>_flutter_mobile_host` or `sdkwork_<host>_flutter` when needed | camera, QR scanner, secure storage, biometric, push, deep links | API business logic |

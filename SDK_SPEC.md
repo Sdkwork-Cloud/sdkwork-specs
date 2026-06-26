@@ -352,21 +352,21 @@ The following table is the canonical SDKWork SDK/API naming model. `SDK_WORKSPAC
 
 | Rust route crate pattern | Aggregated API authority | SDK family directory | Typical prefix |
 | --- | --- | --- | --- |
-| `sdkwork-router-<capability>-open-api` | `sdkwork-<domain>-open-api` | `sdkwork-<domain>-sdk` | Approved non-app/non-backend versioned domain prefix, for example `/im/v3/api` |
-| `sdkwork-router-<capability>-app-api` | `sdkwork-<domain>-app-api` | `sdkwork-<domain>-app-sdk` | `/app/v3/api` |
-| `sdkwork-router-<capability>-backend-api` | `sdkwork-<domain>-backend-api` | `sdkwork-<domain>-backend-sdk` | `/backend/v3/api` |
-| `sdkwork-router-<capability>-internal-api` | `sdkwork-<domain>-internal-api` | `sdkwork-<domain>-internal-sdk` | `/internal/v3/api` |
+| `sdkwork-routes-<capability>-open-api` | `sdkwork-<domain>-open-api` | `sdkwork-<domain>-sdk` | Approved non-app/non-backend versioned domain prefix, for example `/im/v3/api` |
+| `sdkwork-routes-<capability>-app-api` | `sdkwork-<domain>-app-api` | `sdkwork-<domain>-app-sdk` | `/app/v3/api` |
+| `sdkwork-routes-<capability>-backend-api` | `sdkwork-<domain>-backend-api` | `sdkwork-<domain>-backend-sdk` | `/backend/v3/api` |
+| `sdkwork-routes-<capability>-internal-api` | `sdkwork-<domain>-internal-api` | `sdkwork-<domain>-internal-sdk` | `/internal/v3/api` |
 
 These names have different meanings:
 
 - Rust route crate names identify Rust source packages that define route/path constants, route metadata, router mount points, and handler binding for one business capability and one API surface.
-- Rust route crate names `MUST` start with `sdkwork-router-` and `MUST NOT` be used as SDK family names, generated package names, OpenAPI authority names, generator `--sdk-name` values, or frontend service package names.
+- Rust route crate names `MUST` start with `sdkwork-routes-` and `MUST NOT` be used as SDK family names, generated package names, OpenAPI authority names, generator `--sdk-name` values, or frontend service package names.
 - SDK family names identify generated client SDK workspaces and generated package lineage.
 - API authority names identify runtime API authoritys and OpenAPI authority contracts.
 - `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, `sdkwork-<domain>-backend-api`, and `sdkwork-<domain>-internal-api` are never SDK family names.
 - The SDK family generated from an `open-api` authority is `sdkwork-<domain>-sdk`, not `sdkwork-<domain>-open-api` and not `sdkwork-<domain>-open-sdk`.
-- `sdkwork-router-merchandise-app-api` means product-related app-api route/path configuration. It does not mean the product SDK, and it does not mean the final app-api authority for the whole project.
-- `sdkwork-commerce-app-api` means the aggregated commerce app-api authority. It may aggregate multiple commerce-owned route crates such as `sdkwork-router-merchandise-app-api`, `sdkwork-router-cart-app-api`, and `sdkwork-router-order-app-api`.
+- `sdkwork-routes-merchandise-app-api` means merchandise-related app-api route/path configuration. It does not mean the merchandise SDK, and it does not mean the final app-api authority for the whole project.
+- `sdkwork-commerce-app-api` means the aggregated commerce app-api authority. It may aggregate multiple commerce-owned route crates such as `sdkwork-routes-merchandise-app-api`, `sdkwork-routes-cart-app-api`, and `sdkwork-routes-order-app-api`.
 - `sdkwork-commerce-app-sdk` means the generated SDK family produced from `sdkwork-commerce-app-api`.
 
 | Surface | Package pattern |
@@ -409,7 +409,7 @@ Rules:
 - Package version `MUST` be traceable to OpenAPI version and generator version.
 - Application-root `sdks/` SDK family names and API authority names `MUST` follow this document's canonical SDK/API naming model. Their physical `sdks/` layout, OpenAPI authority file placement, derived generator inputs, and generated-output placement `MUST` follow `SDK_WORKSPACE_GENERATION_SPEC.md`.
 - Generated package names, generated metadata names, manifests, and generator `--sdk-name` values `MUST` use SDK family names, not API authority names.
-- Rust route crate names `MUST` follow `API_SPEC.md`: `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
+- Rust route crate names `MUST` follow `API_SPEC.md`: `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`.
 - Route crate names, API authority names, and SDK family names `MUST` remain mechanically distinguishable. A standards checker must be able to identify whether a name is a route crate, API authority, or SDK family from the name alone.
 - Generated clients must expose typed request/response models.
 - Standalone and cloud implementations may use different runtime clients, but
@@ -661,15 +661,15 @@ Every SDK generation flow `MUST` verify:
   `cargo metadata` and does not require a separate gateway catalog.
 - [ ] Generated transport output, generated documentation, generated manifests, and generated package/build metadata do not reference package names declared in `sdkDependencies[].packageByLanguage`.
 - [ ] SDK family names, API authority names, generated package names, generated metadata, and generator `--sdk-name` values follow this document's canonical SDK/API naming model.
-- [ ] Rust route crate names, when present, follow `sdkwork-router-<capability>-open-api`,
-  `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`; route crate
+- [ ] Rust route crate names, when present, follow `sdkwork-routes-<capability>-open-api`,
+  `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`; route crate
   names are not used as SDK family names, OpenAPI authority names, generated package names, or
   generator `--sdk-name` values.
 - [ ] Route manifest artifacts, when present, use `kind: sdkwork.route.manifest`, validate package
   name, capability, surface, API authority, SDK family, prefix, auth mode, ownership, and duplicate
   route rules, and materialize source traceability into OpenAPI extensions.
 - [ ] The route crate -> aggregated API authority -> generated SDK family mapping is explicit, for
-  example `sdkwork-router-merchandise-app-api` -> `sdkwork-commerce-app-api` ->
+  example `sdkwork-routes-merchandise-app-api` -> `sdkwork-commerce-app-api` ->
   `sdkwork-commerce-app-sdk`.
 - [ ] Application-root `sdks/` family layout, OpenAPI authority file placement, derived generator inputs, and generated-output placement follow `SDK_WORKSPACE_GENERATION_SPEC.md`.
 - [ ] Strict SDKWork v3 profile passes for new contracts.

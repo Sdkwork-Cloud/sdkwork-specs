@@ -27,7 +27,8 @@ apps/sdkwork-appbase/
         sdkwork-user-pc-react/
       foundation/
         sdkwork-appbase-pc-react/
-        sdkwork-router-pc-react/
+        sdkwork-shell-pc-react/
+        sdkwork-workspace-pc-react/
       commerce/
       communication/
       content/
@@ -64,8 +65,8 @@ App PC React packages are split by user-facing capability and domain.
 
 | Package type | Naming | Owns | Must not own |
 | --- | --- | --- | --- |
-| app shell/runtime | app-specific `src/` or runtime package | providers, router, SDK bootstrap, token store, deployment profile, runtime target, host integration | reusable domain pages and services |
-| appbase foundation | `sdkwork-<foundation>-pc-react` | reusable shell, router, workspace, command, search, appbase utilities | business-domain API shortcuts |
+| app shell/runtime | app-specific `src/` or runtime package | providers, client navigation, SDK bootstrap, token store, deployment profile, runtime target, host integration | reusable domain pages and services |
+| appbase foundation | `sdkwork-<foundation>-pc-react` | reusable shell, workspace, command palette, search, appbase utilities | business-domain API shortcuts |
 | domain feature package | `sdkwork-<capability>-pc-react` or `sdkwork-<application-code>-pc-<capability>` | user-facing pages, components, services, hooks, i18n, route metadata | concrete SDK construction, backend admin logic |
 | user console package | `sdkwork-<application-code>-pc-console-<capability>` | user-facing management console pages, components, services, hooks, i18n, route metadata | company-internal admin workflows, backend-only operation center behavior |
 | contracts/service package | common IAM or domain service packages | typed SDK ports, domain orchestration, API DTO adaptation | React rendering and app shell state |
@@ -75,6 +76,7 @@ Rules:
 - Every package `MUST` declare one primary capability.
 - New IAM/user/auth work `MUST` use `iam` naming, not `identity`.
 - Business UI `MUST` be placed under the closest domain family such as `iam`, `commerce`, `communication`, `content`, `intelligence`, `system`, `device`, or `ecosystem`.
+- Appbase foundation packages `MUST` use `<foundation>` tokens `shell`, `workspace`, `command`, `search`, or `appbase` in `sdkwork-<foundation>-pc-react`.
 - App PC React packages `MUST` not become catch-all app modules. Split independent domains into separate packages.
 - PC console packages `MUST` not become catch-all management modules. Split independent customer/tenant/app-owner management capabilities into `sdkwork-<application-code>-pc-console-<capability>` packages.
 - A shared UI primitive package may exist only for domain-neutral PC React primitives. It must not include business workflows.

@@ -43,7 +43,7 @@ Rules:
 - Internal API `MUST` mount on `application.public-ingress` for the owning application.
 - Internal API `MUST NOT` be exposed through `platform.api-gateway` unless an explicit, reviewed compatibility exception documents gateway mediation and ingress-token forwarding.
 - Topology manifests `MUST` keep business APIs (`/app/v3/api`, `/backend/v3/api`, `/agent/v3/api`) on `platform.api-gateway` and internal runtime APIs on `application.public-ingress`.
-- Health probes (`/health`, `/ready`, `/live`) remain outside internal-api OpenAPI unless explicitly documented as operational endpoints.
+- Health probes (`/healthz`, `/readyz`, `/livez`, `/metrics`) remain outside internal-api OpenAPI unless explicitly documented as operational endpoints.
 
 ## 4. Auth And Request Context
 
@@ -72,7 +72,7 @@ Rules:
 
 Rules:
 
-- Rust HTTP route crates for internal-api `MUST` be named `sdkwork-router-<capability>-internal-api`.
+- Rust HTTP route crates for internal-api `MUST` be named `sdkwork-routes-<capability>-internal-api`.
 - Internal route crates `MAY` mount only `/internal/v3/api` paths.
 - Internal route crates `MUST` feed or mirror the internal-api OpenAPI authority; they are implementation inputs, not SDK family names.
 

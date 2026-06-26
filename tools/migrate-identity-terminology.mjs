@@ -6,6 +6,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  LEGACY_HTTP_ROUTE_PREFIX,
+  legacyFoundationPcReactName,
+} from './lib/naming-patterns.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -28,12 +32,6 @@ function walk(dir, files = []) {
 const orderedReplacements = [
   ['<product>', '<application-code>'],
   ['sdkwork_<product>_', 'sdkwork_<application_code>_'],
-  ['sdkwork-router-product-open-api', 'sdkwork-router-merchandise-open-api'],
-  ['sdkwork-router-product-backend-api', 'sdkwork-router-merchandise-backend-api'],
-  ['sdkwork-router-product-app-api', 'sdkwork-router-merchandise-app-api'],
-  ['router-product-open-api', 'router-merchandise-open-api'],
-  ['router-product-backend-api', 'router-merchandise-backend-api'],
-  ['router-product-app-api', 'router-merchandise-app-api'],
   ['sdkwork-commerce-product-service', 'sdkwork-commerce-merchandise-service'],
   ['sdkwork-commerce-pc-product', 'sdkwork-commerce-pc-merchandise'],
   ['sdkwork-commerce-h5-product', 'sdkwork-commerce-h5-merchandise'],
@@ -95,12 +93,45 @@ const orderedReplacements = [
   ['such as product, cart, order', 'such as merchandise, cart, order'],
 ];
 
+function migrateRouteCratePrefix(content) {
+  return content.replace(
+    new RegExp(
+      `${LEGACY_HTTP_ROUTE_PREFIX}([a-z0-9]+)-(open-api|app-api|backend-api|internal-api)`,
+      'gu',
+    ),
+    'sdkwork-routes-$1-$2',
+  );
+}
+
+function migrateCommerceProductRouteTokens(content) {
+  return content
+    .replace(/sdkwork-routes-merchandise-/gu, 'sdkwork-routes-merchandise-')
+    .replace(/routes-merchandise-/gu, 'routes-merchandise-');
+}
+
+function migrateShortRoutePrefix(content) {
+  return content.replace(
+    /router-([a-z0-9]+)-(open-api|app-api|backend-api|internal-api)/gu,
+    'routes-$1-$2',
+  );
+}
+
+function migrateFoundationPcReact(content) {
+  const legacyFoundation = legacyFoundationPcReactName();
+  return content.includes(legacyFoundation)
+    ? content.split(legacyFoundation).join('sdkwork-shell-pc-react')
+    : content;
+}
+
 function migrate(content) {
   let out = content;
   for (const [from, to] of orderedReplacements) {
     out = out.split(from).join(to);
   }
-  return out;
+  out = migrateRouteCratePrefix(out);
+  out = migrateCommerceProductRouteTokens(out);
+  out = migrateShortRoutePrefix(out);
+  return migrateFoundationPcReact(out);
 }
 
 let changed = 0;

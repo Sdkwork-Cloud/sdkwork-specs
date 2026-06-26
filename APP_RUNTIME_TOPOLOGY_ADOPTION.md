@@ -170,3 +170,50 @@ When migrating an application, delete and do not alias:
 
 Migration tools may read retired values only long enough to emit v3
 `deploymentProfile`, `runtimeTarget`, and profile id outputs.
+
+## 11. Single HTTP Ingress Migration
+
+Normative rules: `APPLICATION_GATEWAY_SPEC.md` §5.6 and
+`APP_RUNTIME_TOPOLOGY_SPEC.md` §8.
+
+Every application migration must:
+
+1. Point `standalone.unified-process.*` orchestration at
+   `sdkwork-<application-code>-standalone-gateway` (or a single `api-server`
+   that already mounts every application HTTP surface on one bind).
+2. Embed route crates and service libraries in the gateway router instead of
+   starting `*-service-bin`, `app-api`, `backend-api`, or `open-api` HTTP
+   listeners in dev.
+3. Point `cloud.split-services.*` dev orchestration at
+   `sdkwork-<application-code>-cloud-gateway` plus optional
+   `sdkwork-api-cloud-gateway`; remove decomposed HTTP binaries from
+   `orchestration.profiles`.
+4. Delete dev sidecar hooks, reserved loopback port matrices, and contract
+   tests that assume multi-port local HTTP API startup.
+5. Verify with `node ../sdkwork-specs/tools/check-single-http-ingress.mjs --root .`.
+
+Workspace audit:
+
+```bash
+node ../sdkwork-specs/tools/audit-single-http-ingress-workspace.mjs --workspace ..
+```
+
+Known migration backlog (gateway crate warnings only; multi-listener orchestration
+errors are cleared):
+
+| Repository | Status | Next step |
+| --- | --- | --- |
+| `sdkwork-knowledgebase` | cloud orchestration consolidated | add `sdkwork-knowledgebase-standalone-gateway` and migrate `application.public-ingress` off `*-app-api` |
+| `sdkwork-documents` | cloud dev orchestration consolidated | add standalone/cloud gateway crates |
+| `sdkwork-clawrouter` | split/cloud orchestration consolidated | verify `sdkwork-clawrouter-standalone-gateway` embeds all routes in-process |
+| `sdkwork-drive` | cloud dev orchestration consolidated | already uses `sdkwork-drive-standalone-gateway` in unified profile |
+| `sdkwork-im` | standalone gateway embeds partial route set | add `sdkwork-im-gateway-assembly`, export `gateway_mount` on route crates, remove hand merges |
+| `sdkwork-aiot` | `sdkwork-aiot-standalone-gateway` added | collapse legacy `application.app-http` / `application.admin-http` client env to `application.public-ingress` |
+
+Additional gateway migration warnings (single port today, but `application.public-ingress` still uses `*-api-server` / `*-app-api` instead of `*-standalone-gateway` / `*-cloud-gateway`) affect many application repositories. Run:
+
+```bash
+node tools/audit-single-http-ingress-workspace.mjs --workspace ..
+```
+
+Use `--strict` to fail CI on gateway migration warnings after hard errors are cleared.

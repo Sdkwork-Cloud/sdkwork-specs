@@ -371,10 +371,65 @@ Rules:
 
 - Root layout documentation `MUST` cite `SDKWORK_WORKSPACE_SPEC.md` for the standard directory dictionary.
 - If the root omits inactive reserved directories, the README `MUST` state which capabilities are active and which standard directories are intentionally absent.
-- Each standard top-level directory README `MUST` document purpose, owner, allowed content, forbidden content, related specs, and verification command or checklist.
+- Each standard top-level directory README `MUST` document purpose, owner, allowed content, forbidden content, related specs, and verification command or checklist. For `apps/`, use `apps/README.md` and follow section 3.3.
 - If both `apis/` and `sdks/` exist, the README `MUST` explain that `apis/` contains authored API contracts and API review inputs, while `sdks/` contains SDK family workspaces, materialized authority OpenAPI, derived `sdkgen` inputs, and generated SDK output.
 - If both `plugins/` and `.sdkwork/plugins/` exist, the README `MUST` distinguish application/runtime plugin source from repository/application agent plugin workspaces.
 - If `configs/` or architecture-local `config/` and runtime config paths are documented, the README `MUST` distinguish source-controlled safe templates from user-private or environment-private runtime config governed by `RUNTIME_DIRECTORY_SPEC.md`.
+
+## 3.3 Required apps/ Directory Index
+
+Every independent SDKWork application git repository `MUST` keep `apps/README.md` as the human
+directory index for application roots under `apps/`.
+
+Rules:
+
+- `apps/` `MUST` exist at the repository root for every independent SDKWork application git
+  repository, even when the repository root itself is the primary runnable app surface.
+- `apps/README.md` `MUST` exist whenever `apps/` exists.
+- `apps/README.md` `MUST` cite `APPLICATION_SPEC.md` and `SDKWORK_WORKSPACE_SPEC.md`.
+- `apps/README.md` `MUST` state whether the repository root is itself a runnable app surface and,
+  when it is, which architecture standard governs that root surface.
+- `apps/README.md` `MUST` include a directory index that lists every direct child directory under
+  `apps/`, excluding hidden directories and placeholder-only files such as `.gitkeep`.
+- For each indexed child directory, `apps/README.md` `MUST` document:
+  - directory name;
+  - surface role, such as `common`, `pc`, `h5`, `flutter-mobile`, `mini-program`,
+    `android-mobile`, `ios-mobile`, `harmony-mobile`, `backend-react-web`, `demo`, or another
+    approved client architecture from `APPLICATION_SPEC.md`;
+  - whether the child is runnable, a shared package-family root, or a secondary shell/demo;
+  - one-line purpose;
+  - relative link to the child root `README.md` when that child is an active application root.
+- When `apps/` has no child directories, `apps/README.md` `MUST` state that explicitly and explain
+  where the primary app surface lives.
+- Stale index entries `MUST NOT` remain after a child application root is removed or renamed.
+- Repository root `README.md` `MUST` link to `apps/README.md` when `apps/` exists.
+
+Template:
+
+```md
+# apps/
+
+Application: <application-code>
+Status: active
+Owner: <team>
+Specs: APPLICATION_SPEC.md, SDKWORK_WORKSPACE_SPEC.md
+
+## Primary App Surface
+
+The repository root is / is not the primary runnable app surface.
+When the repository root is primary, it follows <architecture-standard>.
+
+## Directory Index
+
+| Directory | Surface role | Runnable | Purpose | Entry |
+| --- | --- | --- | --- | --- |
+| sdkwork-<application-code>-common | common | no | Cross-architecture shared packages | [README](sdkwork-<application-code>-common/README.md) |
+| sdkwork-<application-code>-pc | pc | yes | PC browser/desktop app root | [README](sdkwork-<application-code>-pc/README.md) |
+
+## Verification
+
+node ../sdkwork-specs/tools/check-apps-directory-index.mjs --root .
+```
 
 ## 4. API Documentation
 
@@ -469,6 +524,7 @@ Rules:
 - [ ] Tool compatibility files such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` point to `AGENTS.md` and do not duplicate divergent rules.
 - [ ] Repository/application `.sdkwork/` README files exist and cite `SDKWORK_WORKSPACE_SPEC.md`.
 - [ ] Repository/application root README documents the active standard top-level directories, including `apis/` versus `sdks/` when API contracts and generated SDK workspaces both exist.
+- [ ] Independent application repositories provide `apps/README.md` that indexes every direct child application root and states primary app surface placement.
 - [ ] `docs/product/requirements/` uses `REQ-*` ids and links to `REQUIREMENTS_SPEC.md` when non-trivial behavior is documented.
 - [ ] `docs/architecture/decisions/` uses `ADR-*` ids, links to `ARCHITECTURE_DECISION_SPEC.md`, and records supersession when decisions change.
 - [ ] Module README includes public API, SDK surface, config, security, and verification.

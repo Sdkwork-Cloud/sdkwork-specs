@@ -26,6 +26,11 @@ Rules:
   `templates/database/` using `database-module-registry.json`.
 - `check-identity-naming.mjs` validates identity lattice terminology in standards
   (`NAMING_SPEC.md` §0–§0.2) and scans consumer repositories for retired identity
-  placeholders, commerce `product` overloads, `identity` domain packages, and related patterns.
-  See `MIGRATION_SPEC.md` §8.
+  placeholders, commerce `product` overloads, non-canonical Rust HTTP route crate names,
+  `identity` domain packages, and related patterns. See `MIGRATION_SPEC.md` §8.
+- `check-iam-web-adapter-standard.mjs` scans consumer repositories for canonical IAM
+  web-adapter integration (`IamWebRequestContextResolver`,
+  `iam_web_request_context_resolver_from_env`) and blocks legacy resolver imports,
+  deprecated factory calls, and application-local pass-through resolver wrappers per
+  `IAM_SPEC.md` and `WEB_FRAMEWORK_SPEC.md`.
 - Tools must not embed application-specific secrets, local paths, or application-line behavior.

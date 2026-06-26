@@ -119,8 +119,28 @@ function inspectLine(line, filePath) {
     }
   }
 
-  if (/sdkwork_chat_prod|sdkwork_knowledgebase_(dev|prod)|sdkwork_news_dev|sdkwork_forum_dev|sdkwork_discovery"/u.test(trimmed)) {
+  if (/sdkwork_chat_prod|sdkwork_knowledgebase_(dev|prod)|sdkwork_news_dev|sdkwork_forum_dev|sdkwork_discovery|sdkwork_documents(_dev)?|sdkwork_rtc|sdkwork_ai_prod_ai_dev/u.test(trimmed)) {
     return 'legacy per-app database identity';
+  }
+
+  const documentsName = trimmed.match(/^DOCUMENTS_DATABASE_NAME=(.+)$/u);
+  if (documentsName) {
+    const value = documentsName[1].trim();
+    if (!CANONICAL_DEV.has(value) && !CANONICAL_PROD.has(value)) {
+      return `non-canonical DOCUMENTS_DATABASE_NAME=${value}`;
+    }
+  }
+
+  const documentsUser = trimmed.match(/^DOCUMENTS_DATABASE_USERNAME=(.+)$/u);
+  if (documentsUser) {
+    const value = documentsUser[1].trim();
+    if (!CANONICAL_USER.has(value)) {
+      return `non-canonical DOCUMENTS_DATABASE_USERNAME=${value}`;
+    }
+  }
+
+  if (/^DOCUMENTS_DATABASE_SCHEMA=public$/u.test(trimmed) && /development|\.development\./u.test(filePath)) {
+    return 'legacy public schema development profile';
   }
 
   if (/sdkworkprod(@|%40)2026(\+\+|%2B%2B)/u.test(trimmed)) {
@@ -139,11 +159,97 @@ function inspectLine(line, filePath) {
     return 'legacy public schema production profile';
   }
 
+  if (/^SDKWORK_CLAW_DATABASE_HOST=\[::1\]$/u.test(trimmed)) {
+    return 'non-canonical loopback host; use 127.0.0.1 per env.postgres.example';
+  }
+
   if (/^schema = "public"$/u.test(trimmed) && /production|\.production\./u.test(filePath)) {
     return 'legacy public schema production profile';
   }
 
   return null;
+}
+
+const REQUIRED_ADMIN_ENV_KEYS = [
+  'SDKWORK_CLAW_DATABASE_ADMIN_HOST',
+  'SDKWORK_CLAW_DATABASE_ADMIN_PORT',
+  'SDKWORK_CLAW_DATABASE_ADMIN_USERNAME',
+  'SDKWORK_CLAW_DATABASE_ADMIN_PASSWORD',
+  'SDKWORK_CLAW_DATABASE_ADMIN_DATABASE',
+  'SDKWORK_CLAW_DATABASE_ADMIN_SSL_MODE',
+];
+
+function inspectPostgresExampleFile(filePath, content) {
+  const issues = [];
+  if (path.basename(filePath) !== '.env.postgres.example') {
+    return issues;
+  }
+  const keys = new Set();
+  for (const line of content.split(/\r?\n/u)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+    const match = trimmed.match(/^([A-Z0-9_]+)=/u);
+    if (match) {
+      keys.add(match[1]);
+    }
+    const issue = inspectLine(line, filePath);
+    if (issue) {
+      issues.push(`${path.relative(WORKSPACE_ROOT, filePath)}: ${issue}`);
+    }
+  }
+  for (const requiredKey of REQUIRED_ADMIN_ENV_KEYS) {
+    if (!keys.has(requiredKey)) {
+      issues.push(
+        `${path.relative(WORKSPACE_ROOT, filePath)}: missing required ${requiredKey}`,
+      );
+    }
+  }
+  return issues;
+}
+
+function inspectConfigFile(filePath) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  if (path.basename(filePath) === '.env.postgres.example') {
+    return inspectPostgresExampleFile(filePath, content);
+  }
+  const issues = [];
+  for (const [index, line] of content.split(/\r?\n/u).entries()) {
+    const issue = inspectLine(line, filePath);
+    if (issue) {
+      issues.push(`${path.relative(WORKSPACE_ROOT, filePath)}:${index + 1}: ${issue}`);
+    }
+  }
+  return issues;
+}
+
+function inspectPostgresInitScripts() {
+  const issues = [];
+  for (const entry of fs.readdirSync(WORKSPACE_ROOT, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !entry.name.startsWith('sdkwork-')) {
+      continue;
+    }
+    const repoRoot = path.join(WORKSPACE_ROOT, entry.name);
+    const envExample = path.join(repoRoot, '.env.postgres.example');
+    if (!fs.existsSync(envExample)) {
+      continue;
+    }
+    const packageJsonPath = path.join(repoRoot, 'package.json');
+    if (!fs.existsSync(packageJsonPath)) {
+      issues.push(`${entry.name}: has .env.postgres.example but no package.json`);
+      continue;
+    }
+    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const scripts = pkg.scripts ?? {};
+    if (!scripts['db:postgres:init']) {
+      issues.push(`${entry.name}: missing package.json script db:postgres:init`);
+    }
+    if (!scripts['db:postgres:plan']) {
+      issues.push(`${entry.name}: missing package.json script db:postgres:plan`);
+    }
+  }
+  return issues;
 }
 
 function main() {
@@ -156,15 +262,10 @@ function main() {
       continue;
     }
     for (const filePath of collectFiles(path.join(WORKSPACE_ROOT, entry.name))) {
-      const content = fs.readFileSync(filePath, 'utf8');
-      for (const [index, line] of content.split(/\r?\n/u).entries()) {
-        const issue = inspectLine(line, filePath);
-        if (issue) {
-          violations.push(`${path.relative(WORKSPACE_ROOT, filePath)}:${index + 1}: ${issue}`);
-        }
-      }
+      violations.push(...inspectConfigFile(filePath));
     }
   }
+  violations.push(...inspectPostgresInitScripts());
 
   if (violations.length > 0) {
     process.stderr.write('Unified PostgreSQL profile violations found:\n');

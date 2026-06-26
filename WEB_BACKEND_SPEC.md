@@ -61,7 +61,7 @@ HTTP route path definitions have one implementation owner per surface/capability
 Rust route crate path ownership:
 
 ```text
-crates/sdkwork-router-<capability>-<surface>/
+crates/sdkwork-routes-<capability>-<surface>/
   src/paths.rs
   src/routes.rs
   src/handlers.rs
@@ -77,7 +77,7 @@ src/main/java/<package>/<domain>/<capability>/controller/
 
 Rules:
 
-- Rust route crates `MUST` be named `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
+- Rust route crates `MUST` be named `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`.
 - Rust route manifests `MUST` follow `API_SPEC.md` and materialize through `SDK_WORKSPACE_GENERATION_SPEC.md`.
 - Java app-api controller class-level mappings `MUST` start with `/app/v3/api`.
 - Java backend-api controller class-level mappings `MUST` start with `/backend/v3/api`.
@@ -94,13 +94,13 @@ Backends use names that expose domain intent without leaking transport details i
 
 | Concept | Standard name shape | Example |
 | --- | --- | --- |
-| Rust route crate | `sdkwork-router-<capability>-<surface>` | `sdkwork-router-merchandise-app-api` |
+| Rust route crate | `sdkwork-routes-<capability>-<surface>` | `sdkwork-routes-merchandise-app-api` |
 | Java controller | `<Capability><Surface>Controller` | `ProductAppApiController` |
 | Handler function | `<verb>_<resource>` or `<action>_<resource>` | `list_products`, `submit_order` |
 | Service/use-case | `<Capability>Service` or `<UseCase>Service` | `ProductService`, `SubmitOrderService` |
 | Repository | `<Aggregate>Repository` | `ProductRepository` |
 | Provider adapter | `<Provider><Capability>Adapter` | `StripePaymentAdapter` |
-| Route manifest | `<packageName>.route-manifest.json` | `sdkwork-router-merchandise-app-api.route-manifest.json` |
+| Route manifest | `<packageName>.route-manifest.json` | `sdkwork-routes-merchandise-app-api.route-manifest.json` |
 | API authority | `sdkwork-<domain>-<surface>` | `sdkwork-commerce-app-api` |
 | SDK family | `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-sdk`, `sdkwork-<domain>-backend-sdk` | `sdkwork-commerce-app-sdk` |
 
@@ -158,7 +158,7 @@ Required crate families for Rust HTTP backends:
 
 | Responsibility | Crate family | Web backend role |
 | --- | --- | --- |
-| HTTP route/API adapter | `sdkwork-router-<capability>-<surface>` | paths, routes, handlers, manifest, request/response mapping |
+| HTTP route/API adapter | `sdkwork-routes-<capability>-<surface>` | paths, routes, handlers, manifest, request/response mapping |
 | Business service/use case | `sdkwork-<domain>-<capability>-service` | business rules, authorization, transactions, idempotency, repository/provider ports |
 | SQL repository implementation | `sdkwork-<domain>-<capability>-repository-sqlx` | SQLx row mapping, SQL queries, tenant/data-scope-safe repository implementation |
 | HTTP API server process | `sdkwork-<application-code>-api-server` | config, state, dependency wiring, route mounting, listener, preflight |
@@ -170,7 +170,7 @@ Required crate families for Rust HTTP backends:
 Required route crate shape:
 
 ```text
-crates/sdkwork-router-<capability>-<surface>/
+crates/sdkwork-routes-<capability>-<surface>/
   Cargo.toml
   src/lib.rs
   src/paths.rs
@@ -217,6 +217,8 @@ crates/sdkwork-<application-code>-api-server/
   src/health.rs
 ```
 
+`src/health.rs` `MUST` assemble `sdkwork_web_bootstrap::ReadinessCheck` implementations for the process. It `MUST NOT` define local `/healthz`, `/readyz`, `/livez`, or `/metrics` route handlers; those `MUST` be mounted through `sdkwork-web-bootstrap::service_router` per `HEALTH_CHECK_SPEC.md`.
+
 Rules:
 
 - Route crates own `paths.rs`, `routes.rs`, `handlers.rs`, and `manifest.rs` for one capability and one surface.
@@ -241,6 +243,23 @@ Rules:
   `cloud-gateway`, or platform `sdkwork-api-cloud-gateway` according to
   `RUST_CODE_SPEC.md`.
 
+### 4.2.1 Gateway Mount Exports (Normative)
+
+Every Rust HTTP route crate that participates in application gateway assembly `MUST` expose two package-root symbols:
+
+| Export | Shape | Responsibility |
+| --- | --- | --- |
+| `gateway_mount` | `fn gateway_mount(...) -> Router` or `async fn gateway_mount(...) -> Router` | Construct and return the surface router with required service/bootstrap state |
+| `gateway_route_manifest` | `fn gateway_route_manifest() -> ...` or `const GATEWAY_ROUTE_MANIFEST: ...` | Expose `kind: sdkwork.route.manifest` metadata for mount ordering and validation |
+
+Rules:
+
+- `gateway_mount` `MUST` wrap existing `build_*_public_app` helpers through `sdkwork-web-framework` bootstrap helpers; it `MUST NOT` fork credential or request-context parsing.
+- Legacy `build_*` exports `MAY` remain for `*-service-bin` and tests during migration, but gateway assembly `MUST` call `gateway_mount` once the export exists.
+- `gateway_route_manifest` `SHOULD` delegate to the crate's `manifest.rs` authority (`open_route_manifest`, `app_route_manifest`, `backend_route_manifest`, or equivalent).
+- Route crates `MUST NOT` require gateway crates to import private modules, service internals, or handler modules directly.
+- Application gateway assembly (`sdkwork-<application-code>-gateway-assembly`) is the only place that merges multiple `gateway_mount` routers for a deployment profile. Standalone/cloud gateway crates `MUST NOT` merge sibling route crates directly.
+
 ## 4.3 Backend Anti-Patterns
 
 The following patterns are standards failures:
@@ -262,6 +281,7 @@ Rules:
 
 - Route crates `MUST` mount routers through framework helpers such as `with_web_request_context` and `MUST` declare `WebRequestContext` on every handler.
 - API server crates `MUST` assemble the standard 18-stage chain through `sdkwork-web-bootstrap` or an equivalent documented framework bootstrap API.
+- Infrastructure liveness, readiness, and metrics probes `MUST` follow `HEALTH_CHECK_SPEC.md` and `MUST` be mounted through `sdkwork-web-bootstrap::service_router` or `WebFrameworkBuilder`.
 - Route crates, API servers, gateways, and controller packages `MUST NOT` assemble ad hoc Axum/Tower security stacks, custom credential parsers, local Spring filter frameworks, or parallel request-context types that bypass the framework profile.
 - Business adapters such as appbase IAM `MUST` implement framework extension traits (`WebRequestContextResolver`, `ApiKeyLookupService`, `OAuthTokenLookupService`, `OpenApiCredentialSchemeDetector`, `AuthorizationPolicy`, `TenantIsolationPolicy`, `DomainContextInjector`) instead of exposing a separate HTTP context framework.
 - Handlers `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission scopes, or request IDs from raw headers after framework context resolution.
@@ -374,6 +394,7 @@ Rules:
   bootstrap, and protected route behavior, plus generated appbase SDKs when
   Rust code calls appbase HTTP APIs directly.
 - Tauri/native commands are host adapters. They may call backend services through approved boundaries, but they must not become a parallel hidden HTTP API surface.
+- `*-service-bin`, `sdkwork-<application-code>-app-api`, `sdkwork-<application-code>-backend-api`, and `sdkwork-<application-code>-open-api` binaries are **service host packages** for cloud scale-out, packaging matrices, and CI smoke. They `MUST NOT` be the default standalone dev HTTP listeners and `MUST NOT` be started as parallel loopback HTTP sidecars when a standalone or cloud application gateway already owns `application.public-ingress`. Route crates and `*-service` libraries remain the in-process composition units consumed by gateway crates per `APPLICATION_GATEWAY_SPEC.md` §5.6.
 
 ## 10. Verification
 
@@ -406,7 +427,7 @@ Every web backend change should verify the relevant subset:
 
 - [ ] API contract exists or is updated before implementation.
 - [ ] Java controller or Rust route crate path definitions match the approved surface prefix.
-- [ ] Rust route crates follow `sdkwork-router-<capability>-<surface>` and emit or feed `sdkwork.route.manifest`.
+- [ ] Rust route crates follow `sdkwork-routes-<capability>-<surface>` and emit or feed `sdkwork.route.manifest`.
 - [ ] Route/controller changes materialize into the owner-only API authority and derived SDK input.
 - [ ] SDK generation uses the canonical SDKWork generator and generated output remains untouched.
 - [ ] Every HTTP `*-api` runtime or module follows `WEB_FRAMEWORK_SPEC.md`; Rust HTTP runtimes integrate `sdkwork-web-framework`.

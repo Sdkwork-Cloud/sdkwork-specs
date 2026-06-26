@@ -1,0 +1,13 @@
+{
+  "name": "@sdkwork/specs-tools",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "test:postgres-tools": "node tools/postgres/postgres-tools.contract.test.mjs",
+    "check:unified-postgres-profile": "node tools/check-unified-postgres-profile.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}

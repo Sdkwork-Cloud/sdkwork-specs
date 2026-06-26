@@ -462,6 +462,8 @@ SDKWORK_CLAW_DATABASE_SSL_MODE=disable
 SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=10
 ```
 
+Embedded IAM stores per-tenant JWT signing material in `iam_tenant_signing_key.secret_ref` when tenants are provisioned. Applications that share one PostgreSQL database read the same tenant signing keys from the database; no deployment env var is required for session or access-token issuance.
+
 Canonical production server/container fields:
 
 ```env
@@ -495,7 +497,7 @@ Rules:
   validating local SQLite behavior for the application server runtime. Desktop
   client commands such as `pnpm dev:desktop:sqlite` must remain gateway-backed
   client commands when the application standard assigns default API serving to
-  sdkwork-api-cloud-gateway.
+  the platform `api-cloud-gateway` crate `sdkwork-api-cloud-gateway`.
 - PostgreSQL secrets should use `password_file` or a platform secret; direct `password` is allowed only when the runtime config file is protected as a secret-bearing file.
 - Development PostgreSQL profiles must use a checked-in `.env.postgres.example`
   file with local-only placeholder values and an ignored `.env.postgres`
@@ -533,6 +535,16 @@ SDKWORK_CLAW_DATABASE_ADMIN_PASSWORD=postgres_admin_pass
 SDKWORK_CLAW_DATABASE_ADMIN_DATABASE=postgres
 SDKWORK_CLAW_DATABASE_ADMIN_SSL_MODE=disable
 ```
+
+PostgreSQL development bootstrap workflow:
+
+1. Copy or auto-materialize `.env.postgres` from `.env.postgres.example` at the application root (dev orchestration and `resolveIamDevEnv` do this automatically when the file is missing).
+2. Run `pnpm db:postgres:init` to create the shared PostgreSQL role, database, and schema using `SDKWORK_CLAW_DATABASE_ADMIN_*` (implemented by `sdkwork-specs/tools/postgres/postgres-db-cli.mjs`; no `psql` required).
+3. Run `pnpm db:init` or `pnpm db:migrate` to apply service-specific schema migrations through `sdkwork-database-cli`.
+4. Start `pnpm dev`; dev orchestration must load the same `.env.postgres` profile used by database commands. File values win over shell database env overrides.
+
+Applications with `.env.postgres.example` `MUST` expose `db:postgres:init` and `db:postgres:plan` at the repository root. `sdkwork-im` additionally exposes `db:postgres:migrate` for IM-specific bootstrap orchestration.
+
 - Desktop packages may create SQLite automatically during first-run initialization.
 - Database URLs are private process/config values. They must never be exposed through `PORTAL_PUBLIC_*` or `VITE_*`.
 - Pool settings must be explicit for server/container deployments.
@@ -942,7 +954,7 @@ SDKWORK_<APPLICATION_CODE>_SERVER_BIND=0.0.0.0:3900
 
 The SdkWork Claw Router product uses the `SDKWORK_CLAW_` prefix for private process values and `PORTAL_PUBLIC_` for browser-visible portal values.
 
-Claw Router release and operations docs also reference the cross-product shorthand aliases `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE`; these map to the canonical `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` keys defined in section 4.
+Claw Router release and operations docs also reference the legacy cross-product shorthand aliases `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE`; these map to the canonical `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` keys defined in section 4. New standards and application env `MUST` use the canonical `SDKWORK_<APPLICATION_CODE>_*` form.
 
 Standalone server/single-container and cloud deployments default to PostgreSQL.
 Desktop runtime targets default to SQLite.

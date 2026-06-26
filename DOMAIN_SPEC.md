@@ -67,8 +67,8 @@ Within domain `commerce`, these capability tokens are canonical and must not be 
 | Capability | Owns | Example packages or route crates | Must not mean |
 | --- | --- | --- | --- |
 | `shop` | Shop configuration, brands, categories, shop staff | `@sdkwork/react-backend-shop` | application code or SDKWork repository |
-| `catalog` | Public or browsable catalog trees, navigation catalog, open-api catalog surfaces | `sdkwork-router-catalog-open-api` | i18n message catalog |
-| `merchandise` | Sellable-item master data, SKU, attributes, merchandise admin | `sdkwork-commerce-merchandise-service`, `sdkwork-router-merchandise-app-api`, `@sdkwork/react-backend-merchandise` | application entrypoint crate suffix `product` |
+| `catalog` | Public or browsable catalog trees, navigation catalog, open-api catalog surfaces | `sdkwork-routes-catalog-open-api` | i18n message catalog |
+| `merchandise` | Sellable-item master data, SKU, attributes, merchandise admin | `sdkwork-commerce-merchandise-service`, `sdkwork-routes-merchandise-app-api`, `@sdkwork/react-backend-merchandise` | application entrypoint crate suffix `product` |
 
 Rules:
 

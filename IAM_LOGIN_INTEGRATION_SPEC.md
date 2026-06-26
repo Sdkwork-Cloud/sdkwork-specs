@@ -61,6 +61,22 @@ Use the smallest package set needed for the target UI architecture.
 | IAM SDK adapter | `@sdkwork/iam-sdk-adapter` | strict envelope/call-shape adapter over standard IAM app/backend/open SDK resources |
 | Application core package | `apps/sdkwork-<application-code>-pc/packages/sdkwork-<application-code>-pc-core` or equivalent | SDK bootstrap, session store, auth service facade, IAM runtime bridge |
 
+## 2.2 Capability Package Catalog Composition And Dedupe
+
+Some high-level IAM integration factories compose capability packages (appbase, shell, and product packages) into a capability registry. Modern capability registries may treat duplicate capability package names as fatal (for example `Duplicate capability package: @sdkwork/shell-pc-react`), because duplicates can hide mismatched manifests or dependency drift.
+
+Rules:
+
+- High-level IAM integration factories that accept optional extra package lists (for example `extraPackageNames`) **MUST treat those inputs as idempotent**. Passing a package name that is already included by a default preset **MUST NOT** crash the consuming application.
+- Consuming applications **MUST NOT** add shell-level capability packages (for example `@sdkwork/shell-pc-react`) to `extraPackageNames`. Shell capabilities are owned by the shell/runtime and may already be included by appbase presets.
+- Consuming applications **MAY** add product capability packages (for example `@sdkwork/im-pc-react`) to `extraPackageNames` when those packages provide product-owned capability manifests. Product packages must not re-export or alias shell capability packages.
+- If an upstream factory does not yet de-dupe package names, consuming applications **MUST** add a compatibility guard: catch the duplicate-capability startup error and retry without optional extra packages. This is a temporary bridge to keep apps running while catalogs are refactored; the preferred long-term fix remains making the factory inputs idempotent.
+
+Rationale:
+
+- Duplicate capability packages are frequently introduced by split-brain catalogs (a shell capability is included by a preset and then re-included via an extra list).
+- Treating duplicates as fatal surfaces inconsistent dependency graphs early, but factories must still tolerate idempotent inputs to avoid breaking downstream apps during catalog refactors.
+
 ## 2.1 Canonical `sdkwork-iam` Package Roots
 
 | npm package | Repository path under `sdkwork-iam` |

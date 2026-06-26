@@ -19,7 +19,7 @@ sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md (L1 executable profile)
        -> enforced by
 sdkwork-web-framework crates (L2 runtime)
        -> extended by
-business repositories: sdkwork-router-* / sdkwork-*-api-server + appbase/application-line adapters (L3)
+business repositories: sdkwork-routes-* / sdkwork-*-api-server + appbase/application-line adapters (L3)
 ```
 
 Rules:
@@ -38,9 +38,9 @@ The following artifacts `MUST` integrate `sdkwork-web-framework` or its language
 
 | Artifact | Requirement |
 | --- | --- |
-| `sdkwork-router-<capability>-open-api` | Framework router mounting, route manifest framework metadata, and `WebRequestContext` injection |
-| `sdkwork-router-<capability>-app-api` | Same |
-| `sdkwork-router-<capability>-backend-api` | Same |
+| `sdkwork-routes-<capability>-open-api` | Framework router mounting, route manifest framework metadata, and `WebRequestContext` injection |
+| `sdkwork-routes-<capability>-app-api` | Same |
+| `sdkwork-routes-<capability>-backend-api` | Same |
 | `sdkwork-<application-code>-api-server` | Framework bootstrap, pipeline assembly, route mounting, adapter registration, and preflight |
 | `sdkwork-<application-code>-standalone-gateway` | Framework pipeline for proxied, dependency, or composed HTTP `*-api` surfaces in `deploymentProfile=standalone` before proxying or dispatch |
 | `sdkwork-<application-code>-cloud-gateway` | Framework pipeline for proxied, dependency, or composed HTTP `*-api` surfaces in `deploymentProfile=cloud` before proxying or dispatch |
@@ -156,7 +156,7 @@ Rules:
 - Auth/access JWT parsers `MUST` require a non-negative integer `token_version` claim. Current production value is `1`. Validators `MUST` reject missing, malformed, obsolete, or future versions outside the configured upgrade window.
 - When both tokens are present, overlapping principal and tenancy claims `MUST` be resolved from `auth_token` first. Contradictory overlapping values in `access_token` `MUST` fail validation.
 - Production and production-like profiles `MUST` resolve API keys and OAuth bearer tokens through server-side lookup services. Dev-only inline claim-string resolvers are allowed only for open-api API key dev fixtures documented by the owning repository; they `MUST NOT` accept auth/access token claim strings.
-- IAM standard adapter: `sdkwork-iam-web-adapter` implements `IamOpenApiWebRequestContextResolver` (`IamDatabaseWebRequestContextResolver`) with `IamApiKeyLookupService` and `IamOAuthTokenLookupService`. Application repositories `SHOULD` reuse this adapter instead of forking open-api credential resolution.
+- IAM standard adapter: `sdkwork-iam-web-adapter` implements `IamWebRequestContextResolver` (canonical application integration alias), `IamOpenApiWebRequestContextResolver`, and the concrete `IamDatabaseWebRequestContextResolver` with `IamApiKeyLookupService` and `IamOAuthTokenLookupService`. Application repositories `MUST` wire protected app-api/backend-api surfaces through `IamWebRequestContextResolver` and `SHOULD NOT` add application-local pass-through resolver wrappers.
 - L1 trait signatures, detector defaults, and Axum extractors: `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`, `../sdkwork-web-framework/docs/03-web-request-context.md`, and `../sdkwork-web-framework/docs/15-extension-points-registry.md`.
 
 - Business route crates `MUST NOT` live in `sdkwork-web-framework`. Framework-owned admin or control-plane route crates may live in the framework repository only when their ownership is explicit, their paths are framework-owned, and they follow the same `WebRequestContext`, manifest, OpenAPI, and security rules as application route crates.

@@ -90,6 +90,9 @@ This repository currently contains Markdown standards. Before completion, verify
 node tools/bootstrap-repository-docs.mjs --root .
 node tools/align-repository-docs.mjs --root .
 node tools/check-repository-docs-standard.mjs --root .
+node tools/check-apps-directory-index.mjs --root .
+node tools/align-apps-directory-index.mjs --root .
+node tools/audit-apps-directory-index-workspace.mjs --workspace ..
 node tools/audit-repository-docs-workspace.mjs --workspace ..
 node tools/check-topology-deployment-profiles.mjs --workspace ..
 node tools/check-app-runtime-hosting-debt.mjs --workspace ..
@@ -98,9 +101,15 @@ node tools/check-dependency-composition.mjs --root .
 node tools/check-dependency-composition.mjs --workspace ..
 node tools/align-dependency-composition.mjs --workspace ..
 node --test tools/check-repository-docs-standard.test.mjs
+node --test tools/check-apps-directory-index.test.mjs
+node --test tools/align-apps-directory-index.test.mjs
 node --test tools/check-dependency-composition.test.mjs
 node --test tools/bootstrap-repository-docs.test.mjs
 node --test tools/align-repository-docs.test.mjs
+node --test tools/check-identity-naming.test.mjs
+node tools/audit-route-crate-naming-workspace.mjs --workspace ..
+node tools/align-database-framework-workspace.mjs --workspace ..
+node tools/audit-database-framework-workspace.mjs --workspace ..
 ```
 
 ## Agent Execution Rules

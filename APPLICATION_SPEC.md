@@ -15,7 +15,8 @@ Independent SDKWork application roots `MUST` use the standard project root direc
 Application root placement rules:
 
 - API contracts, API examples, and API materialization inputs belong in `apis/`; generated SDK family workspaces and generated SDK output belong in `sdks/`.
-- Runnable app shells, application surfaces, and independently packaged app compositions belong in `apps/` when they live below a larger repository root. A single-application repository may make the repository root the primary app surface and keep `apps/README.md` as the tracked placeholder for secondary surfaces, shells, or demos.
+- Runnable app shells, application surfaces, and independently packaged app compositions belong in `apps/` when they live below a larger repository root. A single-application repository may make the repository root the primary app surface; its `apps/` directory still `MUST` exist with `apps/README.md` explaining primary-surface placement and indexing any secondary surfaces, shells, or demos.
+- Every independent SDKWork application git repository `MUST` keep `apps/README.md` at the repository root. That file is the human directory index for application roots under `apps/` and `MUST` follow `DOCUMENTATION_SPEC.md` section 3.3.
 - `apps/` is a collection of application roots. Each child directory under `apps/` is the root for one selected application language/architecture or shared package-family surface, for example `apps/sdkwork-<application-code>-common/`, `apps/sdkwork-<application-code>-pc/`, `apps/sdkwork-<application-code>-h5/`, `apps/sdkwork-<application-code>-flutter-mobile/`, `apps/sdkwork-<application-code>-mini-program/`, `apps/sdkwork-<application-code>-android-mobile/`, `apps/sdkwork-<application-code>-ios-mobile/`, or `apps/sdkwork-<application-code>-harmony-mobile/`.
 - Architecture-local directories such as `src/`, `lib/`, `App/`, `entry/`, `packages/`, and `config/` belong inside that selected application root. They do not belong directly under `apps/` and must not be used to mix multiple language/architecture implementations into one ambiguous application root.
 - Rust route, service, repository, API server, service host, native/Tauri host, worker, gateway, and reusable Rust crates belong in `crates/` for new independent roots.
@@ -151,24 +152,24 @@ Rust route crate or Java controller module
 Rust route crate examples:
 
 ```text
-sdkwork-router-merchandise-app-api
-sdkwork-router-cart-app-api
-sdkwork-router-order-backend-api
+sdkwork-routes-merchandise-app-api
+sdkwork-routes-cart-app-api
+sdkwork-routes-order-backend-api
 ```
 
 Aggregated authority and SDK examples:
 
 ```text
-sdkwork-router-merchandise-app-api
-sdkwork-router-cart-app-api
-sdkwork-router-order-app-api
+sdkwork-routes-merchandise-app-api
+sdkwork-routes-cart-app-api
+sdkwork-routes-order-app-api
   -> sdkwork-commerce-app-api
   -> sdkwork-commerce-app-sdk
 ```
 
 Rules:
 
-- Rust route crates that define SDKWork HTTP routes `MUST` follow `API_SPEC.md` and be named `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
+- Rust route crates that define SDKWork HTTP routes `MUST` follow `API_SPEC.md` and be named `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`.
 - Every application repository or module that develops any SDKWork HTTP `*-api` surface `MUST` integrate the framework architecture from `WEB_FRAMEWORK_SPEC.md`; application-local route/controller frameworks are not allowed to replace it.
 - Web backend implementation layers, including controller/router, handler, service/use-case, repository, provider adapter, request context, and route materialization boundaries, `MUST` follow `WEB_BACKEND_SPEC.md`.
 - Every API operation exposed by an application module `MUST` consume or project `WebRequestContext`: route manifests declare `requestContext: WebRequestContext` and `apiSurface`, materialized OpenAPI declares `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface`, and handlers/controllers consume the typed context before service code.
@@ -183,7 +184,7 @@ Rules:
 
 | Layer | Responsibility | Example |
 | --- | --- | --- |
-| `foundation` | Shell, router, command palette, search, workspace primitives | `sdkwork-router-pc-react` |
+| `foundation` | Shell, client navigation, command palette, search, workspace primitives | `sdkwork-shell-pc-react`, `sdkwork-workspace-pc-react` |
 | `host` | Tauri/browser/mobile/native host boundaries | `sdkwork-host-tauri-pc-react` |
 | `iam` | Tenant, organization, user, auth, permissions, security settings | `sdkwork-iam-core-pc-react` |
 | `system` | Settings, notifications, docs, dashboard, support | `sdkwork-settings-pc-react` |
@@ -292,6 +293,7 @@ Rules:
 - [ ] Module has one domain and one capability.
 - [ ] Application root has `.sdkwork/skills/` and `.sdkwork/plugins/` according to `SDKWORK_WORKSPACE_SPEC.md`.
 - [ ] Independent application root uses the standard project root directory dictionary from `SDKWORK_WORKSPACE_SPEC.md`; new templates contain the full dictionary with tracked placeholders, and narrow roots document intentionally omitted inactive directories.
+- [ ] `apps/README.md` indexes every direct child application root, states primary app surface placement, and follows `DOCUMENTATION_SPEC.md` section 3.3.
 - [ ] API contracts live in `apis/` when authored by the application, and generated SDK family workspaces live in `sdks/`.
 - [ ] Architecture-local `config/` and `packages/` appear only inside the selected app surface root, or at repository root only when the repository root itself is that app surface root.
 - [ ] Job schedules, queue bindings, and runbooks live in `jobs/`; Rust worker implementations live in `crates/sdkwork-<domain>-<capability>-worker/`.

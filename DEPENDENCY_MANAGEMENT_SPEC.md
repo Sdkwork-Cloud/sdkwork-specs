@@ -290,7 +290,8 @@ Rules:
   service URLs. Dependency-specific upstream env keys are allowed as explicit split-deployment
   overrides, and tests must make that override status visible.
 - Managed gateway startup `MUST` use the native build command for the gateway application, such as
-  `cargo run -p sdkwork-api-cloud-gateway-service --bin sdkwork-api-cloud-gateway`, from the gateway workspace.
+  `cargo run -p sdkwork-api-cloud-gateway-service --bin sdkwork-api-cloud-gateway`, from the platform
+  `sdkwork-api-cloud-gateway` workspace.
   Application launchers must not introduce a second machine-readable gateway catalog to discover
   foundation surfaces.
 - If the application edge server uses the gateway's standard local port, the application may choose a
@@ -307,6 +308,15 @@ Rules:
 - Cargo dependencies, Cargo workspace membership, and Cargo features do not by themselves authorize
   dependency API re-export. `dependencyApiExports` and `dependencyApiSurfaces` remain required for
   API export and runtime availability semantics.
+- Platform and sibling-application consumers `MAY` resolve an application's gateway assembly crate
+  by convention without new composition JSON fields:
+  `sdkwork-<domain>-app-sdk` consumer → repository `sdkwork-<domain>` →
+  `crates/sdkwork-<domain>-gateway-assembly`. Cargo path dependencies and workspace membership
+  remain the linkage authority; `dependency.composition.json` `MUST NOT` gain `integrationMode`,
+  `applicationBundle`, or `httpPlane` fields for this purpose.
+- Application gateway assembly crates `MUST NOT` duplicate SDK dependency catalogs already expressed in
+  `sdkwork.app.config.json` `sdkDependencies` or Cargo `[workspace.dependencies]`. Assembly only
+  merges application-owned route crates discovered in the owning repository workspace.
 
 ## 6. SDK/API Ownership
 

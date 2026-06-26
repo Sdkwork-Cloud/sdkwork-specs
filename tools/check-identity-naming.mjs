@@ -7,6 +7,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import {
+  forbiddenFoundationPcReactPattern,
+  legacyHttpRouteCratePattern,
+} from './lib/naming-patterns.mjs';
 
 const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -18,6 +22,7 @@ const ALLOW_PATH_PARTS = new Set([
   'check-identity-naming.mjs',
   'check-unified-postgres-profile.mjs',
   'unify-postgres-profile.mjs',
+  'naming-patterns.mjs',
 ]);
 
 function usage() {
@@ -108,11 +113,11 @@ function isLegacyTableRow(rel, line, text, index) {
   const lineText = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
   if (rel.endsWith('MIGRATION_SPEC.md') && lineText.trimStart().startsWith('|')) return true;
   if (rel.endsWith('NAMING_SPEC.md') && lineText.trimStart().startsWith('|')) return true;
-  return (
-    lineText.includes('Retired synonyms') ||
-    lineText.includes('sdkwork-router-product-*')
-  );
+  return lineText.includes('Retired synonyms');
 }
+
+const NON_CANONICAL_ROUTE_CRATE_PATTERN = legacyHttpRouteCratePattern();
+const NON_CANONICAL_FOUNDATION_PC_REACT_PATTERN = forbiddenFoundationPcReactPattern();
 
 function isAllowedContext(snippet, rel, line, text, index) {
   return (
@@ -139,10 +144,6 @@ const standardsRules = [
     pattern: /sdkwork-<app>-/gu,
     message: 'retired placeholder sdkwork-<app>-*; use sdkwork-<application-code>-*',
     onlySpecs: true,
-  },
-  {
-    pattern: /sdkwork-router-product-/gu,
-    message: 'retired route crate prefix router-product; use router-merchandise',
   },
   {
     pattern: /react-backend-product/gu,
@@ -179,12 +180,6 @@ const standardsRules = [
   {
     pattern: /sdkwork\/<app>/gu,
     message: 'retired path sdkwork/<app>; use sdkwork/<application-code>',
-    onlySpecs: true,
-  },
-  {
-    pattern: /SDKWORK_<APP>_/gu,
-    message: 'retired env segment SDKWORK_<APP>_; use SDKWORK_<APPLICATION_CODE>_',
-    allow: (snippet) => snippet.includes('APPLICATION_CODE'),
     onlySpecs: true,
   },
   {
@@ -230,26 +225,6 @@ const standardsRules = [
   {
     pattern: /product app-api/gu,
     message: 'retired product app-api qualifier; use app-api',
-  },
-  {
-    pattern: /sdkwork-api-cloud-gateway(?!-cloud)/gu,
-    message: 'retired bare platform gateway crate sdkwork-api-cloud-gateway; use sdkwork-api-cloud-gateway',
-    allow: (snippet, rel, line, text, index) => {
-      const lineStart = text.lastIndexOf('\n', index) + 1;
-      const lineEnd = text.indexOf('\n', index);
-      const lineText = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
-      const prevLineStart = text.lastIndexOf('\n', lineStart - 2) + 1;
-      const prevLineText = text.slice(prevLineStart, lineStart - 1);
-      const context = `${prevLineText}\n${lineText}`;
-      return (
-        snippet.includes('Retired') ||
-        snippet.includes('retired') ||
-        isLegacyTableRow(rel, line, text, index) ||
-        isRetiredGatewayDocumentation(rel, lineText) ||
-        isRetiredGatewayDocumentation(rel, context)
-      );
-    },
-    onlySpecs: true,
   },
   {
     pattern: /sdkwork-<application-code>-gateway(?!-(?:standalone|cloud))/gu,
@@ -301,8 +276,14 @@ const standardsRules = [
 
 const consumerRules = [
   {
-    pattern: /sdkwork-router-product-/gu,
-    message: 'retired route crate prefix router-product; use router-merchandise',
+    pattern: NON_CANONICAL_FOUNDATION_PC_REACT_PATTERN,
+    message:
+      'non-canonical appbase foundation PC React package; use sdkwork-shell-pc-react or sdkwork-workspace-pc-react',
+  },
+  {
+    pattern: legacyHttpRouteCratePattern(),
+    message:
+      'non-canonical Rust HTTP route crate name; use sdkwork-routes-<capability>-<surface>',
   },
   {
     pattern: /react-backend-product/gu,

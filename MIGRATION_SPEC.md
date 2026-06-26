@@ -130,8 +130,8 @@ Public naming migrations for application identity and commerce capabilities foll
 | bare `<app>` path placeholder | `<application-code>` | `app` remains valid for `app-api`, `app.key`, app/user surface |
 | `product-specific`, `product-local`, `product-owned` | `application-specific`, `application-local`, `application-owned` | customization of one application line |
 | `product-prefix` / `product-prefixed` (pnpm) | `application-code-prefix` / `application-code-prefixed` | forbids `drive:dev`, not merchandise |
+| `sdkwork-commerce` monolith repository (T0 composition shell) | T1 capability repositories (`sdkwork-shop`, `sdkwork-order`, `sdkwork-payment`, `sdkwork-merchandise`, …) | migration-only; do not add route crates, `*-api-server` expansion, or `sdkwork-commerce-pc` packages in the monolith |
 | commerce capability `product` | `merchandise` | sibling of `catalog` and `shop`; see `DOMAIN_SPEC.md` §3.1 |
-| `sdkwork-router-product-*` | `sdkwork-router-merchandise-*` | route crates |
 | `sdkwork-commerce-product-service` | `sdkwork-commerce-merchandise-service` | domain service |
 | `sdkwork-*-pc-product`, `sdkwork-*-h5-product` | `sdkwork-*-pc-merchandise`, etc. | client packages |
 | `@sdkwork/react-backend-product` | `@sdkwork/react-backend-merchandise` | backend UI |

@@ -162,7 +162,7 @@ createIamRuntime({
     ],
   },
   config: {
-    appId: "sdkwork-router",
+    appId: "commerce-pc",
     deploymentProfile: "cloud",
     runtimeTarget: "browser",
     environment: "prod",

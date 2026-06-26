@@ -179,6 +179,27 @@ the application ingress process for application-plane HTTP APIs. Internal route
 crates may be embedded in that ingress process, and dev/runtime contracts `MUST
 NOT` require extra loopback API ports to make application-plane APIs reachable.
 
+For every profile, orchestration `MUST` treat HTTP API ingress as **single-bind
+per plane**:
+
+- `application.public-ingress` is the only application-plane HTTP listener that
+  dev scripts, client bootstrap, and default smoke tests may require.
+- `platform.api-gateway` is the only platform-plane HTTP listener that dev
+  scripts and client bootstrap may require when platform APIs are in scope.
+- Additional HTTP surface ids such as `application.backend-http`,
+  `application.open-http`, or per-service `*-service-bin` listeners `MUST NOT`
+  appear as separately started orchestration processes in
+  `standalone.unified-process.*` profiles, and `MUST NOT` be required in
+  `cloud.split-services.*` dev orchestration when a gateway already terminates
+  the same plane. Those decomposed binaries remain valid as internal upstream or
+  packaging targets only.
+- Dev orchestration scripts `MUST NOT` spawn HTTP sidecar loops, multi-port
+  `cargo run -p *-service-bin` matrices, or reserved loopback port tables whose
+  only purpose is to keep extra application HTTP listeners alive locally.
+
+Normative gateway integration rules live in `APPLICATION_GATEWAY_SPEC.md` §5.6.
+Workspace verification: `node tools/audit-single-http-ingress-workspace.mjs`.
+
 Adoption steps: `APP_RUNTIME_TOPOLOGY_ADOPTION.md`.
 
 ## 9. Deployment Standard Mapping
@@ -242,6 +263,10 @@ Rules:
   declared application-plane HTTP APIs without extra loopback route servers.
 - Cloud smoke tests must prove split service URLs, platform surfaces, secrets,
   probes, and SDK base URL resolution are explicit.
+- Single HTTP ingress checks must pass:
+  `node tools/check-single-http-ingress.mjs --root .` per repository and
+  `node tools/audit-single-http-ingress-workspace.mjs --workspace ..` across
+  SDKWork application repositories.
 
 ## 12. Retirement Policy
 

@@ -1,6 +1,6 @@
 # Naming Standard
 
-- Version: 1.7
+- Version: 1.9
 - Scope: domains, capabilities, repositories, applications, components, packages, SDK families, API authorities, route crates, database identifiers, files, and test names
 - Related: `APPLICATION_GATEWAY_SPEC.md`, `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CODE_STYLE_SPEC.md`
 
@@ -38,9 +38,10 @@ sdkwork-<application-code>-<client-arch>-<capability>
 sdkwork_<application_code>_<client_arch>_<capability>    # Dart only
 
 sdkwork-<application-code>-standalone-gateway | -cloud-gateway | -api-server | -service-host | -native-host | -tauri-host
-sdkwork-api-cloud-gateway                                              # platform plane only
+sdkwork-api-cloud-gateway                                              # platform `api-cloud-gateway` plane only
 sdkwork-<domain>-<capability>-service
-sdkwork-router-<capability>-<surface>
+sdkwork-routes-<capability>-<surface>
+sdkwork-<foundation>-pc-react                         # appbase foundation only
 sdkwork-<domain>-app-api | sdkwork-<domain>-backend-api | sdkwork-<domain>-open-api
 ```
 
@@ -77,6 +78,8 @@ After `product`, these words are the most common sources of naming drift. Each r
 | `open` | approved **open-api** prefix/path; `open-api` surface | shorthand package name `open` | `open-api`, `sdkwork-<domain>-open-api` |
 | `domain` (L7) | bounded context `commerce`, `iam`, ??| application code; repository stem | `<domain>` vs `<application-code>` ??commerce can be both; document which axis |
 | `owner-code` (L9) | API aggregation owner `sdkwork-commerce` | SDK family; application code when they differ | `owner` in route manifest; not `sdkFamily` |
+| `routes` | Rust HTTP route crate prefix `sdkwork-routes-<capability>-<surface>` | gateway upstream routing; framework router mount | encode capability and surface explicitly |
+| `shell` / `workspace` / `command` | appbase foundation PC React capability tokens in `sdkwork-<foundation>-pc-react` | Rust HTTP route crates; gateway routing | `sdkwork-shell-pc-react`, `sdkwork-workspace-pc-react`, `sdkwork-command-pc-react` |
 | `sdk-family-stem` | generated SDK workspace stem `im`, `commerce` | route crate name; API authority directory; application code | `sdkwork-<sdk-family-stem>-app-sdk` family table |
 | `utils` | TypeScript npm package `@sdkwork/utils`; cross-language repo `sdkwork-utils` | language suffix in TypeScript npm name such as `@sdkwork/utils-typescript` | `@sdkwork/utils`, directory `packages/sdkwork-utils-typescript` |
 | `product name` (L1) | human brand in prose and store copy only | paths, crates, env, capability tokens | `application code`, `merchandise`, or `product name` prose |
@@ -141,7 +144,8 @@ Rules:
 | Harmony native host package | `sdkwork-<application-code>-harmony-mobile-host` | `sdkwork-commerce-harmony-mobile-host` |
 | Shared Harmony native package | `sdkwork-<capability>-harmony-native` | `sdkwork-order-harmony-native` |
 | Backend/admin React package | `@sdkwork/react-backend-<domain>` | `@sdkwork/react-backend-commerce` |
-| Route crate package | `sdkwork-router-<capability>-<surface>` | `sdkwork-router-merchandise-app-api` |
+| Appbase foundation PC React package | `sdkwork-<foundation>-pc-react` | `sdkwork-shell-pc-react`, `sdkwork-workspace-pc-react` |
+| Route crate package | `sdkwork-routes-<capability>-<surface>` | `sdkwork-routes-merchandise-app-api` |
 | Web framework crate | `sdkwork-web-<capability>` | `sdkwork-web-context`, `sdkwork-web-axum`, `sdkwork-web-bootstrap` |
 | RPC framework crate | `sdkwork-rpc-<capability>` | `sdkwork-rpc-core`, `sdkwork-rpc-server`, `sdkwork-rpc-client`, `sdkwork-rpc-discovery` |
 | Discovery product host | `sdkwork-discovery-service-host` | `sdkwork-discovery-service-host` |
@@ -345,6 +349,9 @@ Rules:
 
 - Application-root packages `MUST` encode the surface role in the directory/npm name: default app (`pc-<capability>`), user console (`pc-console-<capability>`), or internal admin (`pc-admin-<capability>`).
 - `package.json#sdkwork.architecture` `MUST` be `pc-react` for app/console packages and `pc-admin` for `pc-admin-*` infrastructure and capability packages.
+- Appbase foundation PC React packages under `apps/sdkwork-appbase/packages/pc-react/foundation/` `MUST` use
+  `sdkwork-<foundation>-pc-react`, where `<foundation>` is one of `shell`, `workspace`, `command`, `search`, or
+  `appbase`. New foundation packages `MUST NOT` use `router` as the capability token.
 - `package.json#sdkwork.surface` `MUST` be `app` for default app packages, `console` for `pc-console-*`, and `backend-admin` for `pc-admin-*`.
 - Forbidden npm names for new admin modules include `@sdkwork/<domain>-<capability>-pc-react`, `@sdkwork/<application-code>-admin-<capability>` without the `pc` segment, and any name that omits `pc-admin` while implementing `backend-admin` operator UI.
 - Legacy shared-library names such as `@sdkwork/auth-pc-react` remain valid only in appbase foundation trees, not as replacements for `sdkwork-<application-code>-pc-admin-*` inside application roots.
@@ -359,7 +366,7 @@ Rules:
   results, and service ports.
 - `sdkwork-<domain>-<capability>-repository-sqlx` owns SQLx database access for a service-defined
   repository port.
-- `sdkwork-router-<capability>-<surface>` owns HTTP route adaptation for one capability and one
+- `sdkwork-routes-<capability>-<surface>` owns HTTP route adaptation for one capability and one
   surface. `<surface>` is normally `open-api`, `app-api`, or `backend-api`.
 - `sdkwork-web-<capability>` owns HTTP framework integration code only and lives in the
   `sdkwork-web-framework` repository. Business repositories must not create local `sdkwork-web-*`
@@ -402,7 +409,7 @@ Rules:
   `sdkwork-<domain>-<capability>-runtime`, `sdkwork-<application-code>-backend`,
   `sdkwork-<application-code>-core`, `sdkwork-<application-code>-common`, `sdkwork-<application-code>-manager`, and
   `sdkwork-<application-code>-server-runtime`.
-- Commerce merchandise capability uses `merchandise` for sellable-item master data, SKU, and attributes, for example `sdkwork-commerce-merchandise-service` and `sdkwork-router-merchandise-app-api`. The forbidden form is using `product` as the application entrypoint or runtime suffix, such as `sdkwork-drive-product`, or reviving capability token `product` for commerce merchandise.
+- Commerce merchandise capability uses `merchandise` for sellable-item master data, SKU, and attributes, for example `sdkwork-commerce-merchandise-service` and `sdkwork-routes-merchandise-app-api`. The forbidden form is using `product` as the application entrypoint or runtime suffix, such as `sdkwork-drive-product`, or reviving capability token `product` for commerce merchandise.
 - Repositories must not preserve forbidden Rust crate names through wrapper crates, package aliases,
   feature aliases, or public re-export aliases.
 

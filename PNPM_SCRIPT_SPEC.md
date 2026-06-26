@@ -70,7 +70,7 @@ When the capability exists, the repository root `MUST` expose the matching comma
 | Deployment | `deploy:plan`, `deploy:apply`, `deploy:rollback`, `deploy:validate` as applicable |
 | API materialization | `api:materialize`, `api:materialize:check`, `api:check` |
 | SDK generation | `sdk:generate`, `sdk:generate:check`, `sdk:check` |
-| Database operations | `db:plan`, `db:init`, `db:migrate`, `db:seed`, `db:status`, `db:validate`, `db:materialize:contract`, `db:bootstrap`, `db:drift`, `db:drift:check` |
+| Database operations | `db:plan`, `db:init`, `db:migrate`, `db:seed`, `db:status`, `db:validate`, `db:materialize:contract`, `db:bootstrap`, `db:drift`, `db:drift:check`, `db:postgres:plan`, `db:postgres:init`, `db:postgres:migrate` when PostgreSQL is used |
 | IAM application bootstrap | `admin:bootstrap:app`, `check:iam-application-bootstrap`, `test:contract:iam-application-bootstrap` when bootstrap tooling exists |
 | Gateway operations | `gateway:run`, `gateway:plan`, `gateway:build`, `gateway:package`, `gateway:validate`, `gateway:matrix` |
 | Topology | `topology:validate`, `topology:plan` as applicable |
@@ -288,6 +288,15 @@ gateway:package:cloud
 gateway:matrix
 gateway:matrix:standalone
 gateway:matrix:cloud
+gateway:assembly:materialize
+gateway:assembly:validate
+```
+
+Examples:
+
+```text
+gateway:assembly:materialize
+gateway:assembly:validate
 ```
 
 Rules:
@@ -306,6 +315,14 @@ Rules:
   `sdkwork-<application-code>-gateway` crate name in scripts or docs.
 - Retired gateway script names `gateway:bundle:*` and `gateway:bundle:validate:*` `MUST` be
   renamed to `gateway:package:*` and `gateway:validate:*`.
+- `gateway:assembly:materialize` `MUST` invoke `node scripts/gateway/assembly-materialize.mjs`
+  (or an equivalent thin repo wrapper around `sdkwork-specs/tools/materialize-gateway-assembly.mjs`)
+  and regenerate `crates/sdkwork-<application-code>-gateway-assembly/` deterministically.
+- `gateway:assembly:validate` `MUST` invoke `node scripts/gateway/assembly-validate.mjs`
+  (or an equivalent thin wrapper around `sdkwork-specs/tools/validate-gateway-assembly.mjs`)
+  and fail on missing assembly crates, manifest drift, or forbidden route-crate merges in gateway mains.
+- Repositories without `sdkwork-routes-<application-code>-*` workspace members `MAY` omit
+  `gateway:assembly:*` commands.
 
 ## 8. Release And Deployment Commands
 

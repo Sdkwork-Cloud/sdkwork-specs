@@ -177,39 +177,50 @@ Rules:
 
 Rust HTTP route crates are the source-level route/path configuration layer. They are not generated SDK families and they are not final OpenAPI authority names.
 
+Naming layers:
+
+| Layer | Role | Pattern | Example |
+| --- | --- | --- | --- |
+| Rust route crate | HTTP route/path implementation for one capability and one surface | `sdkwork-routes-<capability>-<surface>` | `sdkwork-routes-video-open-api` |
+| API authority | Aggregated OpenAPI contract for one domain and one surface | `sdkwork-<domain>-<surface>` | `sdkwork-video-open-api` |
+| Generated SDK family | Client transport generated from the authority | `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-sdk`, or `sdkwork-<domain>-backend-sdk` | `sdkwork-video-sdk` |
+
+Route crate names use the `sdkwork-routes-` prefix and end with the API surface suffix so `-open-api`, `-app-api`, `-backend-api`, or `-internal-api` remain visible at a glance.
+
 Required route crate name:
 
 ```text
-sdkwork-router-<capability>-<surface>
+sdkwork-routes-<capability>-<surface>
 ```
 
 `<surface>` `MUST` be one of `open-api`, `app-api`, `backend-api`, or `internal-api`. The full crate/package name therefore follows one of these shapes:
 
 ```text
-sdkwork-router-<capability>-open-api
-sdkwork-router-<capability>-app-api
-sdkwork-router-<capability>-backend-api
-sdkwork-router-<capability>-internal-api
+sdkwork-routes-<capability>-open-api
+sdkwork-routes-<capability>-app-api
+sdkwork-routes-<capability>-backend-api
+sdkwork-routes-<capability>-internal-api
 ```
 
 Examples:
 
 ```text
-sdkwork-router-merchandise-app-api
-sdkwork-router-cart-app-api
-sdkwork-router-order-backend-api
-sdkwork-router-payment-open-api
+sdkwork-routes-merchandise-app-api
+sdkwork-routes-cart-app-api
+sdkwork-routes-order-backend-api
+sdkwork-routes-payment-open-api
+sdkwork-routes-video-open-api
 ```
 
 Rules:
 
-- Rust route crates that define HTTP route paths, mount points, route metadata, handler bindings, or router composition for SDKWork APIs `MUST` start with `sdkwork-router-`.
-- `sdkwork-router-merchandise-app-api` owns app-api route/path definitions only. It `MUST NOT` be used as an SDK family name, generated package name, OpenAPI authority name, generator `--sdk-name`, or frontend SDK package name.
+- Rust route crates that define HTTP route paths, mount points, route metadata, handler bindings, or framework route composition for SDKWork APIs `MUST` start with `sdkwork-routes-`.
+- `sdkwork-routes-merchandise-app-api` owns app-api route/path definitions only. It `MUST NOT` be used as an SDK family name, generated package name, OpenAPI authority name, generator `--sdk-name`, or frontend SDK package name.
 - Route crates `MUST` declare their API surface in their name and in their route manifest. A crate whose name ends in `app-api` may mount only `/app/v3/api` routes; a crate whose name ends in `backend-api` may mount only `/backend/v3/api` routes; a crate whose name ends in `open-api` may mount only approved open-api prefixes and `MUST NOT` mount `/app/v3/api`, `/backend/v3/api`, or `/internal/v3/api`; a crate whose name ends in `internal-api` may mount only `/internal/v3/api` routes.
-- Route crates `MUST` use lowercase kebab-case package names. The Rust crate import may use snake case, for example package `sdkwork-router-merchandise-app-api` imports as `sdkwork_routes_product_app_api`.
+- Route crates `MUST` use lowercase kebab-case package names. The Rust crate import may use snake case, for example package `sdkwork-routes-merchandise-app-api` imports as `sdkwork_routes_merchandise_app_api`.
 - Route crates may be split by business capability for maintainability, for example merchandise, cart, order, payment, catalog, shipment, tenant, and report. They `MUST` still preserve the canonical domain names from `DOMAIN_SPEC.md` in tags, operationIds, schemas, and route manifests.
 - Route crates `MUST` produce or feed a route manifest that can be materialized into an owner-only OpenAPI authority. Java controller mappings and Rust route crates are implementation inputs; the aggregated OpenAPI authority remains the HTTP contract source of truth for SDK generation.
-- A route crate `MUST NOT` copy appbase-owned routes. If a route is owned by `sdkwork-appbase`, the consuming application uses the appbase Rust crate or appbase SDK dependency instead of creating `sdkwork-router-<capability>-app-api` for that route.
+- A route crate `MUST NOT` copy appbase-owned routes. If a route is owned by `sdkwork-appbase`, the consuming application uses the appbase Rust crate or appbase SDK dependency instead of creating `sdkwork-routes-<capability>-app-api` for that route.
 
 ### 4.2.1 Route Manifest Shape
 
@@ -220,7 +231,7 @@ Example:
 ```yaml
 schemaVersion: 1
 kind: sdkwork.route.manifest
-packageName: sdkwork-router-merchandise-app-api
+packageName: sdkwork-routes-merchandise-app-api
 surface: app-api
 owner: sdkwork-commerce
 domain: commerce
@@ -229,8 +240,8 @@ apiAuthority: sdkwork-commerce-app-api
 sdkFamily: sdkwork-commerce-app-sdk
 prefix: /app/v3/api
 source:
-  crateRoot: crates/sdkwork-router-merchandise-app-api
-  crateImport: sdkwork_routes_product_app_api
+  crateRoot: crates/sdkwork-routes-merchandise-app-api
+  crateImport: sdkwork_routes_merchandise_app_api
 routes:
   - method: GET
     path: /app/v3/api/products
@@ -265,7 +276,7 @@ Required top-level fields:
 | --- | --- |
 | `schemaVersion` | Positive integer. Version `1` is the current required profile. |
 | `kind` | Exact value `sdkwork.route.manifest`. |
-| `packageName` | Exact Cargo package name, for example `sdkwork-router-merchandise-app-api`. |
+| `packageName` | Exact Cargo package name, for example `sdkwork-routes-merchandise-app-api`. |
 | `surface` | `open-api`, `app-api`, or `backend-api`. |
 | `owner` | SDK generation owner, materialized to `x-sdkwork-owner`. |
 | `domain` | Canonical domain from `DOMAIN_SPEC.md`. |
@@ -301,8 +312,8 @@ Optional route fields:
 
 Rules:
 
-- `packageName`, `surface`, and `capability` `MUST` agree. `sdkwork-router-merchandise-app-api` means capability `product` and surface `app-api`.
-- `source.crateRoot` `MUST` use `crates/sdkwork-router-<capability>-<surface>` for SDKWork-standard Rust route crates.
+- `packageName`, `surface`, and `capability` `MUST` agree. `sdkwork-routes-merchandise-app-api` means capability `merchandise` and surface `app-api`.
+- `source.crateRoot` `MUST` use `crates/sdkwork-routes-<capability>-<surface>` for SDKWork-standard Rust route crates.
 - `apiAuthority` and `sdkFamily` `MUST` follow `SDK_SPEC.md`: `sdkwork-<domain>-open-api` -> `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-api` -> `sdkwork-<domain>-app-sdk`, and `sdkwork-<domain>-backend-api` -> `sdkwork-<domain>-backend-sdk`.
 - For `app-api`, `prefix` `MUST` be `/app/v3/api`. For `backend-api`, `prefix` `MUST` be `/backend/v3/api`. For `open-api`, `prefix` `MUST` be an approved versioned domain prefix that is not `/app/v3/api` or `/backend/v3/api`; literal `/open/v3/api` is valid only when the owning domain explicitly approves that prefix.
 - Every `routes[].path` `MUST` start with `prefix`; relative paths are not valid route-manifest materialization input.
@@ -326,22 +337,22 @@ An API authority is the aggregated contract for one project/domain and one surfa
 Example:
 
 ```text
-sdkwork-router-merchandise-app-api
-sdkwork-router-cart-app-api
-sdkwork-router-order-app-api
-sdkwork-router-payment-app-api
+sdkwork-routes-merchandise-app-api
+sdkwork-routes-cart-app-api
+sdkwork-routes-order-app-api
+sdkwork-routes-payment-app-api
   -> sdkwork-commerce-app-api
   -> sdkwork-commerce-app-sdk
 ```
 
 Rules:
 
-- `sdkwork-commerce-app-api` is the aggregated app-api authority for the commerce project. It may aggregate commerce-owned route crates such as `sdkwork-router-merchandise-app-api`, `sdkwork-router-cart-app-api`, `sdkwork-router-order-app-api`, and `sdkwork-router-payment-app-api`.
+- `sdkwork-commerce-app-api` is the aggregated app-api authority for the commerce project. It may aggregate commerce-owned route crates such as `sdkwork-routes-merchandise-app-api`, `sdkwork-routes-cart-app-api`, `sdkwork-routes-order-app-api`, and `sdkwork-routes-payment-app-api`.
 - `sdkwork-commerce-app-api` `MUST` contain only commerce-owned app-api operations after dependency-owned routes are subtracted. Appbase, Drive, provider, or other dependency-owned operations remain dependency SDKs.
 - `sdkwork-commerce-app-sdk` is the generated SDK family produced from `sdkwork-commerce-app-api`. Application packages consume the SDK family or approved composed wrappers, not the route crates.
-- The same mapping applies to open-api and backend-api: `sdkwork-router-<capability>-open-api` aggregates into `sdkwork-<domain>-open-api` and generates `sdkwork-<domain>-sdk`; `sdkwork-router-<capability>-backend-api` aggregates into `sdkwork-<domain>-backend-api` and generates `sdkwork-<domain>-backend-sdk`.
+- The same mapping applies to open-api and backend-api: `sdkwork-routes-<capability>-open-api` aggregates into `sdkwork-<domain>-open-api` and generates `sdkwork-<domain>-sdk`; `sdkwork-routes-<capability>-backend-api` aggregates into `sdkwork-<domain>-backend-api` and generates `sdkwork-<domain>-backend-sdk`.
 - Route manifest inputs `MUST` be grouped by `owner`, `domain`, `surface`, `apiAuthority`, `sdkFamily`, and `prefix`. A materializer `MUST NOT` merge manifests that disagree on any of those fields.
-- Materialization `MUST` reject mixed surfaces, mismatched prefixes, missing owner/domain/capability, missing or mismatched route framework metadata, a route crate package name that does not match `sdkwork-router-<capability>-<surface>`, operationId/tag/domain mismatch, duplicate method/path pairs, and dependency-owned operations in a consuming app authority.
+- Materialization `MUST` reject mixed surfaces, mismatched prefixes, missing owner/domain/capability, missing or mismatched route framework metadata, a route crate package name that does not match `sdkwork-routes-<capability>-<surface>`, operationId/tag/domain mismatch, duplicate method/path pairs, and dependency-owned operations in a consuming app authority.
 - The materialized authority OpenAPI `MUST` write `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`, `x-sdkwork-source-route-crate`, `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and `x-sdkwork-rate-limit-tier` when present for every operation produced from a route manifest.
 - Authority materialization `MUST` be deterministic: the same route manifests, dependency authorities, and generator configuration must produce byte-stable OpenAPI and derived SDK inputs except for explicitly allowed generated timestamps, which should be avoided in committed artifacts.
 
@@ -1368,7 +1379,7 @@ An API is standard only when this checklist passes:
 - [ ] Domain name follows `DOMAIN_SPEC.md`.
 - [ ] SDK API paths use the approved prefix for their API surface: `/app/v3/api` for app-api, `/backend/v3/api` for backend-api, and an approved versioned non-app/non-backend prefix such as `/im/v3/api` for open-api.
 - [ ] Runtime source, OpenAPI snapshots, generated SDK inputs, route tables, frontend SDK bootstrap code, and environment examples contain no forbidden legacy API prefix.
-- [ ] Rust HTTP route crates, when present, are named `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or `sdkwork-router-<capability>-backend-api`.
+- [ ] Rust HTTP route crates, when present, are named `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`.
 - [ ] Rust route crate names, declared surfaces, and mounted path prefixes agree.
 - [ ] Route manifests, when present, use `kind: sdkwork.route.manifest`, validate package name, capability, surface, owner, domain, API authority, SDK family, prefix, `requestContext: WebRequestContext`, `apiSurface`, auth mode, ownership, and duplicate route rules.
 - [ ] Route crate manifests, when present, aggregate into `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, or `sdkwork-<domain>-backend-api`; route crate names are not used as final OpenAPI authority names.

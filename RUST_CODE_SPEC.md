@@ -25,7 +25,7 @@ Allowed authored Rust crate families:
 | --- | --- | --- |
 | Business service/use case | `sdkwork-<domain>-<capability>-service` | domain models, commands, results, business rules, service ports |
 | SQLx repository implementation | `sdkwork-<domain>-<capability>-repository-sqlx` | database schema constants, row mapping, SQLx queries, repository trait implementation |
-| HTTP route/API adapter | `sdkwork-router-<capability>-<surface>` | paths, routes, handlers, route manifest, API/service mapping |
+| HTTP route/API adapter | `sdkwork-routes-<capability>-<surface>` | paths, routes, handlers, route manifest, API/service mapping |
 | HTTP API server process | `sdkwork-<application-code>-api-server` | config loading, dependency construction, route mounting, HTTP listener, preflight |
 | In-process service host | `sdkwork-<application-code>-service-host` | standalone/native service container, no HTTP route mounting |
 | Native/Tauri host | `sdkwork-<application-code>-native-host` or `sdkwork-<application-code>-tauri-host` | native commands, host state, platform adapters |
@@ -388,7 +388,7 @@ Rust HTTP route crates follow `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKE
 Required route crate shape:
 
 ```text
-crates/sdkwork-router-<capability>-<surface>/
+crates/sdkwork-routes-<capability>-<surface>/
   Cargo.toml
   src/
     lib.rs
@@ -448,8 +448,8 @@ Rules:
 
 Rules:
 
-- Cargo package names use lowercase kebab-case, for example `sdkwork-router-merchandise-app-api`.
-- Rust import names use snake_case, for example `sdkwork_routes_product_app_api`.
+- Cargo package names use lowercase kebab-case, for example `sdkwork-routes-merchandise-app-api`.
+- Rust import names use snake_case, for example `sdkwork_routes_merchandise_app_api`.
 - Runnable crate names must use a specific suffix such as `api-server`, `service-host`,
   `native-host`, `worker`, or `gateway`; generic `product` and `runtime` suffixes are forbidden.
 - Modules use snake_case.

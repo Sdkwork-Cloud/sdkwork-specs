@@ -65,7 +65,7 @@ Backend `operationId` maps to permission codes by convention:
 
 Authoritative implementations:
 
-- Rust: `sdkwork-router-iam-backend-api/src/operation_permissions.rs`
+- Rust: `sdkwork-routes-iam-backend-api/src/operation_permissions.rs`
 - TypeScript: `@sdkwork/iam-contracts` `backend-operation-permissions.ts`
 
 ## Authorization Pipeline

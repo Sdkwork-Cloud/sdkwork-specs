@@ -216,13 +216,13 @@ Cross-language import entry matrix:
 
 | Architecture | Core package | Public import root | Feature package rule |
 | --- | --- | --- | --- |
-| PC/H5 React | `sdkwork-<app>-<arch>-core` | `package.json#exports` | import only `@sdkwork/<app>-<arch>-core/*` subpaths |
-| Flutter | `sdkwork_<app>_flutter_mobile_core` | `lib/<core>.dart` | import SDK/module/host through core library only |
-| Mini program | `sdkwork-<app>-mp-core` | `src/index.ts` + `exports` | same as React |
-| Android | `sdkwork-<app>-android-mobile-core` | public Kotlin facade / `api` source set | no direct generated SDK imports |
-| iOS | `sdkwork-<app>-ios-mobile-core` | Swift public module | no cross-architecture imports |
-| Harmony | `sdkwork-<app>-harmony-mobile-core` | ohpm `Index.ets` / main | no cross-architecture imports |
-| Rust backend bootstrap | `sdkwork-<app>-runtime-bootstrap` or approved core crate | `lib.rs` `pub mod composition` | service crates depend on traits from bootstrap/core only |
+| PC/H5 React | `sdkwork-<application-code>-<client-arch>-core` | `package.json#exports` | import only `@sdkwork/<application-code>-<client-arch>-core/*` subpaths |
+| Flutter | `sdkwork_<application_code>_flutter_mobile_core` | `lib/<core>.dart` | import SDK/module/host through core library only |
+| Mini program | `sdkwork-<application-code>-mp-core` | `src/index.ts` + `exports` | same as React |
+| Android | `sdkwork-<application-code>-android-mobile-core` | public Kotlin facade / `api` source set | no direct generated SDK imports |
+| iOS | `sdkwork-<application-code>-ios-mobile-core` | Swift public module | no cross-architecture imports |
+| Harmony | `sdkwork-<application-code>-harmony-mobile-core` | ohpm `Index.ets` / main | no cross-architecture imports |
+| Rust backend bootstrap | `sdkwork-<application-code>-runtime-bootstrap` or approved core crate | `lib.rs` `pub mod composition` | service crates depend on traits from bootstrap/core only |
 
 ## 5. Frontend And Backend Dependency Chains
 

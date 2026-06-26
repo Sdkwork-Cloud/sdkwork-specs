@@ -136,7 +136,7 @@ Rules:
 | --- | --- | --- |
 | `react-app`, `react-tauri-app`, `pc-app`, `h5-app`, `flutter-app`, `mini-program-app`, `android-native-app`, `ios-native-app`, `harmony-native-app`, `app` | Application shell or client app root | `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` for client roots, matching root architecture spec, architecture UI spec when applicable, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md` |
 | `react-package`, `react-tauri-package`, `flutter-package`, `dart-package`, `android-native-package`, `ios-native-package`, `harmony-native-package`, `node-package` | Frontend or reusable UI/service package | `MODULE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, architecture UI spec when UI is present, `SDK_SPEC.md`, `I18N_SPEC.md` when user-facing |
-| `rust-route-crate` | Rust HTTP route/path source package named `sdkwork-router-<capability>-<surface>` | `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `SDK_SPEC.md`, `DOMAIN_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md` |
+| `rust-route-crate` | Rust HTTP route/path source package named `sdkwork-routes-<capability>-<surface>` | `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `SDK_SPEC.md`, `DOMAIN_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md` |
 | `rust-standalone-gateway` | Rust standalone application ingress crate named `sdkwork-<application-code>-standalone-gateway` | `APPLICATION_GATEWAY_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `TEST_SPEC.md` |
 | `rust-cloud-gateway` | Rust cloud application ingress crate named `sdkwork-<application-code>-cloud-gateway` | `APPLICATION_GATEWAY_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `TEST_SPEC.md` |
 | `rust-platform-cloud-gateway` | Rust platform cloud ingress crate named `sdkwork-api-cloud-gateway` | `APPLICATION_GATEWAY_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `TEST_SPEC.md` |
@@ -206,10 +206,10 @@ Rules:
 - App UI component manifests `MUST` reference app-side package roots and must not declare backend SDK clients for user-facing workflows.
 - A UI component manifest `MUST NOT` list more than one architecture-specific UI spec unless it is an explicit multi-package SDK family root with no UI implementation.
 - A `rust-route-crate` component `MUST` use a component name and Cargo package name that follow
-  `sdkwork-router-<capability>-open-api`, `sdkwork-router-<capability>-app-api`, or
-  `sdkwork-router-<capability>-backend-api`.
+  `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or
+  `sdkwork-routes-<capability>-backend-api`.
 - A `rust-route-crate` component root `MUST` follow
-  `crates/sdkwork-router-<capability>-<surface>/`.
+  `crates/sdkwork-routes-<capability>-<surface>/`.
 - A `rust-route-crate` component `MUST` declare `contracts.routeManifest` and must not declare
   generated SDK clients in `contracts.sdkClients`.
 - A `rust-route-crate` component manifest `MUST` include `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`,

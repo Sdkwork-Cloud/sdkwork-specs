@@ -308,7 +308,7 @@ Rules:
 
 - When a capability is operator-only (tenant administration, platform OAuth config, internal audit), it `MUST` use `pc-admin-*`, not `pc-*` or `*-pc-react`.
 - When a capability lets customers manage their own resources, it `MUST` use `pc-console-*`, not `pc-admin-*`.
-- Legacy `sdkwork-<capability>-pc-react` names under appbase `packages/pc-react/` remain valid **only** for cross-application foundation libraries (router, shell, auth runtime). They `MUST NOT` be copied into application roots for domain admin or console modules.
+- Legacy `sdkwork-<foundation>-pc-react` names under appbase `packages/pc-react/` remain valid **only** for cross-application foundation libraries (`shell`, `workspace`, `command`, auth runtime). They `MUST NOT` be copied into application roots for domain admin or console modules.
 - Static verification `SHOULD` reject new directories matching `sdkwork-*-pc-react` under `apps/sdkwork-<application-code>-pc/packages/` except documented migration exceptions.
 
 ## 4. App, Console, And Admin Surface Rules

@@ -92,7 +92,7 @@ Directory meanings:
 | Directory | Purpose | Required when |
 | --- | --- | --- |
 | `apis/` | Author-owned API contracts and API source inputs for all API kinds, including HTTP OpenAPI surfaces, RPC/proto contracts, async/event API manifests, API examples, API changelogs, and API validation inputs | The repository or application defines, owns, reviews, or materializes any API contract |
-| `apps/` | Collection of independently runnable application roots, application surfaces, app shells, demos promoted to runnable apps, or deployable application compositions; each direct child is a selected language/architecture application root | The repository contains more than one app root, an app surface below a larger workspace, or runnable app examples |
+| `apps/` | Collection of independently runnable application roots, application surfaces, app shells, demos promoted to runnable apps, or deployable application compositions; each direct child is a selected language/architecture application root; `apps/README.md` is the human directory index for every child application root | Every independent SDKWork application git repository; also when the repository contains more than one app root, an app surface below a larger workspace, or runnable app examples |
 | `crates/` | Rust crates, including route crates, service crates, repository crates, API server/service-host/native-host/Tauri-host/gateway/worker crates, and reusable Rust libraries | Rust source is authored in the repository or application |
 | `sdks/` | SDK family workspaces, SDK generation manifests, authority OpenAPI materialization outputs, derived `sdkgen` inputs, generated SDK language workspaces, and SDK component specs | The repository or application owns or generates SDK families |
 | `jobs/` | Job definitions, schedules, queue bindings, batch descriptors, maintenance runbooks, and non-Rust job packages | Non-request/response jobs are scheduled, configured, operated, or packaged |
@@ -148,7 +148,7 @@ Recommended initial skeleton:
       config/                           # only when that architecture standard requires it
   crates/
     README.md
-    sdkwork-router-<capability>-<surface>/
+    sdkwork-routes-<capability>-<surface>/
     sdkwork-<domain>-<capability>-service/
     sdkwork-<domain>-<capability>-repository-sqlx/
     sdkwork-<application-code>-api-server/
@@ -338,8 +338,12 @@ Boundary rules:
   `crates/sdkwork-<domain>-<capability>-repository-sqlx/`; crate-local `migrations/` directories
   are legacy and must converge into `database/migrations/` during adoption.
 - A single-application repository may make the repository root the primary app root. Its `apps/`
-  directory still `SHOULD` exist as a tracked placeholder explaining that the root is the primary app
-  surface and listing any secondary app surfaces, shells, or demos.
+  directory still `MUST` exist with `apps/README.md` explaining that the repository root is the
+  primary app surface and indexing any secondary app surfaces, shells, or demos.
+- Every independent SDKWork application git repository `MUST` keep `apps/README.md` as the human
+  directory index for application roots under `apps/`. The index `MUST` list every direct child
+  directory, identify each surface role and whether it is runnable, and link to the child root
+  `README.md` when that child exists. Content rules are defined in `DOCUMENTATION_SPEC.md` section 3.3.
 - `jobs/` owns schedules, queue bindings, batch descriptors, job definitions, maintenance runbooks,
   and non-Rust job packages. Rust worker implementations belong in
   `crates/sdkwork-<domain>-<capability>-worker/`; `jobs/` may reference those crates but must not
@@ -399,20 +403,22 @@ Standard root examples:
   sdkwork.app.config.json
   .sdkwork/
   apis/app-api/<domain>/openapi.yaml
-  apps/sdkwork-<application-code>-common/
-    README.md
-    AGENTS.md
-    .sdkwork/
-    specs/
-    packages/
-  apps/sdkwork-<application-code>-pc/
-    sdkwork.app.config.json
-    packages/
-    config/
-  apps/sdkwork-<application-code>-h5/
-    sdkwork.app.config.json
-    packages/
-    config/
+  apps/
+    README.md                 # directory index for every application root below apps/
+    sdkwork-<application-code>-common/
+      README.md
+      AGENTS.md
+      .sdkwork/
+      specs/
+      packages/
+    sdkwork-<application-code>-pc/
+      sdkwork.app.config.json
+      packages/
+      config/
+    sdkwork-<application-code>-h5/
+      sdkwork.app.config.json
+      packages/
+      config/
   crates/
   sdks/
   jobs/
@@ -469,7 +475,7 @@ Rules for `<domain-multi-surface-repository>`:
   AGENTS.md
   .sdkwork/
   apis/app-api/<domain>/openapi.yaml
-  crates/sdkwork-router-<capability>-app-api/
+  crates/sdkwork-routes-<capability>-app-api/
   crates/sdkwork-<domain>-<capability>-service/
   crates/sdkwork-<domain>-<capability>-repository-sqlx/
   crates/sdkwork-<application-code>-api-server/
@@ -724,6 +730,7 @@ Repository/application workspace verification `MUST` check:
 - [ ] Runtime private paths still follow `RUNTIME_DIRECTORY_SPEC.md`.
 - [ ] New repository/application templates contain the complete standard project root dictionary with tracked placeholders or content.
 - [ ] Narrow roots that omit inactive standard directories document the active layout in the root README.
+- [ ] Independent application repositories have `apps/README.md` that indexes every direct child application root and states whether the repository root is the primary runnable app surface.
 - [ ] Active repository/application capabilities use only the standard top-level directory names: `apis/`, `apps/`, `crates/`, `sdks/`, `jobs/`, `tools/`, `plugins/`, `examples/`, `configs/`, `deployments/`, `scripts/`, `docs/`, and `tests/`; `config/` and `packages/` are used only as architecture-local directories for the selected app surface root.
 - [ ] API contract sources, generated SDK workspaces, application/runtime plugins, agent plugins, source config templates, deployment descriptors, job definitions, worker implementations, and runtime private config are placed in their distinct standard directories.
 - [ ] Active `docs/` layouts provide Canon `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`, and new ADRs use `docs/architecture/decisions/`.

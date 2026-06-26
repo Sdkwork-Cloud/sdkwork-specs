@@ -163,7 +163,7 @@ Embedded IAM integration checklist for application repositories that call `build
 4. Keep manifest mapping, Postgres `search_path`, reconcile/upsert, and `instance_key` derivation in `sdkwork-iam-embedded-application-bootstrap` / `sdkwork-iam-web-adapter`; application adapters only supply repo-root fallback and optional runtime bindings.
 5. Add a repository governance test under `scripts/dev/*-iam-application-bootstrap-standard.test.mjs` that asserts the adapter, startup ordering, dependencies, and dev env injection.
 
-Cloud split-services repositories `MUST` inject `SDKWORK_APP_ROOT` on every dev and gateway startup path (directly or through `@sdkwork/app-topology` `resolveIamDevEnv()`). Repository topology contract tests `SHOULD` assert `IAM_APPLICATION_BOOTSTRAP_ENV`, `resolveIamDevEnv`, and the app-specific `SDKWORK_<APP>_APP_ROOT` alias in dev orchestrators.
+Cloud split-services repositories `MUST` inject `SDKWORK_APP_ROOT` on every dev and gateway startup path (directly or through `@sdkwork/app-topology` `resolveIamDevEnv()`). Repository topology contract tests `SHOULD` assert `IAM_APPLICATION_BOOTSTRAP_ENV`, `resolveIamDevEnv`, and the app-specific `SDKWORK_<APPLICATION_CODE>_APP_ROOT` alias in dev orchestrators.
 
 Rules:
 
