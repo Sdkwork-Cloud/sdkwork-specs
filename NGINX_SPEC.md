@@ -33,7 +33,7 @@ Rules:
 The canonical repository template is:
 
 ```text
-apps/sdkwork-claw-router/etc/nginx/NGINX_SAMPLE.conf
+apps/sdkwork-clawrouter/etc/nginx/NGINX_SAMPLE.conf
 ```
 
 `API_SAMPLE.conf` is retained only as a compatibility sample for older references. New documentation and operator handoff must point to `etc/nginx/NGINX_SAMPLE.conf` or to generated full-domain examples under `etc/nginx/sdkwork/`.

@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: bounded contexts, domain naming, capability ownership, cross-module contracts, Java/Rust parity
-- Related: `APPLICATION_SPEC.md`, `API_SPEC.md`, `DATABASE_SPEC.md`, `DRIVE_SPEC.md`, `IAM_SPEC.md`, `MODULE_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `API_SPEC.md`, `DATABASE_SPEC.md`, `DRIVE_SPEC.md`, `IAM_SPEC.md`, `MODULE_SPEC.md`, `REGION_SPEC.md`
 
 This standard defines how SDKWork domains are named, bounded, and composed. It prevents reusable modules from becoming vague shared utilities and keeps every API, table, SDK namespace, frontend package, event, and permission code aligned to the same business capability.
 
@@ -59,6 +59,7 @@ Rules:
   participates in standalone/cloud deployment profiles or multiple runtime
   targets.
 - File storage work uses the `drive` domain and `DRIVE_SPEC.md`. Other domains may reference Drive resources, but they must not take ownership of storage lifecycle.
+- Intelligence catalog, vendor-region pricing, and model admin region fields use `REGION_SPEC.md` `regionCode` vocabulary. `catalogKey` must not encode region.
 
 ### 3.1 Commerce Capability Tokens
 

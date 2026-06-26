@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: environment variables, runtime config files, public browser runtime config, secrets, database selection, standalone/cloud deployment profiles, desktop/server/container/H5/Flutter/mini-program/native Android/native iOS/native Harmony runtime targets, SDK base URLs, locale strategy, Access-Token and TokenManager credential config rules, RPC endpoints
-- Related: `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DATABASE_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RUST_RPC_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
+- Related: `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `REGION_SPEC.md`, `DATABASE_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RUST_RPC_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the canonical environment and runtime configuration model for SDKWork applications. It exists to prevent each application from inventing different `.env` names, database defaults, SDK base URL rules, config file locations, and secret handling behavior.
 
@@ -429,7 +429,7 @@ SQLite, split-services, or cloud.
 
 ### 7.1 Unified Workspace PostgreSQL Profile
 
-All SDKWork applications in one workspace share one PostgreSQL connection identity for development and production. The canonical profile is owned by `sdkwork-claw-router` and uses `SDKWORK_CLAW_DATABASE_*` keys.
+All SDKWork applications in one workspace share one PostgreSQL connection identity for development and production. The canonical profile is owned by `sdkwork-clawrouter` and uses `SDKWORK_CLAW_DATABASE_*` keys.
 
 Applications MUST NOT define per-app PostgreSQL database names, usernames, passwords, schemas, or URLs that differ from this profile in checked-in `.env.postgres.example`, topology profile env files, release templates, or operator documentation.
 
@@ -442,8 +442,8 @@ Rules:
 
 - `SDKWORK_CLAW_DATABASE_*` is the single source of truth for PostgreSQL connection identity across IAM, gateway-embedded routers, and application services.
 - Per-app `SDKWORK_<APPLICATION_CODE>_DATABASE_*` keys MAY remain for pool sizing, deployment mode, table prefix, SQLite desktop paths, and service-specific bootstrap, but MUST NOT redefine host, port, database, schema, username, password, or URL in checked-in files.
-- Every application repository MUST ship `.env.postgres.example` that contains only `SDKWORK_CLAW_DATABASE_*` fields copied from `sdkwork-specs/templates/env.postgres.example` or `sdkwork-claw-router/.env.postgres.example`.
-- Developer overrides belong in ignored `.env.postgres` at the application root or in `sdkwork-claw-router/.env.postgres`; do not fork per-app connection identity in source control.
+- Every application repository MUST ship `.env.postgres.example` that contains only `SDKWORK_CLAW_DATABASE_*` fields copied from `sdkwork-specs/templates/env.postgres.example` or `sdkwork-clawrouter/.env.postgres.example`.
+- Developer overrides belong in ignored `.env.postgres` at the application root or in `sdkwork-clawrouter/.env.postgres`; do not fork per-app connection identity in source control.
 - Dev orchestration, topology loaders, and IAM env helpers MUST resolve PostgreSQL through `SDKWORK_CLAW_DATABASE_*` before any per-app database fields.
 - Rust services using `sdkwork-database-config` already fall back to `SDKWORK_CLAW_DATABASE_*`; applications must not reintroduce separate default URLs.
 - Table ownership and migrations remain per service; only the PostgreSQL instance and login identity are shared.
@@ -950,7 +950,7 @@ SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=20
 SDKWORK_<APPLICATION_CODE>_SERVER_BIND=0.0.0.0:3900
 ```
 
-## 11. sdkwork-claw-router Application Env
+## 11. sdkwork-clawrouter Application Env
 
 The SdkWork Claw Router product uses the `SDKWORK_CLAW_` prefix for private process values and `PORTAL_PUBLIC_` for browser-visible portal values.
 
@@ -1259,7 +1259,7 @@ Rules:
 - Strict release preflight must validate required values before packaging.
 - Optional public overrides, such as `PORTAL_PUBLIC_OPEN_API_BASE_URL`, may be omitted when they inherit a required base URL.
 
-Minimum release host contract for `sdkwork-claw-router`:
+Minimum release host contract for `sdkwork-clawrouter`:
 
 ```text
 SDKWORK_CLAW_POSTGRES_TEST_DATABASE_URL=postgres://user:password@host:5432/db

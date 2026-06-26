@@ -284,6 +284,8 @@ schema registry 至少 SHOULD 支持�?
 - `code` 用于人类可读或配置引用，MUST 明确唯一范围，例如全局唯一、租户内唯一、类型内唯一�?
 - `business_no` 一旦对外发�?MUST 不可复用�?
 
+Rules for IAM principal ids, JWT `tenant_id` / `user_id` / `organization_id` claims, and SQL subject scope projection: see `SUBJECT_ID_SPEC.md`.
+
 ### 6.2 审计字段
 
 | 字段 | 逻辑类型 | 必填 | 说明 |
@@ -492,6 +494,8 @@ id_strategy:
 - 第三�?ID MUST �?`provider + external_id` 作为唯一边界，不能假设外�?ID 全局唯一�?
 - 批量导入、离线写入、边缘节点写�?MUST 使用与在线服务兼容的 ID 策略�?
 - ID 生成失败必须失败关闭，不得退化为本地随机�?ID 或数据库自增，除非契约明确允许�?
+
+Cross-layer alignment for IAM principal ids and SQL `tenant_id` / `user_id` / `organization_id` subject columns: see `SUBJECT_ID_SPEC.md`.
 
 ## 7. 命名规范
 
@@ -2727,7 +2731,7 @@ SDKWORK_{SERVICE}_DATABASE_MAX_LIFETIME     # 连接最大生命周期（秒）
 | sdkwork-commerce | `SDKWORK_COMMERCE_` | `commerce_` |
 | sdkwork-drive | `SDKWORK_DRIVE_` | `drive_` |
 | sdkwork-knowledgebase | `SDKWORK_KB_` | `kb_` |
-| sdkwork-claw-router | `SDKWORK_CLAW_` | `claw_` |
+| sdkwork-clawrouter | `SDKWORK_CLAW_` | `claw_` |
 | sdkwork-local-router | `SDKWORK_LR_` | `lr_` |
 | sdkwork-discovery | `SDKWORK_DISCOVERY_` | `discovery_` |
 | sdkwork-rtc | `SDKWORK_RTC_` | `rtc_` |

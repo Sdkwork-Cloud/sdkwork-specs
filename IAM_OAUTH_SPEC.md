@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: third-party OAuth consumption, SDKWork OAuth provider (authorization server), provider catalog, tenant integrations, relying-party clients, surfaces, grants, and client/runtime configuration
-- Related: `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `IAM_APPLICATION_BOOTSTRAP_SPEC.md`, `INTEGRATION_SPEC.md`, `API_SPEC.md`, `CONFIG_SPEC.md`, `SECURITY_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`
+- Related: `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `IAM_APPLICATION_BOOTSTRAP_SPEC.md`, `INTEGRATION_SPEC.md`, `API_SPEC.md`, `CONFIG_SPEC.md`, `REGION_SPEC.md`, `SECURITY_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`
 
 This standard defines the canonical OAuth model for SDKWork IAM. OAuth is an extension of IAM sessions, not a separate identity domain.
 
@@ -171,6 +171,8 @@ Sources, in priority order:
 - `auth.oauthProviderRegion`
 - `auth.loginMethods`
 - `auth.sdkworkOAuthProviderEnabled`
+
+`auth.oauthProviderRegion` values `MUST` use active `regionCode` values from `REGION_SPEC.md`.
 
 Applications `MUST` map this metadata through `resolveSdkworkAuthRuntimeConfigFromMetadata()`.
 

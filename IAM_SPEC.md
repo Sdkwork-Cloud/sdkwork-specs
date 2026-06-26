@@ -308,6 +308,8 @@ Required common claims:
 Rules:
 
 - `auth_token` and `access_token` `MUST` both include `tenant_id`, `organization_id`, `login_scope`, `user_id`/`sub`, and `session_id`/`sid`.
+- `tenant_id`, `user_id`/`sub`, and non-zero `organization_id` claims `MUST` be positive numeric snowflake strings that map to SQL `BIGINT` subject scope per `SUBJECT_ID_SPEC.md`. New IAM entity creation `MUST NOT` use retired opaque prefixes such as `iamu_`, `iamt_`, `org_`, or `tenant_`, and `MUST NOT` use bare UUID strings as `iam_user.id` or `iam_tenant.id` primary keys.
+- Documented bootstrap exceptions `MAY` use reserved stable numeric ids such as default bootstrap admin `user_id = "1"` when declared in the owning IAM bootstrap contract.
 - `login_scope = "ORGANIZATION"` requires a non-zero `organization_id`. `login_scope = "TENANT"` requires `organization_id` to be absent or `0`. Contradictory claims `MUST` be rejected.
 - `access_token` additionally owns access-specific claims such as `data_scope`, `permission_scope`, and sharding hints.
 - Token signatures `MUST` use a tenant-bound signing key. A global shared signing secret for all tenants is forbidden for production and production-like profiles.
@@ -461,6 +463,7 @@ Rules:
 - [ ] Login/session creation does not trust inbound auth/context headers and derives tenant from real IAM user/tenant data.
 - [ ] Multi-organization login returns an organization-selection challenge instead of choosing a default organization.
 - [ ] Both `authToken` and `accessToken` include matching `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims.
+- [ ] New IAM `tenant_id` and `user_id` values are positive numeric snowflake strings that map to SQL `BIGINT` subject scope per `SUBJECT_ID_SPEC.md`; legacy opaque `iamu_` / `iamt_` ids are repaired or migrated.
 - [ ] Token signing and validation use tenant-bound signing keys with key id and tenant binding checks.
 - [ ] API key operations resolve a server-side API key record and never trust raw key claims alone in production.
 - [ ] OAuth bearer open-api operations resolve a server-side token/session record and never trust raw bearer claim strings alone in production.

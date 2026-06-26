@@ -3,7 +3,7 @@
 - Version: 1.0
 - Baseline: `sdkwork-discovery` gRPC control plane, SDKWork RPC internal/backend surfaces, revision-ordered watch
 - Scope: service registry, versioned runtime configuration, discovery client integration, watch semantics, storage profiles, security, topology surfaces, and verification for every SDKWork deployment that uses dynamic RPC resolution
-- Related: `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RUST_RPC_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DATABASE_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `NAMING_SPEC.md`, `MIGRATION_SPEC.md`, `TEST_SPEC.md`
+- Related: `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RUST_RPC_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `REGION_SPEC.md`, `DATABASE_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `NAMING_SPEC.md`, `MIGRATION_SPEC.md`, `TEST_SPEC.md`
 - Canonical product: `sdkwork-discovery`
 - Canonical RPC SDK family: `sdkwork-discovery-rpc-sdk`
 

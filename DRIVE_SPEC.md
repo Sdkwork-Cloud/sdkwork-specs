@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: SDKWork Drive, Drive Uploader, file storage, object storage providers, spaces, nodes, upload sessions, download grants, storage metadata, file/media lifecycle, Drive-backed `MediaResource` mapping, client upload services, server-side Rust upload components, generated Drive SDKs, uploader attribution/statistics, database references, RPC storage-control contracts
-- Related: `DOMAIN_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `DATABASE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `FRONTEND_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `EVENT_SPEC.md`, `TEST_SPEC.md`
+- Related: `DOMAIN_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `DATABASE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `REGION_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `FRONTEND_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `EVENT_SPEC.md`, `TEST_SPEC.md`
 - Canonical location: `specs/DRIVE_SPEC.md`
 - Implementation family: `sdkwork-drive`
 

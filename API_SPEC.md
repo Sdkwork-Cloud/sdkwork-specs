@@ -1006,6 +1006,7 @@ Rules:
 - OpenAPI schemas for browser-facing `int64` fields and parameters `MUST NOT` use `type: integer, format: int64`. They `MUST` use `type: string`, `format: int64`, a digit pattern such as `^-?[0-9]+$`, `^[0-9]+$`, or `^[1-9][0-9]*$`, `x-sdkwork-int64-string: true`, and a native implementation hint such as `x-sdkwork-rust-type: i64` when the Rust side owns the endpoint.
 - Frontend code and generated TypeScript SDKs `MUST` receive, store, compare, and submit `int64` values as strings. They `MUST NOT` parse `int64` IDs, snowflake IDs, versions, sequence numbers, byte counters, or monetary minor-unit values into JavaScript `number`.
 - Server HTTP adapters `MUST` parse inbound `int64` strings at the request boundary, validate sign/range/domain constraints, and pass native numeric values into Rust/domain/database code. Business logic and SQL bindings must not be rewritten to string IDs merely because the browser JSON contract is string-based.
+- IAM principal ids (`tenant_id`, `user_id`, `organization_id`) and SQL subject scope projection rules are defined in `SUBJECT_ID_SPEC.md`. OpenAPI fields that represent those subject ids `MUST` follow the int64-string rules above.
 - Monetary and high-precision decimals `MUST` be strings.
 - Timestamps `MUST` be ISO 8601 UTC unless a domain explicitly requires a local date.
 - Use `nullable` semantics through JSON Schema union types, for example `type: ["string", "null"]`.

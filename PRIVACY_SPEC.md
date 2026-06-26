@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: personal data, tenant data, data classification, consent, retention, export, deletion, residency
-- Related: `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `DRIVE_SPEC.md`, `API_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`
+- Related: `REGION_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `DRIVE_SPEC.md`, `API_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`
 
 This standard defines privacy and data protection requirements for SDKWork standalone/cloud deployments, customer-owned environments, and local runtime targets. It is not a legal policy; it is an engineering contract that makes privacy behavior explicit and testable.
 
@@ -67,7 +67,8 @@ Rules:
 Rules:
 
 - Standalone/cloud deployments and customer-owned environments `MUST`
-  document where tenant data is stored and processed.
+  document where tenant data is stored and processed using `REGION_SPEC.md`
+  `regionCode`, `dataResidencyRegions`, and related deployment region fields.
 - Cross-region or cross-border synchronization `MUST` be explicit.
 - Standalone/customer-owned runtime targets `SHOULD` avoid sending tenant data
   to SDKWork-hosted cloud services unless the user/operator opts in.

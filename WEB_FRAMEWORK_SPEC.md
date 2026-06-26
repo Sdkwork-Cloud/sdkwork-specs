@@ -117,6 +117,23 @@ Rules:
 - Route manifests `MUST` declare `requestContext: WebRequestContext` and `apiSurface` on every route entry so materialization can write the OpenAPI extensions deterministically.
 - Full field vocabulary and JSON Schema: `../sdkwork-web-framework/specs/web-request-context.schema.json` and `../sdkwork-web-framework/docs/03-web-request-context.md`.
 
+### 5.1 SQL Subject Scope Projection
+
+Handlers and repositories that persist SQL `BIGINT` `tenant_id`, `organization_id`, or `user_id` columns `MUST` project subject scope from `WebRequestContext` / `TenantAppContext` using the rules in `SUBJECT_ID_SPEC.md`.
+
+| Step | Input | Output |
+| --- | --- | --- |
+| 1 | `WebRequestContext.principal` | validated tenant/user/org string claims |
+| 2 | `TenantAppContext` | service-layer subject view |
+| 3 | SQL subject mapper | `tenant_id: i64`, `organization_id: i64`, `user_id: i64` |
+
+Rules:
+
+- Positive numeric parsing is required for `tenant_id` and `user_id`; `organization_id` `MUST` parse as `>= 0`, with `0` meaning tenant-level scope.
+- Mapping failure on an authenticated principal `MUST` return HTTP `422` with business code `4220`, not HTTP `500` or internal code `5001`.
+- Legacy `TrustedRequestSubject` bridges `MAY` exist only for migration and `MUST` use the same numeric parse rules.
+- Handlers `MUST NOT` read client-supplied tenant/user selector headers or parameters to establish ambient SQL subject scope.
+
 ## 6. API Surfaces And Auth Modes
 
 | Surface | Prefix | Auth mode | Framework requirement |

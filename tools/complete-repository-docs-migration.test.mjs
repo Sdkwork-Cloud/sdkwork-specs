@@ -109,7 +109,7 @@ describe('complete-repository-docs-migration', () => {
 
   it('runs end-to-end migration on a repository with numbered legacy docs', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-complete-docs-'));
-    writeFileSync(path.join(root, 'AGENTS.md'), '# sdkwork-claw-router\n');
+    writeFileSync(path.join(root, 'AGENTS.md'), '# sdkwork-clawrouter\n');
     writeFileSync(path.join(root, 'README.md'), '# claw-router\n');
     mkdirSync(path.join(root, 'docs/product/prd'), { recursive: true });
     mkdirSync(path.join(root, 'docs/architecture/tech'), { recursive: true });

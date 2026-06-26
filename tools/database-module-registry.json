@@ -61,7 +61,7 @@
     ]
   },
   {
-    "repo": "sdkwork-claw-router",
+    "repo": "sdkwork-clawrouter",
     "moduleId": "clawrouter",
     "serviceCode": "CLAW_ROUTER",
     "tablePrefix": "claw_",

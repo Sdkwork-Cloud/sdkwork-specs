@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: standalone/cloud application deployment profiles, Java Spring, Rust backend, HTTP/RPC runtime bootstrap, frontend bootstrap, environment config
-- Related: `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `RELEASE_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `RUST_RPC_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `SDK_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `REGION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `RELEASE_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `RUST_RPC_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `SDK_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`
 
 SDKWork applications must deploy through one of two standardized application deployment profiles: `standalone` or `cloud`. Shared module APIs, route contracts, generated SDKs, IAM request context, and runtime bootstrap must remain the same across both profiles.
 

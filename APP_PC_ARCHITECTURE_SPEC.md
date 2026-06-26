@@ -12,7 +12,7 @@ Reference inputs:
 
 - `apps/docs/ARCHITECT.md` defines the pnpm workspace, thin root `src/`, `packages/`, and service-layer split pattern.
 - `apps/sdkwork-im/apps/sdkwork-chat-pc` demonstrates a PC app root with renderer bootstrap, app packages, console/admin package families, and desktop package placement.
-- `apps/sdkwork-claw-router/apps/sdkwork-claw-router-portal` demonstrates app, console, and admin capability decomposition at scale. Its packages without a `pc` segment are migration references; new PC packages use the normalized naming in this standard.
+- `apps/sdkwork-clawrouter/apps/sdkwork-clawrouter-pc` demonstrates app, console, and admin capability decomposition at scale. Its packages without a `pc` segment are migration references; new PC packages use the normalized naming in this standard.
 - Tauri v2 official docs define mobile development commands, platform-specific config merging, iOS signing, Android/iOS build outputs, and mobile multi-window behavior. SDKWork PC tablet packaging uses those capabilities only as a large-screen PC runtime/package target.
 
 ## 1. Core Model
@@ -561,8 +561,8 @@ Rules:
 Reference applications may contain packages such as:
 
 ```text
-sdkwork-claw-router-console-settings
-sdkwork-claw-router-admin-monitor
+sdkwork-clawrouter-console-settings
+sdkwork-clawrouter-admin-monitor
 sdkwork-clawchat-console-core
 sdkwork-clawchat-admin-dashboard
 ```

@@ -171,7 +171,7 @@ Rules:
   materialization exclusion set. It `MUST NOT` broaden the consuming SDK's OpenAPI input.
 - Appbase examples are normative: appbase identity, session, IAM, verification, QR auth, and
   IAM backend management capabilities remain in `sdkwork-iam-app-sdk` and
-  `sdkwork-iam-backend-sdk`. Applications such as `sdkwork-im`, `sdkwork-claw-router`, and
+  `sdkwork-iam-backend-sdk`. Applications such as `sdkwork-im`, `sdkwork-clawrouter`, and
   `sdkwork-birdcoder` consume those SDKs and generate only their application-owned app/backend APIs.
 - Rust-enabled independent apps must also declare the Rust language packages for those appbase SDK
   families when Rust code calls appbase HTTP APIs directly, and must depend on appbase Rust runtime

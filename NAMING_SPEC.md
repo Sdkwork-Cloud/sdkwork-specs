@@ -2,7 +2,7 @@
 
 - Version: 1.9
 - Scope: domains, capabilities, repositories, applications, components, packages, SDK families, API authorities, route crates, database identifiers, files, and test names
-- Related: `APPLICATION_GATEWAY_SPEC.md`, `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CODE_STYLE_SPEC.md`
+- Related: `APPLICATION_GATEWAY_SPEC.md`, `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `DEPLOYMENT_SPEC.md`, `REGION_SPEC.md`, `CONFIG_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CODE_STYLE_SPEC.md`
 
 This standard is the naming entrypoint for SDKWork. It indexes naming rules that are also governed by more specific specs. If this file conflicts with a more specific root spec, the more specific spec wins and this file must be updated.
 
@@ -68,6 +68,7 @@ After `product`, these words are the most common sources of naming drift. Each r
 | `server` | `runtimeTarget=server`; package profile `server`; `sdkwork-<application-code>-api-server` | deployment profile; domain name; generic "backend" | `deploymentProfile`, `runtimeTarget`, `api-server` |
 | `platform` | domain `platform`; connectivity plane `platform`; OS platform in package ids | application line name; product name | domain `platform` or plane `platform` ??state which |
 | `profile` | full topology profile id; **config profile alias** `dev`/`prod`; GitHub package **profile** segment | lifecycle environment alone; deployment profile alone | `environment`, `deploymentProfile`, `configProfile`, or full profile id |
+| `region` | SDKWork market/compliance partition `regionCode`; cloud `providerRegion`; Drive `storageRegion` | bare field `region`; cloud id in `regionCode`; AZ in `regionCode` | `regionCode`, `providerRegion`, `storageRegion` per `REGION_SPEC.md` |
 | `runtime` | `runtimeTarget`; forbidden crate suffix `*-runtime` | synonym for application or environment | `runtimeTarget`, `environment`, or responsibility-specific crate |
 | `gateway` | application `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway`; platform `sdkwork-api-cloud-gateway`; `gateway:*` pnpm namespace | bare `sdkwork-<application-code>-gateway`; bare `sdkwork-api-cloud-gateway`; any HTTP server; SDK family name | `standalone-gateway` vs `cloud-gateway` vs `api-cloud-gateway` vs `api-server` vs `platform.api-gateway` ? pick one role |
 | `foundation` | shared foundation **domain/module** tier (L3); foundation dependency SDKs | package name `foundation` without domain | `sdkwork-<domain>-*` or `shared foundation module` |
@@ -484,4 +485,5 @@ Rules:
 - [ ] Client app packages use the required PC, H5, Flutter, mini program, Android native, iOS native, or Harmony native architecture segment and reserved role names.
 - [ ] Component manifests use matching names.
 - [ ] Database identifiers follow `DATABASE_SPEC.md`.
+- [ ] IAM principal ids and SQL subject scope (`tenant_id`, `organization_id`, `user_id`) follow `SUBJECT_ID_SPEC.md`.
 - [ ] Any legacy alias has a migration or exception record.
