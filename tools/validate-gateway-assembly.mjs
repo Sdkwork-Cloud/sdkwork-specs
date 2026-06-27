@@ -13,8 +13,12 @@ import {
   discoverRouteCrates,
   findGatewaySourceFiles,
   readJson,
+  readText,
   resolveApplicationCode,
+  scanAssemblyInfraMergeViolations,
   scanForbiddenGatewayMerges,
+  assemblyMountRouteCrates,
+  usesKernelBridgeAssembly,
 } from './gateway-assembly-lib.mjs';
 
 const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -70,12 +74,22 @@ export function validateGatewayAssembly(root, { strict = false } = {}) {
     errors.push(...compareManifests(expected, actual));
   }
 
-  const withoutMount = routeCrates.filter((crate) => !crate.hasGatewayMount);
-  if (withoutMount.length > 0) {
+  const bootstrapPath = path.join(crateRoot, 'src', 'bootstrap.rs');
+  const bootstrapSource = readText(bootstrapPath);
+
+  const withoutMount = assemblyMountRouteCrates(routeCrates).filter(
+    (crate) => !crate.hasGatewayMount,
+  );
+  const kernelBridge = usesKernelBridgeAssembly(bootstrapSource);
+  if (withoutMount.length > 0 && !kernelBridge) {
     warnings.push(
       `${withoutMount.length} route crates missing gateway_mount: ${withoutMount
         .map((crate) => crate.packageName)
         .join(', ')}`,
+    );
+  } else if (withoutMount.length > 0 && kernelBridge) {
+    warnings.push(
+      `${withoutMount.length} route crates use kernel-bridge composition instead of gateway_mount (approved for sdkwork-agents)`,
     );
   }
 
@@ -83,6 +97,10 @@ export function validateGatewayAssembly(root, { strict = false } = {}) {
   const mergeHits = scanForbiddenGatewayMerges(gatewayFiles, crateDir);
   for (const hit of mergeHits) {
     errors.push(`forbidden hand route merge in gateway source: ${hit}`);
+  }
+
+  if (bootstrapSource.trim()) {
+    errors.push(...scanAssemblyInfraMergeViolations(bootstrapSource, routeCrates));
   }
 
   if (strict && warnings.length > 0) {

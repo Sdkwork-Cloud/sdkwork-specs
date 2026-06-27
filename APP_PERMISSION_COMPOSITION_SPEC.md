@@ -69,8 +69,8 @@ Every client application root with modular admin/console/app surfaces **should**
         "inheritRoles": false
       },
       {
-        "moduleId": "commerce",
-        "manifestRef": "../../../sdkwork-commerce/specs/iam.module.manifest.json",
+        "moduleId": "shop",
+        "manifestRef": "../../../sdkwork-shop/specs/iam.module.manifest.json",
         "inheritPermissions": true,
         "inheritRoles": true
       }

@@ -89,16 +89,6 @@
     ]
   },
   {
-    "repo": "sdkwork-commerce",
-    "moduleId": "commerce",
-    "serviceCode": "COMMERCE",
-    "tablePrefix": "commerce_",
-    "ownerTeam": "commerce-platform",
-    "legacySqlGlobs": [
-      "crates/sdkwork-commerce-storage-repository-sqlx/migrations/*.sql"
-    ]
-  },
-  {
     "repo": "sdkwork-community",
     "moduleId": "community",
     "serviceCode": "COMMUNITY",

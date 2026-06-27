@@ -18,9 +18,9 @@ function findGatewayCrateDir(repoRoot, appId) {
   const appCode = appId.replace(/^sdkwork-/u, '');
   const preferred = [
     path.join(repoRoot, 'crates', `sdkwork-${appCode}-standalone-gateway`),
-    path.join(repoRoot, 'crates', `sdkwork-${appCode}-api-server`),
     path.join(repoRoot, 'services', `sdkwork-${appCode}-standalone-gateway`),
-    path.join(repoRoot, 'services', `sdkwork-${appCode}-api-server`),
+    path.join(repoRoot, 'crates', `sdkwork-${appCode}-cloud-gateway`),
+    path.join(repoRoot, 'services', `sdkwork-${appCode}-cloud-gateway`),
   ];
   for (const candidate of preferred) {
     if (fs.existsSync(path.join(candidate, 'Cargo.toml'))) {
@@ -37,12 +37,6 @@ function findGatewayCrateDir(repoRoot, appId) {
       .find((entry) => /-standalone-gateway$/u.test(entry) && fs.existsSync(path.join(dir, entry, 'Cargo.toml')));
     if (standalone) {
       return path.join(dir, standalone);
-    }
-    const apiServer = fs
-      .readdirSync(dir)
-      .find((entry) => /-api-server$/u.test(entry) && fs.existsSync(path.join(dir, entry, 'Cargo.toml')));
-    if (apiServer) {
-      return path.join(dir, apiServer);
     }
   }
   return null;
@@ -81,7 +75,7 @@ function alignTopologySpec(repoRoot) {
     return { changed: false, reason: 'no topology.spec.json' };
   }
 
-  const spec = JSON.parse(readText(topologyPath));
+  const spec = JSON.parse(readText(topologyPath).replace(/^\uFEFF/u, ''));
   const appId = spec.appId ?? path.basename(repoRoot);
   const gatewayCrateDir = findGatewayCrateDir(repoRoot, appId);
   if (!gatewayCrateDir) {

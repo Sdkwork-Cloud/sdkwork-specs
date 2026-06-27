@@ -290,6 +290,7 @@ gateway:matrix:standalone
 gateway:matrix:cloud
 gateway:assembly:materialize
 gateway:assembly:validate
+gateway:route-composition:audit
 ```
 
 Examples:
@@ -297,6 +298,7 @@ Examples:
 ```text
 gateway:assembly:materialize
 gateway:assembly:validate
+gateway:route-composition:audit
 ```
 
 Rules:
@@ -321,6 +323,9 @@ Rules:
 - `gateway:assembly:validate` `MUST` invoke `node scripts/gateway/assembly-validate.mjs`
   (or an equivalent thin wrapper around `sdkwork-specs/tools/validate-gateway-assembly.mjs`)
   and fail on missing assembly crates, manifest drift, or forbidden route-crate merges in gateway mains.
+- Workspace roots `SHOULD` expose `gateway:route-composition:audit` through a thin wrapper around
+  `sdkwork-specs/tools/audit-gateway-route-composition-workspace.mjs` to detect infrastructure probe
+  duplication, empty assemblies, and platform collapsed-ingress violations across repositories.
 - Repositories without `sdkwork-routes-<application-code>-*` workspace members `MAY` omit
   `gateway:assembly:*` commands.
 

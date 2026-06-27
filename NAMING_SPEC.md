@@ -37,7 +37,7 @@ apps/sdkwork-<application-code>-<client-arch>/
 sdkwork-<application-code>-<client-arch>-<capability>
 sdkwork_<application_code>_<client_arch>_<capability>    # Dart only
 
-sdkwork-<application-code>-standalone-gateway | -cloud-gateway | -api-server | -service-host | -native-host | -tauri-host
+sdkwork-<application-code>-standalone-gateway | -cloud-gateway | -service-host | -native-host | -tauri-host
 sdkwork-api-cloud-gateway                                              # platform `api-cloud-gateway` plane only
 sdkwork-<domain>-<capability>-service
 sdkwork-routes-<capability>-<surface>
@@ -65,12 +65,12 @@ After `product`, these words are the most common sources of naming drift. Each r
 | `admin` | package role segment only when paired with `backend-admin` surface rules | bare capability token `admin`; synonym for console | `*-admin-*` packages + `backend-admin` API/SDK |
 | `backend` | `backend-api` surface; `backend-admin` surface; Rust crate suffix only in forbidden list context | vague crate suffix `sdkwork-<application-code>-backend`; capability token | `backend-api`, `backend-admin`, or `sdkwork-<domain>-<capability>-service` |
 | `service` | business **service crate** `sdkwork-<domain>-<capability>-service`; OS/service manager prose | package profile alias for `server`; pnpm `service:*` namespace | package profile `server`; action-first `dev:server` |
-| `server` | `runtimeTarget=server`; package profile `server`; `sdkwork-<application-code>-api-server` | deployment profile; domain name; generic "backend" | `deploymentProfile`, `runtimeTarget`, `api-server` |
+| `server` | `runtimeTarget=server`; package profile `server`; retired `*-api-server` migrated to `*-standalone-gateway` | deployment profile; domain name; generic "backend" | `deploymentProfile`, `runtimeTarget`, `standalone-gateway` |
 | `platform` | domain `platform`; connectivity plane `platform`; OS platform in package ids | application line name; product name | domain `platform` or plane `platform` ??state which |
 | `profile` | full topology profile id; **config profile alias** `dev`/`prod`; GitHub package **profile** segment | lifecycle environment alone; deployment profile alone | `environment`, `deploymentProfile`, `configProfile`, or full profile id |
 | `region` | SDKWork market/compliance partition `regionCode`; cloud `providerRegion`; Drive `storageRegion` | bare field `region`; cloud id in `regionCode`; AZ in `regionCode` | `regionCode`, `providerRegion`, `storageRegion` per `REGION_SPEC.md` |
 | `runtime` | `runtimeTarget`; forbidden crate suffix `*-runtime` | synonym for application or environment | `runtimeTarget`, `environment`, or responsibility-specific crate |
-| `gateway` | application `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway`; platform `sdkwork-api-cloud-gateway`; `gateway:*` pnpm namespace | bare `sdkwork-<application-code>-gateway`; bare `sdkwork-api-cloud-gateway`; any HTTP server; SDK family name | `standalone-gateway` vs `cloud-gateway` vs `api-cloud-gateway` vs `api-server` vs `platform.api-gateway` ? pick one role |
+| `gateway` | application `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway`; platform `sdkwork-api-cloud-gateway`; `gateway:*` pnpm namespace | bare `sdkwork-<application-code>-gateway`; bare `sdkwork-api-cloud-gateway`; retired `*-api-server`; SDK family name | `standalone-gateway` vs `cloud-gateway` vs `api-cloud-gateway` vs `platform.api-gateway` — pick one role |
 | `foundation` | shared foundation **domain/module** tier (L3); foundation dependency SDKs | package name `foundation` without domain | `sdkwork-<domain>-*` or `shared foundation module` |
 | `portal` | browser **portal** public config (`PORTAL_PUBLIC_*`, `[portal.public]`); static portal assets | application code; IAM domain | `PORTAL_PUBLIC_*`, `browser public runtime` |
 | `identity` | prose "identity projection" in HTTP headers | domain name instead of `iam` | domain `iam` |
@@ -152,13 +152,13 @@ Rules:
 | Discovery product host | `sdkwork-discovery-service-host` | `sdkwork-discovery-service-host` |
 | Rust service crate | `sdkwork-<domain>-<capability>-service` | `sdkwork-drive-node-service` |
 | Rust SQLx repository crate | `sdkwork-<domain>-<capability>-repository-sqlx` | `sdkwork-drive-node-repository-sqlx` |
-| Rust API server crate | `sdkwork-<application-code>-api-server` | `sdkwork-drive-api-server` |
 | Rust service host crate | `sdkwork-<application-code>-service-host` | `sdkwork-drive-service-host` |
 | Rust native host crate | `sdkwork-<application-code>-native-host` or `sdkwork-<application-code>-tauri-host` | `sdkwork-drive-native-host` |
 | Rust worker crate | `sdkwork-<domain>-<capability>-worker` | `sdkwork-drive-maintenance-worker` |
-| Rust standalone application gateway crate | `sdkwork-<application-code>-standalone-gateway` | `sdkwork-drive-standalone-gateway` |
+| Rust standalone application gateway crate (application HTTP listener) | `sdkwork-<application-code>-standalone-gateway` | `sdkwork-drive-standalone-gateway` |
 | Rust cloud application gateway crate | `sdkwork-<application-code>-cloud-gateway` | `sdkwork-im-cloud-gateway` |
 | Rust platform gateway crate | `sdkwork-api-cloud-gateway` | `sdkwork-api-cloud-gateway` |
+| Retired Rust listener crate | `sdkwork-<application-code>-api-server` | **forbidden** — migrate to `*-standalone-gateway` |
 | Open API authority | `sdkwork-<domain>-open-api` | `sdkwork-im-open-api` |
 | App API authority | `sdkwork-<domain>-app-api` | `sdkwork-commerce-app-api` |
 | Backend API authority | `sdkwork-<domain>-backend-api` | `sdkwork-commerce-backend-api` |
@@ -181,7 +181,7 @@ Rules:
 
 - Rust packages use kebab-case and Rust modules/imports use snake_case. Rust crate names must use
   the responsibility-specific families from `RUST_CODE_SPEC.md`, such as `service`,
-  `repository-sqlx`, `api-server`, `service-host`, `native-host`, `worker`,
+  `repository-sqlx`, `standalone-gateway`, `cloud-gateway`, `service-host`, `native-host`, `worker`,
   `standalone-gateway`, `cloud-gateway`, or platform `api-gateway`.
 - Java packages use lowercase dotted names under an approved SDKWork root; Java classes use PascalCase.
 - TypeScript packages use kebab-case or approved scoped names; exported types/classes/components use PascalCase; functions and variables use camelCase.
@@ -372,8 +372,7 @@ Rules:
 - `sdkwork-web-<capability>` owns HTTP framework integration code only and lives in the
   `sdkwork-web-framework` repository. Business repositories must not create local `sdkwork-web-*`
   crates.
-- `sdkwork-<application-code>-api-server` owns an HTTP server process that mounts route crates and listens on
-  HTTP.
+- `sdkwork-<application-code>-standalone-gateway` owns the standalone application HTTP listener: mounts gateway assembly, optional platform/dependency adapters, and process infra.
 - `sdkwork-<application-code>-service-host` owns an in-process service container and must not mount HTTP routes.
 - `sdkwork-<application-code>-native-host` and `sdkwork-<application-code>-tauri-host` own native/Tauri command and platform
   adapter boundaries.
@@ -429,10 +428,7 @@ Normative gateway structure, topology binding, component contracts, and verifica
 
 Rules:
 
-- `sdkwork-<application-code>-api-server` and application gateway crates are different
-  responsibilities. Use `api-server` when the process only mounts application-owned route
-  crates. Use `standalone-gateway` or `cloud-gateway` when the process also composes,
-  proxies, or fail-closes dependency or platform surfaces for that deployment profile.
+- Retired `sdkwork-<application-code>-api-server` listener crates `MUST` migrate to `sdkwork-<application-code>-standalone-gateway`.
 - `gateway:run:standalone`, `gateway:build:standalone`, `gateway:package:standalone`, and
   `gateway:validate:standalone` `MUST` target
   `sdkwork-<application-code>-standalone-gateway`.

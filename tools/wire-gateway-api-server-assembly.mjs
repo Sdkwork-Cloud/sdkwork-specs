@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Wire api-server / standalone-gateway crates to sdkwork-<app>-gateway-assembly.
+ * Wire standalone/cloud gateway crates to sdkwork-<app>-gateway-assembly.
  * Authority: APPLICATION_GATEWAY_SPEC.md §5.7
  */
 import fs from 'node:fs';
@@ -20,7 +20,6 @@ const HOST_FRAMEWORK_PATTERN =
 
 function findGatewayCargoPath(root, applicationCode) {
   const names = [
-    `sdkwork-${applicationCode}-api-server`,
     `sdkwork-${applicationCode}-standalone-gateway`,
     `sdkwork-${applicationCode}-cloud-gateway`,
   ];

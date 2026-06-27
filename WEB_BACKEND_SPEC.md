@@ -249,13 +249,16 @@ Every Rust HTTP route crate that participates in application gateway assembly `M
 
 | Export | Shape | Responsibility |
 | --- | --- | --- |
-| `gateway_mount` | `fn gateway_mount(...) -> Router` or `async fn gateway_mount(...) -> Router` | Construct and return the surface router with required service/bootstrap state |
+| `gateway_mount_business` | `fn gateway_mount_business(...) -> Router` or `async fn gateway_mount_business(...) -> Router` | Return the surface **business** router with web-framework wrapping; `MUST NOT` mount `/healthz`, `/livez`, `/readyz`, or `/metrics` |
+| `gateway_mount` | `fn gateway_mount(...) -> Router` or `async fn gateway_mount(...) -> Router` | Construct and return the surface router for single-surface listeners (`*-api-server`, tests); `MAY` include infrastructure routes when the surface runs as the sole HTTP plane in the process |
 | `gateway_route_manifest` | `fn gateway_route_manifest() -> ...` or `const GATEWAY_ROUTE_MANIFEST: ...` | Expose `kind: sdkwork.route.manifest` metadata for mount ordering and validation |
 
 Rules:
 
-- `gateway_mount` `MUST` wrap existing `build_*_public_app` helpers through `sdkwork-web-framework` bootstrap helpers; it `MUST NOT` fork credential or request-context parsing.
-- Legacy `build_*` exports `MAY` remain for `*-service-bin` and tests during migration, but gateway assembly `MUST` call `gateway_mount` once the export exists.
+- `gateway_mount_business` `MUST` wrap existing `build_*_public_app` helpers through `sdkwork-web-framework` bootstrap helpers; it `MUST NOT` fork credential or request-context parsing.
+- `gateway_mount` `MUST` delegate to `gateway_mount_business` plus listener infrastructure when the route crate mounts probes locally, or delegate directly to `gateway_mount_business` when infrastructure is owned by the listener entrypoint.
+- Gateway assembly (`sdkwork-<application-code>-gateway-assembly`) `MUST` merge `gateway_mount_business` (not full `gateway_mount`) when two or more surfaces are composed, then mount infrastructure **once** through `sdkwork-web-bootstrap::assemble_multi_surface_router`, `mount_infra_routes`, or an approved domain wrapper such as `mount_<application-code>_infra_routes`.
+- Legacy `build_*` exports `MAY` remain for `*-service-bin` and tests during migration, but gateway assembly `MUST` call `gateway_mount_business` (or `gateway_mount` when the surface is the only HTTP plane in the process) once the export exists.
 - `gateway_route_manifest` `SHOULD` delegate to the crate's `manifest.rs` authority (`open_route_manifest`, `app_route_manifest`, `backend_route_manifest`, or equivalent).
 - Route crates `MUST NOT` require gateway crates to import private modules, service internals, or handler modules directly.
 - Application gateway assembly (`sdkwork-<application-code>-gateway-assembly`) is the only place that merges multiple `gateway_mount` routers for a deployment profile. Standalone/cloud gateway crates `MUST NOT` merge sibling route crates directly.

@@ -19,6 +19,7 @@ Rules:
 
 - Every SDKWork HTTP `*-api-server`, `*-standalone-gateway`, `*-cloud-gateway`, worker HTTP admin port, and platform gateway `MUST` expose `/healthz` and `/readyz`.
 - `/livez` `MAY` be mounted as an alias of `/healthz` through `sdkwork-web-bootstrap::service_router`.
+- Multi-surface gateway assembly and platform collapsed ingress `MUST` mount infrastructure probes once per listener; see `APPLICATION_GATEWAY_SPEC.md` §5.7.1–§5.7.2.
 - `/metrics` `MUST` be mounted through `sdkwork-web-bootstrap::service_router` or an approved framework metrics registry.
 - Legacy paths `/health`, `/ready`, and bare `/live` `MUST NOT` be introduced in new work.
 - Existing legacy paths `MUST` be removed during migration to this standard; do not keep parallel legacy handlers after cutover.

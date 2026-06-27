@@ -16,8 +16,12 @@ import {
   resolveApplicationCode,
   routeCrateExpectsDelegatableMount,
   scanForbiddenGatewayMerges,
+  usesKernelBridgeAssembly,
+  apiServerUsesSplitSurfaceBinsOnly,
+  isEdgeProxyStandaloneGateway,
 } from './gateway-assembly-lib.mjs';
 import { validateGatewayAssembly } from './validate-gateway-assembly.mjs';
+import { scanDuplicateGatewayApiDepsRepo } from './scan-duplicate-gateway-api-deps.mjs';
 
 function hasPackageScript(root, name) {
   const packagePath = path.join(root, 'package.json');
@@ -53,8 +57,6 @@ function hasStandaloneOrCloudGateway(root, applicationCode) {
     path.join(root, 'crates', `sdkwork-${applicationCode}-cloud-gateway`),
     path.join(root, 'services', `sdkwork-${applicationCode}-standalone-gateway`),
     path.join(root, 'services', `sdkwork-${applicationCode}-cloud-gateway`),
-    path.join(root, 'crates', `sdkwork-${applicationCode}-api-server`),
-    path.join(root, 'services', `sdkwork-${applicationCode}-api-server`),
   ];
   const found = {};
   for (const candidate of candidates) {
@@ -80,7 +82,7 @@ function topologyIngressWarnings(root) {
   const warnings = [];
   const text = readText(topologyPath);
   const decomposedPattern =
-    /(?:^|[-_])(?:api-server|app-api|backend-api|open-api|admin-api)(?:[-_.]|$)/u;
+    /(?:^|[-_])(?:app-api|backend-api|open-api|admin-api|api-server)(?:[-_.]|$)/u;
   for (const line of text.split('\n')) {
     if (!line.includes('application.public-ingress')) {
       continue;
@@ -158,14 +160,12 @@ export function auditGatewayAlignmentRepo(root) {
 
   const gatewayCrates = hasStandaloneOrCloudGateway(root, applicationCode);
   const hasAssemblyDep = Object.keys(gatewayCrates).some((name) => {
-    if (!name.includes('gateway') && !name.includes('api-server')) {
+    if (!name.includes('gateway')) {
       return false;
     }
     const cargoPath = path.join(
       root,
-      name.includes('standalone') || name.includes('cloud') || name.includes('api-server')
-        ? (fs.existsSync(path.join(root, 'crates', name)) ? 'crates' : 'services')
-        : 'crates',
+      fs.existsSync(path.join(root, 'crates', name)) ? 'crates' : 'services',
       name,
       'Cargo.toml',
     );
@@ -174,7 +174,13 @@ export function auditGatewayAlignmentRepo(root) {
   });
 
   if (Object.keys(gatewayCrates).length > 0 && !hasAssemblyDep) {
-    warnings.push('gateway/api-server crate does not depend on gateway-assembly');
+    const bootstrapPath = path.join(assemblyDir, 'src', 'bootstrap.rs');
+    const bootstrap = fs.existsSync(bootstrapPath) ? readText(bootstrapPath) : '';
+    const splitSurfaceTransitional = apiServerUsesSplitSurfaceBinsOnly(root, applicationCode);
+    const edgeProxyStandalone = isEdgeProxyStandaloneGateway(root, applicationCode);
+    if (!usesKernelBridgeAssembly(bootstrap) && !splitSurfaceTransitional && !edgeProxyStandalone) {
+      warnings.push('standalone/cloud gateway crate does not depend on gateway-assembly');
+    }
   }
 
   const mergeHits = scanForbiddenGatewayMerges(
@@ -204,6 +210,10 @@ export function auditGatewayAlignmentRepo(root) {
   }
 
   warnings.push(...topologyIngressWarnings(root));
+
+  const duplicateReport = scanDuplicateGatewayApiDepsRepo(root);
+  issues.push(...duplicateReport.issues);
+  warnings.push(...duplicateReport.warnings);
 
   const score = issues.length === 0
     ? (warnings.length === 0 ? 'perfect' : 'warn')

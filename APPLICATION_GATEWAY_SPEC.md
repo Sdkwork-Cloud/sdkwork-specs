@@ -77,8 +77,9 @@ sdkwork-api-cloud-gateway
 sdkwork-api-cloud-gateway-config
 sdkwork-api-cloud-gateway-registry
 sdkwork-api-cloud-gateway-observability
-sdkwork-api-cloud-gateway-api-server
 ```
+
+Binary `sdkwork-api-cloud-gateway` ships from the `sdkwork-api-cloud-gateway` crate (`src/listener_main.rs`). Retired listener crate: `sdkwork-api-cloud-gateway-api-server`.
 
 Binary names, systemd units, container entrypoints, and release artifact process ids `MUST` match the canonical crate name unless a documented platform packaging exception exists in `RELEASE_SPEC.md`.
 
@@ -89,7 +90,7 @@ Retired repository directory name: `sdkwork-api-cloud-gateway`. New work and mig
 | Retired | Replacement | Notes |
 | --- | --- | --- |
 | bare `sdkwork-api-cloud-gateway` crate name | `sdkwork-api-cloud-gateway` as the platform `api-cloud-gateway` role | forbid using the crate name without the `api-cloud-gateway` role and topology context |
-| `sdkwork-api-cloud-gateway-*` support crates | `sdkwork-api-cloud-gateway-*` | config, registry, observability, api-server |
+| `sdkwork-api-cloud-gateway-*` support crates | `sdkwork-api-cloud-gateway-*` | config, registry, observability |
 | `sdkwork-api-cloud-gateway` repository directory | `sdkwork-api-cloud-gateway` | platform gateway product repository |
 | `sdkwork-<application-code>-gateway` | `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` | bare application gateway |
 | `sdkwork-im-cloud-gateway` | `sdkwork-im-cloud-gateway` | IM cloud split ingress |
@@ -130,19 +131,19 @@ Use `sdkwork-api-cloud-gateway` when the repository owns the shared SDKWork plat
 
 Platform gateway crates `MUST NOT` be renamed back to bare `sdkwork-api-cloud-gateway` for brevity.
 
-### 5.4 API Server (Not a Gateway)
+### 5.4 Retired: `*-api-server` Listener Crates
 
-`sdkwork-<application-code>-api-server` owns an HTTP server that mounts application-owned route crates only.
+`sdkwork-<application-code>-api-server` is **retired**. It duplicated the standalone application ingress role and conflicted with `sdkwork-<application-code>-standalone-gateway` naming.
 
-Use `api-server` when the process:
+Rules:
 
-- listens on HTTP;
-- mounts route crates from the same application;
-- does **not** compose, proxy, or fail-close dependency/platform surfaces for a deployment profile.
+- Application HTTP listeners `MUST` use `sdkwork-<application-code>-standalone-gateway` for `deploymentProfile=standalone` and `application.public-ingress`.
+- Cloud application ingress `MUST` use `sdkwork-<application-code>-cloud-gateway` when the repository ships a cloud deployment profile.
+- Repositories `MUST NOT` introduce new `*-api-server` crate or binary names. Existing crates `MUST` migrate with `node sdkwork-specs/tools/migrate-retire-api-server.mjs`.
+- `sdkwork-routes-*-app-api` / `backend-api` / `open-api` remain **route surface** names. They are not process roles and `MUST NOT` be used as default dev/release HTTP listener binaries.
+- Platform ingress remains `sdkwork-api-cloud-gateway` (crate + binary). The retired `sdkwork-api-cloud-gateway-api-server` listener crate `MUST` fold into `sdkwork-api-cloud-gateway`.
 
-Use `standalone-gateway` or `cloud-gateway` when the process additionally composes, proxies, or fail-closes dependency or platform HTTP surfaces for that deployment profile.
-
-An application repository `MAY` own both an `api-server` and one or both gateway crate families when responsibilities remain separate processes or binaries.
+An application repository `MAY` own both `standalone-gateway` and `cloud-gateway` when deployment profiles remain separate processes.
 
 ### 5.5 Internal Capability Gateways (Out of Scope)
 
@@ -164,7 +165,7 @@ SDKWork HTTP APIs `MUST` expose **one client-facing HTTP bind per connectivity p
 
 Rules:
 
-- `standalone.unified-process.*` `MUST` start exactly **one** application-plane HTTP ingress process (`sdkwork-<application-code>-standalone-gateway` or an approved equivalent `api-server` that already mounts every declared application HTTP surface on the same bind). Dev orchestration `MUST NOT` spawn additional loopback HTTP servers for `app-api`, `backend-api`, `open-api`, or `*-service-bin` packages.
+- `standalone.unified-process.*` `MUST` start exactly **one** application-plane HTTP ingress process: `sdkwork-<application-code>-standalone-gateway`. Dev orchestration `MUST NOT` spawn additional loopback HTTP servers for `app-api`, `backend-api`, `open-api`, `*-api-server`, or `*-service-bin` packages.
 - `cloud.split-services.*` client bootstrap and dev orchestration `MUST` still present **one** `application.public-ingress` HTTP URL and **one** `platform.api-gateway` HTTP URL. Decomposed `*-service-bin` binaries are internal scaling/release artifacts; they `MUST NOT` become the default way to make APIs reachable through multiple local HTTP ports.
 - Route crates (`sdkwork-routes-*`) and service libraries (`*-service`) are **composition units**. They `MAY` ship `*-service-bin` packages for cloud deployment matrices, CI smoke, or operator-managed scale-out, but those binaries `MUST NOT` replace gateway embedding for standalone dev or become mandatory multi-port dev sidecars.
 - Background workers, schedulers, and non-HTTP runtimes `MAY` run as separate processes when they do not terminate additional public HTTP API surfaces.
@@ -183,8 +184,9 @@ Application HTTP planes `MUST` compose route crates through a generated **gatewa
 
 | Concept | Canonical name | Responsibility |
 | --- | --- | --- |
-| Gateway assembly crate | `sdkwork-<application-code>-gateway-assembly` | Discover application-owned route crates, merge `gateway_mount` routers, own application-plane bootstrap hooks, export one `assemble_application_router` entrypoint |
-| Route crate mount | `gateway_mount` | Return an `axum::Router` (sync or async) for one capability/surface; may wrap legacy `build_*_public_app` exports during migration |
+| Gateway assembly crate | `sdkwork-<application-code>-gateway-assembly` | Discover application-owned route crates, merge business routers, own application-plane bootstrap hooks, export `assemble_application_router` and `assemble_application_business_router` |
+| Route crate business mount | `gateway_mount_business` | Return business-only `axum::Router` (sync or async); **no** `/healthz`, `/livez`, `/readyz`, or `/metrics` |
+| Route crate full mount (transitional) | `gateway_mount` | Legacy full router including infra when the route crate is the sole HTTP plane on the bind; forbidden in multi-surface assembly merges |
 | Route manifest export | `gateway_route_manifest` | Re-export or feed `kind: sdkwork.route.manifest` metadata for assembly ordering and validation |
 | Thin gateway crate | `sdkwork-<application-code>-standalone-gateway` / `sdkwork-<application-code>-cloud-gateway` | IAM/platform adapters, listener, observability, topology env — **not** per-route `Router::merge` matrices |
 
@@ -197,10 +199,72 @@ Design rules:
 - **Platform consumer linking.** `sdkwork-api-cloud-gateway` and sibling platform ingress repositories `MAY` link a dependency application's assembly crate by convention: `sdkwork-<domain>-app-sdk` → repository `sdkwork-<domain>` → `crates/sdkwork-<domain>-gateway-assembly`. No extra fields in `dependency.composition.json` are required.
 - **Ordering.** When multiple route crates share a path prefix, assembly `MUST` order mounts using `gateway_route_manifest` `mountOrder` when present, otherwise lexicographic package name. Conflicts `MUST` fail validation instead of silently overriding handlers.
 - **Transitional legacy mounts.** Until every route crate exports `gateway_mount`, assembly `MAY` keep a checked-in `src/bootstrap.rs` with application-specific service wiring. Materialize `MUST` still regenerate manifest metadata and `Cargo.toml` route-crate dependencies from workspace discovery; validation `MUST` fail when discovered route crates are missing from `assembly-manifest.json`.
+- **Kernel-bridge composition (`sdkwork-agents`).** When a domain owns an operational kernel HTTP plane plus managed-store business routes, assembly `MAY` compose through `sdkwork-agents-kernel-bridge::build_agents_served_router` instead of per-crate `gateway_mount`. Route crates in `sdkwork-routes-agents-http-shared` are support crates, not mount surfaces. Validation `MAY` treat kernel-bridge bootstrap as an approved assembly path. The standalone gateway host `MUST` depend on `sdkwork-agents-gateway-assembly` and call `assemble_application_router`.
+- **Transitional split-surface binaries.** Legacy `*-app-api` / `*-backend-api` listener binaries `MUST` be removed during single-ingress migration (§5.6). Assembly validation and `gateway:assembly:*` scripts remain mandatory.
+- **No duplicate gateway host dependencies.** When `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` depends on `sdkwork-<application-code>-gateway-assembly`, it `MUST NOT` also depend on application-owned `sdkwork-routes-<application-code>-*` crates. Route crates belong in the assembly crate only. Host crates `MAY` still depend on platform adapters such as `sdkwork-routes-iam-*`, `sdkwork-routes-im-*` (IM host), or approved drive storage dispatch surfaces documented in ADR/platform ingress notes. Platform collapsed ingress `MAY` embed a dependency domain through `assemble_application_business_router` / `assemble_application_router` when the full assembly graph is compatible; partial managed-store surfaces (for example IM embedded agents app-api) `MAY` keep a single route-crate mount until kernel-bridge assembly is link-compatible on the host.
 
-Reference pilots: `sdkwork-im`, `sdkwork-drive`.
+#### 5.7.1 Infrastructure Route Composition (Normative)
 
-## 6. Repository Structure
+Infrastructure probes (`/healthz`, `/livez`, `/readyz`, `/metrics`) belong to the **HTTP listener**, not to individual route surfaces. See `HEALTH_CHECK_SPEC.md`.
+
+| Layer | Infra responsibility |
+| --- | --- |
+| Route crate | Export `gateway_mount_business` with business routes only |
+| Gateway assembly (≥2 surfaces) | Merge `gateway_mount_business` routers, then mount infra **once** |
+| `*-standalone-gateway` / `*-cloud-gateway` | Mount infra once when assembly does not (typical commerce pattern: `service_router(assembly.router, config)`) |
+| Platform ingress (`sdkwork-im-standalone-gateway`, `sdkwork-api-cloud-gateway`) | Process-level infra; embedded assemblies contribute readiness checks, not duplicate probe paths |
+
+Rules:
+
+- Assembly `MUST NOT` merge multiple full `gateway_mount` routers when any participating surface mounts infrastructure probes.
+- Assembly `MUST` use `sdkwork-web-bootstrap::assemble_multi_surface_router` or an approved domain equivalent when merging two or more surfaces.
+- Readiness checks from multiple surfaces `MUST` compose through `CompositeReadinessCheck` at the layer that owns `/readyz`.
+- Validation (`pnpm gateway:assembly:validate`) `MUST` fail when `src/bootstrap.rs` merges multiple `gateway_mount` calls and any route crate source mounts infrastructure routes.
+
+Reference pilots: `sdkwork-drive` (domain infra wrapper), `sdkwork-order` (listener-owned infra).
+
+#### 5.7.2 Platform Collapsed Ingress (Normative)
+
+When multiple domain HTTP planes share one bind (`sdkwork-im-standalone-gateway`, future unified platform hosts), route composition `MUST` follow the **business-only embed + host infra** pattern:
+
+```text
+sdkwork-im-standalone-gateway (one listener)
+  ├─ mount_<host>_infra_routes(process_config)     // exactly once at host root
+  ├─ iam_router
+  ├─ embedded_dependencies.router                  // business-only domain assemblies
+  ├─ embedded_application.router
+  └─ im_cloud_proxy_router
+```
+
+Rules:
+
+- Platform hosts `MUST NOT` merge domain assemblies that each mount `/healthz`, `/livez`, `/readyz`, or `/metrics`.
+- Embedded dependencies `MUST` call `assemble_application_business_router` (or equivalent business-only export) when the host owns process-level infrastructure probes.
+- Domain standalone gateways `MAY` mount infrastructure at the domain assembly or listener layer when they are the sole HTTP plane on the bind.
+- Host readiness `MUST` compose embedded dependency checks through `CompositeReadinessCheck`; embedded routers `MUST NOT` expose duplicate probe paths.
+- `sdkwork-api-cloud-gateway` split mode proxies upstream domain listeners that each expose their own probes. Embedded mode `MAY` link `sdkwork-<domain>-gateway-assembly` business routers through fallback delegation and mount platform infra once on the platform bind. See `sdkwork-api-cloud-gateway` `embedded_dependency_routes.rs`.
+
+#### 5.7.3 Business API Path Composition (Normative)
+
+Infrastructure paths and business API paths `MUST NOT` collide across merged routers on the same listener.
+
+| Path class | Canonical examples | Collision rule |
+| --- | --- | --- |
+| Infrastructure | `/healthz`, `/livez`, `/readyz`, `/metrics` | At most one handler per listener |
+| App API | `/app/v3/api/<domain>/*` | Unique per domain authority |
+| Backend API | `/backend/v3/api/<domain>/*` | Unique per domain authority |
+| Open API | `/open/v3/api/<domain>/*` or domain-specific open prefix | Unique per domain authority |
+| Admin API | `/admin/v3/api/*` | Unique per owning domain |
+
+Rules:
+
+- Route crates `MUST` declare canonical prefixes through route manifests (`gateway_route_manifest`, `APP_API_PREFIX`, `BACKEND_API_PREFIX`, `OPEN_API_PREFIX`).
+- Gateway assembly `MUST` order merges using `mountOrder` when manifests overlap in prefix specificity.
+- Validation `MUST` fail when two route crates in the same assembly register the same `(method, path)` unless an ADR documents intentional override.
+- Platform ingress `MUST NOT` register catch-all proxy routes ahead of embedded dependency routers when both could match the same business prefix.
+
+Verification: `pnpm gateway:route-composition:audit` (workspace) and `pnpm gateway:assembly:validate` (per repository).
+
 
 Application gateway crates `MUST` live under `crates/`:
 
@@ -226,7 +290,7 @@ sdkwork-api-cloud-gateway/
     sdkwork-api-cloud-gateway-config/
     sdkwork-api-cloud-gateway-registry/
     sdkwork-api-cloud-gateway-observability/
-    sdkwork-api-cloud-gateway-api-server/
+    sdkwork-api-cloud-gateway/          # listener bin: src/listener_main.rs
   specs/
   configs/
   deployments/
@@ -352,7 +416,7 @@ node tools/audit-single-http-ingress-workspace.mjs --workspace ..
 - [ ] Platform gateway uses `sdkwork-api-cloud-gateway`, not bare `sdkwork-api-cloud-gateway`.
 - [ ] Application gateway crates use `standalone` or `cloud` deployment qualifiers.
 - [ ] Gateway crates live under `crates/` with local `specs/component.spec.json`.
-- [ ] `api-server` and gateway responsibilities are not conflated.
+- [ ] Retired `*-api-server` listener crates are migrated to `*-standalone-gateway`.
 - [ ] Topology, env keys, orchestration, and dependency paths reference canonical crate and repository names.
 - [ ] Retired bare gateway names and `gateway:bundle:*` scripts are removed or migration-documented.
 - [ ] Standalone and cloud dev orchestration expose one HTTP bind per plane through gateway crates, not multiple `*-api` / `*-service-bin` listeners.

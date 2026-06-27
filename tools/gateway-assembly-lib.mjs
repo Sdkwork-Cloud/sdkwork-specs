@@ -8,10 +8,15 @@ import path from 'node:path';
 
 const ROUTE_CRATE_DIR_PATTERN = /^crates\/sdkwork-routes-([a-z0-9-]+)-/u;
 const GATEWAY_MOUNT_PATTERN = /pub\s+(?:async\s+)?fn\s+gateway_mount\b/u;
+const GATEWAY_MOUNT_BUSINESS_PATTERN = /pub\s+(?:async\s+)?fn\s+gateway_mount_business\b/u;
 const GATEWAY_MANIFEST_PATTERN =
   /pub\s+(?:async\s+)?fn\s+gateway_route_manifest\b|pub\s+const\s+GATEWAY_ROUTE_MANIFEST\b/u;
 const FORBIDDEN_GATEWAY_MERGE_PATTERN =
   /(?:router\s*=\s*router\s*\.merge\s*\(|\.merge\s*\()\s*(?:sdkwork_routes_|sdkwork-routes-)/u;
+const ROUTE_INFRA_MOUNT_PATTERN =
+  /mount_infra_routes\s*\(|mount_[a-z0-9_]+_infra_routes\s*\(|service_router\s*\(/u;
+const ASSEMBLY_MULTI_GATEWAY_MOUNT_PATTERN =
+  /router\s*=\s*router\s*\.merge\s*\(\s*sdkwork_routes_[a-z0-9_]+::gateway_mount\b/gu;
 
 export function readText(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -84,7 +89,10 @@ export function discoverRouteCrates(root, applicationCode) {
     const packageMatch = /^\s*name\s*=\s*"([^"]+)"/mu.exec(cargoToml);
     const packageName = packageMatch?.[1] ?? path.basename(memberDir);
     const libName = packageName.replace(/-/gu, '_');
-    const libRs = readText(path.join(crateRoot, 'src', 'lib.rs'));
+    const libRs = [
+      readText(path.join(crateRoot, 'src', 'lib.rs')),
+      readText(path.join(crateRoot, 'src', 'routes.rs')),
+    ].join('\n');
     const manifestRs = readText(path.join(crateRoot, 'src', 'manifest.rs'));
     const pathPrefix = extractPathPrefix(libRs, manifestRs);
     const surface = extractSurface(packageName);
@@ -95,7 +103,9 @@ export function discoverRouteCrates(root, applicationCode) {
       pathPrefix,
       surface,
       hasGatewayMount: GATEWAY_MOUNT_PATTERN.test(libRs),
+      hasGatewayMountBusiness: GATEWAY_MOUNT_BUSINESS_PATTERN.test(libRs),
       hasGatewayRouteManifest: GATEWAY_MANIFEST_PATTERN.test(libRs),
+      mountsInfrastructure: routeCrateMountsInfrastructure(root, memberDir),
     };
   });
 }
@@ -113,12 +123,25 @@ function extractSurface(packageName) {
   return 'unknown';
 }
 
+/** Support crates (manifests, web bootstrap) are not gateway mount surfaces. */
+export function isSupportRouteCrate(packageName) {
+  return /-(?:http-shared|shared|support)$/u.test(packageName);
+}
+
+export function assemblyMountRouteCrates(routeCrates) {
+  return routeCrates.filter((crate) => !isSupportRouteCrate(crate.packageName));
+}
+
 function extractPathPrefix(libRs, manifestRs) {
   const constMatch =
     /pub\s+const\s+(?:OPEN|APP|BACKEND)_API_PREFIX\s*:\s*&str\s*=\s*"([^"]+)"/u.exec(libRs) ??
     /pub\s+const\s+\w+_PREFIX\s*:\s*&str\s*=\s*"([^"]+)"/u.exec(libRs) ??
     /prefix\s*:\s*"([^"]+)"/u.exec(manifestRs);
   return constMatch?.[1] ?? null;
+}
+
+export function usesKernelBridgeAssembly(bootstrapSource) {
+  return /build_agents_served_router|sdkwork_agents_kernel_bridge/u.test(bootstrapSource);
 }
 
 export function buildAssemblyManifest(root, applicationCode, routeCrates) {
@@ -142,6 +165,47 @@ export function buildAssemblyManifest(root, applicationCode, routeCrates) {
   };
 }
 
+export function routeCratesUseDescriptorOnlyGatewayMount(root, applicationCode) {
+  const routeCrates = discoverRouteCrates(root, applicationCode);
+  if (routeCrates.length === 0) {
+    return false;
+  }
+  for (const crate of routeCrates) {
+    const libRs = readText(path.join(root, crate.memberDir, 'src', 'lib.rs'));
+    if (/pub fn gateway_mount\(\) -> (?:axum::)?Router/u.test(libRs)) {
+      return false;
+    }
+    if (/pub fn gateway_mount\(\)/u.test(libRs) && !/-> (?:axum::)?Router/u.test(libRs)) {
+      continue;
+    }
+    if (/gateway_mount_business\s*\(/u.test(libRs)) {
+      return false;
+    }
+  }
+  return routeCrates.length > 0;
+}
+
+export function isEdgeProxyStandaloneGateway(root, applicationCode) {
+  if (applicationCode !== 'clawrouter') {
+    return false;
+  }
+  const cargoPaths = [
+    path.join(root, 'crates', `sdkwork-${applicationCode}-standalone-gateway`, 'Cargo.toml'),
+    path.join(root, 'crates', `sdkwork-${applicationCode}-standalone-gateway-lib`, 'Cargo.toml'),
+    path.join(root, 'services', `sdkwork-${applicationCode}-standalone-gateway`, 'Cargo.toml'),
+  ];
+  for (const cargoPath of cargoPaths) {
+    if (!fs.existsSync(cargoPath)) {
+      continue;
+    }
+    const cargo = readText(cargoPath);
+    if (cargo.includes('sdkwork-clawrouter-cloud-gateway')) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function findGatewaySourceFiles(root, applicationCode) {
   const candidates = [
     path.join(root, 'crates', `sdkwork-${applicationCode}-standalone-gateway`, 'src'),
@@ -151,23 +215,85 @@ export function findGatewaySourceFiles(root, applicationCode) {
   ];
   const files = [];
   for (const dir of candidates) {
-    if (!fs.existsSync(dir)) {
-      continue;
-    }
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        for (const nested of fs.readdirSync(full)) {
-          if (nested.endsWith('.rs')) {
-            files.push(path.join(full, nested));
-          }
-        }
-      } else if (entry.name.endsWith('.rs')) {
-        files.push(full);
-      }
-    }
+    collectRustSourceFiles(dir, files);
   }
   return files;
+}
+
+function collectRustSourceFiles(dir, files) {
+  if (!fs.existsSync(dir)) {
+    return;
+  }
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      collectRustSourceFiles(full, files);
+    } else if (entry.name.endsWith('.rs')) {
+      files.push(full);
+    }
+  }
+}
+
+export function isApplicationOwnedRouteDep(depName, applicationCode) {
+  const normalized = depName.replace(/_/g, '-');
+  return new RegExp(`^sdkwork-routes-${applicationCode}-`, 'u').test(normalized);
+}
+
+export function isAllowedHostRouteDep(depName, applicationCode) {
+  const normalized = depName.replace(/_/g, '-');
+  if (normalized.startsWith('sdkwork-routes-iam-')) {
+    return true;
+  }
+  if (/-(?:support|http-shared)$/u.test(normalized)) {
+    return true;
+  }
+  if (applicationCode === 'im' && normalized.startsWith('sdkwork-routes-im-')) {
+    return true;
+  }
+  if (
+    applicationCode === 'drive'
+    && normalized === 'sdkwork-routes-storage-backend-api'
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function standaloneGatewayUsesSplitSurfaceBinsOnly(root, applicationCode) {
+  const cargoPath = path.join(root, 'crates', `sdkwork-${applicationCode}-standalone-gateway`, 'Cargo.toml');
+  if (!fs.existsSync(cargoPath)) {
+    const legacyPath = path.join(root, 'crates', `sdkwork-${applicationCode}-api-server`, 'Cargo.toml');
+    if (!fs.existsSync(legacyPath)) {
+      return false;
+    }
+    return splitSurfaceBinsInCargo(readText(legacyPath), applicationCode);
+  }
+  return splitSurfaceBinsInCargo(readText(cargoPath), applicationCode);
+}
+
+/** @deprecated use standaloneGatewayUsesSplitSurfaceBinsOnly */
+export function apiServerUsesSplitSurfaceBinsOnly(root, applicationCode) {
+  return standaloneGatewayUsesSplitSurfaceBinsOnly(root, applicationCode);
+}
+
+function splitSurfaceBinsInCargo(cargo, applicationCode) {
+  const binNames = [...cargo.matchAll(/\[\[bin\]\][\s\S]*?name\s*=\s*"([^"]+)"/gu)].map(
+    (match) => match[1],
+  );
+  if (binNames.length === 0) {
+    return false;
+  }
+  const hasUnifiedGateway = binNames.some(
+    (name) =>
+      name === `sdkwork-${applicationCode}-standalone-gateway` ||
+      name === `sdkwork-${applicationCode}-api-server`,
+  );
+  if (hasUnifiedGateway) {
+    return false;
+  }
+  const hasApp = binNames.some((name) => /-app-api$/u.test(name));
+  const hasBackend = binNames.some((name) => /-backend-api$/u.test(name));
+  return hasApp && hasBackend;
 }
 
 export function scanForbiddenGatewayMerges(gatewaySourceFiles, assemblyCrateDir) {
@@ -187,6 +313,70 @@ export function scanForbiddenGatewayMerges(gatewaySourceFiles, assemblyCrateDir)
 
 const ROUTE_BUILDER_PATTERN =
   /pub\s+(?:async\s+)?fn\s+build_[a-zA-Z0-9_]*router[a-zA-Z0-9_]*/u;
+
+export function routeCrateMountsInfrastructure(root, memberDir) {
+  for (const rel of ['src/lib.rs', 'src/routes.rs', 'src/health.rs', 'src/infra.rs']) {
+    const text = readText(path.join(root, memberDir, rel));
+    if (ROUTE_INFRA_MOUNT_PATTERN.test(text)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function parseGatewayMountBusinessSignature(libRs) {
+  const match = /pub\s+(async\s+)?fn\s+gateway_mount_business\s*\(([^)]*)\)/u.exec(libRs);
+  if (!match) {
+    return null;
+  }
+  return {
+    async: Boolean(match[1]),
+    params: match[2].trim(),
+    paramNames: match[2]
+      .trim()
+      .split(',')
+      .map((part) => part.trim().split(':')[0].trim())
+      .filter(Boolean),
+  };
+}
+
+export function discoverGatewayBusinessMounts(root, routeCrates) {
+  return routeCrates.map((crate) => {
+    const libRs = readText(path.join(root, crate.memberDir, 'src', 'lib.rs'));
+    const mount = parseGatewayMountBusinessSignature(libRs);
+    return { ...crate, mount };
+  });
+}
+
+export function scanAssemblyInfraMergeViolations(bootstrapSource, routeCrates) {
+  const errors = [];
+  const mountCalls = [...bootstrapSource.matchAll(ASSEMBLY_MULTI_GATEWAY_MOUNT_PATTERN)];
+  if (mountCalls.length < 2) {
+    return errors;
+  }
+  const infraSurfaces = routeCrates.filter((crate) => crate.mountsInfrastructure);
+  if (infraSurfaces.length === 0) {
+    return errors;
+  }
+  const usesBusinessMount = /gateway_mount_business\s*\(/u.test(bootstrapSource);
+  const mountsInfraOnce =
+    /assemble_multi_surface_router\s*\(/u.test(bootstrapSource)
+    || /mount_infra_routes\s*\(/u.test(bootstrapSource)
+    || /mount_[a-z0-9_]+_infra_routes\s*\(/u.test(bootstrapSource);
+  if (!usesBusinessMount) {
+    errors.push(
+      `assembly bootstrap merges ${mountCalls.length} gateway_mount surfaces while ${infraSurfaces
+        .map((crate) => crate.packageName)
+        .join(', ')} mount infrastructure; use gateway_mount_business`,
+    );
+  }
+  if (!mountsInfraOnce) {
+    errors.push(
+      'assembly bootstrap must mount infrastructure once via assemble_multi_surface_router or mount_*_infra_routes',
+    );
+  }
+  return errors;
+}
 
 export function routeCrateExpectsDelegatableMount(root, memberDir) {
   for (const rel of ['src/lib.rs', 'src/routes.rs', 'src/account_router.rs', 'src/app_catalog_router.rs']) {

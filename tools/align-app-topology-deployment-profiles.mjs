@@ -201,7 +201,7 @@ function ensureCloudGatewayComponent(spec) {
   if (spec.components.cloudGateway) return spec;
   const appSlug = (spec.appId ?? 'app').replace(/^sdkwork-/, '');
   spec.components.cloudGateway = {
-    crate: 'sdkwork-api-cloud-gateway-api-server',
+    crate: 'sdkwork-api-cloud-gateway',
     binary: 'sdkwork-api-cloud-gateway',
     repository: 'sdkwork-api-cloud-gateway',
     configGlob: `configs/sdkwork-api-cloud-gateway.${appSlug}.{profile}.toml`,
@@ -233,7 +233,7 @@ function cloneOrchestrationForCloud(spec, standaloneProfileId, cloudProfileId) {
   if (!hasPlatform) {
     processes.unshift({
       id: 'platform.api-gateway',
-      crate: 'sdkwork-api-cloud-gateway-api-server',
+      crate: 'sdkwork-api-cloud-gateway',
       binary: 'sdkwork-api-cloud-gateway',
       repository: 'sdkwork-api-cloud-gateway',
       required: false,
@@ -598,7 +598,7 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
     components: {
       applicationServer: { crate: api.crate, binary: api.binary },
       cloudGateway: {
-        crate: 'sdkwork-api-cloud-gateway-api-server',
+        crate: 'sdkwork-api-cloud-gateway',
         binary: 'sdkwork-api-cloud-gateway',
         repository: 'sdkwork-api-cloud-gateway',
         configGlob: `configs/sdkwork-api-cloud-gateway.${appSlug}.{profile}.toml`,
