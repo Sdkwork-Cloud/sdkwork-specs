@@ -1,7 +1,7 @@
 # Code Style Standard
 
-- Version: 1.0
-- Scope: cross-language code organization, module boundaries, public exports, generated code handling, errors, testing, and review expectations
+- Version: 1.1
+- Scope: cross-language code organization, module boundaries, public exports, generated code handling, errors, testing, build source integrity, and review expectations
 - Related: `SOUL.md`, `AGENTS_SPEC.md`, `NAMING_SPEC.md`, `RUST_CODE_SPEC.md`, `JAVA_CODE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, `FRONTEND_CODE_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines SDKWork rules that apply to all authored code. Language-specific standards are loaded only when that language is touched.
@@ -75,7 +75,65 @@ Rules:
 - Frontend/React/Flutter/UI changes load `FRONTEND_CODE_SPEC.md` and the relevant UI architecture spec.
 - Do not load unrelated language specs just because the repository is polyglot.
 
-## 7. Acceptance Checklist
+## 7. Build Source Integrity And Self-Healing
+
+SDKWork build scripts, dev runners, and dependency preparation tooling must be resilient to cache cleanup, `dist/` removal, `node_modules/` purges, and other reproducible-artifact deletion. A cache clean must never cause a build failure that requires manual intervention to recover from.
+
+### 7.1 Build-Critical Source Files
+
+Build-critical source files are git-tracked files that are statically imported or required by build configuration, but are not generated artifacts. Examples include:
+
+- Vite/webpack config helper modules imported at config load time (e.g., `build/package-contract.ts`).
+- TypeScript project references, path mappings, or barrel files consumed by `tsconfig.json`.
+- JSON contract files imported by build scripts (e.g., `build/generated-reference-contract.json`).
+- Rust `build.rs` helper modules or Cargo manifest fragments.
+
+Rules:
+
+- Build-critical source files are immutable source, not cacheable build artifacts.
+- `pnpm clean` and equivalent cleanup commands `MUST NOT` delete git-tracked build-critical source files.
+- `.gitignore` entries `MUST NOT` cover git-tracked build-critical source files.
+- Build-critical source files `SHOULD` live under version-controlled paths such as `build/`, `scripts/`, or `src/`, never under `dist/`, `node_modules/`, `.cache/`, or other ignored artifact directories.
+
+### 7.2 Pre-Build Verification
+
+Before attempting any build or dev-server start, build runners `MUST` verify that build-critical source files exist.
+
+Rules:
+
+- Verification `MUST` happen before invoking `vite build`, `tsc`, `cargo build`, or equivalent build commands.
+- Verification `SHOULD` check all files that the build configuration statically imports at load time.
+- When a file is missing, the runner `MUST` attempt self-healing before failing.
+- When self-healing fails, the error message `MUST` name the missing files and provide the exact recovery command.
+
+### 7.3 Self-Healing Pattern
+
+Build runners `SHOULD` implement self-healing for missing git-tracked source files:
+
+```text
+1. Detect missing build-critical source file(s).
+2. Attempt `git checkout HEAD -- <path>` to restore from the last commit.
+3. Re-verify that all required files exist.
+4. If restoration fails, fail with an actionable error message naming the files and recovery command.
+```
+
+Rules:
+
+- Self-healing `MUST` only restore git-tracked files. It `MUST NOT` generate, download, or fabricate source content.
+- Self-healing `MUST NOT` restore generated artifacts (e.g., `dist/`, generated SDK output). Those are rebuilt through the normal build pipeline.
+- Self-healing `MUST` be idempotent: running it when files are present is a no-op.
+- Self-healing `SHOULD` use `stdio: 'pipe'` or equivalent to suppress noisy git output during normal operation.
+
+### 7.4 Architecture Principles
+
+Build resilience follows the same architecture principles as authored code:
+
+- **High cohesion**: Source-file verification logic is encapsulated in a single function or module, not scattered across build steps.
+- **Low coupling**: Verification uses dependency-injected `fileExists` and `runProcess` hooks, not direct `fs` or `child_process` calls, so it remains testable in isolation.
+- **Robustness**: The build pipeline degrades gracefully — missing source files trigger self-healing, not an immediate crash with an opaque import error.
+- **Open-closed principle**: New build-critical source files are added to the verification list without modifying existing build logic. The verification check is extended, not the build command itself.
+
+## 8. Acceptance Checklist
 
 - [ ] Code follows `NAMING_SPEC.md`.
 - [ ] Public exports are explicit and stable.
@@ -84,4 +142,7 @@ Rules:
 - [ ] SDKWork SDK boundaries were not bypassed.
 - [ ] Relevant language-specific spec was consulted only when applicable.
 - [ ] Tests or documented verification cover the changed behavior.
+- [ ] Build scripts verify build-critical source files before invoking build commands.
+- [ ] Build runners self-heal missing git-tracked source files from `git checkout HEAD`.
+- [ ] `pnpm clean` does not delete git-tracked build-critical source files.
 

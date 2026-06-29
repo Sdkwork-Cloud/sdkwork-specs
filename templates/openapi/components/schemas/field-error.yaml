@@ -1,0 +1,17 @@
+FieldError:
+  type: object
+  additionalProperties: false
+  required: [field, message]
+  properties:
+    field:
+      type: string
+      description: JSON Pointer or dot-path to the invalid field, for example `/loginName` or `data.item.displayName`.
+    message:
+      type: string
+      description: Safe validation message for logs and optional UI display. MUST NOT reveal secrets or enumeration hints.
+    code:
+      type: integer
+      format: int32
+      minimum: 40011
+      maximum: 40099
+      description: Optional field-level validation subcode when ProblemDetail.code is 40001 VALIDATION_ERROR.

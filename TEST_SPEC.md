@@ -22,9 +22,9 @@ No standard is complete until it is executable.
 | Quality gates | Validate `QUALITY_GATE_SPEC.md`: Definition of Ready, Definition of Done, merge gate, release gate, exception gate, risk level, and evidence bundle completeness |
 | Release | Validate `RELEASE_SPEC.md`: version, artifacts, changelog, rollout, rollback, freeze, post-release evidence, and release gate satisfaction |
 | Migration | Validate `MIGRATION_SPEC.md`: migration plan, compatibility window, affected consumers, sequencing, rollback, data/contract/config/package coverage, and owner approval |
-| Dependency management | Validate `DEPENDENCY_MANAGEMENT_SPEC.md`: native build-tool dependency management, source/build dependency paths, release Git refs, stale dependency cleanup, cross-platform path separators, lockfiles or equivalent reproducibility evidence, dependency-owned SDK/API filtering, single-source-of-truth workspace declarations, `workspace:*` for pnpm, `{ workspace = true }` for Cargo, Flutter/Dart path centralization, and forbidden scattered sibling paths in member packages |
+| Dependency management | Validate `DEPENDENCY_MANAGEMENT_SPEC.md`: native build-tool dependency management, one repository-root workspace manifest per git repository, forbidden umbrella application workspaces at multi-repository checkout roots, package import closure, source/build dependency paths, release Git refs, stale dependency cleanup, cross-platform path separators, lockfiles or equivalent reproducibility evidence, dependency-owned SDK/API filtering, single-source-of-truth workspace declarations, `workspace:*` for pnpm, `{ workspace = true }` for Cargo, Flutter/Dart path centralization, and forbidden scattered sibling paths in member packages |
 | Supply chain security | Validate `SUPPLY_CHAIN_SECURITY_SPEC.md`: dependency integrity, build integrity, generator authority, SBOM, provenance, signing, checksums, attestations, and supply-chain exceptions |
-| API | OpenAPI validation, strict profile validation, request/response examples, Rust route crate naming and route-manifest aggregation checks |
+| API | OpenAPI validation, strict profile validation, `SdkWorkApiResponse` envelope validation (`check-api-response-envelope.mjs`), legacy envelope bootstrap (`align-openapi-response-envelope.mjs`, `align-openapi-response-envelope-workspace.mjs`), request/response examples, Rust route crate naming and route-manifest aggregation checks |
 | Web backend | Controller/router path checks, handler/service/repository boundary tests, typed request-context checks, transaction/idempotency tests, static scans for raw credential parsing |
 | RPC | Proto compile, proto lint, breaking-change check, service manifest, unary server/client smoke tests, generated cross-language client checks, RPC framework integration, discovery resolver integration, resilience profile checks |
 | Discovery | Registry upsert/renew/deregister, config publish/effective resolution, watch replay, permission enforcement, production config safety validation |
@@ -33,7 +33,7 @@ No standard is complete until it is executable.
 | Dependency API export | Validate dependency API export policy: `dependencyApiExports` defaults to no export, configured exports reference declared `sdkDependencies`, generated application-owned SDKs stay owner-only, and exported dependency capabilities live only in approved authored facades, service ports, dependency SDK injection, host adapters, or documentation-only surfaces |
 | Dependency API surface | Validate dependency SDK runtime composition: every `sdkDependencies` HTTP entry has a `dependencyApiSurfaces` runtime declaration, same-origin dependency SDK defaults have verified executable mount coverage, route metadata is not treated as an executable router, external dependency SDKs fail fast without explicit base URLs, and missing mounts/upstreams fail before `502` or `404` user requests |
 | Client architecture alignment | Validate `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`: package taxonomy, dependency direction, route identity, host adapter boundary, SDK/IAM/runtime composition, and cross-client workflow alignment |
-| Dependency composition | Validate `APP_DEPENDENCY_COMPOSITION_SPEC.md`: `specs/dependency.composition.json`, core-package composition layout, bootstrap SDK inventory derivation, frontend/backend dependency chains, and feature-package import boundaries |
+| Dependency composition | Validate `APP_COMPOSITION_SPEC.md`: core-package composition layout, bootstrap SDK inventory derivation, frontend/backend dependency chains, and feature-package import boundaries |
 | PC application architecture | Validate `APP_PC_ARCHITECTURE_SPEC.md`: application root layout, normalized `sdkwork-<application-code>-pc-*` package names, app/console/admin separation, shared renderer, desktop/tablet host placement, SDK/IAM boundaries |
 | H5 application architecture | Validate `APP_H5_ARCHITECTURE_SPEC.md`: `sdkwork-<application-code>-h5-*`, `sdkwork-<application-code>-h5-console-*`, and `sdkwork-<application-code>-h5-admin-*` package names, shared H5/Capacitor renderer, typed host adapters, SDK/IAM boundaries, mobile config, and release metadata |
 | Flutter app mobile architecture | Validate `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`: default, console, and admin Dart package naming, thin root `lib/`, generated Dart app/backend SDK boundary, platform adapters, route identity, and Flutter release metadata |
@@ -60,7 +60,8 @@ No standard is complete until it is executable.
 
 Rules:
 
-- Every API change `MUST` include a test that proves the OpenAPI contract can generate the intended SDK shape.
+- Every API change `MUST` include a test that proves the OpenAPI contract can generate the intended SDK shape and declares `SdkWorkApiResponse` success schemas plus `ProblemDetail` errors for L2+ `app-api`, `backend-api`, and SDKWork-owned business `open-api` surfaces. Vendor compatibility open-api operations declared with `x-sdkwork-wire-protocol: external` per `API_SPEC.md` section 4.5.2 are exempt from envelope checks but `MUST` still declare `x-sdkwork-external-protocol-id`.
+- `check-api-response-envelope.mjs` `MUST` scan open-api authority OpenAPI documents and fail when SDKWork-owned business open-api operations omit `SdkWorkApiResponse` or `ProblemDetail`, while skipping documents or operations marked `x-sdkwork-wire-protocol: external`.
 - Every Rust HTTP route crate change `MUST` include or update verification that the crate name,
   declared surface, mounted path prefix, route manifest, aggregated API authority, and generated SDK
   family mapping satisfy `API_SPEC.md`, `SDK_SPEC.md`, and `SDK_WORKSPACE_GENERATION_SPEC.md`.
@@ -576,8 +577,7 @@ Rules:
 
 - Controller/router tests `MUST` prove mounted paths, HTTP methods, class/module prefixes, and route
   manifests match the approved API surface and authority OpenAPI.
-- Handler tests `MUST` cover request decoding, response mapping, problem-detail mapping, typed
-  request context consumption, and the absence of raw credential parsing.
+- Handler tests `MUST` cover request decoding, `SdkWorkApiResponse` success mapping, problem-detail mapping, typed list/search input per section 14.1 for business open-api handlers, vendor adapter passthrough only for operations marked `x-sdkwork-wire-protocol: external`, request context consumption, and the absence of raw credential parsing.
 - Service/use-case tests `MUST` run without an HTTP server and cover business rules, authorization
   decisions, tenant/data-scope behavior, idempotency, transaction boundaries, events, cache
   invalidation, and provider adapter calls where relevant.
@@ -677,17 +677,16 @@ Rules:
 - Host adapter tests `MUST` prove feature packages depend on adapter contracts instead of platform globals or native plugin APIs.
 - SDK/IAM tests `MUST` prove bootstrap/core constructs SDK clients, binds the authenticated token manager, and injects SDK/service ports into feature packages.
 
-Dependency composition tests make `APP_DEPENDENCY_COMPOSITION_SPEC.md` executable across client application roots.
+Native composition tests make `APP_COMPOSITION_SPEC.md` executable across client application roots.
 
 Rules:
 
-- Client app roots `MUST` include `specs/dependency.composition.json` and set `specs/component.spec.json#contracts.dependencyComposition` to that path.
-- Dependency composition tests `MUST` prove every core package `sdkDependencies[]` entry appears in the matching manifest `surfaces[].sdkClients[]` workspace list and vice versa.
-- Dependency composition tests `MUST` prove backend SDK clients appear only under `backend-admin` surfaces.
+- Client app roots must expose composition metadata through `*-core/specs/component.spec.json#contracts.sdkDependencies` without a parallel dependency manifest file.
+- Composition tests `MUST` prove backend SDK clients appear only under `backend-admin` core packages.
 - Core package tests `MUST` prove `src/composition/` or `lib/composition/` exists and required public export subpaths are declared for TypeScript/React core packages.
-- Bootstrap tests `MUST` prove runtime SDK inventory is derived from the semantic manifest and core composition entry rather than a second handwritten inventory.
+- Bootstrap tests `MUST` prove runtime SDK inventory is derived from core `component.spec.json` and composition entry rather than a second handwritten inventory.
 - Feature package import tests `MUST` fail when capability packages import generated SDK packages or sibling capability private paths directly.
-- Workspace verification `MUST` include `node tools/check-dependency-composition.mjs --workspace ..`.
+- Workspace verification `MUST` include `node tools/verify-repo.mjs --root <repo-root>` and repo-root `pnpm-workspace.yaml` must be synchronized via `node tools/sync-workspace.mjs --repo <repo-name> --root <repo-root>`.
 
 ## 2.4.2 H5 Application Architecture Tests
 
@@ -1001,7 +1000,7 @@ Rules:
 - SDK workspace tests `MUST` verify authored API contracts under `apis/` trace to the materialized
   authority OpenAPI under the owning `sdks/` SDK family when `apis/` is used as the source contract
   location.
-- SDK workspace tests `MUST` verify route crate -> aggregated API authority -> generated SDK family mappings when Rust route crates participate in API generation, for example `sdkwork-routes-merchandise-app-api` -> `sdkwork-commerce-app-api` -> `sdkwork-commerce-app-sdk`.
+- SDK workspace tests `MUST` verify route crate -> aggregated API authority -> generated SDK family mappings when Rust route crates participate in API generation, for example `sdkwork-routes-merchandise-app-api` -> `sdkwork-commerce (deleted)-app-api` -> `sdkwork-commerce (deleted)-app-sdk`.
 - Observability tests `MUST` prove logs, metrics, traces, health checks, and
   dashboard projections use `deployment_profile` and exact
   `CONFIG_SPEC.md` `runtime_target` label values without introducing

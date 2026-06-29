@@ -10,6 +10,7 @@ import {
 const SKIP_DIR_NAMES = new Set([
   '.git',
   'node_modules',
+  '.pnpm-store',
   'target',
   'dist',
   'artifacts',
@@ -79,10 +80,8 @@ export function transformRouteCrateNamingText(content) {
   );
   out = out.replace(/sdkwork-routes-product-/gu, 'sdkwork-routes-merchandise-');
   out = out.replace(/routes-product-/gu, 'routes-merchandise-');
-  out = out.replace(
-    /router-([a-z0-9]+(?:-[a-z0-9]+)*)-(open-api|app-api|backend-api|internal-api|common|http-auth|http-shared|deploy-common)/giu,
-    'routes-$1-$2',
-  );
+  // Keep this scoped to sdkwork-router-* route crates only; a bare router- rule
+  // false-positives on product ids such as clawrouter-pc-commons.
   if (out.includes('sdkwork-router-mobile-react')) {
     out = out.split('sdkwork-router-mobile-react').join('sdkwork-shell-mobile-react');
   }
@@ -163,7 +162,12 @@ export function walkRepositoryFiles(repoRoot, files = []) {
       continue;
     }
     const full = path.join(repoRoot, name);
-    const stat = fs.statSync(full);
+    let stat;
+    try {
+      stat = fs.statSync(full);
+    } catch {
+      continue;
+    }
     if (stat.isDirectory()) {
       walkRepositoryFiles(full, files);
       continue;
@@ -183,7 +187,12 @@ export function collectLegacyDirectoryRenames(repoRoot) {
         continue;
       }
       const full = path.join(dir, name);
-      const stat = fs.statSync(full);
+      let stat;
+      try {
+        stat = fs.statSync(full);
+      } catch {
+        continue;
+      }
       if (!stat.isDirectory()) {
         continue;
       }

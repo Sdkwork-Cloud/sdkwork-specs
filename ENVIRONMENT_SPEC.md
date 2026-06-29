@@ -39,7 +39,7 @@ Environment configuration must satisfy these goals:
 | Runtime config file | Host-local TOML/YAML/JSON config file loaded at startup. TOML is preferred for SDKWork Rust services. |
 | Public runtime env | Browser-visible values served through a controlled endpoint such as `/runtime-env.js`. |
 | Secret | Password, token, signing key, webhook secret, API key, private connection string, or credential material. |
-| SDK surface | Generated SDK family or API surface, such as SDKWork open-api, app-api, backend-api, or an explicitly documented compatibility API such as OpenAI-compatible AI API. |
+| SDK surface | Generated SDK family or API surface, such as SDKWork business open-api, app-api, backend-api, or a vendor compatibility open-api surface declared with `x-sdkwork-wire-protocol: external` per `API_SPEC.md` section 4.5.2. |
 
 ## 3. Source Precedence
 
@@ -136,7 +136,7 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_<APPLICATION_CODE>_DESKTOP_CONFIG_FILE` | private | MAY | Explicit desktop/tablet user config file path. Defaults to the user-private SDKWork config path when absent. |
 | `SDKWORK_<APPLICATION_CODE>_SDK_BASE_URL` | private | SHOULD when multiple SDK surfaces share one gateway | Common SDK root used to derive SDKWork open-api, app-api, backend-api, and documented dependency SDK base URLs. It must be a deployment root, not a resolved surface URL such as `/v1` or `/backend/v3/api`. |
 | `SDKWORK_<APPLICATION_CODE>_API_BASE_URL` | private | MAY | Generic same-origin or service-side default API base URL. Prefer surface-specific variables for SDK client construction. |
-| `SDKWORK_<APPLICATION_CODE>_OPEN_API_BASE_URL` | private | MAY | Server/runtime SDKWork open-api or documented compatibility API base URL. Business open-api paths need not include `/open`; they are any approved non-app/non-backend prefix. |
+| `SDKWORK_<APPLICATION_CODE>_OPEN_API_BASE_URL` | private | MAY | Server/runtime SDKWork business open-api or vendor compatibility open-api base URL declared per `API_SPEC.md` section 4.5. Business open-api paths need not include `/open`; they are any approved non-app/non-backend prefix. |
 | `SDKWORK_<APPLICATION_CODE>_APP_API_BASE_URL` | private | SHOULD when app SDK is consumed | Server/runtime app-api SDK base URL, normally ending in `/app/v3/api` for SDKWork v3 app-api. |
 | `SDKWORK_<APPLICATION_CODE>_BACKEND_API_BASE_URL` | private | SHOULD when backend SDK is consumed | Server/runtime backend-api SDK base URL, normally ending in `/backend/v3/api` for SDKWork v3 backend-api. |
 | `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | private | MAY | Dependency open-api SDK base URL keyed by dependency SDK family/app code. |
@@ -334,7 +334,7 @@ Generated SDK bootstrap should require one common SDK root by default, then reso
 | --- | --- | --- | --- | --- |
 | Common SDK root | `SDKWORK_<APPLICATION_CODE>_SDK_BASE_URL` | `PORTAL_PUBLIC_SDK_BASE_URL` | `VITE_<APP_CODE>_SDK_BASE_URL` | Same-origin deployment root, for example `/` or a gateway origin. |
 | Public API reference / generic OpenAPI display | `SDKWORK_<APPLICATION_CODE>_API_BASE_URL` | `PORTAL_PUBLIC_API_BASE_URL` | `VITE_API_BASE_URL` | Same-origin API path, app-specific. |
-| SDKWork open-api SDK or documented OpenAI-compatible API | `SDKWORK_<APPLICATION_CODE>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_OPEN_API_BASE_URL` | Derived from the common SDK root plus the approved open-api prefix, or from the API reference base URL when documented. |
+| SDKWork business open-api SDK or vendor compatibility open-api surface | `SDKWORK_<APPLICATION_CODE>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_OPEN_API_BASE_URL` | Derived from the common SDK root plus the approved open-api prefix, or from the API reference base URL when documented. |
 | App/user SDK | `SDKWORK_<APPLICATION_CODE>_APP_API_BASE_URL` | `PORTAL_PUBLIC_APP_API_BASE_URL` | `VITE_<APP_CODE>_APP_API_BASE_URL` | Derived from the common SDK root plus `/app/v3/api` for SDKWork v3 app-api. |
 | `backend-admin` SDK | `SDKWORK_<APPLICATION_CODE>_BACKEND_API_BASE_URL` | `PORTAL_PUBLIC_BACKEND_API_BASE_URL` | `VITE_<APP_CODE>_BACKEND_API_BASE_URL` | Derived from the common SDK root plus `/backend/v3/api` for SDKWork v3 backend-api. |
 | Dependency open-api SDK | `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | Derived from the common SDK root only when the dependency surface is documented as served by that gateway; otherwise configure this override. |
@@ -343,7 +343,7 @@ Generated SDK bootstrap should require one common SDK root by default, then reso
 
 Rules:
 
-- SDKWork open-api SDK and documented compatibility API configuration must use `OPEN_API_BASE_URL` terminology. For SDKWork business open-api SDKs, the value `MUST` be that domain's approved non-app/non-backend prefix from `API_SPEC.md`, for example `/im/v3/api`; it does not imply a literal `/open` path segment. For explicitly documented OpenAI-compatible APIs, `/v1` remains valid as a protocol-compatibility prefix and must not be used as the default for new SDKWork-owned business open-api domains. `gateway` can remain an internal system id when the generated schema or UI already uses it, but environment names should describe the SDK surface.
+- SDKWork business open-api SDK and vendor compatibility open-api configuration must use `OPEN_API_BASE_URL` terminology. For SDKWork business open-api SDKs, the value `MUST` be that domain's approved non-app/non-backend prefix from `API_SPEC.md` section 4.5.1, for example `/im/v3/api`; it does not imply a literal `/open` path segment. Vendor compatibility prefixes such as `/v1` are valid only for operations declared with `x-sdkwork-wire-protocol: external` per section 4.5.2 and must not be used as the default for new SDKWork-owned business open-api domains. `gateway` can remain an internal system id when the generated schema or UI already uses it, but environment names should describe the SDK surface.
 - The common SDK root must not itself be a resolved surface URL such as `/v1`, `/app/v3/api`, or `/backend/v3/api`. A surface URL may be configured only through the matching surface or SDK-specific override.
 - App SDK and `backend-admin` SDK clients must receive explicit resolved base
   URLs after config resolution because they may terminate at different hosts in
@@ -622,7 +622,7 @@ command_timeout_ms = 1000
 pool_idle_timeout_seconds = 60
 
 [portal.public]
-# /v1 is valid here only for an explicitly documented OpenAI-compatible API.
+# /v1 is valid here only for vendor compatibility open-api declared with x-sdkwork-wire-protocol: external per API_SPEC.md section 4.5.2.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 api_base_url = "/v1"
 open_api_base_url = "/v1"
@@ -796,7 +796,7 @@ Required behavior:
 Recommended variables:
 
 ```text
-# /v1 is valid here only for an explicitly documented OpenAI-compatible API.
+# /v1 is valid here only for vendor compatibility open-api declared with x-sdkwork-wire-protocol: external per API_SPEC.md section 4.5.2.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
 PORTAL_PUBLIC_SDK_BASE_URL=/
@@ -1045,7 +1045,7 @@ SDKWORK_CLAW_APP_API_BIND=127.0.0.1:3903
 SDKWORK_CLAW_API_KEY_PEPPER=development-only-change-me
 SDKWORK_CLAW_TRUSTED_SUBJECT_SECRET=development-only-change-me
 SDKWORK_CLAW_APP_SESSION_SECRET=development-only-change-me
-# /v1 is valid here only for an explicitly documented OpenAI-compatible API.
+# /v1 is valid here only for vendor compatibility open-api declared with x-sdkwork-wire-protocol: external per API_SPEC.md section 4.5.2.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
 PORTAL_PUBLIC_OPEN_API_BASE_URL=/v1
@@ -1085,7 +1085,7 @@ SDKWORK_CLAW_REDIS_MAX_CONNECTIONS=4
 SDKWORK_CLAW_REDIS_CONNECT_TIMEOUT_MILLIS=2000
 SDKWORK_CLAW_REDIS_COMMAND_TIMEOUT_MILLIS=1000
 SDKWORK_CLAW_REDIS_POOL_IDLE_TIMEOUT_SECONDS=60
-# /v1 is valid here only for an explicitly documented OpenAI-compatible API.
+# /v1 is valid here only for vendor compatibility open-api declared with x-sdkwork-wire-protocol: external per API_SPEC.md section 4.5.2.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
 PORTAL_PUBLIC_OPEN_API_BASE_URL=/v1
@@ -1145,7 +1145,7 @@ SDKWORK_CLAW_SERVER_BIND=0.0.0.0:3900
 SDKWORK_CLAW_EDGE_SERVER=1
 SDKWORK_CLAW_EDGE_EXTERNAL_SCHEME=https
 SDKWORK_CLAW_EDGE_TRUST_FORWARDED_HEADERS=1
-# /v1 is valid here only for an explicitly documented OpenAI-compatible API.
+# /v1 is valid here only for vendor compatibility open-api declared with x-sdkwork-wire-protocol: external per API_SPEC.md section 4.5.2.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
 PORTAL_PUBLIC_OPEN_API_BASE_URL=/v1
@@ -1222,7 +1222,7 @@ SDKWORK_CLAW_RUNTIME_TARGET=container
 SDKWORK_CLAW_EDGE_GATEWAY_BASE_URL=http://gateway.internal:18080
 SDKWORK_CLAW_EDGE_APP_API_BASE_URL=http://app-api.internal:18082
 SDKWORK_CLAW_EDGE_BACKEND_API_BASE_URL=http://admin-api.internal:18081
-# /v1 is valid here only for an explicitly documented OpenAI-compatible API.
+# /v1 is valid here only for vendor compatibility open-api declared with x-sdkwork-wire-protocol: external per API_SPEC.md section 4.5.2.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
 PORTAL_PUBLIC_OPEN_API_BASE_URL=/v1
@@ -1230,7 +1230,7 @@ PORTAL_PUBLIC_APP_API_BASE_URL=/app/v3/api
 PORTAL_PUBLIC_BACKEND_API_BASE_URL=/backend/v3/api
 ```
 
-If a tenant exposes the documented OpenAI-compatible API from a different public host, `/v1` remains valid as the compatibility prefix:
+If a tenant exposes a vendor compatibility open-api surface from a different public host, `/v1` remains valid only when the operations declare `x-sdkwork-wire-protocol: external` per `API_SPEC.md` section 4.5.2:
 
 ```text
 PORTAL_PUBLIC_API_BASE_URL=https://docs-api.example.com/v1
@@ -1263,7 +1263,7 @@ Minimum release host contract for `sdkwork-clawrouter`:
 
 ```text
 SDKWORK_CLAW_POSTGRES_TEST_DATABASE_URL=postgres://user:password@host:5432/db
-# /v1 is valid here only for an explicitly documented OpenAI-compatible API.
+# /v1 is valid here only for vendor compatibility open-api declared with x-sdkwork-wire-protocol: external per API_SPEC.md section 4.5.2.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
 PORTAL_PUBLIC_OPEN_API_BASE_URL=/v1

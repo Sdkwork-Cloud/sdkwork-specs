@@ -91,6 +91,20 @@ Rules:
 - During migration, `AppRequestContext` may remain as a type alias for `WebRequestContext`, but new handlers, OpenAPI extensions, and documentation must use `WebRequestContext`.
 - Migration plans must name affected route crates, API servers, appbase adapters, and verification commands before removing legacy HTTP context crates.
 
+### 4.2 HTTP Response Envelope Migration
+
+Rules:
+
+- L2+ `app-api`, `backend-api`, and SDKWork-owned business `open-api` contracts `MUST` migrate to `SdkWorkApiResponse` success bodies and section 14 input rules per `API_SPEC.md` section 4.5 and section 15.
+- Vendor compatibility `open-api` operations that intentionally preserve upstream wire `MUST` declare `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id` per section 4.5.2 instead of being forced into `SdkWorkApiResponse`.
+- Legacy envelopes `PlusApiResult`, `AppbaseApiResult`, `StoreApiResult`, interim `SdkWorkResponse`, and per-domain `*ApiResult` `MUST` be removed from OpenAPI authorities, handlers, generated SDK types, frontend service parsers, and documentation during migration.
+- Wire field `requestId` `MUST` be renamed to `traceId` in success and error responses. New contracts `MUST NOT` declare `requestId`.
+- Success envelopes `MUST` add required numeric `code` with value `0` per §15.3. Error responses `MUST` use numeric non-zero `ProblemDetail.code`.
+- String wire codes such as `ok`, `validation_error`, or snake_case error names `MUST` be replaced with the numeric registry in §15.3 during migration.
+- Bare domain DTO success bodies and top-level `{ items, pageInfo, traceId }` list bodies `MUST` be wrapped into `SdkWorkApiResponse.data`.
+- HTTP 2xx responses that encode business failure through `success`, human `message`, or non-success `code` `MUST` be replaced with `ProblemDetail` and the correct HTTP error status.
+- Migration steps for each owning repository: update OpenAPI schemas, regenerate SDKs with `--standard-profile sdkwork-v3`, update framework response mapping, update frontend/backend services to generated unwrap behavior and typed `ProblemDetail.code`/`traceId`, and run `node <sdkwork-specs>/tools/check-api-response-envelope.mjs --workspace <workspace-root>`.
+
 ## 5. Data Migration
 
 Rules:
@@ -130,9 +144,9 @@ Public naming migrations for application identity and commerce capabilities foll
 | bare `<app>` path placeholder | `<application-code>` | `app` remains valid for `app-api`, `app.key`, app/user surface |
 | `product-specific`, `product-local`, `product-owned` | `application-specific`, `application-local`, `application-owned` | customization of one application line |
 | `product-prefix` / `product-prefixed` (pnpm) | `application-code-prefix` / `application-code-prefixed` | forbids `drive:dev`, not merchandise |
-| `sdkwork-commerce` monolith repository (T0 composition shell) | T1 capability repositories (`sdkwork-shop`, `sdkwork-order`, `sdkwork-payment`, `sdkwork-merchandise`, …) | migration-only; do not add route crates, `*-api-server` expansion, or `sdkwork-commerce-pc` packages in the monolith |
+| `sdkwork-commerce (deleted)` monolith repository (T0 composition shell) | T1 capability repositories (`sdkwork-shop`, `sdkwork-order`, `sdkwork-payment`, `sdkwork-merchandise`, …) | migration-only; do not add route crates, `*-api-server` expansion, or `sdkwork-commerce (deleted)-pc` packages in the monolith |
 | commerce capability `product` | `merchandise` | sibling of `catalog` and `shop`; see `DOMAIN_SPEC.md` §3.1 |
-| `sdkwork-commerce-product-service` | `sdkwork-commerce-merchandise-service` | domain service |
+| `sdkwork-commerce (deleted)-product-service` | `sdkwork-merchandise-service` | domain service |
 | `sdkwork-*-pc-product`, `sdkwork-*-h5-product` | `sdkwork-*-pc-merchandise`, etc. | client packages |
 | `@sdkwork/react-backend-product` | `@sdkwork/react-backend-merchandise` | backend UI |
 | `sdkwork-<application-code>-product` crate suffix | forbidden generic suffix | not a merchandise capability rename |

@@ -109,6 +109,17 @@
     ]
   },
   {
+    "repo": "sdkwork-customerservice",
+    "moduleId": "customerservice",
+    "serviceCode": "CUSTOMER_SERVICE",
+    "tablePrefix": "communication_",
+    "ownerTeam": "customerservice-platform",
+    "engines": ["postgres"],
+    "legacySqlGlobs": [
+      "database/ddl/baseline/postgres/0001_customerservice_baseline.sql"
+    ]
+  },
+  {
     "repo": "sdkwork-deployments",
     "moduleId": "deploy",
     "serviceCode": "DEPLOY",

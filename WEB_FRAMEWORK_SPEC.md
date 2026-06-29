@@ -148,7 +148,7 @@ Rules:
 
 - Surface classification `MUST` run in the framework pipeline before credential parsing.
 - Protected app-api and backend-api handlers `MUST` call `require_tenant_id()` and `require_app_id()` or an equivalent framework/profile guard before business logic that reads tenant-owned data.
-- Protected open-api handlers `MUST` consume framework-resolved tenant/app context from API key lookup, OAuth bearer lookup, or a documented compatibility contract. They `MUST NOT` parse credential headers directly.
+- Protected open-api handlers `MUST` consume framework-resolved tenant/app context from API key lookup, OAuth bearer lookup, or flexible open-api credential detection. Vendor compatibility routes declared under `API_SPEC.md` section 4.5.2 `MAY` use documented adapter context rules. They `MUST NOT` parse credential headers directly.
 - Open-api credential mode `MUST` be declared in the route manifest (`auth.mode`) and enforced before protected business logic runs.
 
 ### 6.1 Open-api Credential Modes
@@ -295,7 +295,9 @@ Rules:
 - Controllers `MUST` consume the typed context and `MUST NOT` reparse credential or tenant headers.
 - Java controller scan or route manifest tooling `MUST` emit `requestContext: WebRequestContext` and `apiSurface` metadata so materialized OpenAPI contains the same extensions as Rust routes.
 - Problem-detail mapping `MUST` remain centralized through framework exception handling or a shared response mapper.
-- Java and Rust implementations of the same `operationId` `MUST` preserve identical auth, tenant, request-context, and error semantics.
+- Success responses `MUST` be serialized as `SdkWorkApiResponse` from `API_SPEC.md` section 15 for SDKWork-owned business operations on `app-api`, `backend-api`, and business `open-api`. Vendor compatibility `open-api` operations declared with `x-sdkwork-wire-protocol: external` per section 4.5.2 `MAY` preserve upstream wire through documented adapter handlers instead of `SdkWorkApiResponse`. Framework response identity `MUST` inject server-owned `traceId` and success `code` into every JSON success body that uses the SDKWork envelope and `SHOULD` echo `traceId` through `X-SdkWork-Trace-Id`.
+- Handlers `MUST NOT` return legacy envelopes such as `PlusApiResult`, `AppbaseApiResult`, `StoreApiResult`, `SdkWorkResponse`, or per-domain `*ApiResult`. Business failures `MUST` map to `ProblemDetail`, not HTTP 2xx bodies with non-success `code`, `success`, or human `message`. Wire field `requestId` is forbidden.
+- Java and Rust implementations of the same `operationId` `MUST` preserve identical auth, tenant, request-context, success-envelope, and error semantics.
 
 ## 14. Verification
 

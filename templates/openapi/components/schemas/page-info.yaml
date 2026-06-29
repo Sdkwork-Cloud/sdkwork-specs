@@ -1,0 +1,35 @@
+PageInfo:
+  type: object
+  additionalProperties: false
+  required: [mode]
+  description: Pagination metadata for SdkWorkPageData. See API_SPEC.md §16.
+  properties:
+    mode:
+      type: string
+      enum: [offset, cursor]
+      description: Pagination mode used for this response.
+    page:
+      type: integer
+      minimum: 1
+      description: Current one-based page index when mode is offset.
+    pageSize:
+      type: integer
+      minimum: 1
+      maximum: 200
+      description: Effective page size for this response.
+    totalItems:
+      type: string
+      format: int64
+      pattern: "^[0-9]+$"
+      x-sdkwork-int64-string: true
+      description: Total rows matching the filter when mode is offset.
+    totalPages:
+      type: integer
+      minimum: 0
+      description: Total pages when mode is offset.
+    nextCursor:
+      type: [string, "null"]
+      description: Opaque next-page token when mode is cursor and hasMore is true.
+    hasMore:
+      type: boolean
+      description: Whether another page exists.

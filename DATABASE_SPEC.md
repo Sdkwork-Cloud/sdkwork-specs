@@ -2728,7 +2728,7 @@ SDKWORK_{SERVICE}_DATABASE_MAX_LIFETIME     # 连接最大生命周期（秒）
 | sdkwork-cms | `SDKWORK_CMS_` | `cms_` |
 | sdkwork-audio | `SDKWORK_AUDIO_` | `audio_` |
 | sdkwork-im | `SDKWORK_IM_` | `im_` |
-| sdkwork-commerce | `SDKWORK_COMMERCE_` | `commerce_` |
+| sdkwork-commerce (deleted) | `SDKWORK_COMMERCE_` | `commerce_` |
 | sdkwork-drive | `SDKWORK_DRIVE_` | `drive_` |
 | sdkwork-knowledgebase | `SDKWORK_KB_` | `kb_` |
 | sdkwork-clawrouter | `SDKWORK_CLAW_` | `claw_` |

@@ -1,0 +1,11 @@
+{
+  "pnpm": {
+    "packages": [
+      "../sdkwork-utils/packages/sdkwork-utils-typescript"
+    ]
+  },
+  "catalog": {
+    "@types/node": "^25.5.2",
+    "typescript": "~6.0.2"
+  }
+}

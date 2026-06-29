@@ -1,6 +1,6 @@
 # Internationalization Standard
 
-- Version: 1.1
+- Version: 1.2
 - Scope: user-facing UI text, validation messages, login/register/session flows, generated app copy, locale resources, accessibility text, and componentized reusable UI packages
 - Related: `FRONTEND_SPEC.md`, `MODULE_SPEC.md`, `IAM_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `NAMING_SPEC.md`, `DOMAIN_SPEC.md`
 
@@ -81,7 +81,7 @@ Rules:
 - `src/i18n/index.*`, `manifest.*`, app bootstrap locale registries, and platform resource aggregators `MUST` remain thin. They may export, register, or import fragments; they must not become the place where feature copy is authored.
 - A reusable package owns its own default fragments. Consuming applications may override those fragments during bootstrap or provider composition, but application-line overrides must keep the same fragment boundaries.
 - A fragment should normally map to one route/screen, dialog, form, table, or reusable component family. When a fragment starts mixing unrelated workflows, split it before adding more keys.
-- Authored catalog files should stay below 200 message keys or 500 lines. Exceeding either threshold requires a new fragment, a documented exception, or an approved generator-owned aggregate.
+- Catalog file size is a signal, not a hard limit. Follow the cohesion principle: if all messages in a catalog serve one feature/screen/workflow and change together, keep them together. If they represent unrelated concerns, split by responsibility.
 - Cross-client implementations of the same workflow should reuse stable key names, but each architecture keeps resources in its own package-local i18n boundary unless an approved non-UI i18n contract package is used.
 - Generated or build-time merged locale bundles must identify their source fragments and must not be hand-edited.
 - If a platform requires monolithic runtime resources, the monolith must be generated from package-local fragments and excluded from hand-authored review except for generated-artifact integrity checks.
@@ -126,7 +126,7 @@ Rules:
 
 Rules:
 
-- Auth errors should map backend problem details to safe translation keys.
+- Auth and API errors should map numeric `ProblemDetail.code` values to safe translation keys such as `errors.result.<code>` (for example `errors.result.40101`). Do not key i18n off string wire tokens such as `validation_error`.
 - Invalid password, invalid token, expired session, and insufficient permission messages must not reveal account enumeration hints.
 - MFA, QR login, passkey, OAuth, and verification-code flows must internationalize labels, help text, status, retry, and error states.
 - Sensitive action confirmation copy must be explicit about tenant, organization, or account scope when applicable.
@@ -152,7 +152,7 @@ Rules:
 - Auth forms should verify required labels, validation messages, and submit actions use translation keys or providers.
 - Static scans should reject hard-coded product names in shared appbase modules.
 - Accessibility names must be localized for icon-only or visually hidden controls.
-- Static scans should reject authored app-wide locale monoliths and catalog files that exceed the configured key or line threshold without an exception.
+- Static scans should reject authored app-wide locale monoliths and catalog files that mix unrelated concerns (low cohesion).
 - Fragment manifest or aggregation tests should verify every registered fragment has the same required keys for supported locales, unless the missing key is explicitly optional.
 
 ## 9. Acceptance Checklist

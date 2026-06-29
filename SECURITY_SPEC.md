@@ -10,7 +10,7 @@ Security is a cross-cutting requirement. It must be enforced by backend services
 
 Rules:
 
-- Protected HTTP APIs `MUST` use the authentication mode declared by their API surface. Protected app-api and backend-api operations require both `AuthToken` and `AccessToken`. Protected open-api operations require `api-key`, `oauth`, or `open-api-flexible` mode according to the route manifest unless an explicitly documented compatibility contract defines a different scheme.
+- Protected HTTP APIs `MUST` use the authentication mode declared by their API surface. Protected app-api and backend-api operations require both `AuthToken` and `AccessToken`. Protected open-api operations require `api-key`, `oauth`, or `open-api-flexible` mode according to the route manifest unless the route is a vendor compatibility API declared under `API_SPEC.md` section 4.5.2.
 - Protected RPC methods `MUST` require the equivalent `authorization` and `access-token` metadata unless the method is explicitly public or internal mTLS-only.
 - Application login/session integration, AuthGate behavior, generated SDK token wiring, logout clearing, and Rust AppContext validation `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - Public endpoints `MUST` explicitly declare `security: []`. Public endpoints generated into SDKs that must not receive stored user credentials `MUST` also declare `x-sdkwork-auth-mode: anonymous`, and generated SDKs `MUST` skip automatic credential injection for those operations.

@@ -39,10 +39,13 @@ Each authored `AGENTS.md` must include these sections, with local details filled
 ## Code Style Rules
 ## Build, Test, and Verification
 ## Agent Execution Rules
+## HTTP API Response Envelope
 ## Human Review Rules
 ```
 
 Sections may be brief, but they must be actionable and must use repository-relative paths.
+
+`## HTTP API Response Envelope` is mandatory for every repository or application root that owns, serves, generates, or consumes SDKWork HTTP `app-api`, `backend-api`, or SDKWork-owned business `open-api` contracts. Use `node ../sdkwork-specs/tools/align-agents-http-response-standard.mjs --workspace ..` to refresh the canonical section text from `API_SPEC.md` section 4.5 and sections 14–16. Do not paraphrase or weaken the input/output rules locally.
 
 ## 3. Relative Path Rules
 
@@ -105,6 +108,7 @@ Rules:
 | --- | --- |
 | Agent/workflow rules | `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md` |
 | Any code change | `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, plus only the touched language/framework spec |
+| Build scripts / dev runners / dependency preparation | `CODE_STYLE_SPEC.md` §7 (Build Source Integrity), `TYPESCRIPT_CODE_SPEC.md` §5 (Node Script Resilience), `PNPM_SCRIPT_SPEC.md` §11 (Clean Command Boundary) |
 | Rust code | `RUST_CODE_SPEC.md`, plus `RUST_RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, and `RPC_RESILIENCE_SPEC.md` when RPC is touched |
 | Java/Spring code | `JAVA_CODE_SPEC.md`, `WEB_BACKEND_SPEC.md` when HTTP backend code is touched, `RPC_FRAMEWORK_SPEC.md` when gRPC is touched |
 | TypeScript/Node code | `TYPESCRIPT_CODE_SPEC.md` |
@@ -170,6 +174,10 @@ Code changes require `../sdkwork-specs/CODE_STYLE_SPEC.md`, `../sdkwork-specs/NA
 ## Build, Test, and Verification
 
 Use this repository's package manifest scripts. Record commands and outputs.
+
+## HTTP API Response Envelope
+
+Follow `../sdkwork-specs/API_SPEC.md` §15. Success bodies use `SdkWorkApiResponse` with numeric `code` (`0`), `data`, and `traceId`; errors use `ProblemDetail` with numeric non-zero `code` and `traceId`. Run `node ../sdkwork-specs/tools/check-api-response-envelope.mjs` for the owning repo or workspace before completing API work.
 ```
 
 ## 8. Compatibility Shim Templates
@@ -209,6 +217,9 @@ Validation should check:
 - `AGENTS.md` does not retain "Existing Local Guidance" or legacy preserved
   rule blocks; durable local rules are moved to local specs or linked docs.
 - `AGENTS.md` does not duplicate root spec bodies or embed secrets.
+- `AGENTS.md` references `CODE_STYLE_SPEC.md` §7 build source integrity rules
+  when the repository owns build scripts, dev runners, or cross-repository
+  dependency preparation tooling.
 - When `docs/` is active, `AGENTS.md` and root `README.md` link to `docs/README.md`, `docs/product/prd/PRD.md`, and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 
 Application repositories may call the canonical validators with:

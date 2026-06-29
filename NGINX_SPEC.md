@@ -49,7 +49,7 @@ http://127.0.0.1:3900
 Rules:
 
 - The old sample upstream `http://127.0.0.1:8080` is obsolete.
-- The edge server owns the portal, OpenAI-compatible gateway API, backend/admin API, app API, OpenAPI documents, `/healthz`, and `/readyz`.
+- The edge server owns the portal, vendor compatibility open-api gateway surfaces (for example OpenAI `/v1/*` declared per `API_SPEC.md` section 4.5.2), business open-api, backend/admin API, app API, OpenAPI documents, `/healthz`, and `/readyz`.
 - The proxy must preserve `Host`, real client IP, `X-Forwarded-*`, and websocket upgrade headers.
 - Streaming and generation routes must not be broken by proxy buffering; generated configs set `proxy_buffering off` and use long read/send timeouts.
 - `client_max_body_size` must not be lower than the Claw Router upload body limits. The default generated value is `1100m`.

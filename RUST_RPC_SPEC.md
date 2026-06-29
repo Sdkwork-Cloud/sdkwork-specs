@@ -106,7 +106,7 @@ crates/sdkwork-iam-rpc-proto-rust/
   build.rs
   src/lib.rs
 
-crates/sdkwork-commerce-rpc-proto-rust/
+crates/sdkwork-commerce (deleted)-rpc-proto-rust/
   Cargo.toml
   build.rs
   src/lib.rs
@@ -151,7 +151,7 @@ crates/sdkwork-iam-rpc-rust/
   src/backend/
   tests/iam_rpc_contract.rs
 
-crates/sdkwork-commerce-rpc-rust/
+crates/sdkwork-commerce (deleted)-rpc-rust/
   Cargo.toml
   src/lib.rs
   src/server.rs
@@ -256,8 +256,8 @@ Rules:
 | `sdkwork-rpc-core-rust` | `sdkwork_rpc_core` | `sdkwork_rpc_core` |
 | `sdkwork-iam-rpc-proto-rust` | `sdkwork_iam_rpc_proto` | `sdkwork_iam_rpc_proto` |
 | `sdkwork-iam-rpc-rust` | `sdkwork_iam_rpc` | `sdkwork_iam_rpc` |
-| `sdkwork-commerce-rpc-proto-rust` | `sdkwork_commerce_rpc_proto` | `sdkwork_commerce_rpc_proto` |
-| `sdkwork-commerce-rpc-rust` | `sdkwork_commerce_rpc` | `sdkwork_commerce_rpc` |
+| `sdkwork-commerce (deleted)-rpc-proto-rust` | `sdkwork_commerce_rpc_proto` | `sdkwork_commerce_rpc_proto` |
+| `sdkwork-commerce (deleted)-rpc-rust` | `sdkwork_commerce_rpc` | `sdkwork_commerce_rpc` |
 
 Rules:
 
@@ -308,11 +308,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_client(true)
         .compile_protos(
             &[
-                "../../../../../common/commerce/sdkwork-commerce-rpc-contracts/proto/sdkwork/commerce/app/v3/checkout_service.proto",
+                "../../../../../common/commerce/sdkwork-commerce (deleted)-rpc-contracts/proto/sdkwork/commerce/app/v3/checkout_service.proto",
             ],
             &[
                 "../../../../../common/rpc/sdkwork-rpc-contracts/proto",
-                "../../../../../common/commerce/sdkwork-commerce-rpc-contracts/proto",
+                "../../../../../common/commerce/sdkwork-commerce (deleted)-rpc-contracts/proto",
             ],
         )?;
 
@@ -485,7 +485,7 @@ Example commands:
 
 ```text
 cargo test -p sdkwork-iam-rpc-rust
-cargo test -p sdkwork-commerce-rpc-rust
+cargo test -p sdkwork-commerce (deleted)-rpc-rust
 ```
 
 ## 14. Environment And Deployment

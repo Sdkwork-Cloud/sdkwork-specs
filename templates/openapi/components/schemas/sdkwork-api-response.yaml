@@ -1,0 +1,68 @@
+SdkWorkApiResponse:
+  type: object
+  additionalProperties: false
+  required: [code, data, traceId]
+  properties:
+    code:
+      type: integer
+      format: int32
+      description: Numeric success result code. MUST be 0 on HTTP 2xx. See API_SPEC.md §15.3.
+      enum: [0]
+      default: 0
+      minimum: 0
+      maximum: 0
+    data:
+      description: Operation-specific payload. Typed per operation through allOf or explicit schema refs.
+    traceId:
+      type: string
+      format: uuid
+      description: Server-owned request correlation id. Clients MUST NOT supply this value.
+
+SdkWorkResourceData:
+  type: object
+  additionalProperties: false
+  required: [item]
+  properties:
+    item:
+      description: Typed domain resource for the operation.
+
+SdkWorkPageData:
+  type: object
+  additionalProperties: false
+  required: [items, pageInfo]
+  properties:
+    items:
+      type: array
+      items: {}
+    pageInfo:
+      $ref: ./page-info.yaml#/PageInfo
+
+SdkWorkCommandData:
+  type: object
+  additionalProperties: false
+  required: [accepted]
+  properties:
+    accepted:
+      type: boolean
+      const: true
+    resourceId:
+      type: string
+    status:
+      type: string
+
+SdkWorkAsyncData:
+  type: object
+  additionalProperties: false
+  required: [accepted, operationId, status]
+  properties:
+    accepted:
+      type: boolean
+      const: true
+    operationId:
+      type: string
+    status:
+      type: string
+      enum: [pending, running, succeeded, failed, cancelled]
+    pollUrl:
+      type: string
+      format: uri-reference

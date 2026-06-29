@@ -273,14 +273,14 @@ Rules:
 Examples:
 
 ```text
-sdkwork-commerce-pc-merchandise
-sdkwork-commerce-pc-cart
-sdkwork-commerce-pc-orders
-sdkwork-commerce-pc-console-settings
-sdkwork-commerce-pc-console-settlements
-sdkwork-commerce-pc-admin-monitor
-sdkwork-commerce-pc-admin-inventory
-sdkwork-commerce-pc-desktop
+sdkwork-commerce (deleted)-pc-merchandise
+sdkwork-commerce (deleted)-pc-cart
+sdkwork-commerce (deleted)-pc-orders
+sdkwork-commerce (deleted)-pc-console-settings
+sdkwork-commerce (deleted)-pc-console-settlements
+sdkwork-commerce (deleted)-pc-admin-monitor
+sdkwork-commerce (deleted)-pc-admin-inventory
+sdkwork-commerce (deleted)-pc-desktop
 ```
 
 ### 3.1 Forbidden Anti-Patterns

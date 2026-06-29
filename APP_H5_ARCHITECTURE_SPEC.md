@@ -266,13 +266,13 @@ Rules:
 Examples:
 
 ```text
-sdkwork-commerce-h5-merchandise
-sdkwork-commerce-h5-cart
-sdkwork-commerce-h5-orders
-sdkwork-commerce-h5-console-settings
-sdkwork-commerce-h5-console-settlements
-sdkwork-commerce-h5-admin-monitor
-sdkwork-commerce-h5-capacitor
+sdkwork-commerce (deleted)-h5-merchandise
+sdkwork-commerce (deleted)-h5-cart
+sdkwork-commerce (deleted)-h5-orders
+sdkwork-commerce (deleted)-h5-console-settings
+sdkwork-commerce (deleted)-h5-console-settlements
+sdkwork-commerce (deleted)-h5-admin-monitor
+sdkwork-commerce (deleted)-h5-capacitor
 ```
 
 ## 4. App, Console, And Admin Surface Rules

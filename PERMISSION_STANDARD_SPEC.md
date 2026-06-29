@@ -98,7 +98,7 @@ Consumer applications compose dependency modules as building blocks. See `APP_PE
 
 Rules:
 
-- Consumers **inherit** dependency permission catalogs through `dependency.composition.json` `permissionComposition.moduleCatalogRefs[]`.
+- Consumers inherit dependency permission catalogs through app-surface `component.spec.json` `contracts.permissionComposition.moduleCatalogRefs[]`.
 - Consumers **must not** duplicate dependency permission code lists in local TypeScript/Rust constants or feature-package catalogs.
 - Consumers **may** declare application-owned permissions in their own `specs/iam.module.manifest.json`.
 - Explicit **overrides** (aliases, route hints, bootstrap supplements) must be listed in `permissionComposition`; hidden local overrides are forbidden.

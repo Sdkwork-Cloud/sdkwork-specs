@@ -1,8 +1,8 @@
 # SDKWork Dependency Management Standard
 
-- Version: 1.1
+- Version: 1.2
 - Scope: native build-tool dependency management, cross-repository source paths, release dependency refs, supply-chain evidence, and dependency-owned SDK/API boundaries
-- Related: `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APP_DEPENDENCY_COMPOSITION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 This standard defines how SDKWork repositories depend on other SDKWork repositories without creating a second SDKWork-specific dependency system. SDKWork dependency management is build-tool-first: pnpm, Cargo, Flutter/Dart, Gradle, Maven, Python, and other package managers remain the dependency authorities for their language and runtime. SDKWork standards add cross-repository consistency, SDK/API ownership, release refs, and supply-chain evidence only where native tools do not cover SDKWork semantics.
 
@@ -22,7 +22,7 @@ SDKWork distinguishes these dependency concerns:
 | Language/package dependency | Packages, crates, modules, SDK packages, generated client packages, and shared build inputs consumed by code | Native build-tool files such as `pnpm-workspace.yaml`, root `package.json`, `Cargo.toml`, `pubspec.yaml`, `settings.gradle.kts`, `libs.versions.toml`, parent `pom.xml`, `pyproject.toml`, and lockfiles |
 | SDKWork release dependency | Git repository and ref that must be checked out or otherwise resolved for packaging, release, or reproducible CI | `sdkwork.workflow.json` and the reusable SDKWork workflow framework |
 | SDKWork verification dependency | Git repository and ref that must be checked out only for CI, migration, or boundary verification and is not consumed by runtime, package, API, SDK, or release artifacts | `sdkwork.workflow.json` `verificationDependencies[]` and the reusable SDKWork workflow framework |
-| SDK/API ownership dependency | Dependency-owned APIs, SDK families, and composed wrappers consumed by an app | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_DEPENDENCY_COMPOSITION_SPEC.md`, SDK assembly metadata, and component specs |
+| SDK/API ownership dependency | Dependency-owned APIs, SDK families, and composed wrappers consumed by an app | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, SDK assembly metadata, and component specs |
 | Runtime SDK dependency surface | Base URLs, credential modes, same-origin mount proof, and SDK client bootstrap for dependency SDKs | `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md` |
 | Runtime install path | Deployed binary, config, cache, database, service, or user-state path | `DEPLOYMENT_SPEC.md`, install package plans, runtime config |
 | Documentation placeholder | Portable examples that describe a path without binding to a machine | `DOCUMENTATION_SPEC.md` |
@@ -34,18 +34,80 @@ Rules:
 - JSON, YAML, TOML, package manifests, workspace manifests, and SDKWork config files `MUST` use POSIX-style `/` separators for source/build paths unless a native tool format requires otherwise.
 - Runtime install paths may be OS-specific when they are the actual target system contract, for example `/etc/sdkwork/...`, `/var/lib/sdkwork/...`, `%ProgramFiles%/...`, or `%USERPROFILE%/...`; they must not be reused as source dependency paths.
 - Documentation `MUST` use placeholders such as `<workspace-root>`, `<repository-root>`, `<application-root>`, `<release-root>`, and `<dependency-id>` when describing variable local or release paths.
-- Client application roots `MUST` declare semantic dependency composition in `specs/dependency.composition.json` per `APP_DEPENDENCY_COMPOSITION_SPEC.md`. That manifest references native package names/coordinates only; it does not replace L0 workspace path authority.
+- Client application roots must express runtime composition semantics through existing manifests (`component.spec.json`, `sdkwork.app.config.json`) and must not introduce a parallel dependency manifest.
 
-## 1.1 Semantic Dependency Composition Bridge
+## 1.1 Native Composition Bridge
 
-L0 native build-tool files remain the only authority for source paths and versions. L1 semantic manifests describe what those packages mean to the application.
+L0 native build-tool files remain the only authority for source paths and versions. Runtime composition meaning is declared in component and app manifests, not in a separate dependency manifest.
 
 Rules:
 
-- `specs/dependency.composition.json` `MUST` list consumed packages through `buildToolEntries` using native package names or coordinates, not duplicated sibling path strings.
-- Every `buildToolEntries.pnpm.workspacePackages[]` entry `MUST` resolve to a package declared in the repository's root `pnpm-workspace.yaml` `packages:` list or to a workspace member package name.
-- Core packages `MUST` expose the library dependency import entry defined by `APP_DEPENDENCY_COMPOSITION_SPEC.md`. Feature packages `MUST NOT` import L0 SDK packages directly when a core composition entry exists.
-- Align and verify with `node tools/align-dependency-composition.mjs --workspace ..` and `node tools/check-dependency-composition.mjs --workspace ..`.
+- `pnpm-workspace.yaml`/Cargo workspace entries are the only machine authority for source dependency paths.
+- Core packages must expose the library dependency import entry defined by `APP_COMPOSITION_SPEC.md`. Feature packages must not import L0 SDK packages directly when a core composition entry exists.
+- Verify with centralized composition checks in `verify-repo.mjs` (workspace, imports, package exports, sdk-dependencies, permission-composition, sdk-closure).
+
+## 1.2 Per-Repository Workspace Authority
+
+Each SDKWork git repository `MUST` own its native build-tool workspace at the repository root. A multi-repository checkout directory such as `sdkwork-space/` is a sibling checkout root and governance container; it is **not** an application workspace authority.
+
+Rules:
+
+- Every SDKWork git repository `MUST` have exactly one repository-root `pnpm-workspace.yaml` when the repository contains TypeScript/React packages, and exactly one repository-root `Cargo.toml` workspace when the repository contains Rust crates.
+- Nested `apps/**/pnpm-workspace.yaml` files are forbidden.
+- Application development, installation, lockfile updates, and package resolution `MUST` run from the target git repository root, for example `cd sdkwork-im && pnpm install && pnpm dev`.
+- A multi-repository checkout root `MUST NOT` declare application packages from child git repositories in its own `pnpm-workspace.yaml`. Umbrella workspaces that list `sdkwork-im/packages/*`, `sdkwork-mail/packages/*`, or equivalent cross-repository application members are forbidden.
+- Sibling SDKWork source paths `MUST` be declared in the **consuming** repository's workspace root through `pnpm-workspace.yaml packages:`, root `Cargo.toml [workspace.dependencies]`, or root `pubspec.yaml dependency_overrides`.
+- Machine-readable sibling overlays live in `sdkwork-specs/workspace/consumers/<repo>.json` and are materialized by `sdkwork-specs/tools/sync-workspace.mjs` into the consuming repository root. The overlay is input; the repository-root native manifest is authority.
+- Each repository `MUST` keep its own lockfile (`pnpm-lock.yaml`, `Cargo.lock`, `pubspec.lock`, or equivalent). Lockfiles are not shared across git repositories.
+- Release and CI `MUST` checkout sibling repositories to the relative paths expected by the consuming repository root workspace and must not require rewriting member `package.json` files.
+
+Recommended layout:
+
+```text
+<multi-repo-checkout-root>/
+  configs/dependency-catalog.yaml          # governance: third-party version authority
+  sdkwork-specs/workspace/consumers/       # governance: sibling overlay inputs
+  sdkwork-im/                              # git repository root = workspace authority
+    pnpm-workspace.yaml
+    pnpm-lock.yaml
+  sdkwork-knowledgebase/
+    pnpm-workspace.yaml
+    pnpm-lock.yaml
+```
+
+## 1.3 Package Import Closure
+
+Workspace membership alone does not declare npm, crate, or Dart package dependencies. Every workspace member `MUST` declare the dependencies its source code imports.
+
+Rules:
+
+- Every non-relative import in a workspace member `MUST` resolve to a `dependencies`, `devDependencies`, or `peerDependencies` entry in that member's native package manifest, or to a `{ workspace = true }` / `workspace:*` entry whose target member already declares the dependency.
+- Application-root `package.json` hoisting `MUST NOT` be the only declaration point for a workspace member's direct third-party imports. Member packages must remain installable when consumed as sibling workspace packages from another repository.
+- `peerDependencies` `SHOULD` be used for singleton runtime packages provided by the app shell, such as `react`, `react-dom`, `react-i18next`, and `i18next`.
+- Third-party versions `SHOULD` use `catalog:` when the repository-root `pnpm-workspace.yaml` defines the package in `catalog:` synced from `configs/dependency-catalog.yaml`.
+- Cross-repository source consumption through Vite aliases, Tailwind `@source`, or TypeScript path mappings `MUST` preserve import closure: either the scanned package self-declares its npm dependencies, or the consuming repository declares the full transitive npm closure needed to compile the scanned source.
+- Forbidden consumption patterns:
+  - `import ... from '../../other-package/src/...'` across package boundaries
+  - `link:` or `file:` for SDKWork sibling packages
+  - consumer Vite alias to sibling internal source paths except approved bootstrap/SDK generation entrypoints documented in the repository README or component spec
+
+Verification:
+
+```bash
+node sdkwork-specs/tools/verify-repo.mjs --root <repository-root>
+node sdkwork-specs/tools/check-workspace-dependencies.mjs --target <repo-name>
+```
+
+## 1.4 Governance Catalog Sync
+
+Third-party dependency versions are governed centrally and inherited per repository.
+
+Rules:
+
+- `configs/dependency-catalog.yaml` at the multi-repository checkout root is the version authority for shared third-party packages.
+- Each repository-root `pnpm-workspace.yaml catalog:` section `MUST` be synced from the governance catalog through `tools/sync-workspace-catalog.mjs` or an equivalent repository-local command documented in the repository README. Sync merges governance versions into the repository catalog; repository-local entries are preserved unless the same key exists in the governance catalog.
+- Repository maintainers `MUST NOT` hand-edit divergent catalog versions for packages already governed by the central catalog unless the repository documents an approved exception.
+- Governance tooling at the multi-repository checkout root may sweep and validate child repositories, but must not become the install/build entrypoint for application packages.
 
 ## 2. Native Build-Tool Dependency Authorities
 
@@ -312,7 +374,7 @@ Rules:
   by convention without new composition JSON fields:
   `sdkwork-<domain>-app-sdk` consumer → repository `sdkwork-<domain>` →
   `crates/sdkwork-<domain>-gateway-assembly`. Cargo path dependencies and workspace membership
-  remain the linkage authority; `dependency.composition.json` `MUST NOT` gain `integrationMode`,
+  remain the linkage authority; component/app manifests must not gain duplicate `integrationMode`,
   `applicationBundle`, or `httpPlane` fields for this purpose.
 - Application gateway assembly crates `MUST NOT` duplicate SDK dependency catalogs already expressed in
   `sdkwork.app.config.json` `sdkDependencies` or Cargo `[workspace.dependencies]`. Assembly only
@@ -394,10 +456,22 @@ Rules:
 - Gateway integration tests `MUST` verify that foundation API Cargo features resolve through
   `cargo metadata`, that enabled embedded surfaces have public executable exports, and that no
   standalone gateway catalog is required to reconstruct dependency source/build facts.
+- Workspace verification `MUST` fail when a multi-repository checkout root declares application
+  packages from child git repositories in its own `pnpm-workspace.yaml`.
+- Import-closure verification `MUST` fail when a workspace member source file imports a non-relative
+  package that is not declared in that member's native package manifest.
+- Repositories `MAY` enable import-closure enforcement incrementally with
+  `node sdkwork-specs/tools/verify-repo.mjs --root <repo> --strict-import-closure` until all members
+  are aligned; default `verify-repo` always enforces cross-package relative import boundaries.
+- Cross-repository consumption verification `MUST` fail on feature-package imports that bypass package
+  `exports` through relative `src/` paths or non-bootstrap Vite aliases.
 
 ## 9. Acceptance Checklist
 
 - [ ] Dependencies are managed through native build-tool files instead of a parallel SDKWork dependency system.
+- [ ] Each git repository owns exactly one repository-root workspace manifest and its own lockfile.
+- [ ] Multi-repository checkout roots do not declare child application packages in an umbrella `pnpm-workspace.yaml`.
+- [ ] Every workspace member declares direct non-relative imports in its native package manifest.
 - [ ] pnpm: every SDKWork cross-workspace source is declared exactly once in `pnpm-workspace.yaml packages:`; member `package.json` files use `workspace:*` only.
 - [ ] Cargo: every SDKWork cross-workspace source is declared exactly once in root `Cargo.toml [workspace.dependencies]`; member crates use `{ workspace = true }` only.
 - [ ] Flutter/Dart: every SDKWork cross-workspace source is declared exactly once at the workspace root or app entry; member packages consume by package name.

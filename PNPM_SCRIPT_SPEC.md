@@ -58,7 +58,7 @@ Meanings:
 | `test` | Run the default stable test subset for the repository |
 | `check` | Run static standards, generated-artifact, dependency, config, or policy checks without packaging a release |
 | `verify` | Run the merge-ready verification aggregate for the repository |
-| `clean` | Remove reproducible local build/test artifacts without deleting source, checked-in config, secrets, databases, or user-private runtime files |
+| `clean` | Remove reproducible local build/test artifacts (`dist/`, `.runtime/dev-sites/`, cache directories) without deleting git-tracked source files, build-critical source contracts (see `CODE_STYLE_SPEC.md` §7), checked-in config, secrets, databases, or user-private runtime files |
 
 When the capability exists, the repository root `MUST` expose the matching command family:
 
@@ -413,7 +413,29 @@ pnpm script validation `MUST` check:
 
 Validation SHOULD provide a migration suggestion for every rejected script name.
 
-## 11. Acceptance Checklist
+## 11. Clean Command Boundary
+
+The `pnpm clean` command removes reproducible local artifacts. It `MUST NOT` delete:
+
+- Git-tracked source files of any kind.
+- Build-critical source files as defined in `CODE_STYLE_SPEC.md` §7.1 (e.g., `build/package-contract.ts`, config helper modules imported by `vite.config.ts` or `tsconfig.json`).
+- Checked-in config, manifests, specs, or documentation.
+- Secrets, databases, or user-private runtime files governed by `RUNTIME_DIRECTORY_SPEC.md`.
+
+Allowed deletion targets:
+
+- `dist/` directories (build output).
+- `.runtime/dev-sites/` and similar transient dev-server state.
+- `node_modules/.cache/`, `node_modules/.vite/`, and similar tool caches.
+- `.runtime/cargo-target/` and similar build caches when explicitly scoped.
+
+Rules:
+
+- `clean` scripts `MUST` enumerate the exact paths they delete. Glob-based deletion `MUST NOT` match git-tracked paths.
+- When `clean` deletes a directory, it `MUST NOT` use patterns that could match a `build/` directory containing git-tracked source files.
+- Build runners invoked after `clean` `MUST` be able to recover without manual intervention through the self-healing pattern in `CODE_STYLE_SPEC.md` §7.3.
+
+## 12. Acceptance Checklist
 
 - [ ] Repository root exposes `dev`, `build`, `test`, `check`, `verify`, and `clean`.
 - [ ] Capability-specific root commands exist for release, deploy, API, SDK, database, gateway, topology, and supply-chain workflows when those capabilities exist.
@@ -426,4 +448,5 @@ Validation SHOULD provide a migration suggestion for every rejected script name.
 - [ ] Gateway commands use `gateway:<action>[:deploymentProfile]`.
 - [ ] Root public scripts call a standard dispatcher or thin wrapper.
 - [ ] App surface/package scripts remain package-local and do not become a second root automation standard.
+- [ ] `pnpm clean` does not delete git-tracked build-critical source files (see `CODE_STYLE_SPEC.md` §7).
 - [ ] `README.md`, related architecture specs, and `TEST_SPEC.md` reference this standard.

@@ -652,6 +652,18 @@ Rules:
 - Local development resolves these paths from sibling checkouts. Release/CI resolves them from the framework checkout (see `DEPENDENCY_MANAGEMENT_SPEC.md` §5) without changing consumer `package.json` / `Cargo.toml` files.
 - The layout `SHOULD` be documented in the application root `README.md` and `sdkwork.app.config.json` when present, listing the expected sibling SDKWork repositories.
 
+## 5.2 Multi-Repository Checkout Root vs Repository Workspace
+
+SDKWork commonly uses a sibling checkout layout where many git repositories live under one local directory such as `sdkwork-space/`. That checkout root is not a substitute for repository workspaces.
+
+Rules:
+
+- `<multi-repo-checkout-root>/` `MAY` host governance files such as `configs/dependency-catalog.yaml`, shared verification scripts, and `sdkwork-specs/`.
+- `<multi-repo-checkout-root>/pnpm-workspace.yaml` `MUST NOT` enumerate application packages from child git repositories. If present, it `MUST` contain only governance/tooling packages local to the checkout root, or an empty `packages:` list.
+- Developers `MUST` run install, dev, build, test, and verify commands from the target git repository root unless a documented governance script explicitly says otherwise.
+- Each child git repository `MUST` remain independently cloneable and buildable with its own repository-root workspace manifest and lockfile.
+- Sibling source paths `MUST` be declared in the consuming repository root, not in the checkout root.
+
 ## 6. Source Control And Security
 
 Rules:

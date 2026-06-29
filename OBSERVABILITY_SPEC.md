@@ -23,7 +23,8 @@ Rules:
 Rules:
 
 - Logs `MUST` be structured in production services.
-- Log fields `SHOULD` include timestamp, level, service, environment, traceId, requestId, operationId, route, API surface, interceptor stage, auth mode, status, duration, and safe tenant context.
+- Log fields `SHOULD` include timestamp, level, service, environment, traceId, operationId, route, API surface, interceptor stage, auth mode, status, duration, and safe tenant context.
+- HTTP access logs and structured application logs `MUST` use `traceId` from `SdkWorkApiResponse` or `ProblemDetail`. Legacy wire field `requestId` `MUST NOT` be emitted in new logging fields.
 - RPC logs `SHOULD` include proto package, service, method, operationId, gRPC status code, deadline, duration, and safe tenant context.
 - Logs `MUST NOT` include raw tokens, API keys, access tokens, passwords, verification codes, secrets, private keys, or full sensitive payloads.
 - API key logs may include key id, safe key prefix, source, and status only after server-side validation.

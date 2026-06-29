@@ -366,8 +366,8 @@ These names have different meanings:
 - `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, `sdkwork-<domain>-backend-api`, and `sdkwork-<domain>-internal-api` are never SDK family names.
 - The SDK family generated from an `open-api` authority is `sdkwork-<domain>-sdk`, not `sdkwork-<domain>-open-api` and not `sdkwork-<domain>-open-sdk`.
 - `sdkwork-routes-merchandise-app-api` means merchandise-related app-api route/path configuration. It does not mean the merchandise SDK, and it does not mean the final app-api authority for the whole project.
-- `sdkwork-commerce-app-api` means the aggregated commerce app-api authority. It may aggregate multiple commerce-owned route crates such as `sdkwork-routes-merchandise-app-api`, `sdkwork-routes-cart-app-api`, and `sdkwork-routes-order-app-api`.
-- `sdkwork-commerce-app-sdk` means the generated SDK family produced from `sdkwork-commerce-app-api`.
+- `sdkwork-commerce (deleted)-app-api` means the aggregated commerce app-api authority. It may aggregate multiple commerce-owned route crates such as `sdkwork-routes-merchandise-app-api`, `sdkwork-routes-cart-app-api`, and `sdkwork-routes-order-app-api`.
+- `sdkwork-commerce (deleted)-app-sdk` means the generated SDK family produced from `sdkwork-commerce (deleted)-app-api`.
 
 | Surface | Package pattern |
 | --- | --- |
@@ -493,7 +493,7 @@ Rules:
 - Reusable auth UI/service packages `MUST` expose `commitSession(session, options?)`, not `persistSession`. The session passed to `commitSession` `MUST` already be normalized and merged according to the refresh-token continuation rules. `commitSession(session, { preserveRefreshToken: true })` is reserved for current-session bootstrap/update, refresh continuation, and equivalent restoration flows.
 - `commitSession` `MUST` be awaited before login/session APIs resolve. If a custom committer returns a session, that normalized committed value is the authoritative service return; if it returns `void`, the runtime reports the standard committed session it computed before calling the committer.
 - Current user self-service `MUST` use generated appbase app SDK resources under `appbaseApp.iam.users.current.*`. Legacy `user.getUserProfile`, `user.updateUserProfile`, `user.changePassword`, and application-local user-center clients are forbidden SDK integration inputs.
-- IAM SDK adapters may unwrap SDK response envelopes and normalize generated path-parameter call shapes, but they `MUST NOT` map legacy aliases such as `auth.login`, `auth.refreshToken`, `auth.register`, `auth.getOauthUrl`, `auth.createSession`, `auth.createSendSmsCode`, top-level `user.*`, or app-local user-center methods into appbase app SDK ports.
+- IAM SDK adapters may normalize generated path-parameter call shapes when required by generator ergonomics, but they `MUST NOT` reintroduce legacy envelopes, map legacy aliases such as `auth.login`, `auth.refreshToken`, `auth.register`, `auth.getOauthUrl`, `auth.createSession`, `auth.createSendSmsCode`, top-level `user.*`, or app-local user-center methods into appbase app SDK ports.
 - Logout and refresh failure `MUST` clear the global token manager, central session store, context store, realtime/session bridges, sensitive caches, and UI/controller authenticated state through finally-owned clearing paths.
 - Direct setters such as `setAuthToken` or `setAccessToken`, when generated for low-level SDK bootstrap or tests, `MUST NOT` be used by application login orchestration when a token manager is available.
 - API key mode, if supported, must be mutually exclusive with dual-token mode.
@@ -501,16 +501,36 @@ Rules:
 
 ## 4.1 Request Identity And Idempotency
 
-`Idempotency-Key` and `requestId` have different ownership. `Idempotency-Key` is a client retry contract for commands that may be safely retried. `requestId` is the server-owned correlation identifier returned for support, audit, logs, usage records, and diagnostic joins.
+`Idempotency-Key` and `traceId` have different ownership. `Idempotency-Key` is a client retry contract for commands that may be safely retried. `traceId` is the server-owned correlation identifier returned for support, audit, logs, usage records, and diagnostic joins.
 
 Rules:
 
-- Frontend and browser SDK consumers MUST NOT generate requestId values, `xRequestId` values, or `X-Request-Id` headers.
-- SDK examples MUST pass Idempotency-Key only for idempotent or retriable commands, and must read `requestId` from the success or problem-detail response when correlation is needed.
-- Generated app/backend SDKs MUST NOT expose optional `xRequestId` parameters or `X-Request-Id` header plumbing.
-- Service facades `MUST` keep frontend request identity helpers scoped to business idempotency keys and client request numbers; they `MUST NOT` expose `createRequestId` helpers.
-- Request body schemas for new commands `MUST NOT` require a client-filled `requestId`. If a resource records an upstream external request id, the field must be named for that domain source, not reused as the SDKWork request correlation id.
-- Server implementations `MUST` generate the authoritative request id and return it through response payloads, problem details, audit records, or runtime records where the contract exposes request correlation.
+- Frontend and browser SDK consumers MUST NOT generate `traceId` values, `xRequestId` values, `X-Request-Id` headers, or wire field `requestId`.
+- SDK examples MUST pass Idempotency-Key only for idempotent or retriable commands, and must read `traceId` from the success `SdkWorkApiResponse` or `ProblemDetail` when correlation is needed.
+- Generated app/backend SDKs MUST NOT expose optional `xRequestId` parameters, `X-Request-Id` header plumbing, or response field `requestId`.
+- Service facades `MUST` keep frontend request identity helpers scoped to business idempotency keys and client request numbers; they `MUST NOT` expose `createRequestId` or `createTraceId` helpers.
+- Request body schemas for new commands `MUST NOT` require a client-filled `traceId` or `requestId`. If a resource records an upstream external request id, the field must be named for that domain source, not reused as the SDKWork correlation id.
+- Server implementations `MUST` generate the authoritative `traceId` and return it through `SdkWorkApiResponse.traceId`, `ProblemDetail.traceId`, audit records, or runtime records where the contract exposes request correlation.
+
+### 4.2 SdkWorkApiResponse Generation And Unwrap Rules
+
+Generated HTTP SDKs using `--standard-profile sdkwork-v3` `MUST` treat `SdkWorkApiResponse` as the canonical wire envelope for SDKWork-owned business operations on `app-api`, `backend-api`, and business `open-api` per `API_SPEC.md` section 4.5.
+
+Rules:
+
+- Generated OpenAPI component names `MUST` use `SdkWorkApiResponse` for the shared envelope schema. The interim name `SdkWorkResponse` is forbidden in new generator output.
+- Generated TypeScript, Rust, Java, Dart/Flutter, and other HTTP SDK types `MUST` model the envelope as `SdkWorkApiResponse<TData>` (or language-equivalent) with required fields `code` (`int32`, success value `0`), `data`, and `traceId`.
+- Generated error types `MUST` model `ProblemDetail` with required numeric `code` (`int32`, non-zero) and `traceId`.
+- Generated SDKs `SHOULD` expose platform result-code constants aligned with `API_SPEC.md` §15.3 (`ResultCode.OK = 0`, `ResultCode.VALIDATION_ERROR = 40001`, etc.) from `SdkWorkPlatformErrorCode`.
+- List/search SDK methods `MUST` accept standard query parameters or typed `SdkWorkListQuery` bodies per `API_SPEC.md` section 14.1 and return unwrapped `{ items, pageInfo }` by default. This rule applies to business `open-api` SDK methods the same way as app-api and backend-api SDK methods.
+- Single-resource methods `MUST` return the typed `data.item` payload to service callers by default.
+- List methods `MUST` return `{ items, pageInfo }` extracted from `data` by default.
+- Command methods `MUST` return typed `data` command payloads by default.
+- Generated clients `MUST` expose a `.raw` (or language-equivalent) escape hatch that returns the full `SdkWorkApiResponse`, response headers, and status metadata including `code` and `traceId`.
+- Generated clients `MUST NOT` expose legacy unwrap helpers for `PlusApiResult`, `AppbaseApiResult`, `StoreApiResult`, `SdkWorkResponse`, or per-domain `*ApiResult`.
+- Service facades and frontend business services `MUST` depend on generated unwrap behavior or explicit `.raw` access; they `MUST NOT` implement repository-local envelope parsers.
+- Frontend error handling `MUST` read numeric `ProblemDetail.code` and `ProblemDetail.traceId` from generated SDK error types. UI layers `MUST NOT` parse legacy string result codes, `success`, `message`, or `requestId` fields from HTTP bodies.
+- Breaking envelope migrations `MUST` regenerate all affected app-api, backend-api, and business open-api SDK families and update consuming frontend services in the same release train or documented compatibility window per `MIGRATION_SPEC.md`.
 
 ## 5. Integration Pattern
 
@@ -669,8 +689,8 @@ Every SDK generation flow `MUST` verify:
   name, capability, surface, API authority, SDK family, prefix, auth mode, ownership, and duplicate
   route rules, and materialize source traceability into OpenAPI extensions.
 - [ ] The route crate -> aggregated API authority -> generated SDK family mapping is explicit, for
-  example `sdkwork-routes-merchandise-app-api` -> `sdkwork-commerce-app-api` ->
-  `sdkwork-commerce-app-sdk`.
+  example `sdkwork-routes-merchandise-app-api` -> `sdkwork-commerce (deleted)-app-api` ->
+  `sdkwork-commerce (deleted)-app-sdk`.
 - [ ] Application-root `sdks/` family layout, OpenAPI authority file placement, derived generator inputs, and generated-output placement follow `SDK_WORKSPACE_GENERATION_SPEC.md`.
 - [ ] Strict SDKWork v3 profile passes for new contracts.
 - [ ] Generated TypeScript compiles.

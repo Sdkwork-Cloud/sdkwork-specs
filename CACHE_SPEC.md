@@ -200,7 +200,7 @@ Minimum endpoints:
 
 Rules:
 
-- API responses must use the standard Plus API envelope or project-standard problem response.
+- API responses must use `SdkWorkApiResponse` for success bodies and `ProblemDetail` for errors per `API_SPEC.md` §15.
 - Missing instances/namespaces return 404.
 - Unsupported inspect/refresh/delete operations return 409.
 - Invalid key-list limits return 409.

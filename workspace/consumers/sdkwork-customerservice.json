@@ -1,0 +1,9 @@
+{
+  "pnpm": {
+    "packages": [
+      "../sdkwork-utils/packages/sdkwork-utils-typescript",
+      "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript"
+    ]
+  },
+  "catalog": {}
+}

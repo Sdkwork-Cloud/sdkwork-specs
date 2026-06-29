@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: app SDK integration across PC React, H5 mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, desktop/native, Rust-enabled apps, Drive Uploader, app dependency composition, appbase IAM runtime, and global token-manager wiring
-- Related: `APPLICATION_SPEC.md`, `APP_DEPENDENCY_COMPOSITION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork applications integrate generated SDKs and reusable appbase capabilities without copying APIs, forking clients, or creating local auth behavior. Applications are composition roots. Applications compose dependency SDKs, shared modules, appbase IAM runtime, Rust route/service crates, and architecture-specific UI packages through explicit boundaries. The application root owns one SDK credential topology for every runtime target; feature packages only receive injected clients, services, or ports.
 
@@ -254,7 +254,7 @@ Rules:
 - A common SDK root is not the same as an arbitrary application `API_BASE_URL`. It must be a root/origin/path prefix that can safely derive standard SDK surface URLs by appending prefixes such as `/v1`, `/app/v3/api`, and `/backend/v3/api`; a surface URL such as `/v1` must not be reused as the root for app/backend SDKs.
 - Base URL config may come from private process env, public browser runtime env, or runtime TOML depending on target, but token values must never come from these config sources.
 - Runtime/bootstrap `MUST` build an SDK inventory before constructing feature services. The inventory classifies each SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake.
-- Runtime/bootstrap `MUST` derive the SDK inventory from `specs/dependency.composition.json` and the architecture core package composition entry defined by `APP_DEPENDENCY_COMPOSITION_SPEC.md`. Bootstrap `MUST NOT` maintain a second handwritten inventory that can drift from the semantic manifest.
+- Runtime/bootstrap must derive the SDK inventory from core package composition and `component.spec.json` contracts defined by `APP_COMPOSITION_SPEC.md`. Bootstrap must not maintain a second handwritten inventory that can drift from manifest authority.
 - The same `TokenManager` instance `MUST` be passed to `@sdkwork/iam-app-sdk`, every application/dependency app SDK client, and only those `@sdkwork/iam-backend-sdk`, application-owned backend SDK, or dependency backend SDK clients that are present in an explicit `backend-admin` authenticated SDK inventory.
 - App auth/login runtime for user-facing application sessions `MUST` construct appbase app SDK and downstream app SDK clients required for login/session/current-user/directory app-side behavior. It `MUST NOT` construct appbase backend SDK or application-owned backend SDK clients just because the application root also contains admin packages.
 - Generated SDK clients that support `setTokenManager(manager)` `MUST` receive the same instance during bootstrap. Generated SDK clients that accept `tokenManager` in a constructor `MUST` receive that same instance instead of a package-local manager.
@@ -280,8 +280,8 @@ Rust backends participate in composition through route crates, service crates, d
 ```text
 packages/sdkwork-routes-merchandise-app-api
   -> route manifest
-  -> sdkwork-commerce-app-api
-  -> sdkwork-commerce-app-sdk
+  -> sdkwork-commerce (deleted)-app-api
+  -> sdkwork-commerce (deleted)-app-sdk
   -> frontend/service consumes generated SDK
 ```
 
@@ -289,7 +289,7 @@ Rules:
 
 - Rust route crates `MUST` follow `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`.
 - Rust route crates own route/path configuration, handler binding, and route manifests for one capability and one surface. They do not become frontend path libraries.
-- Application shells aggregate route manifests into project/domain API authorities such as `sdkwork-commerce-app-api`, then generate owner-only SDK families.
+- Application shells aggregate route manifests into project/domain API authorities such as `sdkwork-commerce (deleted)-app-api`, then generate owner-only SDK families.
 - Rust implementations that expose or validate appbase IAM/session/context
   behavior `MUST` depend on appbase Rust crates. Application Rust services must not
   fork appbase auth guards, context extraction, token validation, or bootstrap
@@ -391,7 +391,7 @@ Required checks for app SDK composition:
 | Verification | Evidence |
 | --- | --- |
 | Appbase IAM boundary | Static scan shows login/register/session/refresh/logout/current-user calls use appbase SDK resources or appbase wrappers, and application bootstrap uses the approved high-level IAM auth runtime/factory instead of low-level IAM SDK adapters. |
-| SDK inventory closure | Tests or deterministic static checks list every appbase, application-owned, and dependency SDK consumed by the app, prove they are declared in `specs/dependency.composition.json`, and classify credential mode before service construction. |
+| SDK inventory closure | Tests or deterministic static checks list every appbase, application-owned, and dependency SDK consumed by the app, prove they are declared in core/surface `component.spec.json` contracts, and classify credential mode before service construction. |
 | Global TokenManager | Tests prove one `TokenManager` is bound to appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend/application backend/dependency backend SDKs, and approved composed wrappers through `setTokenManager`, constructor injection, or the language equivalent. |
 | Session commit order | Tests prove persistence failure does not update token manager, context propagation failure rolls back token/context state, stale context is cleared, and continuation flows preserve refresh token only when allowed. |
 | Logout clearing | Tests prove local token/context state clears even when remote logout fails. |

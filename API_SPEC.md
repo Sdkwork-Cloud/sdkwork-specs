@@ -106,7 +106,7 @@ SDKWork uses four canonical HTTP API surfaces. Internal RPC (`internal.v3`) rema
 | Backend API | `backend-api` | `/backend/v3/api` | Admin consoles, internal operators, backend SDKs, control plane, automation | Forbidden |
 | Internal API | `internal-api` | `/internal/v3/api` | First-party application ingress consumers: kernel UI, embedded consoles, trusted in-app automation on `application.public-ingress` | Forbidden |
 
-The runtime request framework classifies every SDKWork HTTP API path outside `/app/v3/api`, `/backend/v3/api`, and `/internal/v3/api` as `open-api` for context resolution. Open-api does not require the literal path segment `open`; domain-specific prefixes such as `/im/v3/api` are open-api when they are not app-api, backend-api, or internal-api. Protected open-api operations use header-driven API key, OAuth bearer, or `open-api-flexible` context resolution according to the route manifest unless a specific contract declares `public` or a documented compatibility mode.
+The runtime request framework classifies every SDKWork HTTP API path outside `/app/v3/api`, `/backend/v3/api`, and `/internal/v3/api` as `open-api` for context resolution. Open-api does not require the literal path segment `open`; domain-specific prefixes such as `/im/v3/api` are open-api when they are not app-api, backend-api, or internal-api. Protected open-api operations use header-driven API key, OAuth bearer, or `open-api-flexible` context resolution according to the route manifest unless the operation is public or a vendor compatibility API declared under section 4.5.2.
 
 Internal API is application-local HTTP on `application.public-ingress`. It is not backend-admin business API and must not be confused with RPC `internal.v3`. See `INTERNAL_API_SPEC.md`.
 
@@ -233,11 +233,11 @@ schemaVersion: 1
 kind: sdkwork.route.manifest
 packageName: sdkwork-routes-merchandise-app-api
 surface: app-api
-owner: sdkwork-commerce
+owner: sdkwork-commerce (deleted)
 domain: commerce
 capability: merchandise
-apiAuthority: sdkwork-commerce-app-api
-sdkFamily: sdkwork-commerce-app-sdk
+apiAuthority: sdkwork-commerce (deleted)-app-api
+sdkFamily: sdkwork-commerce (deleted)-app-sdk
 prefix: /app/v3/api
 source:
   crateRoot: crates/sdkwork-routes-merchandise-app-api
@@ -263,8 +263,8 @@ routes:
       response: ProductListResponse
       problem: ProblemDetail
     ownership:
-      owner: sdkwork-commerce
-      apiAuthority: sdkwork-commerce-app-api
+      owner: sdkwork-commerce (deleted)
+      apiAuthority: sdkwork-commerce (deleted)-app-api
     source:
       file: src/routes.rs
       line: 42
@@ -281,8 +281,8 @@ Required top-level fields:
 | `owner` | SDK generation owner, materialized to `x-sdkwork-owner`. |
 | `domain` | Canonical domain from `DOMAIN_SPEC.md`. |
 | `capability` | Business capability encoded in the route crate name. |
-| `apiAuthority` | Aggregated API authority name, for example `sdkwork-commerce-app-api`. |
-| `sdkFamily` | SDK family generated from the authority, for example `sdkwork-commerce-app-sdk`. |
+| `apiAuthority` | Aggregated API authority name, for example `sdkwork-commerce (deleted)-app-api`. |
+| `sdkFamily` | SDK family generated from the authority, for example `sdkwork-commerce (deleted)-app-sdk`. |
 | `prefix` | Canonical path prefix for the surface/domain. |
 | `routes` | Non-empty list of route entries. |
 
@@ -320,7 +320,7 @@ Rules:
 - Every `routes[]` entry `MUST` declare `requestContext: WebRequestContext`. Public routes still receive `WebRequestContext` with an anonymous principal; protected routes require a resolved principal before business logic.
 - Every `routes[]` entry `MUST` declare `apiSurface` and it `MUST` match the top-level `surface`. The materializer `MUST` reject missing or mismatched values.
 - `routes[].apiSurface` values `MUST` use canonical kebab-case contract labels such as `open-api`, `app-api`, and `backend-api`. Runtime enum labels such as `openApi`, `appApi`, and `backendApi` are not valid route manifest or OpenAPI extension values.
-- `auth.mode` `MUST` be one of `public`, `dual-token`, `api-key`, `oauth`, `open-api-flexible`, or `compatibility`. Protected app-api and backend-api routes use `dual-token`. Protected open-api routes use `api-key`, `oauth`, or `open-api-flexible` unless a documented compatibility contract declares a different mode.
+- `auth.mode` `MUST` be one of `public`, `dual-token`, `api-key`, `oauth`, `open-api-flexible`, or `compatibility`. Protected app-api and backend-api routes use `dual-token`. Protected open-api routes use `api-key`, `oauth`, or `open-api-flexible` unless the route is a vendor compatibility API declared under section 4.5.2, in which case `compatibility` is allowed together with `x-sdkwork-wire-protocol: external`.
 - Public SDK-generated routes `MUST` materialize `security: []` and `x-sdkwork-auth-mode: anonymous`; a framework-specific `x-sdkwork-route-auth: public` extension may be present but does not replace `x-sdkwork-auth-mode`.
 - Login, registration, OAuth session creation, QR auth session creation or password completion, password reset request, password reset completion, and equivalent credential-entry routes `MUST` set `forbidCredentialHeaders: true`.
 - `ownership.owner` and `ownership.apiAuthority` materialize to `x-sdkwork-owner` and `x-sdkwork-api-authority`. `source.crateRoot` or `routes[].source` materializes to `x-sdkwork-source` and `x-sdkwork-source-route-crate`.
@@ -341,15 +341,15 @@ sdkwork-routes-merchandise-app-api
 sdkwork-routes-cart-app-api
 sdkwork-routes-order-app-api
 sdkwork-routes-payment-app-api
-  -> sdkwork-commerce-app-api
-  -> sdkwork-commerce-app-sdk
+  -> sdkwork-commerce (deleted)-app-api
+  -> sdkwork-commerce (deleted)-app-sdk
 ```
 
 Rules:
 
-- `sdkwork-commerce-app-api` is the aggregated app-api authority for the commerce project. It may aggregate commerce-owned route crates such as `sdkwork-routes-merchandise-app-api`, `sdkwork-routes-cart-app-api`, `sdkwork-routes-order-app-api`, and `sdkwork-routes-payment-app-api`.
-- `sdkwork-commerce-app-api` `MUST` contain only commerce-owned app-api operations after dependency-owned routes are subtracted. Appbase, Drive, provider, or other dependency-owned operations remain dependency SDKs.
-- `sdkwork-commerce-app-sdk` is the generated SDK family produced from `sdkwork-commerce-app-api`. Application packages consume the SDK family or approved composed wrappers, not the route crates.
+- `sdkwork-commerce (deleted)-app-api` is the aggregated app-api authority for the commerce project. It may aggregate commerce-owned route crates such as `sdkwork-routes-merchandise-app-api`, `sdkwork-routes-cart-app-api`, `sdkwork-routes-order-app-api`, and `sdkwork-routes-payment-app-api`.
+- `sdkwork-commerce (deleted)-app-api` `MUST` contain only commerce-owned app-api operations after dependency-owned routes are subtracted. Appbase, Drive, provider, or other dependency-owned operations remain dependency SDKs.
+- `sdkwork-commerce (deleted)-app-sdk` is the generated SDK family produced from `sdkwork-commerce (deleted)-app-api`. Application packages consume the SDK family or approved composed wrappers, not the route crates.
 - The same mapping applies to open-api and backend-api: `sdkwork-routes-<capability>-open-api` aggregates into `sdkwork-<domain>-open-api` and generates `sdkwork-<domain>-sdk`; `sdkwork-routes-<capability>-backend-api` aggregates into `sdkwork-<domain>-backend-api` and generates `sdkwork-<domain>-backend-sdk`.
 - Route manifest inputs `MUST` be grouped by `owner`, `domain`, `surface`, `apiAuthority`, `sdkFamily`, and `prefix`. A materializer `MUST NOT` merge manifests that disagree on any of those fields.
 - Materialization `MUST` reject mixed surfaces, mismatched prefixes, missing owner/domain/capability, missing or mismatched route framework metadata, a route crate package name that does not match `sdkwork-routes-<capability>-<surface>`, operationId/tag/domain mismatch, duplicate method/path pairs, and dependency-owned operations in a consuming app authority.
@@ -369,6 +369,58 @@ Rules:
 - Java Spring controllers `MUST` preserve equivalent `WebRequestContext` vocabulary, 18-stage interceptor semantics, and problem-detail behavior even though they do not cargo-depend on Rust crates.
 - Framework bootstrap, Cargo dependencies, extension trait registration, and verification commands are defined in `WEB_FRAMEWORK_SPEC.md`. Handler/service/repository layering after the framework boundary follows `WEB_BACKEND_SPEC.md`.
 - Every route manifest entry `MUST` declare `requestContext: WebRequestContext` and `apiSurface`; every materialized OpenAPI operation `MUST` declare `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface` according to section 19.
+
+### 4.5 Open API Input And Output Standard
+
+Open-api is the external integration surface. SDKWork-owned business open-api contracts use the same HTTP input and output wire rules as app-api and backend-api except where section 4.5.2 documents a vendor compatibility exemption. Authentication and tenant resolution differ by surface; wire contract rules do not.
+
+#### 4.5.1 SDKWork Business Open API Wire Contract
+
+Every L2+ SDKWork-owned business operation on an open-api authority `MUST` follow the same input and output standards as app-api and backend-api:
+
+| Concern | Standard | Reference |
+| --- | --- | --- |
+| Request bodies | Typed JSON schemas, explicit required fields, no client-writable tenant selectors | section 14 |
+| List and search input | `SdkWorkListQuery`, standard query parameters, `q` for free-text search | section 14.1 |
+| Success JSON body | `SdkWorkApiResponse` with numeric `code: 0`, typed `data`, server-owned `traceId` | section 15 |
+| Error body | HTTP 4xx/5xx with `application/problem+json` and numeric `ProblemDetail.code` | section 15.2 |
+| List output | `data.items` plus `data.pageInfo` | section 16 |
+| Operation patterns | Standard retrieve, list, search, create, update, delete, command, and async command matrix | section 15.4 |
+
+Rules:
+
+- Open-api business operations `MUST NOT` return bare domain DTO roots, legacy `*ApiResult` envelopes, top-level `{ items, pageInfo, traceId }` without `data`, or vendor-native response shapes when the operation is SDKWork-owned business API.
+- Open-api authentication uses `api-key`, `oauth`, or `open-api-flexible` instead of app-api dual-token, but that difference `MUST NOT` relax section 14 or section 15 wire rules.
+- Generated open-api SDKs using `--standard-profile sdkwork-v3` `MUST` unwrap `SdkWorkApiResponse.data` by default, accept standard list/search input per section 14.1, and expose `.raw` for the full envelope per `SDK_SPEC.md` section 4.2.
+- Open-api authority OpenAPI documents `MUST` `$ref` shared `SdkWorkApiResponse`, `SdkWorkListQuery`, `ProblemDetail`, `PageInfo`, and helper payloads from `templates/openapi/components/` the same way as app-api and backend-api authorities.
+- External integrators consuming SDKWork-owned domain capabilities `MUST` use generated open-api SDKs or approved composed wrappers with the standard envelope; they `MUST NOT` be offered alternate open-api wire shapes for the same business operation.
+
+Security-only differences for open-api remain in section 8, section 18, and `WEB_FRAMEWORK_SPEC.md`. They do not change section 14 or section 15 wire rules.
+
+#### 4.5.2 Vendor Compatibility API Exemption
+
+Some open-api routes exist solely to emulate a third-party or tool-native wire protocol so external clients such as IDE plugins, CLI agents, provider SDKs, or upstream automation can integrate without a SDKWork-specific client adapter.
+
+Examples:
+
+- OpenAI-compatible `/v1/*` chat, completions, embeddings, images, and related APIs
+- Anthropic Messages-compatible APIs
+- Claude Code, Codex, Gemini CLI, or other agent-tool compatibility surfaces that mirror the upstream tool HTTP contract
+- Provider webhook or callback shapes that `MUST` preserve upstream field names, status semantics, and error bodies
+
+Vendor compatibility APIs:
+
+- `MAY` opt out of `SdkWorkApiResponse`, section 14.1 list query vocabulary, and `ProblemDetail` error envelopes when the upstream protocol defines its own request and response shapes.
+- `MUST NOT` mix SDKWork business envelope fields with vendor-native wire on the same operation.
+- `MUST` declare `x-sdkwork-wire-protocol: external` on every exempt operation.
+- `MUST` declare `x-sdkwork-external-protocol-id` with a stable lowercase kebab-case identifier such as `openai-v1`, `anthropic-messages`, `claude-code`, or `codex`.
+- `SHOULD` group exempt operations under dedicated path prefixes such as `/v1/` or tags that make the exemption visible in OpenAPI review.
+- `MAY` declare route manifest `auth.mode: compatibility` only for these vendor compatibility routes; compatibility auth mode `MUST NOT` be used to bypass section 14 or section 15 for SDKWork-owned business operations.
+- `MUST NOT` use this exemption for SDKWork-owned domain business APIs that happen to be consumed by external integrators. Those integrators consume generated SDKs with the standard envelope from section 4.5.1.
+
+L0 legacy vendor-compatibility surfaces `MUST` register in the governance exception register with owner, upstream protocol reference, and removal or convergence plan per `GOVERNANCE_SPEC.md`.
+
+All other open-api operations `MUST` follow section 4.5.1.
 
 ## 5. URL And Path Standard
 
@@ -961,8 +1013,8 @@ Schema names use `PascalCase`.
 | Update request | `Update<Resource>Request` | `UpdateOrganizationRequest` |
 | Patch request | `Patch<Resource>Request` | `PatchUserRequest` |
 | List params | `List<Resource>Params` | `ListUsersParams` |
-| Page response | `<Resource>Page` | `UserPage` |
-| Command response | `<Action><Resource>Response` | `VerifyCodeResponse` |
+| Page response | `<Resource>ListResponse` wrapping `SdkWorkPageData` | `UserListResponse` |
+| Command response | `<Action><Resource>Response` wrapping `SdkWorkCommandData` | `VerifyCodeResponse` |
 | Error | `ProblemDetail` | `ProblemDetail` |
 
 Rules:
@@ -1035,6 +1087,8 @@ Rules:
 
 ## 14. Request Body Standard
 
+SDKWork-owned business operations on `app-api`, `backend-api`, and `open-api` `MUST` follow this section. Vendor compatibility open-api operations declared with `x-sdkwork-wire-protocol: external` per section 4.5.2 `MAY` preserve upstream request shapes instead.
+
 Rules:
 
 - Request body schemas `MUST` define required fields explicitly.
@@ -1066,18 +1120,394 @@ CreateSessionRequest:
       maxLength: 128
 ```
 
-## 15. Response Standard
+### 14.1 Query, List, And Search Input Standard
 
-### 15.1 Success Responses
+List, search, and filter inputs `MUST` use explicit typed parameters or typed request bodies. Free-form SQL-like filter expressions, ad hoc JSON query DSLs, and duplicate search parameter aliases are forbidden unless a governance register entry documents an L3 exception.
+
+Shared OpenAPI parameter and schema templates live under:
+
+- `templates/openapi/components/parameters/query-parameters.yaml`
+- `templates/openapi/components/schemas/sdkwork-list-query.yaml`
+
+#### 14.1.1 Simple List Input (`GET`)
+
+Use `GET` with query parameters when the list can be expressed with the standard parameter set and remains within URL length limits.
+
+| Wire parameter | JSON body equivalent | Type | Default | Rules |
+| --- | --- | --- | --- | --- |
+| `page` | `page` | integer | `1` | One-based page index. Required for offset mode. Mutually exclusive with `cursor`. |
+| `page_size` | `pageSize` | integer | `20` | Minimum `1`, maximum `200`. |
+| `cursor` | `cursor` | string | — | Opaque token from prior `pageInfo.nextCursor`. Mutually exclusive with `page`. |
+| `sort` | `sort` | string | — | Comma-separated API field names. Prefix `-` for descending. Maximum 3 fields. |
+| `q` | `q` | string | — | Generic free-text search. Maximum length `256`. |
+| `created_after` | `createdAfter` | date-time | — | Inclusive lower bound on `createdAt`. |
+| `created_before` | `createdBefore` | date-time | — | Exclusive upper bound on `createdAt`. |
+| `updated_after` | `updatedAfter` | date-time | — | Inclusive lower bound on `updatedAt`. |
+| `updated_before` | `updatedBefore` | date-time | — | Exclusive upper bound on `updatedAt`. |
+| `ids` | `ids[]` | string / array | — | Comma-separated int64-string ids in query; array in JSON body. Maximum `100` ids. |
 
 Rules:
 
+- Query parameter names `MUST` use lowercase URL wire names (`page_size`, `created_after`).
+- JSON request body field names `MUST` use camelCase (`pageSize`, `createdAfter`) per §13.
+- `GET` list operations `MUST NOT` accept a request body.
+- Domain filters beyond the standard set `MUST` use explicit query parameters such as `status`, `organization_id`, or `role_id`. Each filter parameter `MUST` be typed and documented.
+- A list operation `MUST NOT` accept both `page` and `cursor` in the same request.
+- When `cursor` is present, servers `MUST` ignore `page` if both are supplied and `SHOULD` reject the request with `40003 INVALID_PARAMETER` when strict validation is enabled.
+
+Sort grammar:
+
+```text
+sort = sortField *( "," sortField )
+sortField = [ "-" ] fieldName
+fieldName = API schema field name in camelCase, for example createdAt, displayName
+```
+
+Examples:
+
+```text
+GET /app/v3/api/forum/topics?page=2&page_size=20&sort=-createdAt,title&q=release
+GET /app/v3/api/iam/users?cursor=eyJwIjo2fQ&page_size=50&status=active
+```
+
+#### 14.1.2 Complex List Or Search Input (`POST`)
+
+Use `POST /<collection>/search` or `POST /<collection>:search` when any of the following is true:
+
+- filter cardinality exceeds practical URL limits;
+- the query requires nested filter objects;
+- the product requires saved or audited search bodies;
+- the search input would exceed safe URL length.
+
+Rules:
+
+- Request body `MUST` extend `SdkWorkListQuery` or `SdkWorkListQueryWithFilters` from the shared templates.
+- Response `MUST` still use `SdkWorkApiResponse` with `SdkWorkPageData`.
+- `POST` search/list operations `MUST` be safe and idempotent. They `MUST NOT` mutate server state.
+- `operationId` `SHOULD` use `<resource>.search`, for example `forum.topics.search`.
+
+Example:
+
+```yaml
+ForumTopicSearchRequest:
+  allOf:
+    - $ref: "#/components/schemas/SdkWorkListQuery"
+    - type: object
+      additionalProperties: false
+      properties:
+        filters:
+          $ref: "#/components/schemas/ForumTopicSearchFilters"
+```
+
+#### 14.1.3 Single-Resource And Command Input
+
+| Operation kind | HTTP | Path pattern | Request input | Required headers |
+| --- | --- | --- | --- | --- |
+| Retrieve | `GET` | `/<collection>/{id}` | path `id` | auth per surface |
+| Create | `POST` | `/<collection>` | typed create body | auth; `Idempotency-Key` when retriable |
+| Replace | `PUT` | `/<collection>/{id}` | typed full body | auth; optional `If-Match` |
+| Patch | `PATCH` | `/<collection>/{id}` | typed partial body | auth; optional `If-Match` |
+| Delete | `DELETE` | `/<collection>/{id}` | path `id` only | auth |
+| Command | `POST` | `/<collection>/{id}/<action>` or `/<collection>:<action>` | typed command body | auth; `Idempotency-Key` when retriable |
+
+Rules:
+
+- Path parameters `MUST` identify the resource. Business filters `MUST NOT` be passed as undocumented query aliases on retrieve/delete routes.
+- Create/update/command bodies `MUST` be explicit schemas with `additionalProperties: false` unless a documented open extension object is required.
+- Optimistic concurrency `SHOULD` use entity `version` fields and/or `If-Match` headers. Version conflicts `MUST` map to `40901 CONFLICT`.
+
+## 15. Response Standard
+
+SDKWork-owned business operations on `app-api`, `backend-api`, and `open-api` `MUST` follow this section. Vendor compatibility open-api operations declared with `x-sdkwork-wire-protocol: external` per section 4.5.2 `MAY` preserve upstream response and error shapes instead.
+
+SDKWork HTTP APIs use a dual-track response model:
+
+- **Success (2xx with body):** canonical `SdkWorkApiResponse` envelope with numeric success `code` (`0`), typed `data`, and server-owned `traceId`.
+- **Failure (non-2xx or 204 without business payload):** RFC 9457 `application/problem+json` with `ProblemDetail`, including numeric error `code` and `traceId`.
+
+Shared OpenAPI components live under `templates/openapi/components/schemas/` in this repository. API authorities `MUST` `$ref` those components instead of inventing per-domain envelope names.
+
+Forbidden legacy wire fields and envelopes (L0 exceptions require a governance register entry with removal plan):
+
+- `PlusApiResult`, `AppbaseApiResult`, `StoreApiResult`, `SdkWorkResponse`, and per-domain `*ApiResult` wrappers.
+- Bare domain DTOs at the HTTP JSON root without `SdkWorkApiResponse`.
+- Top-level `{ items, pageInfo, traceId }` or `{ items, pageInfo, requestId }` without a `data` object.
+- HTTP `200`/`201` bodies that use `success: false`, human `message`, or non-success `code` values to signal business failure.
+- Response field `requestId`. SDKWork HTTP contracts `MUST` use `traceId` only.
+
+### 15.1 Success Responses
+
+#### 15.1.1 Canonical Envelope: `SdkWorkApiResponse`
+
+Every L2+ `app-api`, `backend-api`, and `open-api` operation that returns a JSON body on success `MUST` use `SdkWorkApiResponse` or an operation-specific schema that is an `allOf` extension of `SdkWorkApiResponse` with a typed `data` property.
+
+```yaml
+SdkWorkApiResponse:
+  type: object
+  additionalProperties: false
+  required: [code, data, traceId]
+  properties:
+    code:
+      type: integer
+      format: int32
+      description: Numeric success result code. MUST be 0 on HTTP 2xx. See §15.3.
+      enum: [0]
+      default: 0
+      minimum: 0
+      maximum: 0
+    data:
+      description: Operation-specific payload. Typed per operation through allOf or explicit schema refs.
+    traceId:
+      type: string
+      format: uuid
+      description: Server-owned request correlation id for logs, support, audit, and client diagnostics. Clients MUST NOT supply this value.
+```
+
+Rules:
+
+- `traceId` `MUST` be generated by `sdkwork-web-framework` response identity handling for every request that records correlation.
+- The response header `X-SdkWork-Trace-Id` `SHOULD` echo `traceId` when the response has headers.
+- `code` `MUST` be the integer `0` on every HTTP 2xx JSON success body per §15.3. REST semantics such as create (`201`) or async accept (`202`) remain on the HTTP status, not on `code`.
 - `200` for successful retrieve/update/action with body.
-- `201` for creation when a resource is created and returned.
-- `202` for accepted asynchronous work.
-- `204` for successful delete/logout/no-body operations.
-- Response schemas `MUST` be explicit.
-- List responses `MUST` use the standard page shape unless the list is guaranteed small and bounded.
+- `201` for creation when a resource is created and returned. The body `MUST` still use `SdkWorkApiResponse` with `code: 0`.
+- `202` for accepted asynchronous work. The body `MUST` use `SdkWorkApiResponse` with `SdkWorkAsyncData` and `code: 0`.
+- `204` for successful delete/logout/no-body operations. `204` `MUST NOT` include a JSON body; expose `traceId` through `X-SdkWork-Trace-Id` only.
+- Response schemas `MUST` be explicit in OpenAPI.
+- Handlers `MUST` serialize success through framework response mapping. Controllers and route handlers `MUST NOT` hand-build incompatible envelopes.
+
+Example single-resource response:
+
+```json
+{
+  "code": 0,
+  "data": {
+    "item": {
+      "id": "12884901888",
+      "displayName": "Example"
+    }
+  },
+  "traceId": "0195f2a0-7c44-7b2e-9f3a-2a6f5d8e91ab"
+}
+```
+
+#### 15.1.2 `data` Payload Shapes
+
+| Shape | When | Required `data` fields |
+| --- | --- | --- |
+| `SdkWorkResourceData` | retrieve/create/update of one resource | `item` |
+| `SdkWorkPageData` | list/search | `items`, `pageInfo` |
+| `SdkWorkCommandData` | command/mutation without full resource body | `accepted` |
+| `SdkWorkAsyncData` | async accept (`202`) | `accepted`, `operationId`, `status` |
+
+`SdkWorkResourceData`:
+
+```yaml
+SdkWorkResourceData:
+  type: object
+  additionalProperties: false
+  required: [item]
+  properties:
+    item:
+      description: Typed domain resource for the operation.
+```
+
+`SdkWorkPageData`:
+
+```yaml
+SdkWorkPageData:
+  type: object
+  additionalProperties: false
+  required: [items, pageInfo]
+  properties:
+    items:
+      type: array
+      items: {}
+    pageInfo:
+      $ref: "#/components/schemas/PageInfo"
+```
+
+`SdkWorkCommandData`:
+
+```yaml
+SdkWorkCommandData:
+  type: object
+  additionalProperties: false
+  required: [accepted]
+  properties:
+    accepted:
+      type: boolean
+      const: true
+    resourceId:
+      type: string
+    status:
+      type: string
+```
+
+`SdkWorkAsyncData`:
+
+```yaml
+SdkWorkAsyncData:
+  type: object
+  additionalProperties: false
+  required: [accepted, operationId, status]
+  properties:
+    accepted:
+      type: boolean
+      const: true
+    operationId:
+      type: string
+    status:
+      type: string
+      enum: [pending, running, succeeded, failed, cancelled]
+    pollUrl:
+      type: string
+      format: uri-reference
+```
+
+Rules:
+
+- Single-resource success payloads `MUST` place the resource under `data.item`. Do not flatten resource fields directly under `data` or at the HTTP root.
+- List success payloads `MUST` place `items` and `pageInfo` under `data`.
+- Command success `MUST NOT` return `accepted: false` with HTTP 2xx. Failures `MUST` use `ProblemDetail` and the correct HTTP error status.
+- Vendor compatibility APIs such as OpenAI `/v1/*`, Claude Code, or Codex tool wire formats `MAY` opt out only when declared with `x-sdkwork-wire-protocol: external` per section 4.5.2. SDKWork-owned business open-api, app-api, and backend-api operations `MUST NOT` opt out.
+
+#### 15.1.3 OpenAPI Response Schema Naming
+
+| Purpose | Pattern | Example |
+| --- | --- | --- |
+| Single resource | `<Resource>Response` | `ForumTopicResponse` |
+| List | `<Resource>ListResponse` | `ForumTopicListResponse` |
+| Command | `<Action><Resource>Response` | `CreateTopicResponse` |
+
+Each `<X>Response` `SHOULD` be expressed as:
+
+```yaml
+ForumTopicResponse:
+  allOf:
+    - $ref: "#/components/schemas/SdkWorkApiResponse"
+    - type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/SdkWorkResourceData"
+```
+
+When `data.item` needs a concrete type, nest an explicit `item` property with `$ref` to the domain schema inside the `allOf` extension.
+
+### 15.3 Result Code Standard (Numeric)
+
+SDKWork uses **numeric `int32` result codes** on the wire. This follows the industry pattern used by errno-style APIs, public-cloud control planes, and payment gateways:
+
+- **`0` means business success** on HTTP 2xx JSON bodies.
+- **Non-zero codes mean failure** on HTTP 4xx/5xx `ProblemDetail` bodies.
+- **HTTP status** carries REST transport semantics (`201 Created`, `202 Accepted`, `404 Not Found`, etc.).
+- **Body `code`** carries stable machine-readable business/result semantics for SDKs, logs, metrics, and i18n.
+
+String tokens such as `ok`, `validation_error`, or snake_case error names `MUST NOT` appear in `SdkWorkApiResponse.code` or `ProblemDetail.code`.
+
+#### 15.3.1 Code Ranges
+
+| Range | Meaning | Wire location |
+| --- | --- | --- |
+| `0` | Success | `SdkWorkApiResponse.code` on HTTP 2xx |
+| `40001`–`49999` | Client/protocol errors aligned with HTTP 4xx | `ProblemDetail.code` |
+| `50001`–`59999` | Server/platform errors aligned with HTTP 5xx | `ProblemDetail.code` |
+| `60000`–`69999` | Domain business errors registered by the owning API authority | `ProblemDetail.code` |
+| `70000`–`79999` | Integration or third-party mapped errors | `ProblemDetail.code` |
+
+Platform error codes `SHOULD` follow:
+
+```text
+code = HTTP_status * 100 + sequence
+```
+
+where `sequence` is `01`–`99` within the HTTP status family.
+
+#### 15.3.2 Platform Result Code Registry
+
+Success:
+
+| Code | Symbol | HTTP | When |
+| --- | --- | --- | --- |
+| `0` | `OK` | `2xx` with JSON body | Every successful business response |
+
+Platform errors:
+
+| Code | Symbol | HTTP | When |
+| --- | --- | --- | --- |
+| `40001` | `VALIDATION_ERROR` | `400`, `422` | Request validation failed; field-level details `SHOULD` appear in `errors[]` |
+| `40002` | `MALFORMED_REQUEST` | `400` | Malformed JSON, invalid syntax, or unparsable request |
+| `40003` | `INVALID_PARAMETER` | `400` | Known parameter has invalid type, range, or combination |
+| `40004` | `MISSING_REQUIRED_FIELD` | `400` | Required field, parameter, or header is absent |
+| `40101` | `AUTHENTICATION_REQUIRED` | `401` | Missing authentication |
+| `40102` | `TOKEN_EXPIRED` | `401` | Access or auth token expired |
+| `40103` | `INVALID_TOKEN` | `401` | Token signature, format, or claims invalid |
+| `40104` | `SESSION_REVOKED` | `401` | Session revoked, logged out, or no longer valid |
+| `40301` | `PERMISSION_REQUIRED` | `403` | Authenticated but missing required permission |
+| `40302` | `INSUFFICIENT_SCOPE` | `403` | Token/API key scope insufficient for the operation |
+| `40303` | `TENANT_ACCESS_DENIED` | `403` | Tenant mismatch or tenant access denied |
+| `40304` | `ORGANIZATION_ACCESS_DENIED` | `403` | Organization mismatch or organization access denied |
+| `40401` | `NOT_FOUND` | `404` | Resource not found or intentionally hidden |
+| `40501` | `METHOD_NOT_ALLOWED` | `405` | HTTP method not supported for the route |
+| `40801` | `REQUEST_TIMEOUT` | `408` | Server timed out waiting for the request |
+| `40901` | `CONFLICT` | `409` | Version mismatch, duplicate unique key, or state conflict |
+| `41001` | `GONE` | `410` | Resource permanently removed |
+| `41201` | `PRECONDITION_FAILED` | `412` | ETag, version, or conditional header precondition failed |
+| `41301` | `PAYLOAD_TOO_LARGE` | `413` | Request body exceeds allowed size |
+| `41501` | `UNSUPPORTED_MEDIA_TYPE` | `415` | Content-Type unsupported |
+| `42201` | `UNPROCESSABLE_ENTITY` | `422` | Semantically invalid command where `400` is too broad |
+| `42301` | `LOCKED` | `423` | Resource locked and cannot be modified now |
+| `42801` | `PRECONDITION_REQUIRED` | `428` | Required precondition header such as `If-Match` missing |
+| `42901` | `RATE_LIMIT_EXCEEDED` | `429` | Rate limit or quota exceeded |
+| `50001` | `INTERNAL_ERROR` | `500` | Unexpected server failure |
+| `50201` | `BAD_GATEWAY` | `502` | Upstream gateway/proxy failure |
+| `50301` | `SERVICE_UNAVAILABLE` | `503` | Dependency unavailable or maintenance |
+| `50401` | `GATEWAY_TIMEOUT` | `504` | Upstream gateway/proxy timeout |
+
+Recommended domain error templates (register in the owning API authority before use):
+
+| Code | Symbol | Typical HTTP | When |
+| --- | --- | --- | --- |
+| `60001` | `BUSINESS_RULE_VIOLATION` | `409`, `422` | Domain invariant or business rule failed |
+| `60002` | `QUOTA_EXCEEDED` | `409`, `429` | Product quota, seat limit, or usage cap exceeded |
+| `60003` | `INVALID_STATE` | `409`, `422` | Resource state does not allow the requested transition |
+| `60004` | `DUPLICATE_ENTRY` | `409` | Domain-visible duplicate create |
+| `60005` | `OPERATION_NOT_ALLOWED` | `403`, `409` | Operation forbidden for current resource state or plan |
+
+Recommended integration error templates:
+
+| Code | Symbol | Typical HTTP | When |
+| --- | --- | --- | --- |
+| `70001` | `UPSTREAM_ERROR` | `502`, `503` | Third-party/provider returned an error |
+| `70002` | `UPSTREAM_TIMEOUT` | `504` | Third-party/provider timed out |
+
+OpenAPI authorities `SHOULD` `$ref` `SdkWorkPlatformErrorCode`, `SdkWorkDomainErrorCode`, and `SdkWorkSuccessCode` from `templates/openapi/components/schemas/sdkwork-result-code.yaml`. Generated SDKs `MUST` expose these as named constants/enums.
+
+#### 15.3.3 Field Validation Subcodes
+
+When `ProblemDetail.code` is `40001`, field-level entries in `errors[]` `MAY` include optional numeric subcodes:
+
+| Subcode range | Meaning |
+| --- | --- |
+| `40011`–`40099` | Field-level validation detail while the top-level code remains `40001` |
+
+Rules:
+
+- Field subcodes `MUST NOT` replace `ProblemDetail.code`.
+- `errors[].field` `MUST` use JSON Pointer or dot-path notation.
+- `errors[].message` `MUST` be safe for logs and optional UI display.
+
+Rules:
+
+- HTTP 2xx JSON success bodies `MUST` use `code: 0` only. Non-zero `code` on HTTP 2xx is forbidden.
+- `ProblemDetail.code` `MUST` be non-zero and `MUST` fall within the registered ranges above or in the owning API authority domain registry.
+- `ProblemDetail.status` `MUST` align with the HTTP family implied by `code` (`40001` with `400` or `422`, `40101` with `401`, etc.).
+- Domain business errors `MUST` use `60000`–`69999`, be documented in the owning API authority changelog, and `MUST NOT` collide with platform codes.
+- Generated SDKs `SHOULD` expose named constants such as `ResultCode.OK = 0` and `ResultCode.VALIDATION_ERROR = 40001`.
+- Logs, metrics, and support tooling `SHOULD` index by numeric `code` and `traceId`.
+- UI i18n `SHOULD` map numeric codes to localized text through stable keys such as `errors.result.40001` per `I18N_SPEC.md`.
+
+Legacy string success tokens (`ok`, `created`, `accepted`, `updated`, `deleted`) and string error tokens (`validation_error`, `not_found`, etc.) are forbidden on the wire for L2+ contracts.
 
 ### 15.2 Error Responses
 
@@ -1087,7 +1517,7 @@ All error responses `MUST` use `application/problem+json` and the standard `Prob
 ProblemDetail:
   type: object
   additionalProperties: true
-  required: [type, title, status]
+  required: [type, title, status, code, traceId]
   properties:
     type:
       type: string
@@ -1103,9 +1533,15 @@ ProblemDetail:
     instance:
       type: string
     code:
-      type: string
+      type: integer
+      format: int32
+      description: Numeric error result code. MUST be non-zero. See §15.3.
+      minimum: 40001
+      maximum: 79999
     traceId:
       type: string
+      format: uuid
+      description: Server-owned request correlation id. Same semantics as SdkWorkApiResponse.traceId.
     errors:
       type: array
       items:
@@ -1129,12 +1565,221 @@ Common status codes:
 
 Rules:
 
+- Every operation `MUST` declare `application/problem+json` error responses or a shared `default` problem response.
 - Do not return stack traces, SQL, credentials, token internals, or internal hostnames.
 - Validation errors `SHOULD` include field-level `errors`.
-- `traceId` `SHOULD` be present on every error.
+- `traceId` `MUST` be present on every error and `MUST` match the success-body correlation semantics.
+- `code` `MUST` use stable numeric values from §15.3.
 - Security-sensitive `404` may hide unauthorized resource existence, but this must be consistent for the operation.
+- Business failures `MUST NOT` be encoded as HTTP 2xx `SdkWorkApiResponse` bodies with non-success `code`, `success`, or human `message` fields.
+- Response field `requestId` `MUST NOT` appear in new or migrated contracts.
 
-## 16. Pagination, Filtering, Sorting
+Example validation error:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Validation failed",
+  "status": 422,
+  "code": 40001,
+  "traceId": "0195f2a0-7c44-7b2e-9f3a-2a6f5d8e91ab",
+  "detail": "One or more fields are invalid.",
+  "errors": [
+    {
+      "field": "loginName",
+      "message": "must not be blank",
+      "code": 40011
+    }
+  ]
+}
+```
+
+### 15.4 Operation Input And Output Contract Matrix
+
+Every L2+ business operation `MUST` map to one of the standard contract patterns below. Domain-specific names replace `<Resource>` and `<Action>`, but input/output shapes `MUST NOT` invent alternate envelope roots.
+
+| Pattern | Method | Path | Request | Success body | HTTP | `data` shape |
+| --- | --- | --- | --- | --- | --- | --- |
+| Retrieve | `GET` | `/<resources>/{id}` | path id | `SdkWorkApiResponse` | `200` | `SdkWorkResourceData.item` |
+| List | `GET` | `/<resources>` | §14.1.1 query | `SdkWorkApiResponse` | `200` | `SdkWorkPageData` |
+| Search | `POST` | `/<resources>/search` | §14.1.2 body | `SdkWorkApiResponse` | `200` | `SdkWorkPageData` |
+| Create | `POST` | `/<resources>` | create body | `SdkWorkApiResponse` | `201` | `SdkWorkResourceData.item` |
+| Replace | `PUT` | `/<resources>/{id}` | full body | `SdkWorkApiResponse` | `200` | `SdkWorkResourceData.item` |
+| Patch | `PATCH` | `/<resources>/{id}` | partial body | `SdkWorkApiResponse` | `200` | `SdkWorkResourceData.item` |
+| Delete | `DELETE` | `/<resources>/{id}` | path id | no JSON body | `204` | header-only `traceId` |
+| Command | `POST` | `/<resources>/{id}/<action>` | command body | `SdkWorkApiResponse` | `200` | `SdkWorkCommandData` |
+| Async command | `POST` | `/<resources>/{id}/<action>` | command body | `SdkWorkApiResponse` | `202` | `SdkWorkAsyncData` |
+| Bulk command | `POST` | `/<resources>:bulk<Action>` | bulk body | `SdkWorkApiResponse` | `200` or `202` | typed bulk result in `data` |
+
+Rules:
+
+- Every pattern above `MUST` declare `application/problem+json` error responses using numeric `ProblemDetail.code`.
+- Open-api business operations `MUST` use the same input and output patterns as app-api and backend-api per section 4.5.1. Vendor compatibility open-api operations `MAY` opt out only under section 4.5.2.
+- List/search patterns `MUST` return `items[]` even when empty.
+- Delete success `MUST NOT` return legacy `{ success: true }` JSON bodies.
+- Bulk operations `MUST` document per-item success/failure semantics inside typed `data` and `MUST NOT` return partial success as HTTP 2xx with failure encoded only in human text.
+- OpenAPI `operationId` `MUST` follow §7 and align with the pattern (`list`, `search`, `create`, `retrieve`, `update`, `patch`, `delete`, `<action>`).
+
+## 16. Pagination, Filtering, Sorting, And List Output
+
+List and search operations `MUST` use the input rules in §14.1 and the output rules in this section. This section aligns with Google AIP-158 list pagination, RFC 9457 error semantics, and SDKWork envelope rules in §15.
+
+### 16.1 List Output Shape
+
+Every list or search response `MUST` use:
+
+```json
+{
+  "code": 0,
+  "data": {
+    "items": [],
+    "pageInfo": {}
+  },
+  "traceId": "..."
+}
+```
+
+Rules:
+
+- `data.items` `MUST` be an array. Empty results `MUST` return `"items": []`, not `null`.
+- `data.pageInfo.mode` `MUST` be `offset` or `cursor`.
+- List APIs `MUST` be paginated unless the collection is bounded by design and documented as such.
+
+### 16.2 Offset Pagination
+
+Input:
+
+| Input | Required | Notes |
+| --- | --- | --- |
+| `page` | yes | Default `1` |
+| `page_size` | no | Default `20`, max `200` |
+| `sort`, `q`, filters | no | See §14.1.1 |
+
+Output `pageInfo` when `mode = offset`:
+
+| Field | Required | Type | Notes |
+| --- | --- | --- | --- |
+| `mode` | yes | string | `offset` |
+| `page` | yes | integer | Current page, starting at `1` |
+| `pageSize` | yes | integer | Effective page size |
+| `totalItems` | yes | int64-string | Total rows matching the filter |
+| `totalPages` | yes | integer | `ceil(totalItems / pageSize)` |
+| `hasMore` | no | boolean | Optional convenience mirror of `page < totalPages` |
+
+Example request/response:
+
+```http
+GET /app/v3/api/forum/topics?page=2&page_size=20&sort=-createdAt&q=release
+```
+
+```json
+{
+  "code": 0,
+  "data": {
+    "items": [
+      { "id": "12884901888", "title": "Release notes" }
+    ],
+    "pageInfo": {
+      "mode": "offset",
+      "page": 2,
+      "pageSize": 20,
+      "totalItems": "125",
+      "totalPages": 7,
+      "hasMore": true
+    }
+  },
+  "traceId": "0195f2a0-7c44-7b2e-9f3a-2a6f5d8e91ab"
+}
+```
+
+Rules:
+
+- Offset pagination `SHOULD` be used for admin tables and stable, low-volume lists.
+- Servers `MUST` reject `page_size` above `200` with `40003 INVALID_PARAMETER`.
+
+### 16.3 Cursor Pagination
+
+Input:
+
+| Input | Required | Notes |
+| --- | --- | --- |
+| `cursor` | no | Omit on first page |
+| `page_size` | no | Default `20`, max `200` |
+| `sort`, `q`, filters | no | Sort `SHOULD` remain stable across pages |
+
+Output `pageInfo` when `mode = cursor`:
+
+| Field | Required | Type | Notes |
+| --- | --- | --- | --- |
+| `mode` | yes | string | `cursor` |
+| `pageSize` | yes | integer | Effective page size |
+| `hasMore` | yes | boolean | Whether another page exists |
+| `nextCursor` | when `hasMore=true` | string or null | Opaque token for the next request |
+| `totalItems` | no | int64-string | Optional estimated or exact total when cheap to compute |
+
+Example request/response:
+
+```http
+GET /app/v3/api/messaging/conversations?cursor=eyJwIjo2fQ&page_size=50
+```
+
+```json
+{
+  "code": 0,
+  "data": {
+    "items": [
+      { "id": "12884901901", "title": "Project chat" }
+    ],
+    "pageInfo": {
+      "mode": "cursor",
+      "pageSize": 50,
+      "hasMore": true,
+      "nextCursor": "eyJwIjo3fQ"
+    }
+  },
+  "traceId": "0195f2a0-7c44-7b2e-9f3a-2a6f5d8e91ab"
+}
+```
+
+Rules:
+
+- Cursor tokens `MUST` be opaque to clients. Clients `MUST NOT` parse or construct cursor payloads.
+- Cursor pagination `SHOULD` be used for high-volume feeds, logs, messages, and unstable lists.
+- When `hasMore` is `false`, `nextCursor` `MUST` be `null` or omitted consistently within the API authority.
+
+### 16.4 Filtering And Search Semantics
+
+| Mechanism | Wire input | Response impact |
+| --- | --- | --- |
+| Free-text search | `q` | Server applies domain search across configured fields |
+| Time range | `created_after`, `created_before`, `updated_after`, `updated_before` | Filters inclusive/exclusive bounds per §14.1.1 |
+| Explicit ids | `ids` | Restrict result set to listed ids; unknown ids are omitted unless documented otherwise |
+| Domain enum filter | typed params such as `status`, `role_id` | Exact-match or documented multi-value semantics |
+
+Rules:
+
+- Generic search `MUST` use `q` only. Duplicate aliases are forbidden.
+- Multi-value enum filters `SHOULD` use repeated query params or comma-separated wire values documented in OpenAPI.
+- Filter parameters `MUST` be typed in OpenAPI with `enum`, `pattern`, or bounds; do not accept arbitrary strings where enums exist.
+- Search/list operations `MUST NOT` expose SQL, GraphQL, or generic expression languages in public L2 APIs.
+
+### 16.5 Sorting Semantics
+
+Rules:
+
+- Default sort order `MUST` be documented per list operation.
+- Sortable fields `MUST` be API field names, not database column names.
+- Maximum sort field count is `3`.
+- Unsupported sort fields `MUST` produce `40003 INVALID_PARAMETER`.
+- Stable sorts `SHOULD` include a unique tie-breaker such as `id` or `createdAt`.
+
+Example:
+
+```text
+sort=-createdAt,id
+```
+
+### 16.6 Shared Schema Reference
 
 Standard page query parameters:
 
@@ -1150,10 +1795,10 @@ Query parameter names in the OpenAPI contract are wire names. Generated SDKs,
 service methods, or controller variables may expose language-idiomatic aliases,
 but those aliases `MUST NOT` feed back into the OpenAPI parameter name.
 
-Standard page response:
+Standard page payload inside `SdkWorkApiResponse.data`:
 
 ```yaml
-UserPage:
+SdkWorkPageData:
   type: object
   additionalProperties: false
   required: [items, pageInfo]
@@ -1166,17 +1811,53 @@ UserPage:
       $ref: "#/components/schemas/PageInfo"
 ```
 
+Standard `PageInfo`:
+
+```yaml
+PageInfo:
+  type: object
+  additionalProperties: false
+  required: [mode]
+  properties:
+    mode:
+      type: string
+      enum: [offset, cursor]
+    page:
+      type: integer
+      minimum: 1
+    pageSize:
+      type: integer
+      minimum: 1
+      maximum: 200
+    totalItems:
+      type: string
+      format: int64
+      pattern: "^[0-9]+$"
+      x-sdkwork-int64-string: true
+    totalPages:
+      type: integer
+      minimum: 0
+    nextCursor:
+      type: [string, "null"]
+    hasMore:
+      type: boolean
+```
+
 Rules:
 
+- List APIs `MUST` return `SdkWorkApiResponse` whose `data` follows `SdkWorkPageData`.
+- When `pageInfo.mode` is `offset`, `page`, `pageSize`, `totalItems`, and `totalPages` `MUST` be present.
+- When `pageInfo.mode` is `cursor`, `pageSize`, `hasMore`, and `nextCursor` (when `hasMore=true`) `MUST` be present.
 - List APIs `MUST` be paginated unless the collection is bounded by design.
 - Sort fields `MUST` use API field names, not database column names.
 - Query parameter names `MUST` use lowercase URL names because they are part of the URL contract.
 - Multi-word query parameter names `MUST` use `lower_snake_case`, such as `page_size`, `created_after`, and `organization_id`.
-- Single-word query parameter names `MUST` stay lowercase without an underscore, such as `q`, `page`, `sort`, `cursor`, `limit`, and `status`.
+- Single-word query parameter names `MUST` stay lowercase without an underscore, such as `q`, `page`, `sort`, `cursor`, and `status`.
 - The standard free-text search parameter is `q`. OpenAPI URL query parameters and generated SDK query parameters `MUST NOT` use `keyword`, `search`, `searchQuery`, or `search_query` for generic search.
 - A list operation `MUST NOT` expose multiple names such as `q`, `keyword`, `search`, `searchQuery`, or `search_query` for the same free-text search meaning. Use `q` for generic keyword search; reserve explicit multi-word filters for distinct domain concepts. SDK or implementation variables may use language-idiomatic names such as `searchQuery`, but those names must map to the wire parameter `q`.
 - Filtering parameters `SHOULD` be explicit instead of a free-form SQL-like expression.
 - Cursor pagination `SHOULD` be used for high-volume or unstable lists.
+- Shared OpenAPI list query parameters `SHOULD` `$ref` `templates/openapi/components/parameters/query-parameters.yaml`.
 
 ## 17. Idempotency And Concurrency
 
@@ -1184,13 +1865,13 @@ Rules:
 
 - Retriable create and payment-like commands `MUST` support `Idempotency-Key`.
 - `Idempotency-Key` values are scoped by tenant, principal, method, and path.
-- `requestId` is server-owned request identity, not an idempotency key and not a browser/client-generated field.
-- App and backend API servers MUST generate a canonical UUID requestId for each request that records request correlation.
-- App and backend OpenAPI contracts MUST NOT declare `X-Request-Id`, and generated app/backend SDKs MUST NOT expose `xRequestId` parameters.
-- Browser, frontend, app SDK, and backend-admin SDK consumers `MUST NOT` send `X-Request-Id`.
-- If an edge gateway or trusted upstream component needs to preserve its own correlation id, it must use a domain-specific upstream correlation field and must not override the SDKWork server requestId.
-- Request body schemas for new create/update/command operations `MUST NOT` require a client-filled `requestId` for SDKWork request correlation.
-- Success and error responses SHOULD expose the server requestId when the API contract exposes request correlation, including problem details, audit records, runtime records, usage logs, and asynchronous command responses.
+- `traceId` is server-owned request correlation identity, not an idempotency key and not a browser/client-generated field.
+- App and backend API servers MUST generate a canonical UUID `traceId` for each request that records request correlation.
+- App and backend OpenAPI contracts MUST NOT declare `X-Request-Id`, wire field `requestId`, or generated `xRequestId` parameters.
+- Browser, frontend, app SDK, and backend-admin SDK consumers `MUST NOT` send `X-Request-Id`, client-generated `traceId`, or wire field `requestId`.
+- If an edge gateway or trusted upstream component needs to preserve its own correlation id, it must use a domain-specific upstream correlation field and must not override the SDKWork server `traceId`.
+- Request body schemas for new create/update/command operations `MUST NOT` require a client-filled `traceId` or `requestId` for SDKWork request correlation.
+- Success and error responses MUST expose `traceId` when the API contract exposes request correlation, including `SdkWorkApiResponse`, problem details, audit records, runtime records, usage logs, and asynchronous command responses.
 - Resource updates `SHOULD` support optimistic concurrency with `version`, `If-Match`, or equivalent domain versioning.
 - Duplicate idempotency keys with different payloads `MUST` return `409`.
 - Idempotency records `SHOULD` follow database rules in `specs/DATABASE_SPEC.md`.
@@ -1244,6 +1925,8 @@ SDKWork governance tools may read these extensions.
 | `x-sdkwork-source` | Physical source or scanned module that produced the operation |
 | `x-sdkwork-source-route-crate` | Rust route crate package name when the operation was materialized from `sdkwork.route.manifest` |
 | `x-sdkwork-integration-source` | Integrated dependency source when an operation is present only for runtime composition or compatibility |
+| `x-sdkwork-wire-protocol` | Wire contract profile: `sdkwork-v3` for SDKWork-owned business APIs, or `external` for vendor compatibility APIs exempt from section 14 and section 15 |
+| `x-sdkwork-external-protocol-id` | Stable lowercase kebab-case upstream protocol identifier required when `x-sdkwork-wire-protocol: external`, for example `openai-v1`, `anthropic-messages`, `claude-code`, or `codex` |
 
 Rules:
 
@@ -1259,6 +1942,7 @@ Rules:
 - `x-sdkwork-owner` is the SDK generation ownership key. It identifies the app/repo/module that is allowed to generate the operation into its SDK family.
 - `x-sdkwork-api-authority` identifies the logical API authority and should include both owner and surface, for example `sdkwork-iam-app-api`, `sdkwork-iam-backend-api`, `sdkwork-im.im`, or `sdkwork-drive.app`.
 - `x-sdkwork-source` and `x-sdkwork-integration-source` may describe where the operation was scanned from, but they `MUST NOT` replace `x-sdkwork-owner` for generation decisions.
+- SDKWork-owned business operations on open-api, app-api, and backend-api `MUST` omit `x-sdkwork-wire-protocol` or declare `x-sdkwork-wire-protocol: sdkwork-v3`. Vendor compatibility operations `MUST` declare `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id` per section 4.5.2.
 - OpenAPI documents may temporarily include dependency-owned operations for runtime integration inspection only when those operations are clearly marked with the dependency owner. The generated SDK input for an app/repo `MUST` filter them out unless the current SDK family owner matches the operation owner.
 - Path prefix, tag, Rust crate name, Java controller package, or filesystem location `MUST NOT` be the only authority for SDK ownership. Those signals may help infer metadata during migration, but the materialized OpenAPI operation must carry explicit ownership before generation.
 
@@ -1413,7 +2097,9 @@ An API is standard only when this checklist passes:
 - [ ] Handlers consume typed `WebRequestContext` and do not reparse credential, tenant, user, permission, or request-id headers.
 - [ ] Runtime routers run the standard API call chain or a stricter documented superset.
 - [ ] Backend API has no login/session creation/refresh/logout endpoint.
-- [ ] Error responses include `application/problem+json`.
+- [ ] Error responses include `application/problem+json` with numeric `ProblemDetail.code` from §15.3.
+- [ ] Success list/search responses use `SdkWorkApiResponse` + `SdkWorkPageData`; inputs follow §14.1 and §16.
+- [ ] List/search operations use standard query parameters or `SdkWorkListQuery` bodies; generic search uses `q` only.
 - [ ] `int64` and `decimal` API fields are strings.
 - [ ] Request and response schemas use `additionalProperties` intentionally.
 - [ ] List APIs are paginated or explicitly bounded.
@@ -1431,5 +2117,8 @@ This standard aligns with:
 - OpenAPI Specification 3.1.2 stable profile: https://spec.openapis.org/oas/v3.1.2.html
 - OpenAPI Specification 3.2.0 forward-looking profile: https://spec.openapis.org/oas/v3.2.0.html
 - JSON Schema Draft 2020-12: https://json-schema.org/draft/2020-12
-- RFC 9457 Problem Details for HTTP APIs: https://www.rfc-editor.org/rfc/rfc9457
+- RFC 9457 Problem Details for HTTP APIs: https://www.rfc-editor.org/rfc/rfc9457.html
+- Google API Improvement Proposals list pagination (AIP-158): https://google.aip.dev/158
+- Google API Improvement Proposals field masks (AIP-161): https://google.aip.dev/161
+- JSON:API sparse fieldsets and filtering concepts: https://jsonapi.org/format/
 - OWASP REST Security Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html

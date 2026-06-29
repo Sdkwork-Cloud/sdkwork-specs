@@ -101,8 +101,8 @@ Backends use names that expose domain intent without leaking transport details i
 | Repository | `<Aggregate>Repository` | `ProductRepository` |
 | Provider adapter | `<Provider><Capability>Adapter` | `StripePaymentAdapter` |
 | Route manifest | `<packageName>.route-manifest.json` | `sdkwork-routes-merchandise-app-api.route-manifest.json` |
-| API authority | `sdkwork-<domain>-<surface>` | `sdkwork-commerce-app-api` |
-| SDK family | `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-sdk`, `sdkwork-<domain>-backend-sdk` | `sdkwork-commerce-app-sdk` |
+| API authority | `sdkwork-<domain>-<surface>` | `sdkwork-commerce (deleted)-app-api` |
+| SDK family | `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-sdk`, `sdkwork-<domain>-backend-sdk` | `sdkwork-commerce (deleted)-app-sdk` |
 
 Rules:
 
@@ -143,7 +143,9 @@ Rules:
 - Controller methods `MUST NOT` call repositories directly for business operations.
 - Transaction boundaries `MUST` live in service/use-case methods, not controller methods, unless the method is an infrastructure-only health or diagnostics endpoint with no business write.
 - Spring validation annotations may be used only when they match or tighten the OpenAPI schema in documented ways. They must not silently narrow an SDK contract.
-- Problem-detail mapping `MUST` be centralized through framework exception handling or a shared response mapper. Controllers must not hand-build incompatible error envelopes.
+- Problem-detail mapping `MUST` be centralized through framework exception handling or a shared response mapper. Controllers must not hand-build incompatible error envelopes or legacy success envelopes such as `PlusApiResult`, `AppbaseApiResult`, or `StoreApiResult`.
+- Success responses `MUST` map service results to `SdkWorkApiResponse` per `API_SPEC.md` section 15 for SDKWork-owned business operations on `app-api`, `backend-api`, and business `open-api`. Vendor compatibility `open-api` adapter handlers declared with `x-sdkwork-wire-protocol: external` per section 4.5.2 `MAY` return upstream wire instead. Route handlers and controllers `MUST NOT` return bare domain DTOs at the HTTP JSON root or wire field `requestId` for business operations.
+- Protected open-api handlers `MUST` consume framework-resolved API key, OAuth bearer, or flexible open-api context according to the route manifest. They `MUST NOT` parse credential headers directly unless the route is a vendor compatibility API declared under `API_SPEC.md` section 4.5.2.
 - `ResponseEntity<Map<String, Object>>`, raw maps, and untyped JSON nodes are forbidden for SDK-generated operations unless the OpenAPI schema explicitly declares a flexible object.
 - OpenAPI tags and operationIds `MUST NOT` be inferred from controller class names. They follow `API_SPEC.md`.
 - Java packages `SHOULD` use canonical domain and capability names. Legacy packages may remain during migration, but materialized OpenAPI ownership must be explicit.
@@ -300,7 +302,7 @@ Rules:
 
 - Surface classification, request identity, credential parsing, context resolution, authentication, context injection, and secure response headers `MUST` run before protected handlers.
 - Protected app-api and backend-api handlers `MUST` consume the standard dual-token context.
-- Protected open-api handlers `MUST` consume framework-resolved API key, OAuth bearer, or flexible open-api context according to the route manifest. They `MUST NOT` parse credential headers directly unless a documented compatibility contract declares another mode.
+- Protected open-api handlers `MUST` consume framework-resolved API key, OAuth bearer, or flexible open-api context according to the route manifest. They `MUST NOT` parse credential headers directly unless the route is a vendor compatibility API declared under `API_SPEC.md` section 4.5.2.
 - Handlers and services `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission scopes, or request IDs from raw headers.
 - The typed request context for authenticated user flows `MUST` carry tenant
   id, organization id, login scope, user id, session id, app id, environment,

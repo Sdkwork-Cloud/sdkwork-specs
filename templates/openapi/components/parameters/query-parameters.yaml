@@ -1,0 +1,97 @@
+PageQuery:
+  name: page
+  in: query
+  required: false
+  description: One-based page index for offset pagination. Default 1.
+  schema:
+    type: integer
+    format: int32
+    minimum: 1
+    default: 1
+
+PageSizeQuery:
+  name: page_size
+  in: query
+  required: false
+  description: Page size for offset or cursor pagination. Default 20, maximum 200.
+  schema:
+    type: integer
+    format: int32
+    minimum: 1
+    maximum: 200
+    default: 20
+
+CursorQuery:
+  name: cursor
+  in: query
+  required: false
+  description: Opaque cursor token from a previous list response pageInfo.nextCursor. Mutually exclusive with page.
+  schema:
+    type: string
+    minLength: 1
+    maxLength: 512
+
+SortQuery:
+  name: sort
+  in: query
+  required: false
+  description: Comma-separated sort fields. Prefix a field with `-` for descending order, for example `sort=-createdAt,displayName`.
+  schema:
+    type: string
+    maxLength: 256
+    pattern: '^-?[A-Za-z][A-Za-z0-9_]*(,-?[A-Za-z][A-Za-z0-9_]*)*$'
+
+SearchQuery:
+  name: q
+  in: query
+  required: false
+  description: Generic free-text search keyword. Domain APIs MUST NOT expose keyword/search/searchQuery aliases for the same meaning.
+  schema:
+    type: string
+    maxLength: 256
+
+CreatedAfterQuery:
+  name: created_after
+  in: query
+  required: false
+  description: Include resources created at or after this UTC timestamp.
+  schema:
+    type: string
+    format: date-time
+
+CreatedBeforeQuery:
+  name: created_before
+  in: query
+  required: false
+  description: Include resources created before this UTC timestamp.
+  schema:
+    type: string
+    format: date-time
+
+UpdatedAfterQuery:
+  name: updated_after
+  in: query
+  required: false
+  description: Include resources updated at or after this UTC timestamp.
+  schema:
+    type: string
+    format: date-time
+
+UpdatedBeforeQuery:
+  name: updated_before
+  in: query
+  required: false
+  description: Include resources updated before this UTC timestamp.
+  schema:
+    type: string
+    format: date-time
+
+IdsQuery:
+  name: ids
+  in: query
+  required: false
+  description: Comma-separated resource id list using int64-string ids. Maximum 100 ids per request.
+  schema:
+    type: string
+    maxLength: 4096
+    pattern: '^[0-9]+(,[0-9]+)*$'

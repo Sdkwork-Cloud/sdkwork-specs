@@ -268,7 +268,7 @@ SDKWORK_CLAW_REDIS_POOL_IDLE_TIMEOUT_SECONDS=60
 Browser-visible portal variables:
 
 ```text
-# /v1 is valid here only for OpenAI-compatible API compatibility.
+# /v1 is valid here only for vendor compatibility open-api declared with x-sdkwork-wire-protocol: external per API_SPEC.md section 4.5.2.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
 PORTAL_PUBLIC_OPEN_API_BASE_URL=/v1
@@ -312,7 +312,7 @@ Rules:
   managed-endpoint override; use separate `tls`, pool, timeout, and
   `key_prefix` fields for standard deployments.
 - `PORTAL_PUBLIC_APP_API_BASE_URL` and `PORTAL_PUBLIC_BACKEND_API_BASE_URL` must remain independently configurable because split deployments may route them to different hosts.
-- SDKWork open-api, OpenAI-compatible, or generic API configuration should use `PORTAL_PUBLIC_OPEN_API_BASE_URL` or `PORTAL_PUBLIC_API_BASE_URL`, not an ambiguous gateway env name. A `/v1` value is valid only for an explicitly documented OpenAI-compatible compatibility API; SDKWork-owned business open-api domains must use their approved non-app/non-backend prefix from `API_SPEC.md`, for example `/im/v3/api`.
+- SDKWork business open-api and vendor compatibility open-api configuration should use `PORTAL_PUBLIC_OPEN_API_BASE_URL` or `PORTAL_PUBLIC_API_BASE_URL`, not an ambiguous gateway env name. A `/v1` value is valid only for vendor compatibility open-api declared with `x-sdkwork-wire-protocol: external` per `API_SPEC.md` section 4.5.2; SDKWork-owned business open-api domains must use their approved non-app/non-backend prefix from section 4.5.1, for example `/im/v3/api`.
 
 ### 5.3 Runtime Directory Paths
 

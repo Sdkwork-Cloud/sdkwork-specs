@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: modular permission catalog inheritance, consumer override policy, route guard hints, bootstrap scope layering, and alignment with IMF module manifests
-- Related: `PERMISSION_STANDARD_SPEC.md`, `IAM_MODULE_MANIFEST_SPEC.md`, `IAM_RBAC_FEDERATION_SPEC.md`, `APP_DEPENDENCY_COMPOSITION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `IAM_CREDENTIAL_ENTRY_SPEC.md`
+- Related: `PERMISSION_STANDARD_SPEC.md`, `IAM_MODULE_MANIFEST_SPEC.md`, `IAM_RBAC_FEDERATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `IAM_CREDENTIAL_ENTRY_SPEC.md`
 
 ## 1. Purpose
 
@@ -22,7 +22,7 @@ Server enforcement remains authoritative. UI hints never replace backend authori
 | --- | --- | --- |
 | L0 IMF module | `specs/iam.module.manifest.json` per module | `{domain}.{resource}.{action}` catalog, domain roles, OpenAPI authority bindings |
 | L0 API contract | OpenAPI `x-sdkwork-permission`, `x-sdkwork-required-surface` | Operation-level required permission for each protected route |
-| L1 app composition | `specs/dependency.composition.json` `permissionComposition` | Which module catalogs are inherited, bootstrap scope policy, allowed overrides |
+| L1 app composition | app-surface `specs/component.spec.json` `contracts.permissionComposition` | Which module catalogs are inherited, bootstrap scope policy, allowed overrides |
 | L2 runtime | `@sdkwork/iam-contracts`, gateway manifest policy, web framework | Effective permission scope on tokens, route enforcement |
 | L3 feature UI | route classification, menu metadata, `can()` hints | UX only; must reference inherited codes, not invent parallel catalogs |
 
@@ -52,7 +52,7 @@ Rules:
 
 ## 4. `permissionComposition` Manifest Section
 
-Every client application root with modular admin/console/app surfaces **should** declare `permissionComposition` inside `specs/dependency.composition.json`.
+Every client application root with modular admin/console/app surfaces should declare `contracts.permissionComposition` inside app-surface `specs/component.spec.json`.
 
 ```json
 {
@@ -180,7 +180,7 @@ Rules:
 Application roots **must** verify:
 
 ```bash
-node tools/check-dependency-composition.mjs --workspace ..
+node tools/verify-repo.mjs --root <repo-root>
 pnpm run iam:modules:validate   # when IMF enabled
 ```
 
@@ -194,7 +194,7 @@ Additional checks:
 ## 9. Acceptance Checklist
 
 - [ ] Dependency module permissions are inherited by reference, not copied into consumer packages.
-- [ ] Consumer declares `permissionComposition` in `dependency.composition.json`.
+- [ ] Consumer declares `contracts.permissionComposition` in app-surface `component.spec.json`.
 - [ ] Application-owned permissions live in consumer `specs/iam.module.manifest.json`.
 - [ ] Explicit overrides are listed in `permissionComposition`; no hidden local catalogs.
 - [ ] Frontend route/menu hints reference inherited codes; server enforcement unchanged.

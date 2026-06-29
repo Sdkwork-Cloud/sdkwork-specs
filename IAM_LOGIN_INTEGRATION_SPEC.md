@@ -403,7 +403,7 @@ Allowed Rust IAM authority responsibilities:
 - expose `/app/v3/api/auth/sessions`, `/app/v3/api/auth/sessions/current`,
   refresh, logout, verification, OAuth, QR auth, password reset, and current
   user routes when the deployment intentionally runs embedded standalone IAM;
-- use the same OpenAPI paths, operationIds, schemas, response envelopes, error codes, and security declarations as Java app-api;
+- use the same OpenAPI paths, operationIds, schemas, `SdkWorkApiResponse` success envelopes, `ProblemDetail` errors, and security declarations as Java app-api;
 - issue, hash, store, rotate, revoke, and verify tokens with the same logical IAM semantics;
 - produce AppContext and ShardingContext compatible across standalone and cloud profiles;
 - pass appbase UI/runtime contract tests without app-specific forks.

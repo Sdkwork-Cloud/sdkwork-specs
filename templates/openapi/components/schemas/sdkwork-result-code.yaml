@@ -1,0 +1,85 @@
+SdkWorkSuccessCode:
+  type: integer
+  format: int32
+  description: Success result code for SdkWorkApiResponse.code. MUST be 0 on HTTP 2xx JSON bodies.
+  enum: [0]
+  default: 0
+  x-enum-varnames: [OK]
+  x-sdkwork-result-code-symbol: OK
+
+SdkWorkPlatformErrorCode:
+  type: integer
+  format: int32
+  description: Platform error codes for ProblemDetail.code on HTTP 4xx/5xx responses. See API_SPEC.md §15.3.
+  enum:
+    - 40001
+    - 40002
+    - 40003
+    - 40004
+    - 40101
+    - 40102
+    - 40103
+    - 40104
+    - 40301
+    - 40302
+    - 40303
+    - 40304
+    - 40401
+    - 41001
+    - 40501
+    - 40801
+    - 40901
+    - 41201
+    - 41301
+    - 41501
+    - 42201
+    - 42301
+    - 42801
+    - 42901
+    - 50001
+    - 50201
+    - 50301
+    - 50401
+  x-enum-varnames:
+    - VALIDATION_ERROR
+    - MALFORMED_REQUEST
+    - INVALID_PARAMETER
+    - MISSING_REQUIRED_FIELD
+    - AUTHENTICATION_REQUIRED
+    - TOKEN_EXPIRED
+    - INVALID_TOKEN
+    - SESSION_REVOKED
+    - PERMISSION_REQUIRED
+    - INSUFFICIENT_SCOPE
+    - TENANT_ACCESS_DENIED
+    - ORGANIZATION_ACCESS_DENIED
+    - NOT_FOUND
+    - GONE
+    - METHOD_NOT_ALLOWED
+    - REQUEST_TIMEOUT
+    - CONFLICT
+    - PRECONDITION_FAILED
+    - PAYLOAD_TOO_LARGE
+    - UNSUPPORTED_MEDIA_TYPE
+    - UNPROCESSABLE_ENTITY
+    - LOCKED
+    - PRECONDITION_REQUIRED
+    - RATE_LIMIT_EXCEEDED
+    - INTERNAL_ERROR
+    - BAD_GATEWAY
+    - SERVICE_UNAVAILABLE
+    - GATEWAY_TIMEOUT
+
+SdkWorkDomainErrorCode:
+  type: integer
+  format: int32
+  description: Domain business error codes registered by the owning API authority in range 60000-69999.
+  minimum: 60000
+  maximum: 69999
+
+SdkWorkIntegrationErrorCode:
+  type: integer
+  format: int32
+  description: Integration or third-party mapped error codes in range 70000-79999.
+  minimum: 70000
+  maximum: 79999

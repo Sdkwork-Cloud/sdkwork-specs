@@ -20,7 +20,7 @@ SDKWork names use a fixed identity lattice. Do not collapse these layers into on
 | L6 client architecture | client-arch | `<client-arch>` | `pc`, `h5`, `flutter-mobile` | ??|
 | L7 domain | domain | `<domain>` | `commerce`, `iam` | product name |
 | L8 capability | capability | `<capability>` | `cart`, `merchandise` | `product`, `common`, `manager` |
-| L9 API owner | owner code | `<owner-code>` | `sdkwork-commerce` | SDK family name |
+| L9 API owner | owner code | `<owner-code>` | `sdkwork-commerce (deleted)` | SDK family name |
 
 Rules:
 
@@ -78,7 +78,7 @@ After `product`, these words are the most common sources of naming drift. Each r
 | `common` / `manager` | ??| capability or crate catch-alls | concrete domain capability |
 | `open` | approved **open-api** prefix/path; `open-api` surface | shorthand package name `open` | `open-api`, `sdkwork-<domain>-open-api` |
 | `domain` (L7) | bounded context `commerce`, `iam`, ??| application code; repository stem | `<domain>` vs `<application-code>` ??commerce can be both; document which axis |
-| `owner-code` (L9) | API aggregation owner `sdkwork-commerce` | SDK family; application code when they differ | `owner` in route manifest; not `sdkFamily` |
+| `owner-code` (L9) | API aggregation owner `sdkwork-commerce (deleted)` | SDK family; application code when they differ | `owner` in route manifest; not `sdkFamily` |
 | `routes` | Rust HTTP route crate prefix `sdkwork-routes-<capability>-<surface>` | gateway upstream routing; framework router mount | encode capability and surface explicitly |
 | `shell` / `workspace` / `command` | appbase foundation PC React capability tokens in `sdkwork-<foundation>-pc-react` | Rust HTTP route crates; gateway routing | `sdkwork-shell-pc-react`, `sdkwork-workspace-pc-react`, `sdkwork-command-pc-react` |
 | `sdk-family-stem` | generated SDK workspace stem `im`, `commerce` | route crate name; API authority directory; application code | `sdkwork-<sdk-family-stem>-app-sdk` family table |
@@ -107,42 +107,42 @@ Rules:
 | Concept | Pattern | Example |
 | --- | --- | --- |
 | SDKWork repository | `sdkwork-<application-code>` | `sdkwork-drive` |
-| PC app root | `apps/sdkwork-<application-code>-pc/` | `apps/sdkwork-commerce-pc/` |
-| H5 app root | `apps/sdkwork-<application-code>-h5/` | `apps/sdkwork-commerce-h5/` |
-| Flutter mobile app root | `apps/sdkwork-<application-code>-flutter-mobile/` | `apps/sdkwork-commerce-flutter-mobile/` |
-| Mini program app root | `apps/sdkwork-<application-code>-mini-program/` | `apps/sdkwork-commerce-mini-program/` |
-| Android native app root | `apps/sdkwork-<application-code>-android-mobile/` | `apps/sdkwork-commerce-android-mobile/` |
-| iOS native app root | `apps/sdkwork-<application-code>-ios-mobile/` | `apps/sdkwork-commerce-ios-mobile/` |
-| Harmony native app root | `apps/sdkwork-<application-code>-harmony-mobile/` | `apps/sdkwork-commerce-harmony-mobile/` |
-| PC app package | `sdkwork-<application-code>-pc-<capability>` | `sdkwork-commerce-pc-merchandise` |
-| PC user console package | `sdkwork-<application-code>-pc-console-<capability>` | `sdkwork-commerce-pc-console-order` |
-| PC internal admin package | `sdkwork-<application-code>-pc-admin-<capability>` | `sdkwork-commerce-pc-admin-audit` |
-| H5 mobile app package | `sdkwork-<application-code>-h5-<capability>` | `sdkwork-commerce-h5-order` |
-| H5 mobile user console package | `sdkwork-<application-code>-h5-console-<capability>` | `sdkwork-commerce-h5-console-order` |
-| H5 mobile internal admin package | `sdkwork-<application-code>-h5-admin-<capability>` | `sdkwork-commerce-h5-admin-audit` |
-| H5 mobile Capacitor host package | `sdkwork-<application-code>-h5-capacitor` | `sdkwork-commerce-h5-capacitor` |
+| PC app root | `apps/sdkwork-<application-code>-pc/` | `apps/sdkwork-commerce (deleted)-pc/` |
+| H5 app root | `apps/sdkwork-<application-code>-h5/` | `apps/sdkwork-commerce (deleted)-h5/` |
+| Flutter mobile app root | `apps/sdkwork-<application-code>-flutter-mobile/` | `apps/sdkwork-commerce (deleted)-flutter-mobile/` |
+| Mini program app root | `apps/sdkwork-<application-code>-mini-program/` | `apps/sdkwork-commerce (deleted)-mini-program/` |
+| Android native app root | `apps/sdkwork-<application-code>-android-mobile/` | `apps/sdkwork-commerce (deleted)-android-mobile/` |
+| iOS native app root | `apps/sdkwork-<application-code>-ios-mobile/` | `apps/sdkwork-commerce (deleted)-ios-mobile/` |
+| Harmony native app root | `apps/sdkwork-<application-code>-harmony-mobile/` | `apps/sdkwork-commerce (deleted)-harmony-mobile/` |
+| PC app package | `sdkwork-<application-code>-pc-<capability>` | `sdkwork-commerce (deleted)-pc-merchandise` |
+| PC user console package | `sdkwork-<application-code>-pc-console-<capability>` | `sdkwork-commerce (deleted)-pc-console-order` |
+| PC internal admin package | `sdkwork-<application-code>-pc-admin-<capability>` | `sdkwork-commerce (deleted)-pc-admin-audit` |
+| H5 mobile app package | `sdkwork-<application-code>-h5-<capability>` | `sdkwork-commerce (deleted)-h5-order` |
+| H5 mobile user console package | `sdkwork-<application-code>-h5-console-<capability>` | `sdkwork-commerce (deleted)-h5-console-order` |
+| H5 mobile internal admin package | `sdkwork-<application-code>-h5-admin-<capability>` | `sdkwork-commerce (deleted)-h5-admin-audit` |
+| H5 mobile Capacitor host package | `sdkwork-<application-code>-h5-capacitor` | `sdkwork-commerce (deleted)-h5-capacitor` |
 | Flutter mobile Dart package | `sdkwork_<application_code>_flutter_mobile_<capability>` | `sdkwork_commerce_flutter_mobile_order` |
 | Flutter mobile user console Dart package | `sdkwork_<application_code>_flutter_mobile_console_<capability>` | `sdkwork_commerce_flutter_mobile_console_order` |
 | Flutter mobile internal admin Dart package | `sdkwork_<application_code>_flutter_mobile_admin_<capability>` | `sdkwork_commerce_flutter_mobile_admin_audit` |
-| Mini program source package | `sdkwork-<application-code>-mp-<capability>` | `sdkwork-commerce-mp-order` |
-| Mini program user console package | `sdkwork-<application-code>-mp-console-<capability>` | `sdkwork-commerce-mp-console-order` |
-| Mini program internal admin package | `sdkwork-<application-code>-mp-admin-<capability>` | `sdkwork-commerce-mp-admin-audit` |
-| Mini program host package | `sdkwork-<application-code>-mp-host` | `sdkwork-commerce-mp-host` |
+| Mini program source package | `sdkwork-<application-code>-mp-<capability>` | `sdkwork-commerce (deleted)-mp-order` |
+| Mini program user console package | `sdkwork-<application-code>-mp-console-<capability>` | `sdkwork-commerce (deleted)-mp-console-order` |
+| Mini program internal admin package | `sdkwork-<application-code>-mp-admin-<capability>` | `sdkwork-commerce (deleted)-mp-admin-audit` |
+| Mini program host package | `sdkwork-<application-code>-mp-host` | `sdkwork-commerce (deleted)-mp-host` |
 | Shared mini program package | `sdkwork-<capability>-mini-program` | `sdkwork-order-mini-program` |
-| Android native app package | `sdkwork-<application-code>-android-mobile-<capability>` | `sdkwork-commerce-android-mobile-order` |
-| Android native user console package | `sdkwork-<application-code>-android-mobile-console-<capability>` | `sdkwork-commerce-android-mobile-console-order` |
-| Android native internal admin package | `sdkwork-<application-code>-android-mobile-admin-<capability>` | `sdkwork-commerce-android-mobile-admin-audit` |
-| Android native host package | `sdkwork-<application-code>-android-mobile-host` | `sdkwork-commerce-android-mobile-host` |
+| Android native app package | `sdkwork-<application-code>-android-mobile-<capability>` | `sdkwork-commerce (deleted)-android-mobile-order` |
+| Android native user console package | `sdkwork-<application-code>-android-mobile-console-<capability>` | `sdkwork-commerce (deleted)-android-mobile-console-order` |
+| Android native internal admin package | `sdkwork-<application-code>-android-mobile-admin-<capability>` | `sdkwork-commerce (deleted)-android-mobile-admin-audit` |
+| Android native host package | `sdkwork-<application-code>-android-mobile-host` | `sdkwork-commerce (deleted)-android-mobile-host` |
 | Shared Android native package | `sdkwork-<capability>-android-native` | `sdkwork-order-android-native` |
-| iOS native app package | `sdkwork-<application-code>-ios-mobile-<capability>` | `sdkwork-commerce-ios-mobile-order` |
-| iOS native user console package | `sdkwork-<application-code>-ios-mobile-console-<capability>` | `sdkwork-commerce-ios-mobile-console-order` |
-| iOS native internal admin package | `sdkwork-<application-code>-ios-mobile-admin-<capability>` | `sdkwork-commerce-ios-mobile-admin-audit` |
-| iOS native host package | `sdkwork-<application-code>-ios-mobile-host` | `sdkwork-commerce-ios-mobile-host` |
+| iOS native app package | `sdkwork-<application-code>-ios-mobile-<capability>` | `sdkwork-commerce (deleted)-ios-mobile-order` |
+| iOS native user console package | `sdkwork-<application-code>-ios-mobile-console-<capability>` | `sdkwork-commerce (deleted)-ios-mobile-console-order` |
+| iOS native internal admin package | `sdkwork-<application-code>-ios-mobile-admin-<capability>` | `sdkwork-commerce (deleted)-ios-mobile-admin-audit` |
+| iOS native host package | `sdkwork-<application-code>-ios-mobile-host` | `sdkwork-commerce (deleted)-ios-mobile-host` |
 | Shared iOS native package | `sdkwork-<capability>-ios-native` | `sdkwork-order-ios-native` |
-| Harmony native app package | `sdkwork-<application-code>-harmony-mobile-<capability>` | `sdkwork-commerce-harmony-mobile-order` |
-| Harmony native user console package | `sdkwork-<application-code>-harmony-mobile-console-<capability>` | `sdkwork-commerce-harmony-mobile-console-order` |
-| Harmony native internal admin package | `sdkwork-<application-code>-harmony-mobile-admin-<capability>` | `sdkwork-commerce-harmony-mobile-admin-audit` |
-| Harmony native host package | `sdkwork-<application-code>-harmony-mobile-host` | `sdkwork-commerce-harmony-mobile-host` |
+| Harmony native app package | `sdkwork-<application-code>-harmony-mobile-<capability>` | `sdkwork-commerce (deleted)-harmony-mobile-order` |
+| Harmony native user console package | `sdkwork-<application-code>-harmony-mobile-console-<capability>` | `sdkwork-commerce (deleted)-harmony-mobile-console-order` |
+| Harmony native internal admin package | `sdkwork-<application-code>-harmony-mobile-admin-<capability>` | `sdkwork-commerce (deleted)-harmony-mobile-admin-audit` |
+| Harmony native host package | `sdkwork-<application-code>-harmony-mobile-host` | `sdkwork-commerce (deleted)-harmony-mobile-host` |
 | Shared Harmony native package | `sdkwork-<capability>-harmony-native` | `sdkwork-order-harmony-native` |
 | Backend/admin React package | `@sdkwork/react-backend-<domain>` | `@sdkwork/react-backend-commerce` |
 | Appbase foundation PC React package | `sdkwork-<foundation>-pc-react` | `sdkwork-shell-pc-react`, `sdkwork-workspace-pc-react` |
@@ -160,8 +160,8 @@ Rules:
 | Rust platform gateway crate | `sdkwork-api-cloud-gateway` | `sdkwork-api-cloud-gateway` |
 | Retired Rust listener crate | `sdkwork-<application-code>-api-server` | **forbidden** — migrate to `*-standalone-gateway` |
 | Open API authority | `sdkwork-<domain>-open-api` | `sdkwork-im-open-api` |
-| App API authority | `sdkwork-<domain>-app-api` | `sdkwork-commerce-app-api` |
-| Backend API authority | `sdkwork-<domain>-backend-api` | `sdkwork-commerce-backend-api` |
+| App API authority | `sdkwork-<domain>-app-api` | `sdkwork-commerce (deleted)-app-api` |
+| Backend API authority | `sdkwork-<domain>-backend-api` | `sdkwork-commerce (deleted)-backend-api` |
 | Public SDK family | `sdkwork-<sdk-family-stem>-sdk` | `sdkwork-im-sdk` |
 | App SDK family | `sdkwork-<sdk-family-stem>-app-sdk` | `sdkwork-im-app-sdk` |
 | Backend SDK family | `sdkwork-<sdk-family-stem>-backend-sdk` | `sdkwork-im-backend-sdk` |
@@ -239,7 +239,7 @@ Examples:
 | IM internal RPC discovery name | `sdkwork-communication-internal-rpc` |
 | Game internal RPC discovery name | `sdkwork-game-internal-rpc` |
 | Discovery control plane registry | `sdkwork-discovery-internal-registry` |
-| Commerce app RPC discovery name | `sdkwork-commerce-app-rpc` |
+| Commerce app RPC discovery name | `sdkwork-commerce (deleted)-app-rpc` |
 
 Rules:
 
@@ -409,7 +409,7 @@ Rules:
   `sdkwork-<domain>-<capability>-runtime`, `sdkwork-<application-code>-backend`,
   `sdkwork-<application-code>-core`, `sdkwork-<application-code>-common`, `sdkwork-<application-code>-manager`, and
   `sdkwork-<application-code>-server-runtime`.
-- Commerce merchandise capability uses `merchandise` for sellable-item master data, SKU, and attributes, for example `sdkwork-commerce-merchandise-service` and `sdkwork-routes-merchandise-app-api`. The forbidden form is using `product` as the application entrypoint or runtime suffix, such as `sdkwork-drive-product`, or reviving capability token `product` for commerce merchandise.
+- Commerce merchandise capability uses `merchandise` for sellable-item master data, SKU, and attributes, for example `sdkwork-merchandise-service` and `sdkwork-routes-merchandise-app-api`. The forbidden form is using `product` as the application entrypoint or runtime suffix, such as `sdkwork-drive-product`, or reviving capability token `product` for commerce merchandise.
 - Repositories must not preserve forbidden Rust crate names through wrapper crates, package aliases,
   feature aliases, or public re-export aliases.
 

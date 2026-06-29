@@ -194,8 +194,8 @@ Example mapping:
 | Route crate | Aggregated API authority | SDK family | Prefix |
 | --- | --- | --- | --- |
 | `sdkwork-routes-conversation-open-api` | `sdkwork-im-open-api` | `sdkwork-im-sdk` | `/im/v3/api` |
-| `sdkwork-routes-merchandise-app-api` | `sdkwork-commerce-app-api` | `sdkwork-commerce-app-sdk` | `/app/v3/api` |
-| `sdkwork-routes-order-backend-api` | `sdkwork-commerce-backend-api` | `sdkwork-commerce-backend-sdk` | `/backend/v3/api` |
+| `sdkwork-routes-merchandise-app-api` | `sdkwork-commerce (deleted)-app-api` | `sdkwork-commerce (deleted)-app-sdk` | `/app/v3/api` |
+| `sdkwork-routes-order-backend-api` | `sdkwork-commerce (deleted)-backend-api` | `sdkwork-commerce (deleted)-backend-sdk` | `/backend/v3/api` |
 
 ### 3.1 Rust Route Crate Placement
 
@@ -298,7 +298,7 @@ Rules:
 
 - Authority OpenAPI documents `MUST` use the OpenAPI 3.x profile in `API_SPEC.md`.
 - Authority OpenAPI documents may be materialized from multiple route crate manifests for the same
-  owner, domain, and API surface. For example, `sdkwork-commerce-app-api` may aggregate
+  owner, domain, and API surface. For example, `sdkwork-commerce (deleted)-app-api` may aggregate
   `sdkwork-routes-merchandise-app-api`, `sdkwork-routes-cart-app-api`, `sdkwork-routes-order-app-api`,
   and `sdkwork-routes-payment-app-api`.
 - Route crate manifests `MUST` be aggregated by surface. An `app-api` authority may consume only
@@ -332,7 +332,12 @@ Rules:
 - OpenAPI documents for app-api and backend-api `MUST` use dual-token security where required by `API_SPEC.md` and `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - Public SDK-generated operations `MUST` preserve `security: []` and the declared `x-sdkwork-auth-mode` into every derived `*.sdkgen.*` input so SDK credential injection can apply the correct transport mode (`anonymous`, `refresh-token`, or `credential-entry-bootstrap`).
 - Login-like credential-entry operations backed by `HttpRoute::credential_entry_public` `MUST` preserve `x-sdkwork-auth-mode: credential-entry-bootstrap` and `x-sdkwork-forbid-credential-headers: true` into every derived `*.sdkgen.*` input, and runtime verification must prove the corresponding route rejects inbound session credential/context headers while still requiring bootstrap `Access-Token` JWT.
-- OpenAPI documents `MUST NOT` expose `X-Request-Id` or client-supplied request correlation IDs for app/backend SDKs.
+- OpenAPI documents `MUST NOT` expose `X-Request-Id`, wire field `requestId`, generated `xRequestId` parameters, or other client-supplied correlation IDs for app/backend SDKs. Correlation uses server-owned `traceId` only per `API_SPEC.md` §15–§17.
+- Authority OpenAPI `MUST` declare shared `SdkWorkApiResponse`, `SdkWorkPlatformErrorCode`, `SdkWorkListQuery`, `ProblemDetail`, `PageInfo`, and helper payloads through `$ref` to `../sdkwork-specs/templates/openapi/components/` or an equivalent inlined copy that preserves required fields.
+- Success operation responses for L2+ `app-api`, `backend-api`, and SDKWork-owned `open-api` `MUST` use `SdkWorkApiResponse` with required `code`, `data`, and `traceId`. Legacy envelopes such as `PlusApiResult`, `AppbaseApiResult`, bare domain DTO roots, and top-level `{ items, pageInfo, traceId }` without `data` are forbidden.
+- SDKWork-owned business open-api request bodies, list/search input, and command input `MUST` follow `API_SPEC.md` section 14 and section 14.1 the same way as app-api and backend-api. Vendor compatibility open-api operations declared with `x-sdkwork-wire-protocol: external` per section 4.5.2 are exempt from section 14 and section 15 wire rules.
+- Error responses `MUST` use RFC 9457 `application/problem+json` with `ProblemDetail` including required machine-readable `code` and `traceId`.
+- SDK generation for L2+ surfaces `MUST` use `--standard-profile sdkwork-v3` so generated clients unwrap `SdkWorkApiResponse.data` by default and expose `.raw` for full envelope access per `SDK_SPEC.md` §4.2.
 - Authority OpenAPI and derived `*.sdkgen.*` inputs `MUST NOT` expose current-tenant selectors named `tenant_id`, `tenantId`, `tenant`, `tenant-id`, `X-Tenant-Id`, or equivalent in path, query, header, cookie, or client-writable request bodies. Tenant context is resolved by dual-token, API-key, or typed request-context infrastructure.
 
 ## 4.1 Dependency Authority Exclusion
@@ -624,7 +629,7 @@ Rules:
   across standalone/cloud profiles.
 - Rust appbase implementations must wrap protected routers with the standard
   appbase request context framework so generated app/backend SDK consumers
-  observe the same auth, tenant, organization, user, request id, and
+  observe the same auth, tenant, organization, user, trace id, and
   problem-detail behavior.
 - Tauri commands should validate local/native capability and then call Rust services or injected SDK clients through approved boundaries. They must not become a hidden raw HTTP SDK replacement.
 
@@ -632,7 +637,7 @@ Rules:
 
 Every SDK family change should verify the relevant subset:
 
-- OpenAPI validates under `API_SPEC.md`.
+- OpenAPI validates under `API_SPEC.md`, including section 4.5 business open-api input/output parity, `SdkWorkApiResponse` success envelopes, and `ProblemDetail` errors for L2+ surfaces (`node ../sdkwork-specs/tools/check-api-response-envelope.mjs --root .` or `--workspace ..`).
 - When `apis/` is present, authored API contract sources trace to the materialized authority OpenAPI
   under the owning SDK family in `sdks/`.
 - `apis/` contains no generated SDK transport output, SDK family directories, or generated SDK
@@ -681,6 +686,8 @@ Every SDK family change should verify the relevant subset:
 - Generated TypeScript compiles when TypeScript is supported.
 - Generated SDK exposes nested resource methods from `tag + dotted operationId`.
 - Generated clients handle `Authorization` and `Access-Token` through SDK/bootstrap infrastructure.
+- Generated clients unwrap `SdkWorkApiResponse.data` by default for `--standard-profile sdkwork-v3` and expose `.raw` for `code`/`traceId` when needed.
+- Generated clients do not expose legacy unwrap helpers for `PlusApiResult`, `AppbaseApiResult`, `StoreApiResult`, `SdkWorkResponse`, or per-domain `*ApiResult`.
 - Generated clients do not expose `tenant_id` or `tenantId` as current-tenant method arguments, `params` fields, credential options, per-call options, or client-writable request body fields.
 - Problem-detail errors map to generated SDK error metadata where the language supports it.
 - App consumers contain no raw app/backend HTTP fallback, manual auth headers, or local SDK forks.
@@ -704,7 +711,9 @@ node .\sdks\sdkwork-<domain>-backend-sdk\bin\verify-sdk.mjs
   trace to the materialized SDK family authority OpenAPI when SDK generation is required.
 - [ ] `<application-root>/.sdkwork/skills/` and `<application-root>/.sdkwork/plugins/` exist and follow `SDKWORK_WORKSPACE_SPEC.md`.
 - [ ] HTTP SDK generation uses the canonical `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`.
-- [ ] Generation manifest or README records generator package, canonical path or resolved package location, generator version or commit, command, input, output, language, SDK type, package name, SDK family name, and standard profile.
+- [ ] Authority OpenAPI declares `SdkWorkApiResponse` success schemas, section 14 list/search input for business open-api operations, and `ProblemDetail` errors; wire field `requestId` is absent.
+- [ ] Vendor compatibility open-api operations, when present, declare `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id`; they do not mix upstream wire with `SdkWorkApiResponse` on the same operation.
+- [ ] L2+ SDK generation uses `--standard-profile sdkwork-v3` and frontend/backend consumers use generated unwrap behavior instead of local envelope parsers.
 - [ ] Generated HTTP/OpenAPI output retains `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and `custom/`.
 - [ ] Generated control-plane and source metadata stays canonical: `sdkwork-sdk.json`, generated package manifests, generated `sdk-manifest.json` when present, and generated source files do not contain owner/dependency overlay fields.
 - [ ] SDK families use `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-sdk`, and `sdkwork-<domain>-backend-sdk` where those surfaces exist.

@@ -1,0 +1,39 @@
+{
+  "pnpm": {
+    "packages": [
+      "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript",
+      "../sdkwork-appbase/packages/common/foundation/sdkwork-runtime-bootstrap",
+      "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-appbase-pc-react",
+      "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-i18n-pc-react",
+      "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-pc-react",
+      "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-runtime-pc-react",
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-runtime",
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts",
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-adapter",
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-ports",
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-service",
+      "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi",
+      "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/generated/server-openapi",
+      "../sdkwork-ui/sdkwork-ui-pc-react",
+      "../sdkwork-core/sdkwork-core-pc-react",
+      "../sdkwork-utils/packages/sdkwork-utils-typescript"
+    ]
+  },
+  "catalog": {
+    "@types/node": "\"^25.5.2\"",
+    "@types/qrcode": "\"^1.5.6\"",
+    "@types/react": "\"^19.2.14\"",
+    "@types/react-dom": "\"^19.2.3\"",
+    "lucide-react": "\"^0.546.0\"",
+    "i18next": "\"^26.1.0\"",
+    "qrcode": "\"^1.5.4\"",
+    "react": "\"^19.2.4\"",
+    "react-dom": "\"^19.2.4\"",
+    "react-i18next": "\"^17.0.7\"",
+    "react-hook-form": "\"^7.72.1\"",
+    "typescript": "\"~6.0.2\"",
+    "vite": "\"^6.2.0\"",
+    "vite-plugin-dts": "\"^4.5.4\"",
+    "vitest": "\"^4.1.2\""
+  }
+}

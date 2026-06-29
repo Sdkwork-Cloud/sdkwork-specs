@@ -1,0 +1,32 @@
+ProblemDetail:
+  type: object
+  additionalProperties: true
+  required: [type, title, status, code, traceId]
+  properties:
+    type:
+      type: string
+      format: uri-reference
+    title:
+      type: string
+    status:
+      type: integer
+      minimum: 100
+      maximum: 599
+    detail:
+      type: string
+    instance:
+      type: string
+    code:
+      type: integer
+      format: int32
+      description: Numeric error result code. MUST be non-zero. See API_SPEC.md §15.3.
+      minimum: 40001
+      maximum: 79999
+    traceId:
+      type: string
+      format: uuid
+      description: Server-owned request correlation id. Same semantics as SdkWorkApiResponse.traceId.
+    errors:
+      type: array
+      items:
+        $ref: ./field-error.yaml#/FieldError

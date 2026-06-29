@@ -1,0 +1,50 @@
+{
+  "pnpm": {
+    "packages": [
+      "../sdkwork-utils/packages/sdkwork-utils-typescript",
+      "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript",
+      "../sdkwork-core/sdkwork-core-pc-react",
+      "../sdkwork-ui/sdkwork-ui-pc-react",
+      "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-appbase-pc-react",
+      "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-i18n-pc-react",
+      "../sdkwork-appbase/packages/common/foundation/sdkwork-runtime-bootstrap",
+      "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-shell-pc-react",
+      "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-pc-react",
+      "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-runtime-pc-react",
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts",
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-runtime",
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-adapter",
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-ports",
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-service",
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-credential-entry",
+      "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi",
+      "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/generated/server-openapi",
+      "../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript",
+      "../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript/generated/server-openapi"
+    ]
+  },
+  "catalog": {
+    "react": "\"^19.1.0\"",
+    "react-dom": "\"^19.1.0\"",
+    "typescript": "\"^5.9.0\"",
+    "vite": "\"^6.3.0\"",
+    "@vitejs/plugin-react": "\"^5.0.4\"",
+    "@types/react": "\"^19.1.0\"",
+    "@types/react-dom": "\"^19.1.0\"",
+    "@tailwindcss/vite": "\"^4.1.14\"",
+    "tailwindcss": "\"^4.1.14\"",
+    "clsx": "\"^2.1.1\"",
+    "lucide-react": "\"^0.546.0\"",
+    "motion": "\"^12.23.24\"",
+    "tailwind-merge": "\"^3.5.0\"",
+    "@tiptap/extension-placeholder": "\"^3.23.4\"",
+    "@tiptap/pm": "\"^3.23.4\"",
+    "@tiptap/react": "\"^3.23.4\"",
+    "@tiptap/starter-kit": "\"^3.23.4\"",
+    "emoji-picker-react": "\"^4.18.0\"",
+    "i18next": "\"^26.3.1\"",
+    "react-i18next": "\"^17.0.8\"",
+    "qrcode": "\"^1.5.4\"",
+    "vite-plugin-dts": "\"^4.5.4\""
+  }
+}

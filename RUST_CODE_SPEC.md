@@ -1,6 +1,6 @@
 # Rust Code Standard
 
-- Version: 1.0
+- Version: 1.1
 - Scope: Rust crates, workspaces, route crates, Tauri/native Rust, Rust services, Rust SDK facades, and Rust tests
 - Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`
 
@@ -12,8 +12,19 @@ Rules:
 
 - `src/lib.rs` is a public module assembly file. It should contain `pub mod`, private `mod`, re-exports, crate-level documentation, and small compile-time wiring only.
 - `src/lib.rs` `MUST NOT` contain handlers, repositories, SQL queries, provider clients, long business services, large DTO definitions, test fixtures, or generated data tables.
-- If `lib.rs` exceeds roughly 150 lines or contains more than exports and module declarations, split it before adding new behavior.
+- If `lib.rs` contains multiple unrelated responsibilities (e.g., business logic AND database access), split it before adding more behavior.
 - `src/main.rs` or `bin/*` owns process startup only. Runtime business logic belongs in library modules.
+
+**Cohesion guidance for Rust files:**
+
+| Signal | Likely Meaning | Action |
+| --- | --- | --- |
+| File grows beyond ~200 lines | Possible responsibility creep | Review: does this serve one concern? |
+| Mixes different concerns | High coupling risk | Split by responsibility domain |
+| Different teams modify separately | Needs separation | Create new module per team |
+| Testing requires mocking unrelated code | Tight coupling | Separate into independent modules |
+
+When in doubt, prefer splitting over accumulating complexity. A well-structured codebase with many small files is better than a few monolithic ones that are hard to maintain.
 
 Rust crates `MUST` be named and structured by responsibility. A crate name must tell a reader
 whether it owns business rules, database access, HTTP route adaptation, process startup, native host
@@ -507,7 +518,7 @@ Forbidden:
 
 ## 9. Acceptance Checklist
 
-- [ ] `lib.rs` is limited to module declarations, re-exports, and lightweight docs/wiring.
+- [ ] `lib.rs` serves as a module assembly file with clear, focused responsibility (module declarations, re-exports, lightweight wiring).
 - [ ] Rust crate names use an allowed responsibility-specific family and avoid forbidden generic
       suffixes.
 - [ ] Business logic is in focused modules.
