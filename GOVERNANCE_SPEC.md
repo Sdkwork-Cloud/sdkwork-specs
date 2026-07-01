@@ -8,11 +8,14 @@ This document defines how SDKWork standards evolve without fragmenting across ap
 
 ## 1. Authority
 
-The root `specs/` directory is authoritative.
+Global `sdkwork-specs/*_SPEC.md` files are the platform source of truth for SDKWork standards.
+
+Repository/application machine contracts live in root `specs/` and module `specs/component.spec.json`.
+README files and `docs/` are discovery layers per `SOUL.md` section 2.1; they are not competing standards.
 
 Rules:
 
-- Local app standards may extend root standards, but must not contradict them.
+- Local app standards may extend global standards, but must not contradict them.
 - `SOUL.md` defines shared SDKWork agent behavior. Local agent instructions may narrow execution for a repository, but they must not weaken the soul principles.
 - `AGENTS_SPEC.md` defines `AGENTS.md` and compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md`. Local agent entrypoints must link to root standards instead of becoming competing standards.
 - Repository/application `.sdkwork/` skills and plugins may automate or explain standards, but they
@@ -91,4 +94,4 @@ UI architecture boundary exceptions are breaking architecture exceptions. They m
 - [ ] Compatibility-sensitive changes include a `MIGRATION_SPEC.md` migration plan with rollback and owner.
 - [ ] Any exception is documented with owner and expiry.
 - [ ] Tooling or tests were updated when a standard becomes executable.
-- [ ] AGENTS.md references still point to root `specs/`.
+- [ ] AGENTS.md references still point to global `sdkwork-specs` and local machine contracts under `specs/`.

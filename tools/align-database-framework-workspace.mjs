@@ -133,7 +133,7 @@ function ensurePackageScripts(repoRoot, dryRun, changes) {
       const moduleId = manifest.moduleId ?? path.basename(repoRoot).replace(/^sdkwork-/u, '');
       const engines = manifest.engines?.length ? manifest.engines : ['postgres'];
       const defaultEngine = engines.includes('postgres') ? 'postgres' : engines[0];
-      const baseline = `database/ddl/baseline/${defaultEngine}/0001_${moduleId}_legacy_baseline.sql`;
+      const baseline = `database/ddl/baseline/${defaultEngine}/0001_${moduleId}_baseline.sql`;
       const prefixArg = manifest.tablePrefix ? ` --prefixes ${manifest.tablePrefix}` : '';
       packageJson.scripts['db:materialize:contract'] =
         `node ../sdkwork-specs/tools/materialize-database-contract-from-baseline.mjs --root . --baseline ${baseline} --module-id ${moduleId} --owner ${manifest.owner ?? moduleId}${prefixArg} --engines ${engines.join(',')}`;

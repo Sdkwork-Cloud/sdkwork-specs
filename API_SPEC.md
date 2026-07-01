@@ -1532,6 +1532,10 @@ ProblemDetail:
       type: string
     instance:
       type: string
+      description: Request endpoint occurrence in the form `{METHOD} {routeTemplate}`.
+    operationId:
+      type: string
+      description: OpenAPI operation id for the failing request when resolved by the web framework.
     code:
       type: integer
       format: int32
@@ -1569,6 +1573,8 @@ Rules:
 - Do not return stack traces, SQL, credentials, token internals, or internal hostnames.
 - Validation errors `SHOULD` include field-level `errors`.
 - `traceId` `MUST` be present on every error and `MUST` match the success-body correlation semantics.
+- `instance` `SHOULD` identify the failing endpoint as `{METHOD} {routeTemplate}` using the OpenAPI route template when available; raw request paths `MUST` redact user, tenant, file, object, token, and provider identifiers per `OBSERVABILITY_SPEC.md`.
+- `operationId` `SHOULD` be present when the web framework resolves the matched OpenAPI operation for the request.
 - `code` `MUST` use stable numeric values from §15.3.
 - Security-sensitive `404` may hide unauthorized resource existence, but this must be consistent for the operation.
 - Business failures `MUST NOT` be encoded as HTTP 2xx `SdkWorkApiResponse` bodies with non-success `code`, `success`, or human `message` fields.
@@ -1583,6 +1589,8 @@ Example validation error:
   "status": 422,
   "code": 40001,
   "traceId": "0195f2a0-7c44-7b2e-9f3a-2a6f5d8e91ab",
+  "instance": "POST /app/v3/api/auth/login",
+  "operationId": "auth.login.create",
   "detail": "One or more fields are invalid.",
   "errors": [
     {
@@ -1591,6 +1599,21 @@ Example validation error:
       "code": 40011
     }
   ]
+}
+```
+
+Example internal error:
+
+```json
+{
+  "type": "https://docs.sdkwork.com/problems/50001",
+  "title": "Internal server error",
+  "status": 500,
+  "code": 50001,
+  "traceId": "67b4e4c7d1554a00b946dcc426820ea2",
+  "instance": "GET /app/v3/api/wallet/transactions",
+  "operationId": "wallet.transactions.list",
+  "detail": "An internal error occurred"
 }
 ```
 

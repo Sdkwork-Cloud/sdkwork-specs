@@ -3,8 +3,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateAppComposition } from './lib/app-composition.mjs';
+import { validateAppComposition, listClientAppRoots } from './lib/app-composition.mjs';
+import { resolveComposition, validateCompositionResolution } from './lib/composition-resolver.mjs';
 import { specsRoot } from './lib/workspace-registry.mjs';
+import { validateWorkspaceMemberProtocol } from './lib/workspace-member-protocol.mjs';
 
 const SPECS_ROOT = specsRoot();
 
@@ -31,6 +33,7 @@ function verifySpecsGovernance() {
   const issues = [];
   const required = [
     'APP_COMPOSITION_SPEC.md',
+    'APP_INTEGRATION_CONVENTIONS.md',
     'docs/architecture/decisions/ADR-20260629-native-composition-architecture.md',
   ];
   const forbidden = [
@@ -91,6 +94,18 @@ function verifySpecsGovernance() {
   return issues;
 }
 
+function validateCompositionResolver(repoRoot) {
+  const issues = [];
+  if (listClientAppRoots(repoRoot).length === 0) {
+    return issues;
+  }
+
+  const resolution = resolveComposition(repoRoot);
+  issues.push(...resolution.issues);
+  issues.push(...validateCompositionResolution(resolution));
+  return issues;
+}
+
 function main() {
   const args = parseArgs(process.argv);
   if (args.help) {
@@ -109,6 +124,10 @@ function main() {
     issues.push(...validateAppComposition(args.root, {
       strictImportClosure: args.strictImportClosure,
     }));
+    issues.push(...validateWorkspaceMemberProtocol(args.root, {
+      repoName: path.basename(args.root),
+    }));
+    issues.push(...validateCompositionResolver(args.root));
   }
 
   if (issues.length > 0) {

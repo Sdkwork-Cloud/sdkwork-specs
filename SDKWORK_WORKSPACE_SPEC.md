@@ -50,17 +50,78 @@ SDKWork uses a two-layer source layout:
   Architecture-local `src/`, `lib/`, `App/`, `entry/`, `packages/`, `config/`, and platform
   directories belong inside that child root.
 
-Top-level `src/`, `packages/`, and `config/` are not generic SDKWork project-root directories. They
-are allowed at the repository root only when the repository root is itself the primary
-architecture-specific app surface root, or when the repository is a **dedicated shared package-family
-repository** whose sole primary deliverable is reusable package families and whose governing standard
-explicitly names repository-root `packages/` as the collection root. A domain repository that also
-owns `apis/`, `apps/`, `crates/`, and `sdks/` for one application line `MUST NOT` treat repository-root
-`packages/` as its shared package-family root; those package families belong under the appropriate
-`apps/sdkwork-<application-code>-common/packages/` or `apps/sdkwork-<application-code>-<client-arch>/packages/`
-paths instead. In both allowed root-`packages/` cases the root README `MUST` state the active
-architecture standard and explain that those paths are architecture-local, not replacements for the
-project-root dictionary.
+Top-level `src/`, `packages/`, and `config/` are not generic SDKWork project-root directories.
+
+Repository-root `packages/` rules:
+
+- Application git repositories `MUST` place all package-family deliverables under
+  `apps/sdkwork-<application-code>-common/packages/` or
+  `apps/sdkwork-<application-code>-<client-arch>/packages/`. This applies to single-surface and
+  multi-surface repositories alike.
+- Repository-root `packages/` `MUST NOT` exist when the repository owns
+  `apps/sdkwork-<application-code>-*` application roots or when it also owns `apis/`, `crates/`, or
+  `sdks/` for an application line.
+- Repository-root `packages/` is allowed only for a **dedicated shared package-family repository**
+  whose sole primary deliverable is reusable package families and whose root README declares
+  `repository-kind: shared-package-family`.
+- Legacy repository-root families such as `packages/common/`, `packages/pc-react/`, and
+  `packages/mobile-react/` are migration-only. New work `MUST NOT` add them.
+
+When documenting or referencing package paths in standards, agents, or validators, always use the
+full architecture-qualified path such as `apps/sdkwork-<application-code>-pc/packages/`. Do not
+use bare `packages/` without the owning `apps/sdkwork-<application-code>-<client-arch>/` prefix.
+
+Top-level `src/` and `config/` remain architecture-local under `apps/sdkwork-<application-code>-<client-arch>/`
+when the governing architecture standard requires them.
+
+### 1.1.2 Repository Kind And Packages Layout
+
+Every SDKWork git repository root `MUST` declare its repository kind in root `README.md`:
+
+```md
+repository-kind: application
+```
+
+Allowed values:
+
+| `repository-kind` | Purpose | Repository-root `packages/` |
+| --- | --- | --- |
+| `application` | Runnable SDKWork application git repository | Forbidden; use `apps/sdkwork-<application-code>-common/packages/` or `apps/sdkwork-<application-code>-<client-arch>/packages/` |
+| `legacy-application` | Audit-only transitional label for repositories still being migrated by automation | Forbidden after cutover; use `align-workspace-packages-layout.mjs` then declare `application` |
+| `shared-package-family` | Dedicated reusable package-family repository with no runnable application surface | Allowed at repository root |
+| `foundation-dependency` | Shared foundation dependency repository such as `sdkwork-appbase` | Allowed at repository root until a foundation layout migration is recorded |
+| `standards` | Standards or tooling repository such as `sdkwork-specs` | Not applicable |
+
+Inference rules when `repository-kind` is omitted:
+
+- `sdkwork.app.config.json` or `apps/sdkwork-<application-code>-*` present → treat as `application`
+- README states the repository is not an independent SDKWork application root → treat as `foundation-dependency`
+- repository-root `packages/` plus application-line `apis/`, `crates/`, or `sdks/` → treat as `legacy-application`
+
+Verification:
+
+```bash
+node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --root . --mode enforce
+node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --workspace .. --mode enforce
+node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --workspace .. --mode audit
+node ../sdkwork-specs/tools/align-workspace-packages-layout.mjs --root . [--dry-run]
+node ../sdkwork-specs/tools/align-workspace-packages-layout.mjs --workspace .. [--dry-run]
+node ../sdkwork-specs/tools/check-workspace-federation-paths.mjs --workspace ..
+node ../sdkwork-specs/tools/align-workspace-federation-paths.mjs --workspace .. [--dry-run]
+node ../sdkwork-specs/tools/check-workspace-lock-package-paths.mjs --workspace ..
+node ../sdkwork-specs/tools/align-workspace-lock-package-paths.mjs --workspace ..
+```
+
+Rules:
+
+- New application repositories `MUST` declare `repository-kind: application` and `MUST NOT` create repository-root `packages/`.
+- Pre-launch application repositories `MUST` pass `check-workspace-packages-layout.mjs --mode enforce`; `migration` mode is for transitional sweeps only.
+- Repositories with remaining repository-root package debt `SHOULD` run `align-workspace-packages-layout.mjs` before re-declaring `repository-kind: application`.
+- Foundation dependency repositories `MUST` declare `repository-kind: foundation-dependency` or an equivalent explicit README statement.
+- Shared package-family repositories `MUST` declare `repository-kind: shared-package-family`.
+- Documentation, agents, and validators `MUST` use full architecture-qualified package paths such as `apps/sdkwork-<application-code>-pc/packages/`; bare `packages/` is ambiguous and MUST NOT be used alone in standards text.
+- `check-workspace-federation-paths.mjs` `MUST` validate `pnpm-workspace.yaml`, nested `package.json#workspaces`, package script path references, and `tsconfig*.json` `compilerOptions.paths`, `include`, `exclude`, and `files` entries for stale legacy layout paths and unresolved legacy references.
+- `align-workspace-federation-paths.mjs` `SHOULD` rewrite resolvable stale federation and TypeScript path references to canonical architecture-qualified targets before pre-launch cutover.
 
 Every independent SDKWork git repository root and every independent SDKWork application root `MUST`
 use the following reserved top-level directory names when the corresponding capability exists:
@@ -367,23 +428,29 @@ Boundary rules:
 - Top-level `config/` is allowed only as an architecture-local directory when the repository root is
   itself the selected app surface root and that architecture standard requires `config/`. Otherwise
   project-root config content belongs in `configs/`.
-- Top-level `packages/` is allowed only when the repository root is itself the selected app surface
-  root or a dedicated shared package-family repository whose governing architecture/package standard
-  requires repository-root `packages/`. Domain repositories that also own `apis/`, `apps/`, `crates/`,
-  and `sdks/` `MUST NOT` keep repository-root `packages/` after migration cutover. Otherwise package
-  families belong under the appropriate project-root capability such as `apps/`, `crates/`, `sdks/`,
-  or `plugins/`.
+- Top-level `packages/` is allowed only for a dedicated shared package-family repository whose root
+  README declares `repository-kind: shared-package-family`. Application git repositories that own
+  `apps/sdkwork-<application-code>-*` roots or application-line `apis/`, `crates/`, or `sdks/`
+  `MUST NOT` keep repository-root `packages/`. Package families belong under
+  `apps/sdkwork-<application-code>-common/packages/` or
+  `apps/sdkwork-<application-code>-<client-arch>/packages/`.
 
 Standard root examples:
 
 ```text
-<single-app-repository>/
+<single-surface-app-repository>/
   AGENTS.md
   sdkwork.app.config.json
   .sdkwork/
   apis/
   apps/
-    README.md                 # root is the primary app surface; secondary surfaces live here
+    README.md
+    sdkwork-<application-code>-pc/
+      README.md
+      sdkwork.app.config.json
+      packages/
+      src/
+      config/
   crates/
   sdks/
   jobs/
@@ -458,7 +525,7 @@ Standard root examples:
 
 Rules for `<domain-multi-surface-repository>`:
 
-- Repository-root `packages/` `MUST NOT` exist after migration cutover.
+- Repository-root `packages/` `MUST NOT` exist after migration cutover for `application` repositories.
 - Cross-architecture TypeScript and domain RPC proto packages `MUST` live under
   `apps/sdkwork-<application-code>-common/packages/`.
 - Client-architecture UI and host packages `MUST` live under
@@ -680,16 +747,18 @@ Recommended discovery order:
 
 1. Nearest `AGENTS.md`.
 2. Current application root `sdkwork.app.config.json` when present.
-3. Current component/application local `specs/` when present.
-4. Current application root `.sdkwork/`.
-5. Enclosing git repository root `AGENTS.md` and `.sdkwork/`.
-6. Root `sdkwork-specs/` standards referenced by relative path.
-7. User-global skills or plugins.
+3. Nearest module `specs/` when the task touches an authored module.
+4. Current repository/application root `specs/` when the task is repository-wide or application-wide.
+5. Current application root `.sdkwork/`.
+6. Enclosing git repository root `AGENTS.md` and `.sdkwork/`.
+7. Global `sdkwork-specs/` standards referenced by relative path.
+8. User-global skills or plugins.
 
 Rules:
 
-- `AGENTS.md` provides the first execution index, but it must not duplicate or override root specs.
-- Closer `.sdkwork/` content may add application-specific guidance, but it must not contradict repository-root or root `specs/` standards.
+- `AGENTS.md` provides the first execution index, but it must not duplicate or override global specs.
+- Closer `.sdkwork/` content may add application-specific guidance, but it must not contradict repository-root specs or global `sdkwork-specs` standards.
+- Module-local `specs/` define integration boundaries for one module; repository/application root `specs/` define cross-module machine contracts. Neither layer replaces global standards.
 - If two skills have the same name, the application-local skill may specialize the repository skill only when it explicitly cites the repository skill or canonical specs it extends.
 - User-global skills and plugins are optional conveniences. They cannot replace the checked-in repository/application `.sdkwork/` standard content.
 
@@ -711,7 +780,7 @@ Repository/application workspace verification `MUST` check:
 - Runtime `~/.sdkwork/<application-code>` directories are not copied into source.
 - Multi-repository SDKWork source dependency paths are declared only in `pnpm-workspace.yaml packages:`, root `Cargo.toml [workspace.dependencies]`, or root `pubspec.yaml dependency_overrides`; member packages do not redeclare sibling source paths.
 - `.sdkwork/manifests/*.json` does not contain SDKWork source dependency paths when native build-tool workspace roots are the declared source of truth.
-- Active top-level capabilities use the reserved project root directory names from section 1.1. Competing top-level names such as `api/`, `sdk/`, `package/`, `packages/`, `config/`, `deploy/`, `deployment/`, or `tooling/` are rejected unless `packages/` or `config/` is explicitly architecture-local for the selected app surface root.
+- Active top-level capabilities use the reserved project root directory names from section 1.1. Competing top-level names such as `api/`, `sdk/`, `package/`, `deploy/`, `deployment/`, or `tooling/` are rejected. Repository-root `packages/` is rejected for application repositories per section 1.1; architecture-local `config/` remains allowed only under `apps/sdkwork-<application-code>-<client-arch>/` or documented shared package-family exceptions.
 - Full new repository/application templates contain the complete standard directory dictionary with tracked placeholders or content; narrow roots that omit inactive directories document the active layout in the root README.
 - `apis/` and `sdks/` are not conflated: API contract sources and materialization inputs stay in `apis/` when authored there, while SDK family workspaces and generated SDK output stay in `sdks/`.
 - `apis/` contains no generated SDK transport output, SDK family directories, implementation code, or generated SDK control-plane `.sdkwork/` files.
@@ -721,7 +790,8 @@ Repository/application workspace verification `MUST` check:
 - `plugins/` application/runtime source and `.sdkwork/plugins/` agent plugin workspaces are distinct.
 - `configs/`, `deployments/`, and any architecture-local `config/` contain no live secrets, local overrides, user-private runtime config, or runtime state.
 - Root `tests/` contains cross-package/contract/integration/e2e/static verification and safe fixtures, while package-local unit tests remain package-local.
-- When `docs/` is active, repository and application roots `MUST` provide `docs/README.md`, `docs/product/prd/PRD.md`, and `docs/architecture/tech/TECH_ARCHITECTURE.md`, and `AGENTS.md` `MUST` link to those Canon documents.
+- Application git repositories `MUST` pass `node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --root .` or the workspace sweep equivalent.
+- Repository/application README files link to specs and contracts; README prose is not treated as normative standards authority.
 - `docs/adr/` is a retired layout. New ADRs `MUST` use `docs/architecture/decisions/`.
 
 ## 9. Acceptance Checklist

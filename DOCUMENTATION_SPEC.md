@@ -10,8 +10,10 @@ This standard defines the documentation required for reusable SDKWork capabiliti
 
 Rules:
 
-- Root `specs/` is the source of truth for standards.
-- App-local docs may extend root standards, but must link back to the relevant root spec.
+- Global `sdkwork-specs/*_SPEC.md` files are the platform source of truth for standards.
+- Repository/application machine contracts live in root `specs/` and module `specs/component.spec.json` per `SOUL.md` section 2.
+- README files and `docs/` are discovery and narrative layers per `SOUL.md` section 2.1. They `MUST NOT` become a second copy of global standards or module contracts.
+- App-local docs may extend global standards only by linking to the relevant global spec or recording an approved local narrowing spec under module `specs/`.
 - Repository/application `AGENTS.md` is the agent execution entrypoint. It must link to root specs by relative path and must not duplicate root spec bodies.
 - Tool-specific files such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` are compatibility shims. They must point to `AGENTS.md` and must not become a second copy of repository rules.
 - `SOUL.md` defines shared agent behavior. Local docs may cite it, but must not replace it with a local agent philosophy.
@@ -20,7 +22,8 @@ Rules:
   `SDKWORK_WORKSPACE_SPEC.md`.
 - Repository/application README files `MUST` document the active top-level project directories from
   `SDKWORK_WORKSPACE_SPEC.md` when the root omits inactive reserved directories or uses both source
-  and generated boundaries such as `apis/` and `sdks/`.
+  and generated boundaries such as `apis/` and `sdks/`. README `MUST` link to authoritative specs and
+  machine contracts instead of restating normative rules in prose.
 - Requirements, acceptance criteria, architecture decisions, workflow checkpoints, review evidence, quality gates, release evidence, migration plans, and supply-chain evidence `MUST` link to their governing root spec instead of inventing local-only lifecycle vocabulary.
 - Lifecycle documentation `MUST` be traceable: requirement -> architecture decision when applicable -> implementation/change -> verification -> review -> release or migration evidence.
 - API examples `MUST` match the OpenAPI contract and generated SDK method shape.
@@ -384,11 +387,11 @@ directory index for application roots under `apps/`.
 Rules:
 
 - `apps/` `MUST` exist at the repository root for every independent SDKWork application git
-  repository, even when the repository root itself is the primary runnable app surface.
+  repository.
 - `apps/README.md` `MUST` exist whenever `apps/` exists.
 - `apps/README.md` `MUST` cite `APPLICATION_SPEC.md` and `SDKWORK_WORKSPACE_SPEC.md`.
-- `apps/README.md` `MUST` state whether the repository root is itself a runnable app surface and,
-  when it is, which architecture standard governs that root surface.
+- `apps/README.md` `MUST` index every direct child `apps/sdkwork-<application-code>-*` application root.
+- Root `README.md` `MUST` declare `repository-kind:` for every SDKWork git repository root.
 - `apps/README.md` `MUST` include a directory index that lists every direct child directory under
   `apps/`, excluding hidden directories and placeholder-only files such as `.gitkeep`.
 - For each indexed child directory, `apps/README.md` `MUST` document:

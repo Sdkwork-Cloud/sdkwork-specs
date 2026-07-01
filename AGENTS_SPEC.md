@@ -76,13 +76,20 @@ Canonical SDKWORK specs path from this repository:
 
 1. Current or nearest `AGENTS.md`.
 2. `sdkwork.app.config.json` when present.
-3. Local `specs/README.md` and `specs/component.spec.json` when present.
-4. Local `.sdkwork/README.md`, `.sdkwork/skills/`, and `.sdkwork/plugins/` when relevant.
-5. Root `sdkwork-specs/README.md` through the declared relative path.
-6. Task-specific root specs.
-7. Implementation files.
+3. Nearest module `specs/README.md` and `specs/component.spec.json` when the task touches an authored module.
+4. Repository/application root `specs/` when the task is repository-wide or application-wide.
+5. Local `.sdkwork/README.md`, `.sdkwork/skills/`, and `.sdkwork/plugins/` when relevant.
+6. Global `sdkwork-specs/README.md` through the declared relative path.
+7. Task-specific global specs referenced by the task matrix, nearest `AGENTS.md`, or module `canonicalSpecs`.
+8. Implementation files.
 
-Local files may narrow the task, but root `sdkwork-specs` remain authoritative.
+Local files may narrow the task, but global `sdkwork-specs` remain authoritative.
+
+The three-layer spec system is defined in `SOUL.md` section 2:
+
+- global standards in `sdkwork-specs/*_SPEC.md`
+- repository/application contracts in `<repo-or-app-root>/specs/`
+- module-local spec systems in `<module-root>/specs/` per `COMPONENT_SPEC.md`
 
 Rules:
 
@@ -95,10 +102,11 @@ Rules:
   when the task touches the application identity, component contract, local
   skills/plugins, runtime, SDK wiring, release, or packaging behavior they
   govern. They are not a reason to scan the entire repository first.
-- Durable local rules belong in local `specs/`, README/runbooks, manifests, or
+- Durable local rules belong in module `specs/`, repository/application `specs/`, README/runbooks, manifests, or
   task-specific documentation. `AGENTS.md` `MUST NOT` keep an "Existing Local
-  Guidance" block or preserved legacy command list that competes with root
+  Guidance" block or preserved legacy command list that competes with global
   SDKWork standards.
+- Every authored module `MUST` maintain its own `specs/` directory. Do not centralize module contracts in repository `AGENTS.md` or README prose when `COMPONENT_SPEC.md` applies.
 
 ## 5. Required Specs By Task Type
 
@@ -131,7 +139,7 @@ Language specs are on-demand. Do not require agents to load Rust, Java, TypeScri
 - `AGENTS.md`: agent execution rules and relative spec entrypoint.
 - `sdkwork.app.config.json`: application identity, app metadata, release surfaces, and owned capabilities.
 - `.sdkwork/`: local skills, plugins, manifests, and repository/application AI workspace metadata.
-- `specs/`: local app/component contracts and narrowing rules.
+- `specs/`: module-local spec systems (`README.md`, `component.spec.json`, optional narrowing extensions) for authored apps, packages, crates, services, and SDK families; repository/application root `specs/` for cross-module machine contracts such as topology manifests.
 - `docs/`: repository/application documentation layout; Canon entrypoints are `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 - `sdks/`: SDK families, OpenAPI authorities, derived generator inputs, route manifests, SDK assembly, and generated outputs.
 - language manifests such as `package.json`, `Cargo.toml`, `pom.xml`, `pyproject.toml`, or `pubspec.yaml`.
@@ -159,7 +167,7 @@ Read `sdkwork.app.config.json` before changing application behavior, runtime con
 
 - `AGENTS.md`: agent execution rules.
 - `.sdkwork/`: local skills, plugins, and manifests.
-- `specs/`: local application or component contracts.
+- `specs/`: module-local spec systems for authored packages, crates, services, and SDK families; repository/application root `specs/` for cross-module machine contracts.
 - `docs/`: Canon documentation at `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 - `sdks/`: OpenAPI authorities and SDK generation artifacts.
 

@@ -62,13 +62,26 @@ export async function ensurePostgresDevDatabaseReady({
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const poolExhausted = /pool timed out while waiting for an open connection|Pool creation error: pool timed out/i.test(message);
     stderr.write(
       '[sdkwork-postgres] automatic PostgreSQL prepare failed during dev startup\n'
-      + `${message}\n`
-      + `Edit database credentials in ${profile.configPath}, then run:\n`
-      + '  pnpm db:postgres:init\n'
-      + '  pnpm db:init\n',
+      + `${message}\n`,
     );
+    if (poolExhausted) {
+      stderr.write(
+        'PostgreSQL is reachable but the connection pool is exhausted. Stop stale dev gateways, then retry:\n'
+        + '  taskkill /F /IM sdkwork-im-standalone-gateway.exe\n'
+        + '  taskkill /F /IM sdkwork-clawrouter-standalone-gateway.exe\n'
+        + '  pnpm db:postgres:migrate\n'
+        + '  pnpm dev\n',
+      );
+    } else {
+      stderr.write(
+        `Edit database credentials in ${profile.configPath}, then run:\n`
+        + '  pnpm db:postgres:init\n'
+        + '  pnpm db:init\n',
+      );
+    }
     throw error;
   }
 }

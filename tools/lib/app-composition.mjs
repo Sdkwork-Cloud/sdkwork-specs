@@ -133,8 +133,26 @@ export function normalizeSdkDependencies(componentSpec) {
   const deps = componentSpec?.contracts?.sdkDependencies ?? [];
   return deps.map((item) => {
     if (typeof item === 'string') return { workspace: item };
-    return item;
+    const workspace = item.workspace ?? item.sdkFamily ?? null;
+    return workspace ? { ...item, workspace } : item;
   }).filter((item) => item.workspace);
+}
+
+export function isCompositionConsumerExempt(componentSpec) {
+  return componentSpec?.composition?.consumerIntegrationsExempt === true;
+}
+
+export function isCompositionExemptRepo(repoRoot) {
+  const repoName = path.basename(repoRoot);
+  if (repoName === 'sdkwork-web-framework') return true;
+  const repoSpec = fs.existsSync(path.join(repoRoot, 'specs/component.spec.json'))
+    ? readJson(path.join(repoRoot, 'specs/component.spec.json'))
+    : null;
+  if (!repoSpec) return false;
+  if (isCompositionConsumerExempt(repoSpec)) return true;
+  const capability = repoSpec.component?.capability ?? '';
+  const type = repoSpec.component?.type ?? '';
+  return type === 'rust-workspace' && capability === 'web-framework';
 }
 
 export function validateCoreCompositionLayout(core, relPrefix) {

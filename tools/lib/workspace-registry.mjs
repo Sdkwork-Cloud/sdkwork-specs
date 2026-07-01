@@ -116,7 +116,8 @@ export function renderPnpmWorkspace({ packages, catalog }) {
   if (catalog && Object.keys(catalog).length > 0) {
     lines.push('', 'catalog:');
     for (const [key, value] of Object.entries(catalog)) {
-      lines.push(`  ${key}: ${value}`);
+      const renderedKey = /[^A-Za-z0-9_-]/u.test(key) ? `"${key}"` : key;
+      lines.push(`  ${renderedKey}: ${value}`);
     }
   }
   lines.push('');

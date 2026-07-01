@@ -12,22 +12,25 @@ import {
 } from './lib/workspace-registry.mjs';
 
 function parseArgs(argv) {
-  const args = { repo: null, root: null, dryRun: false };
+  const args = { repo: null, root: null, dryRun: false, check: false };
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--repo') args.repo = argv[++i];
     else if (arg === '--root') args.root = argv[++i];
     else if (arg === '--dry-run') args.dryRun = true;
+    else if (arg === '--check') args.check = true;
     else if (arg === '--help' || arg === '-h') args.help = true;
   }
   return args;
 }
 
 function usage() {
-  console.log(`Usage: node tools/sync-workspace.mjs --repo <repo-name> [--root <path>] [--dry-run]
+  console.log(`Usage: node tools/sync-workspace.mjs --repo <repo-name> [--root <path>] [--dry-run] [--check]
 
 Synchronize repo-root pnpm-workspace.yaml sibling packages from sdkwork-specs/workspace registry.
-Local packages (non ../ entries) are preserved.`);
+Local packages (non ../ entries) are preserved.
+
+--check  Fail when pnpm-workspace.yaml would change (idempotent materialization gate).`);
 }
 
 function main() {
@@ -52,6 +55,20 @@ function main() {
   const packages = buildWorkspacePackages(localPackages, args.repo);
   const catalog = buildWorkspaceCatalog(existingCatalog, args.repo);
   const rendered = renderPnpmWorkspace({ packages, catalog });
+
+  if (args.check) {
+    const currentPackages = [...existingPackages].sort();
+    const nextPackages = [...packages].sort();
+    const packagesChanged = JSON.stringify(currentPackages) !== JSON.stringify(nextPackages);
+    if (packagesChanged) {
+      console.error(`sync-workspace check failed for ${workspacePath}`);
+      console.error('  packages: drift from sdkwork-specs/workspace registry');
+      console.error(`  run: node ../sdkwork-specs/tools/sync-workspace.mjs --repo ${args.repo} --root ${path.relative(process.cwd(), repoRoot) || '.'}`);
+      process.exit(1);
+    }
+    console.log(`sync-workspace check ok (${workspacePath})`);
+    return;
+  }
 
   if (args.dryRun) {
     process.stdout.write(rendered);

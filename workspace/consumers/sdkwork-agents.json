@@ -2,7 +2,11 @@
   "pnpm": {
     "packages": [
       "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript",
-      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts"
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts",
+      "../sdkwork-app-topology",
+      "../sdkwork-knowledgebase/sdks/sdkwork-knowledgebase-app-sdk/sdkwork-knowledgebase-app-sdk-typescript",
+      "../sdkwork-skills/sdks/sdkwork-skills-app-sdk/sdkwork-skills-app-sdk-typescript/generated/server-openapi",
+      "../sdkwork-voice/sdks/sdkwork-voice-app-sdk/sdkwork-voice-app-sdk-typescript/generated/server-openapi"
     ]
   },
   "catalog": {

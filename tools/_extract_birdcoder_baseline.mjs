@@ -31,7 +31,7 @@ for (const relativePath of files) {
 
 const outPath = path.join(
   root,
-  'database/ddl/baseline/sqlite/0001_birdcoder_legacy_baseline.sql',
+  'database/ddl/baseline/sqlite/0001_birdcoder_baseline.sql',
 );
 fs.writeFileSync(outPath, sql);
 const count = (sql.match(/CREATE TABLE/gi) ?? []).length;

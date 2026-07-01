@@ -8,6 +8,8 @@
 
 SDKWork modules declare authoritative permission catalogs once. Consumer applications compose modules as building blocks and **inherit** those catalogs through composition manifests. Consumers **must not** re-declare dependency-module permission codes in local TypeScript constants, duplicated OpenAPI extensions, or ad-hoc admin menu filters.
 
+By default, `permissionComposition.moduleCatalogRefs[]` is **derived** from consumer `contracts.sdkDependencies` using `APP_INTEGRATION_CONVENTIONS.md`. Consumers write `moduleCatalogRefs` only when narrowing or replacing inherited manifests through `composition.overrides.permissions`.
+
 Consumers **may** declare:
 
 - application-owned permissions for product/gateway domains they own;

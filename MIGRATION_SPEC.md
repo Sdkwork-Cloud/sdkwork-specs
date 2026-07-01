@@ -155,6 +155,7 @@ Public naming migrations for application identity and commerce capabilities foll
 | `product approval` | `governance approval` | L1 product name |
 | `product adapter` | `application-line adapter` | not merchandise capability |
 | `product same-origin` | `application same-origin` | runtime mount default |
+| consumer `specs/dependency-api-surfaces.json` | resolver-generated `generated/composition.resolved.json` | transitional; new consumers must not add hand-maintained consumer copies |
 | `product copy` (i18n/config) | `L1 brand/store copy` or `message-catalog content` | not merchandise |
 | `product OpenAPI` | `application-owned OpenAPI` | authority ownership |
 | `shared foundation gateway` (without plane) | `platform connectivity-plane gateway` | domain `platform` |
@@ -174,10 +175,27 @@ Rules:
 
 ## 9. Package Directory Migration
 
-Domain and multi-surface repositories `MUST` migrate repository-root package families into `apps/` application roots.
+Domain, multi-surface, and single-surface application repositories `MUST` migrate repository-root package families into `apps/` application roots.
+
+Repository kind during migration:
+
+| Phase | `repository-kind` | Checker mode | Expected outcome |
+| --- | --- | --- | --- |
+| Legacy debt present | `legacy-application` | `migration` | warnings only |
+| Canonical application layout | `application` | `enforce` | pass |
+| Workspace audit / planning | any | `audit` | report only |
+
+Run:
+
+```bash
+node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --workspace .. --mode audit
+node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --root . --mode migration
+node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --root . --mode enforce
+```
 
 | Retired repository-root path | Canonical replacement | Notes |
 | --- | --- | --- |
+| `packages/` at git repository root in an application repository | `apps/sdkwork-<application-code>-<client-arch>/packages/` or `apps/sdkwork-<application-code>-common/packages/` | applies to single-surface and multi-surface repositories |
 | `packages/common/<domain>/sdkwork-<capability>` | `apps/sdkwork-<application-code>-common/packages/sdkwork-<capability>` | cross-architecture contracts, runtime, service, bootstrap, SDK ports |
 | `packages/common/rpc/sdkwork-rpc-contracts` | `apps/sdkwork-<application-code>-common/packages/sdkwork-rpc-contracts` | shared RPC proto only |
 | `packages/pc-react/<domain>/sdkwork-<capability>-pc-react` | `apps/sdkwork-<application-code>-pc/packages/sdkwork-<capability>-pc-react` or `apps/sdkwork-<domain>-pc/packages/...` in a domain repository | PC React UI modules |
@@ -191,6 +209,10 @@ Domain and multi-surface repositories `MUST` migrate repository-root package fam
 Rules:
 
 - Migration plans `MUST` name producer paths, consumer workspace links, proto materialization targets, and verification commands.
-- After cutover, repository-root `packages/` `MUST NOT` remain in domain multi-surface repositories.
+- After cutover, `application` repositories `MUST` declare `repository-kind: application` and `MUST NOT` keep repository-root `packages/`.
+- During migration, legacy application repositories `SHOULD` declare `repository-kind: legacy-application` until architecture-qualified `apps/sdkwork-<application-code>-*/packages/` cutover completes.
+- Dedicated shared package-family repositories `MAY` keep repository-root `packages/` only when the root README declares `repository-kind: shared-package-family`.
+- Foundation dependency repositories `MAY` keep repository-root `packages/` when the root README declares `repository-kind: foundation-dependency` or states the repository is not an independent SDKWork application root.
 - Repath scripts and compatibility aliases may exist only during the documented compatibility window.
-- New standards, templates, and authored documentation `MUST` cite canonical `apps/` paths only.
+- New standards, templates, and authored documentation `MUST` cite canonical `apps/sdkwork-<application-code>-*/packages/` paths only.
+- Verification `SHOULD` include `node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --root .`.

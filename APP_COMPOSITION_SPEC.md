@@ -1,8 +1,8 @@
 # App Composition Standard
 
-- Version: 1.1
+- Version: 1.2
 - Scope: client application composition using native build-tool authority, core-package import entrypoints, and component-spec runtime metadata
-- Related: `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `TEST_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `APP_INTEGRATION_CONVENTIONS.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines application composition without a parallel dependency manifest. Native build-tool files own dependency graphs; component and app manifests own runtime semantics.
 
@@ -14,10 +14,14 @@ This standard defines application composition without a parallel dependency mani
 | Frontend SDK inventory (per surface) | `*-core/specs/component.spec.json#contracts.sdkDependencies` |
 | Permission inheritance/overrides | App-surface `specs/component.spec.json#contracts.permissionComposition` |
 | Backend/release SDK inventory | `sdkwork.app.config.json#sdkDependencies` |
-| Dependency API export/runtime policy | `component.spec.json#contracts.dependencyApiExports` and `dependencyApiSurfaces` |
+| Dependency API export/runtime policy | `component.spec.json#contracts.dependencyApiExports`; runtime mount/base-url facts derived by composition resolver |
+| Integration defaults | Dependency `component.spec.json#integration` and `.sdkwork-assembly.json` |
 
 Rules:
 
+- Consumer repositories should converge on three authoritative files: `sdkwork.app.config.json`, `specs/topology.spec.json`, and `*-core/specs/component.spec.json`.
+- Integration prefixes, planes, runtime modes, permission manifest refs, and bootstrap env defaults are derived by `APP_INTEGRATION_CONVENTIONS.md` and `resolve-composition.mjs`.
+- Consumer-side hand-maintained `specs/dependency-api-surfaces.json` is transitional input only; new consumers must not add one.
 - Do not introduce `specs/dependency.composition.json` or equivalent parallel manifest.
 - A client repository must declare sibling source paths once at the repository workspace root.
 - Feature packages must import SDK access only through core package public exports.
@@ -78,6 +82,7 @@ Rules:
 - The consumed sibling package `MUST` self-declare its direct third-party npm dependencies in its own `package.json`.
 - Host applications `MUST` depend on the domain facade package (for example `@sdkwork/knowledgebase-pc-knowledge`) rather than importing deep sibling implementation packages unless that implementation package is explicitly registered and exported for host composition.
 - Tailwind `@source`, Vite alias, and TypeScript path mappings `MAY` point at sibling source trees only when the consuming repository can resolve the scanned package's declared npm dependencies.
+- Tailwind bootstrap ownership `MUST` follow `TAILWIND_CSS_INTEGRATION_SPEC.md`. Host applications own the single `@import "tailwindcss"` entry and integrated `@source` registry; host-composed feature packages must not re-bootstrap Tailwind in imported CSS.
 - Forbidden:
   - relative imports into another repository's `src/` tree
   - using app-root dependency hoisting to compensate for missing member `dependencies`
@@ -98,6 +103,8 @@ Workspace commands:
 
 ```bash
 node sdkwork-specs/tools/verify-repo.mjs --root <repo>
+node sdkwork-specs/tools/resolve-composition.mjs --root <repo> --write
+node sdkwork-specs/tools/check-composition-resolver.mjs --root <repo>
 node sdkwork-specs/tools/verify-repo.mjs --root <repo> --strict-import-closure
 node sdkwork-specs/tools/sweep-verify-repo.mjs
 node sdkwork-specs/tools/audit-app-composition.mjs

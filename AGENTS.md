@@ -6,7 +6,7 @@ Read `SOUL.md` before changing SDKWork standards. Agent behavior, long-running e
 
 ## SDKWORK Standards
 
-This repository is the canonical SDKWork standards repository. The standards entrypoint is `README.md`. Do not create local copies of these specs in consuming repositories; consuming repositories must link back by relative path.
+This repository is the canonical **global standards** home for SDKWork. The standards entrypoint is `README.md`. Consuming repositories and modules must reference these files by relative path; they must not copy global `*_SPEC.md` bodies locally.
 
 When this repository is checked out inside the parent SDKWork workspace, it is the workspace `sdkwork-specs/` self-root. From inside this repository, use `README.md`, `SOUL.md`, and the local `*_SPEC.md` files directly instead of inventing a synthetic `../sdkwork-specs` path.
 
@@ -15,6 +15,25 @@ Parent workspace relative aliases resolve to this same self-root for validators 
 - `../sdkwork-specs/README.md`
 - `../sdkwork-specs/SOUL.md`
 - `../sdkwork-specs/AGENTS_SPEC.md`
+
+## Spec System Hierarchy
+
+SDKWork uses three spec layers. This repository owns layer 1 only.
+
+| Layer | Location | This repository |
+| --- | --- | --- |
+| Global standards | `sdkwork-specs/*_SPEC.md`, `SOUL.md` | Authoritative here |
+| Repository/application contracts | `<repo-or-app-root>/specs/` | Not applicable; this is not an application repository |
+| Module-local specs | `<module-root>/specs/` | Not applicable; authored modules in consumer repositories own these |
+
+Rules for consumer repositories:
+
+- Load global standards from this directory by relative path.
+- Keep repository-wide machine contracts under the repository or application root `specs/` when needed.
+- Give every authored module its own independent `specs/` system per `COMPONENT_SPEC.md`.
+- Do not mirror global spec files into child repositories or module folders.
+
+Authority: `SOUL.md` section 2, `COMPONENT_SPEC.md` section 1, `AGENTS_SPEC.md` section 4.
 
 ## Application Identity
 
@@ -27,18 +46,22 @@ This repository is a standards repository, not an SDKWork application. If a futu
 - `GEMINI.md`: Gemini CLI compatibility shim that points to `AGENTS.md` and must not duplicate rules.
 - `CODEX.md`: Codex compatibility shim that points to `AGENTS.md` and must not duplicate rules.
 - `SOUL.md`: shared agent execution soul.
-- `README.md`: canonical standards index and task matrix.
+- `README.md`: canonical global standards index and task matrix.
 - `docs/`: Canon documentation; see [docs/README.md](docs/README.md), [docs/product/prd/PRD.md](docs/product/prd/PRD.md), and [docs/architecture/tech/TECH_ARCHITECTURE.md](docs/architecture/tech/TECH_ARCHITECTURE.md).
-- `*_SPEC.md`: root standards.
-- `.sdkwork/`: repository-local skills, plugins, and manifests.
+- `*_SPEC.md`: global platform standards owned by this repository.
+- `.sdkwork/`: repository-local skills, plugins, and manifests for standards maintenance.
 
 ## Spec Resolution Order
 
+This repository maintains global standards only. Resolution order for standards work here:
+
 1. Read this `AGENTS.md`.
-2. Read `SOUL.md`.
+2. Read `SOUL.md`, especially section 2 (Spec System Hierarchy).
 3. Read `README.md`.
-4. Read the specific spec files affected by the task.
+4. Read the specific global spec files affected by the task.
 5. Read implementation or validation files only after the relevant specs are clear.
+
+When editing consumer repositories or modules instead of this repository, follow `SOUL.md` section 3: nearest `AGENTS.md`, module `specs/`, repository/application `specs/`, then global `sdkwork-specs`.
 
 ## Required Specs By Task Type
 
@@ -93,6 +116,16 @@ node tools/bootstrap-repository-docs.mjs --root .
 node tools/align-repository-docs.mjs --root .
 node tools/check-repository-docs-standard.mjs --root .
 node tools/check-apps-directory-index.mjs --root .
+node tools/check-workspace-packages-layout.mjs --root . --mode enforce
+node tools/check-workspace-packages-layout.mjs --workspace .. --mode audit
+node tools/align-workspace-packages-layout.mjs --root . [--dry-run]
+node tools/align-workspace-packages-layout.mjs --workspace .. [--dry-run]
+node tools/check-workspace-federation-paths.mjs --workspace ..
+node tools/align-workspace-federation-paths.mjs --workspace .. [--dry-run]
+node tools/check-workspace-lock-package-paths.mjs --workspace ..
+node tools/align-workspace-lock-package-paths.mjs --workspace ..
+node tools/check-api-response-envelope.mjs --workspace ..
+node tools/align-openapi-response-envelope-workspace.mjs --workspace .. [--dry-run]
 node tools/align-apps-directory-index.mjs --root .
 node tools/audit-apps-directory-index-workspace.mjs --workspace ..
 node tools/audit-repository-docs-workspace.mjs --workspace ..
@@ -100,6 +133,10 @@ node tools/check-topology-deployment-profiles.mjs --workspace ..
 node tools/check-app-runtime-hosting-debt.mjs --workspace ..
 node tools/align-app-gateway-integration.mjs --workspace ..
 node tools/verify-repo.mjs --root .
+node tools/resolve-composition.mjs --root <path-to-repo> [--write]
+node tools/check-composition-resolver.mjs --root <path-to-repo>
+node tools/sweep-composition-resolver.mjs --workspace .. [--align] [--write]
+node tools/align-composition-sdk-dependencies.mjs --root <path-to-repo> [--write]
 node tools/sync-workspace.mjs --repo <repo-name> --root <path-to-repo> [--dry-run]
 node tools/align-app-composition.mjs --root <path-to-repo> [--dry-run]
 node tools/extract-consumer-overlay.mjs --repo <repo-name> --root <path-to-repo> [--write]
@@ -117,6 +154,9 @@ node tools/audit-database-framework-workspace.mjs --workspace ..
 node tools/check-api-response-envelope.mjs --root .
 node tools/align-agents-http-response-standard.mjs --workspace ..
 node --test tools/check-api-response-envelope.test.mjs
+node --test tools/check-workspace-packages-layout.test.mjs
+node --test tools/check-workspace-federation-paths.test.mjs
+node --test tools/check-composition-resolver.test.mjs
 ```
 
 ## Agent Execution Rules

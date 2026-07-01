@@ -13,7 +13,7 @@ if (!match) {
 }
 const outDir = path.join(root, 'database/ddl/baseline/postgres');
 fs.mkdirSync(outDir, { recursive: true });
-const outPath = path.join(outDir, '0001_aiot_legacy_baseline.sql');
+const outPath = path.join(outDir, '0001_aiot_baseline.sql');
 fs.writeFileSync(outPath, `${match[1].trimStart()}\n`);
 const count = (match[1].match(/CREATE TABLE/gi) ?? []).length;
 process.stdout.write(`wrote ${outPath} (${count} tables)\n`);

@@ -38,4 +38,8 @@ assert.match(
   /^postgresql:\/\/sdkwork_ai_dev:/u,
 );
 
+import { SDKWORK_DEV_POSTGRES_EXTENSIONS } from './postgres-extensions.mjs';
+assert.ok(SDKWORK_DEV_POSTGRES_EXTENSIONS.some((entry) => entry.extension === 'vector'));
+assert.ok(SDKWORK_DEV_POSTGRES_EXTENSIONS.some((entry) => entry.extension === 'pg_trgm'));
+
 console.log('postgres-db-cli shared tools contract passed');

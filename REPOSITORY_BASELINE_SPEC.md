@@ -23,6 +23,7 @@ Every git repository root `MUST` contain:
 ```text
 <repo-root>/
   AGENTS.md
+  README.md
   CLAUDE.md
   GEMINI.md
   CODEX.md
@@ -36,6 +37,7 @@ Every git repository root `MUST` contain:
 
 Rules:
 
+- Root `README.md` `MUST` declare `repository-kind:` per `SDKWORK_WORKSPACE_SPEC.md` section 1.1.2.
 - `AGENTS.md` follows `AGENTS_SPEC.md`.
 - `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` are compatibility shims that point to `AGENTS.md`; they must not duplicate standards.
 - Root `.gitignore` `MUST` ignore build artifacts, local env files, and ignored `.sdkwork/` local state.

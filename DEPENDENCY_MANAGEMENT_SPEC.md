@@ -86,6 +86,7 @@ Rules:
 - `peerDependencies` `SHOULD` be used for singleton runtime packages provided by the app shell, such as `react`, `react-dom`, `react-i18next`, and `i18next`.
 - Third-party versions `SHOULD` use `catalog:` when the repository-root `pnpm-workspace.yaml` defines the package in `catalog:` synced from `configs/dependency-catalog.yaml`.
 - Cross-repository source consumption through Vite aliases, Tailwind `@source`, or TypeScript path mappings `MUST` preserve import closure: either the scanned package self-declares its npm dependencies, or the consuming repository declares the full transitive npm closure needed to compile the scanned source.
+- Tailwind CSS bootstrap ownership `MUST` follow `TAILWIND_CSS_INTEGRATION_SPEC.md`: host-composed feature packages must not `@import "tailwindcss"` in CSS imported by the host.
 - Forbidden consumption patterns:
   - `import ... from '../../other-package/src/...'` across package boundaries
   - `link:` or `file:` for SDKWork sibling packages
@@ -440,6 +441,8 @@ Rules:
 - Tests `MUST` verify dependency path and version declarations are centralized through native workspace mechanisms where the build tool supports them.
 - Tests `MUST` verify that every SDKWork source dependency declared in any member `package.json` / `Cargo.toml` / `pubspec.yaml` is also declared in the workspace root (`pnpm-workspace.yaml packages:`, root `Cargo.toml [workspace.dependencies]`, or root `pubspec.yaml dependency_overrides`).
 - Tests `MUST` fail on `link:` protocol references to SDKWork cross-workspace sources in pnpm `package.json` files; SDKWork cross-workspace sources `MUST` use `workspace:*`.
+- Tests `MUST` fail when member `package.json` files declare `file:` or `link:` paths to SDKWork sibling repositories; enforce with `node sdkwork-specs/tools/check-workspace-member-protocol.mjs --root <repo>` (also invoked by `verify-repo.mjs`).
+- Tests `MUST` fail when repository-root `pnpm-workspace.yaml` sibling `packages:` drift from `sdkwork-specs/workspace/consumers/<repo>.json`; enforce with `node sdkwork-specs/tools/sync-workspace.mjs --repo <repo> --root <repo> --check`.
 - Tests `MUST` fail on direct `path = "../sdkwork-..."` declarations in member Cargo crate `Cargo.toml` files; SDKWork cross-workspace sources `MUST` use `{ workspace = true }`.
 - Tests `MUST` verify package manager lockfiles or equivalent reproducibility files are present and updated when required by the repository's build tool.
 - SDK generation tests `MUST` verify dependency-owned API operations are filtered from application-owned SDK generator inputs.

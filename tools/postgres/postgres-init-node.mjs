@@ -1,6 +1,7 @@
 import pg from 'pg';
 
 import { buildPostgresDatabaseUrl } from './postgres-config.mjs';
+import { ensurePostgresDevExtensions } from './postgres-extensions.mjs';
 
 function assertSafePgIdent(value, label) {
   const normalized = String(value ?? '').trim();
@@ -143,6 +144,7 @@ export async function initializePostgresSchemaAndGrants(config) {
 export async function executePostgresInitWithNode(config) {
   await initializePostgresRoleAndDatabase(config);
   await initializePostgresSchemaAndGrants(config);
+  await ensurePostgresDevExtensions(config);
   return {
     databaseUrl: buildPostgresDatabaseUrl(config.database),
   };

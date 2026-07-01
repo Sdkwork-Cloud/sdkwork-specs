@@ -16,6 +16,10 @@ ProblemDetail:
       type: string
     instance:
       type: string
+      description: Request endpoint occurrence in the form `{METHOD} {routeTemplate}`.
+    operationId:
+      type: string
+      description: OpenAPI operation id for the failing request when resolved by the web framework.
     code:
       type: integer
       format: int32

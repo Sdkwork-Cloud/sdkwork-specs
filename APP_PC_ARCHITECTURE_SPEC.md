@@ -141,6 +141,17 @@ Directory rules:
 - `packages/` contains all reusable runtime, shell, app, console, admin, and native host packages.
 - `tests/` contains application-level integration, runtime, route, package-boundary, and architecture verification tests.
 
+## 2.0 Tailwind CSS Shell Entry
+
+PC application roots that use Tailwind CSS v4 `MUST` follow `TAILWIND_CSS_INTEGRATION_SPEC.md`.
+
+Rules:
+
+- `src/index.css` is the single Tailwind bootstrap entry for the runnable PC app graph.
+- Host applications register integrated sibling repositories through `@source` directives in `src/index.css`.
+- Feature packages under `packages/` `MUST NOT` `@import "tailwindcss"` in CSS imported by the host shell.
+- `vite.config.ts` `MUST` register `@tailwindcss/vite` and `MUST NOT` alias bare specifier `tailwindcss`.
+
 ## 2.1 Configuration And Environment Matrix
 
 PC application roots must keep lifecycle environment, deployment profile, build
@@ -289,8 +300,8 @@ The following directory and npm package names are **forbidden for new PC applica
 
 | Anti-pattern | Why it is wrong | Correct replacement |
 | --- | --- | --- |
-| `sdkwork-<application-code>-<capability>-pc-react` | Uses legacy appbase shared-library suffix instead of application-root surface naming | App: `sdkwork-<application-code>-pc-<capability>` |
-| `sdkwork-<domain>-<capability>-pc-react` inside `apps/sdkwork-<application-code>-pc/packages/` | Domain token replaces application code and hides the surface role | App: `sdkwork-<application-code>-pc-<capability>`; Admin: `sdkwork-<application-code>-pc-admin-<capability>` |
+| `sdkwork-<application-code>-<capability>-pc-react` inside `apps/sdkwork-<application-code>-pc/packages/` | Uses legacy appbase shared-library suffix instead of application-root surface naming | App: `sdkwork-<application-code>-pc-<capability>` |
+| `sdkwork-<domain>-<capability>-pc-react` inside any application root | Domain token replaces application code and hides the surface role | App: `sdkwork-<application-code>-pc-<capability>` in the owning domain repository under `apps/sdkwork-<domain>-pc/packages/` |
 | `@sdkwork/<domain>-<capability>-pc-react` for tenant/org/oauth admin UI | npm name encodes `-pc-react` instead of `pc-admin` surface | `@sdkwork/<application-code>-pc-admin-<capability>` (example: `@sdkwork/iam-pc-admin-oauth`) |
 | `sdkwork-<application-code>-admin-<capability>` or `sdkwork-<application-code>-console-<capability>` without `pc` | Missing architecture segment; cannot distinguish PC from H5/Flutter/mobile admin families | `sdkwork-<application-code>-pc-admin-<capability>` or `sdkwork-<application-code>-pc-console-<capability>` |
 | Putting `backend-admin` operator pages in app packages (`sdkwork-<application-code>-pc-<capability>`) or user console packages (`pc-console-*`) | Wrong API/SDK surface and permission model | `sdkwork-<application-code>-pc-admin-<capability>` |
@@ -432,6 +443,29 @@ Rules:
 - Native host packages may depend on renderer build outputs and host adapter contracts. They `MUST NOT` directly depend on app, console, or admin business packages for workflow logic.
 - Cyclic dependencies are forbidden.
 - Cross-package imports `MUST` use package root exports, not `src/` deep imports.
+
+### 6.1 Dependency Capability Embed Packages
+
+Domain repositories that ship PC UI into host applications (for example IM, workspace, or portal shells) `MUST` publish embed packages from `apps/sdkwork-<domain>-pc/packages/sdkwork-<domain>-pc-<capability>/`, not from repository-root `packages/pc-react/**`.
+
+Normative embed contract (Drive, Knowledgebase, Voice, and future dependency capabilities):
+
+```text
+apps/sdkwork-<domain>-pc/packages/sdkwork-<domain>-pc-<capability>/
+  src/index.ts                      public export boundary
+  src/<Capability>View.tsx          route-level embed surface
+  src/runtime.ts                    configure<Domain>PcRuntime({ sdkPorts })
+  src/sdkPorts.ts                   host-injected SDK/session/language ports
+  src/services/                     SDK orchestration only; no raw HTTP
+```
+
+Rules:
+
+- The embed package `MUST` export exactly one primary view (for example `DriveView`, `KnowledgeView`, `VoiceMarketView`) and `configure<Domain>PcRuntime`.
+- Host applications `MUST` inject session, SDK clients, and language ports through `sdkPorts`; embed packages `MUST NOT` read host-local env, `localStorage`, or IM-specific session globals directly.
+- Host shell integration `MUST` lazy-load the embed package through `capabilityModuleLoaders` (or equivalent shell registry), not through feature packages such as `im-pc-chat`.
+- Host `*-pc-core` integration modules (for example `drivePcIntegration.ts`, `voicePcIntegration.ts`) `MUST` map host session snapshots into domain `sdkPorts` and call `configure<Domain>PcRuntime` before rendering the embed view.
+- Legacy repository-root `packages/pc-react/<domain>/` and npm names ending in `-pc-react` for domain capability UI are migration-only. New domain capability UI `MUST` land under `apps/sdkwork-<domain>-pc/packages/sdkwork-<domain>-pc-<capability>/`.
 
 ## 7. SDK And IAM Integration
 

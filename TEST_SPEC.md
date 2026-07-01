@@ -11,10 +11,11 @@ No standard is complete until it is executable.
 | Area | Required verification |
 | --- | --- |
 | Agent entrypoints | Repository/application `AGENTS.md` presence, tool compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` where required, required sections, relative `sdkwork-specs` path checks, `SOUL.md`/`AGENTS_SPEC.md` references, and no duplicated root spec bodies |
-| Repository workspace | Git repository root and application root standard top-level directory dictionary checks, `.sdkwork/` presence checks, tracked `skills/` and `plugins/` placeholders, skill/plugin manifest checks, static scans for forbidden secrets/runtime/generated SDK files |
+| Repository workspace | Git repository root and application root standard top-level directory dictionary checks, `.sdkwork/` presence checks, tracked `skills/` and `plugins/` placeholders, skill/plugin manifest checks, static scans for forbidden secrets/runtime/generated SDK files, repository `README.md` `repository-kind:` declaration, and package-family path layout via `tools/check-workspace-packages-layout.mjs` (`enforce`, `migration`, or `audit` mode) |
 | pnpm scripts | Validate `PNPM_SCRIPT_SPEC.md`: required root scripts, application-code-prefix retirement, allowed public namespaces, action-first runtime target command names, canonical gateway command order, retired deployment word rejection, package-local script scans, documentation/config command examples, and active runner-script `pnpm` invocation scans |
 | Code style and naming | `CODE_STYLE_SPEC.md` and `NAMING_SPEC.md` checks for focused entrypoints, public exports, generated-code boundaries, canonical names, identity lattice terminology (`tools/check-identity-naming.mjs`), and no catch-all implementation files |
 | Language-specific code | On-demand Rust, Java, TypeScript, and frontend checks only when those languages/frameworks are touched |
+| Tailwind CSS integration | `TAILWIND_CSS_INTEGRATION_SPEC.md` checks via `tools/check-tailwind-integration.mjs` for shell bootstrap ownership, forbidden feature-package `@import "tailwindcss"`, and deprecated Vite aliases |
 | Requirements | Validate `REQUIREMENTS_SPEC.md`: requirement id, owner, status, priority, acceptance criteria, non-functional requirements when relevant, traceability to affected specs/components, and verification evidence |
 | Architecture decisions | Validate `ARCHITECTURE_DECISION_SPEC.md`: ADR presence when required, decision shape, architecture views when applicable, alternatives, consequences, verification, and supersession links |
 | Engineering workflow | Validate `ENGINEERING_WORKFLOW_SPEC.md`: intake, clarification, decision, plan, implementation, verification, review, release handoff, checkpoints, blockers, and evidence bundle references |
@@ -33,7 +34,7 @@ No standard is complete until it is executable.
 | Dependency API export | Validate dependency API export policy: `dependencyApiExports` defaults to no export, configured exports reference declared `sdkDependencies`, generated application-owned SDKs stay owner-only, and exported dependency capabilities live only in approved authored facades, service ports, dependency SDK injection, host adapters, or documentation-only surfaces |
 | Dependency API surface | Validate dependency SDK runtime composition: every `sdkDependencies` HTTP entry has a `dependencyApiSurfaces` runtime declaration, same-origin dependency SDK defaults have verified executable mount coverage, route metadata is not treated as an executable router, external dependency SDKs fail fast without explicit base URLs, and missing mounts/upstreams fail before `502` or `404` user requests |
 | Client architecture alignment | Validate `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`: package taxonomy, dependency direction, route identity, host adapter boundary, SDK/IAM/runtime composition, and cross-client workflow alignment |
-| Dependency composition | Validate `APP_COMPOSITION_SPEC.md`: core-package composition layout, bootstrap SDK inventory derivation, frontend/backend dependency chains, and feature-package import boundaries |
+| Dependency composition | Validate `APP_COMPOSITION_SPEC.md` and `APP_INTEGRATION_CONVENTIONS.md`: core-package composition layout, bootstrap SDK inventory derivation, frontend/backend dependency chains, feature-package import boundaries, and composition resolver output |
 | PC application architecture | Validate `APP_PC_ARCHITECTURE_SPEC.md`: application root layout, normalized `sdkwork-<application-code>-pc-*` package names, app/console/admin separation, shared renderer, desktop/tablet host placement, SDK/IAM boundaries |
 | H5 application architecture | Validate `APP_H5_ARCHITECTURE_SPEC.md`: `sdkwork-<application-code>-h5-*`, `sdkwork-<application-code>-h5-console-*`, and `sdkwork-<application-code>-h5-admin-*` package names, shared H5/Capacitor renderer, typed host adapters, SDK/IAM boundaries, mobile config, and release metadata |
 | Flutter app mobile architecture | Validate `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`: default, console, and admin Dart package naming, thin root `lib/`, generated Dart app/backend SDK boundary, platform adapters, route identity, and Flutter release metadata |
@@ -152,19 +153,19 @@ Rules:
   `deployments/`, `scripts/`, `docs/`, or `tests/`.
 - Tests `MUST` fail on generic competing top-level names such as `api/`, `sdk/`, `package/`,
   `deploy/`, `deployment/`, or `tooling/`.
-- Tests `MUST` allow top-level `config/` only when the repository root is itself the selected
-  architecture-specific app surface root and that architecture standard requires `config/`;
-  otherwise project-root config content uses `configs/`.
-- Tests `MUST` allow top-level `packages/` only when the repository root is itself the selected
-  architecture-specific app surface root or a dedicated shared package-family repository whose governing
-  architecture/package standard requires repository-root `packages/`; otherwise package families use the
-  matching project-root capability directory.
+- Tests `MUST` allow top-level `config/` only when the selected architecture-specific app surface root under `apps/sdkwork-<application-code>-<client-arch>/` requires `config/` per the governing architecture standard; otherwise project-root config content uses `configs/`.
+- Tests `MUST` fail when root `README.md` omits `repository-kind:` for SDKWork git repository roots.
+- Tests `MUST` allow top-level `packages/` only for `shared-package-family` or `foundation-dependency` repositories with the matching README declaration; `application` repositories `MUST` place package families under `apps/sdkwork-<application-code>-common/packages/` or `apps/sdkwork-<application-code>-<client-arch>/packages/`.
 - Tests `MUST` fail when a domain multi-surface repository that owns `apis/`, `apps/`, `crates/`, or
   `sdks/` still contains repository-root `packages/`, `packages/common/`, `packages/pc-react/`, or other
   legacy architecture-family directories after migration cutover.
+- Tests `MUST` fail when a single-surface application repository still keeps repository-root `packages/` instead of `apps/sdkwork-<application-code>-<client-arch>/packages/`.
 - Tests `MUST` fail when authored documentation, component specs, workspace manifests, or migration-free
   source still reference legacy repository-root package paths where canonical `apps/sdkwork-<application-code>-common/packages/`
   or `apps/sdkwork-<application-code>-<client-arch>/packages/` replacements exist.
+- Tests `MUST` fail when `tsconfig*.json` `compilerOptions.paths`, `include`, `exclude`, or `files` entries
+  still reference legacy `packages/common/`, `packages/pc-react/`, or sibling-repository legacy package paths
+  after canonical replacements exist or when the referenced target no longer resolves.
 - Every independent SDKWork application git repository `MUST` be checked for `apps/README.md`.
 - Tests `MUST` fail when an independent application repository is missing `apps/` or `apps/README.md`.
 - Tests `MUST` fail when `apps/README.md` does not index a direct child application root directory.
@@ -243,6 +244,16 @@ node ../sdkwork-specs/tools/migrate-legacy-canon-paths.mjs --root .
 node ../sdkwork-specs/tools/align-repository-docs.mjs --root .
 node ../sdkwork-specs/tools/check-repository-docs-standard.mjs --root .
 node ../sdkwork-specs/tools/check-apps-directory-index.mjs --root .
+node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --root . --mode enforce
+node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --workspace <workspace-root> --mode enforce
+node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --workspace <workspace-root> --mode audit
+node ../sdkwork-specs/tools/align-workspace-packages-layout.mjs --root . [--dry-run]
+node ../sdkwork-specs/tools/align-workspace-packages-layout.mjs --workspace <workspace-root> [--dry-run]
+node ../sdkwork-specs/tools/check-workspace-federation-paths.mjs --workspace <workspace-root>
+node ../sdkwork-specs/tools/align-workspace-federation-paths.mjs --workspace <workspace-root> [--dry-run]
+node ../sdkwork-specs/tools/check-workspace-lock-package-paths.mjs --workspace <workspace-root>
+node ../sdkwork-specs/tools/align-workspace-lock-package-paths.mjs --workspace <workspace-root>
+node ../sdkwork-specs/tools/align-openapi-response-envelope-workspace.mjs --workspace <workspace-root> [--dry-run]
 node ../sdkwork-specs/tools/align-apps-directory-index.mjs --root .
 node ../sdkwork-specs/tools/audit-apps-directory-index-workspace.mjs --workspace <workspace-root>
 node ../sdkwork-specs/tools/audit-repository-docs-workspace.mjs --workspace <workspace-root>
@@ -687,6 +698,7 @@ Rules:
 - Bootstrap tests `MUST` prove runtime SDK inventory is derived from core `component.spec.json` and composition entry rather than a second handwritten inventory.
 - Feature package import tests `MUST` fail when capability packages import generated SDK packages or sibling capability private paths directly.
 - Workspace verification `MUST` include `node tools/verify-repo.mjs --root <repo-root>` and repo-root `pnpm-workspace.yaml` must be synchronized via `node tools/sync-workspace.mjs --repo <repo-name> --root <repo-root>`.
+- Composition resolver verification `MUST` include `node tools/resolve-composition.mjs --root <repo-root> --write` and `node tools/check-composition-resolver.mjs --root <repo-root>` for client application repositories with `sdkDependencies`.
 
 ## 2.4.2 H5 Application Architecture Tests
 

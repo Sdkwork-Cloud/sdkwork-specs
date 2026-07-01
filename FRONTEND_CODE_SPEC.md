@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: React, PC browser UI, PC desktop renderer UI, H5 mobile React, Flutter UI, mini program UI, native Android UI, native iOS UI, native HarmonyOS UI, backend/admin UI, frontend services, state, i18n, and UI tests
-- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
+- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `TAILWIND_CSS_INTEGRATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
 
 This standard applies only when frontend, renderer, UI, React, Flutter, mini program UI, native Android/iOS/Harmony UI, or backend/admin UI code is touched.
 
@@ -81,7 +81,16 @@ Rules:
 - Drive-backed media and upload behavior follow `DRIVE_SPEC.md` and `MEDIA_RESOURCE_SPEC.md`.
 - Tokens and credentials must not enter browser public runtime env, i18n catalogs, screenshots, logs, or frontend bundles.
 
-## 6. Verification
+## 6. Styling And Tailwind CSS
+
+Rules:
+
+- PC and H5 Vite applications `MUST` follow `TAILWIND_CSS_INTEGRATION_SPEC.md`.
+- Application shell CSS owns the single `@import "tailwindcss"` bootstrap.
+- Feature packages use Tailwind utility classes in components; they do not re-bootstrap the Tailwind engine in host-composed CSS.
+- Shared UI libraries may bootstrap Tailwind only for standalone library build stylesheets documented in `TAILWIND_CSS_INTEGRATION_SPEC.md`.
+
+## 7. Verification
 
 Rules:
 
@@ -89,8 +98,9 @@ Rules:
 - UI tests cover key loading, empty, error, permission-denied, and success states.
 - Architecture scans must prove the package family uses the correct SDK surface and does not import forbidden UI/runtime packages.
 - Visual or browser verification is required for substantial UI changes when a runnable app exists.
+- Tailwind integration changes `MUST` run `check-tailwind-integration.mjs`.
 
-## 7. Acceptance Checklist
+## 8. Acceptance Checklist
 
 - [ ] Correct UI architecture spec was loaded.
 - [ ] UI -> service -> SDK flow is preserved.

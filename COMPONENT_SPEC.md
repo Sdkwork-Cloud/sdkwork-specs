@@ -4,7 +4,7 @@
 - Scope: local `specs/` directories for apps, reusable packages, language modules, SDK families, services, host adapters, and componentized integration units under `apps/`
 - Related: `SDKWORK_WORKSPACE_SPEC.md`, `AGENTS_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `MODULE_SPEC.md`, `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `CONFIG_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
-This standard defines the local specification boundary for every authored SDKWork component. The root `specs/` directory remains authoritative; a component-local `specs/` directory exists to make the component discoverable, maintainable, and safe to integrate without reading its internals first.
+This standard defines the local specification boundary for every authored SDKWork module. Global standards live in `sdkwork-specs/*_SPEC.md`; each module owns an independent local spec system under `<module-root>/specs/` that makes the module discoverable, maintainable, and safe to integrate without reading its internals first.
 
 Repository roots and application roots also carry the checked-in `.sdkwork/` workspace required by `SDKWORK_WORKSPACE_SPEC.md`. Component roots do not need their own `.sdkwork/` unless the component root is also a git repository root or an independently built/distributed application root.
 
@@ -12,31 +12,32 @@ Repository roots and application roots also carry the checked-in `.sdkwork/` wor
 
 Rules:
 
-- Root `specs/` files are the source of truth.
-- Component-local specs may narrow, document, or add component-specific constraints.
-- Component-local specs must not contradict root specs.
-- If a component needs an exception, record it according to `GOVERNANCE_SPEC.md`.
-- Generated language outputs should not each maintain independent standards; the SDK family root owns the component spec unless a generated output becomes a hand-maintained composed package.
-- Component-local specs may reference repository/application `.sdkwork/skills` or `.sdkwork/plugins` for workflows, but they must not redefine those workspace rules.
-- Component-local `AGENTS.md`, when present, must follow `AGENTS_SPEC.md` and use relative paths to root `sdkwork-specs`.
+- Global `sdkwork-specs/*_SPEC.md` files are the platform source of truth.
+- Repository/application root `specs/` may hold cross-module machine contracts such as `topology.spec.json`; they do not replace global standards.
+- Module-local `specs/` may narrow, document, or add module-specific constraints for the owning module only.
+- Module-local specs must not contradict global specs.
+- If a module needs an exception, record it according to `GOVERNANCE_SPEC.md`.
+- Generated language outputs should not each maintain independent standards; the SDK family root owns the module spec unless a generated output becomes a hand-maintained composed package.
+- Module-local specs may reference repository/application `.sdkwork/skills` or `.sdkwork/plugins` for workflows, but they must not redefine those workspace rules.
+- Module-local `AGENTS.md`, when present, must follow `AGENTS_SPEC.md` and use relative paths to global `sdkwork-specs`.
 
 ## 2. Required Local Directory
 
-Every authored component `MUST` contain:
+Every authored module `MUST` contain:
 
 ```text
 <component-root>/
   specs/
-    README.md
     component.spec.json
+    README.md                 # optional human index; recommended
 ```
 
 Rules:
 
-- `README.md` is the human entrypoint.
-- `component.spec.json` is the machine-readable contract used by validators.
-- Local extension files such as `FRONTEND_SPEC.md`, `RUST_SPEC.md`, `DART_SPEC.md`, `I18N_SPEC.md`, or `RELEASE_SPEC.md` may be added only when the component has extra rules beyond the root specs.
-- Do not copy root specs into component folders.
+- `component.spec.json` is the machine-readable contract used by validators and `MUST` exist.
+- `README.md` is the optional human index for the module spec system. It `MUST NOT` duplicate global spec bodies or replace `component.spec.json`.
+- Local extension files such as `FRONTEND_SPEC.md`, `RUST_SPEC.md`, `DART_SPEC.md`, `I18N_SPEC.md`, or `RELEASE_SPEC.md` may be added only when the module has extra rules beyond global specs.
+- Do not copy global `sdkwork-specs/*_SPEC.md` files into module folders.
 
 ## 3. Component Manifest
 
