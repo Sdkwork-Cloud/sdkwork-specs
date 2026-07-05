@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: API latency, frontend responsiveness, database query budgets, SDK behavior, rate limits, capacity planning
-- Related: `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `DATABASE_SPEC.md`, `FRONTEND_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `API_SPEC.md`, `PAGINATION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `DATABASE_SPEC.md`, `FRONTEND_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines minimum performance discipline for reusable modules and shared APIs. Performance requirements must be explicit enough to test, monitor, and preserve across Java/Rust implementations, standalone/cloud deployment profiles, and supported runtime targets.
 
@@ -18,7 +18,7 @@ This standard defines minimum performance discipline for reusable modules and sh
 Rules:
 
 - Every reusable API resource `SHOULD` declare a performance class.
-- P0/P1 APIs `MUST` avoid unbounded scans, unbounded response bodies, and hidden N+1 calls.
+- P0/P1 APIs `MUST` avoid unbounded scans, unbounded response bodies, hidden N+1 calls, and in-process pagination (`PAGINATION_SPEC.md` §2).
 - P2/P3 operations `SHOULD` use job resources, progress APIs, events, or callbacks instead of blocking interactive requests.
 - Web backend services and repositories `MUST` implement the declared performance class from the API contract. A fast OpenAPI contract with an unbounded repository query is not standards-compliant.
 
@@ -53,6 +53,7 @@ Rules:
 - Denormalized read models `SHOULD` declare source, freshness, rebuild, and drift detection.
 - Repository methods used by P0/P1 operations `MUST` have bounded query shapes: explicit limit, indexed filter/sort path, and tenant/data-scope predicates where applicable.
 - Repository methods `MUST NOT` perform authorization-blind broad reads and rely on service code to filter large result sets in memory.
+- Repository list methods `MUST NOT` load unbounded result sets and paginate with `skip`/`take`/`slice` in service code; see `PAGINATION_SPEC.md`.
 - Provider adapter calls inside P0/P1 service paths `MUST` be bounded, cached safely, batched, or moved to asynchronous workflows when they cannot meet the operation budget.
 
 ## 4. Frontend Budgets
@@ -63,6 +64,7 @@ Rules:
 - Shared modules `SHOULD` be code-splittable when they include route-sized UI.
 - P0 session/current-user calls `SHOULD` be cached with clear invalidation on logout, tenant switch, and permission change.
 - UI lists `MUST` handle pagination or virtualization when item count can grow.
+- Interactive UI lists `MUST` request server pages via SDK `cursor`/`page` parameters and `MUST NOT` use client-side `slice` over fully downloaded arrays (`PAGINATION_SPEC.md` §8).
 - Desktop/native modules `SHOULD` avoid blocking the main UI thread for file, process, or local backend calls.
 
 ## 5. SDK Behavior
@@ -89,6 +91,7 @@ Rules:
 - [ ] Expected latency and timeout behavior are documented.
 - [ ] Database access path and tenant index strategy are clear.
 - [ ] Web backend service/repository implementation enforces the same performance class, pagination, query bounds, and tenant/data-scope predicates as the API contract.
+- [ ] No list/search path performs in-process full collect + slice (`PAGINATION_SPEC.md`).
 - [ ] Frontend handles large lists and does not block the main thread.
 - [ ] SDK retry/pagination behavior is safe.
 - [ ] Metrics exist for latency, errors, rate limits, and saturation.

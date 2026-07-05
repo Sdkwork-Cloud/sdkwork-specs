@@ -13,9 +13,15 @@ Rules:
   plus command-bearing JSON examples against `PNPM_SCRIPT_SPEC.md`.
 - `check-agent-workflow-standard.mjs` validates repository/application
   `AGENTS.md` dynamic progressive loading, compatibility shims, relative
-  `sdkwork-specs` links, `sdkwork.workflow.json` package target metadata, and
+  `sdkwork-specs` links, list/search pagination section presence,
+  `sdkwork.workflow.json` package target metadata, and
   thin `.github/workflows/package.yml` reusable workflow integration against
   `AGENTS_SPEC.md` and `GITHUB_WORKFLOW_SPEC.md`.
+- `align-agents-pagination-standard.mjs` inserts or refreshes the
+  `## List And Search Pagination` section in repository `AGENTS.md` files per
+  `PAGINATION_SPEC.md` and `AGENTS_SPEC.md`.
+- `check-pagination.mjs` heuristically scans for in-process pagination smells
+  per `PAGINATION_SPEC.md` §2 and §10.2.
 - `check-database-framework-standard.mjs` validates application-root `database/`
   lifecycle assets, locale directories, manifests, L2 contract registries,
   per-engine baseline DDL, and required `db:*` scripts against

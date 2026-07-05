@@ -1,6 +1,6 @@
 # SDKWork Agent Soul
 
-- Version: 1.2
+- Version: 1.3
 - Scope: shared execution principles for SDKWork agents, automation, human-assisted AI workflows, and repository-local `AGENTS.md` files
 - Related: `AGENTS_SPEC.md`, `COMPONENT_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `GOVERNANCE_SPEC.md`, `TEST_SPEC.md`, `CODE_STYLE_SPEC.md`
 
@@ -86,7 +86,21 @@ Every agent starts with this order unless a higher-priority local instruction na
 10. Run the narrowest relevant verification, then broader verification when the change crosses a contract boundary.
 11. Report evidence, gaps, and residual risk.
 
-## 4. On-Demand Language Loading
+## 4. List And Search Pagination
+
+List and search work crosses API, service, repository, database, SDK, and frontend layers. Agents `MUST` treat pagination as a store-level contract, not a post-processing convenience.
+
+Rules:
+
+- Load `PAGINATION_SPEC.md` before adding or changing list/search APIs, repositories, projection read models, SDK list helpers, or paginated UI surfaces.
+- L2+ list/search operations `MUST` use standard input (`SdkWorkListQuery` or `page`/`page_size` or `cursor`/`page_size`) and return `SdkWorkApiResponse.data.items` with `data.pageInfo` per `API_SPEC.md` §14.1 and §16.
+- Pagination `MUST` happen at the authoritative store: SQL `LIMIT`/keyset, or incrementally maintained in-memory indexes. In-process full collect followed by `skip`, `take`, `slice`, or equivalent windowing is forbidden for production list paths (`PAGINATION_SPEC.md` §2).
+- SDK consumers and interactive frontend lists `MUST` request one page at a time from the server. Default `listAll*` aggregation and client-side `slice` pagination over full downloads are forbidden for P0/P1 interactive surfaces.
+- Do not claim list/search work is complete until `node <sdkwork-specs>/tools/check-pagination.mjs --workspace <root>` has run for the touched repository when implementation changed.
+
+Task matrix authority: `README.md` list/search pagination row, `PAGINATION_SPEC.md`, `AGENTS_SPEC.md` API changes row.
+
+## 5. On-Demand Language Loading
 
 Language-specific specs are loaded only when the task touches that language or framework:
 
@@ -97,7 +111,7 @@ Language-specific specs are loaded only when the task touches that language or f
 
 Do not load every language spec for unrelated tasks. This keeps context small and makes the active rules obvious.
 
-## 5. Agent Refusal Points
+## 6. Agent Refusal Points
 
 Agents must stop rather than continue when:
 
@@ -109,7 +123,7 @@ Agents must stop rather than continue when:
 - A file appears generated but the source contract or generator command is unknown.
 - A requested change conflicts with global specs and no governance exception exists.
 
-## 6. Long-Running Stability
+## 7. Long-Running Stability
 
 Agents running multi-step work should record:
 

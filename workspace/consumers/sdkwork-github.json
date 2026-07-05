@@ -1,8 +1,8 @@
 {
   "pnpm": {
     "packages": [
-      "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi",
-      "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/generated/server-openapi",
+      "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/src/index.ts",
+      "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/src/index.ts",
       "../sdkwork-appbase/packages/common/foundation/sdkwork-runtime-bootstrap",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-credential-entry",

@@ -1,0 +1,129 @@
+{
+
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+
+  "$id": "https://sdkwork.dev/schemas/SDK_MANIFEST.schema.json",
+
+  "title": "SDKWork SDK Family Manifest",
+
+  "type": "object",
+
+  "required": [
+
+    "schemaVersion",
+
+    "sdkFamily",
+
+    "packageName",
+
+    "transportPackageName",
+
+    "typescript"
+
+  ],
+
+  "properties": {
+
+    "schemaVersion": { "type": "integer", "const": 1 },
+
+    "sdkFamily": {
+
+      "type": "string",
+
+      "pattern": "^[a-z0-9-]+-sdk$"
+
+    },
+
+    "sdkName": { "type": "string" },
+
+    "workspace": { "type": "string" },
+
+    "title": { "type": "string" },
+
+    "apiVersion": { "type": "string" },
+
+    "openapiVersion": { "type": "string" },
+
+    "authoritySpec": { "type": "string" },
+
+    "generationInputSpec": { "type": "string" },
+
+    "derivedSpecs": { "type": "object" },
+
+    "sdkOwner": { "type": "string" },
+
+    "apiAuthority": { "type": "string" },
+
+    "standardProfile": { "type": "string" },
+
+    "discoverySurface": { "type": "object" },
+
+    "sdkDependencies": { "type": "array" },
+
+    "languages": { "type": "array" },
+
+    "metadata": { "type": "object" },
+
+    "packageName": {
+
+      "type": "string",
+
+      "pattern": "^@sdkwork/[a-z0-9-]+-sdk$"
+
+    },
+
+    "transportPackageName": {
+
+      "type": "string",
+
+      "pattern": "^[a-z0-9-]+-generated-typescript$"
+
+    },
+
+    "typescript": {
+
+      "type": "object",
+
+      "required": [
+
+        "composedRoot",
+
+        "composedEntry",
+
+        "transportRoot",
+
+        "transportEntry"
+
+      ],
+
+      "properties": {
+
+        "composedRoot": { "type": "string" },
+
+        "composedEntry": { "type": "string" },
+
+        "transportRoot": { "type": "string" },
+
+        "transportEntry": { "type": "string" },
+
+        "subpathExports": {
+
+          "type": "object",
+
+          "additionalProperties": { "type": "string" }
+
+        }
+
+      },
+
+      "additionalProperties": false
+
+    }
+
+  },
+
+  "additionalProperties": true
+
+}
+
+

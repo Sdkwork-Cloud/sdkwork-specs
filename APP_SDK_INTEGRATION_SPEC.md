@@ -385,6 +385,7 @@ Rules:
 - Component packages `MUST` define their external dependencies through package root exports and component specs. Consumers should be able to wire the package without reading private implementation files.
 - Shared cross-architecture state must be modeled as contracts or service ports. React state, Flutter blocs/controllers, Android view models, iOS view models, Harmony view models, and host lifecycle code do not cross architecture families.
 - IAM user/session state is a runtime concern. Feature packages may observe authenticated user/context through injected services, but they `MUST NOT` persist their own copy of tokens or AppContext.
+- List/search feature services `MUST` consume SDK `{ items, pageInfo }` pagination and `MUST NOT` implement interactive browsing with `listAll*` aggregation plus local `slice` per `PAGINATION_SPEC.md` §8.
 
 ## 7. Verification
 
@@ -419,6 +420,78 @@ rg -n "@sdkwork/iam-sdk-adapter|createIamAppSdkAdapter|createIamBackendSdkAdapte
 rg -n "createTokenManager\\(|new .*TokenManager|setAuthToken|setAccessToken" apps/<application-code>
 ```
 
+## 9. Consumer Import Naming
+
+Application, feature, shell, service, bootstrap, and contract-test code `MUST` import HTTP SDK clients through scoped composed consumer packages. Generator transport package names are ownership/build artifacts only.
+
+Authority for naming roles, physical layout, workspace registration, and verification: `SDK_PACKAGE_NAMING_SPEC.md`.
+
+| Surface | Consumer import |
+| --- | --- |
+| App API | `@sdkwork/<application-code>-app-sdk` |
+| Backend API (`backend-admin` only) | `@sdkwork/<application-code>-backend-sdk` |
+| Open/domain API | `@sdkwork/<domain>-sdk` |
+
+Rules:
+
+- Each SDK family `MUST` expose a composed TypeScript facade at `sdks/sdkwork-<domain>-<surface>-sdk/sdkwork-<domain>-<surface>-sdk-typescript/src/index.ts` with `package.json#name` equal to the scoped consumer package.
+- The composed facade `MUST` re-export generated transport from `generated/server-openapi/src/index.ts` and `MUST NOT` copy generated source into consumers.
+- Consumer packages `MUST NOT` import `sdkwork-*-app-sdk-generated-typescript`, `sdkwork-*-backend-sdk-generated-typescript`, `sdkwork-*-sdk-generated-typescript`, or other generator transport names.
+- Consumer packages `MUST NOT` deep-import `generated/server-openapi/src/*` when a composed facade exists for that SDK family.
+- Vite, TypeScript, and test alias maps `MUST` target the composed facade entry (`src/index.ts`), not missing transport `dist/` exports.
+- Workspace dependency keys, `component.spec.json#contracts.sdkClients`, and integration contract tests `MUST` use the same scoped consumer package names.
+
+Forbidden examples:
+
+```typescript
+import { createClient } from 'sdkwork-skills-app-sdk-generated-typescript';
+import { SdkworkAppClient } from 'sdkwork-mail-app-sdk-generated-typescript/src/sdk';
+import { createClient } from '@sdkwork/commerce-app-sdk'; // retired
+```
+
+Required examples (IAM canonical reference):
+
+```typescript
+import { createClient, type SdkworkAppClient } from '@sdkwork/iam-app-sdk';
+import type { SdkworkBackendClient } from '@sdkwork/iam-backend-sdk'; // backend-admin only
+import { createClient as createClawRouterDomainsClient } from '@sdkwork/clawrouter-app-sdk/domains'; // federated T1 domains via Claw Router
+```
+
+Verification:
+
+```bash
+node <sdkwork-specs>/tools/check-sdk-standard.mjs --workspace <workspace-root>
+node <sdkwork-specs>/tools/check-sdk-standard.mjs --workspace <workspace-root> --fix
+node <sdkwork-specs>/tools/check-app-sdk-consumer-imports.mjs --workspace <workspace-root>
+node <sdkwork-specs>/tools/check-app-sdk-consumer-imports.mjs --workspace <workspace-root> --materialize-facades --align-alias-paths
+```
+
+Use `--materialize-facades` to create missing `src/index.ts` composed entries for `@sdkwork/*` SDK families. Use `--align-alias-paths` to rewrite consumer Vite/tsconfig/package alias paths from `generated/server-openapi` to composed facade entries before re-validating.
+
+Composed facade physical layout (Claw Router federated domains example):
+
+```text
+sdks/clawrouter-app-sdk/clawrouter-app-sdk-typescript/
+  src/index.ts                    → @sdkwork/clawrouter-app-sdk
+  src/domains/index.ts            → @sdkwork/clawrouter-app-sdk/domains
+  generated/server-openapi/       → portal transport (generator ownership)
+  generated/domains/server-openapi/ → federated domain transport (generator ownership)
+```
+
+Rules for composed facades:
+
+- `src/index.ts` and optional subpaths such as `src/domains/index.ts` `MAY` re-export from `../generated/**` or `../../generated/domains/**` within the same `*-sdk-typescript` family root only.
+- Composed facades `MUST NOT` import from sibling `*-domain-transport-typescript` directories or cross-family `../../*-typescript/generated` hops.
+- Retired `@sdkwork/clawrouter-*-domain-transport-sdk` packages and standalone `*-domain-transport-typescript` SDK family roots are forbidden; domain transport lives under `generated/domains/server-openapi/` inside the standard SDK family.
+
+Retired commerce packages:
+
+- `@sdkwork/commerce-app-sdk` and `@sdkwork/commerce-backend-sdk` are removed.
+- Legacy `sdkwork-commerce-*-generated-typescript` transport names map to `@sdkwork/clawrouter-app-sdk/domains` and `@sdkwork/clawrouter-backend-sdk/domains`.
+- Non-standard `@sdkwork/clawrouter-*-domain-transport-sdk` packages are retired; use the `./domains` export on the standard Claw Router SDK packages.
+
+Authority: `SDK_SPEC.md` package naming table, `SDK_WORKSPACE_GENERATION_SPEC.md` composed facade rules, this section.
+
 ## 8. Acceptance Checklist
 
 - [ ] Application root composes dependencies instead of copying source, routes, DTOs, or generated SDK output.
@@ -450,4 +523,5 @@ rg -n "createTokenManager\\(|new .*TokenManager|setAuthToken|setAccessToken" app
   every same-origin dependency surface; split/server runtimes configure one common SDK root that
   serves the dependency surface or explicit dependency SDK base URLs.
 - [ ] Frontend services use injected SDK clients and no raw HTTP/manual auth header fallback.
+- [ ] Application consumers import scoped composed SDK packages (`@sdkwork/<application-code>-app-sdk`, `@sdkwork/<application-code>-backend-sdk`) and never generator transport names such as `sdkwork-*-generated-typescript`.
 - [ ] Logout, refresh failure, token persistence failure, context rollback, stale context clearing, and refresh-token continuation behavior are tested.

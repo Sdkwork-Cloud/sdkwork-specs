@@ -45,7 +45,7 @@ Deploy resolves three identifiers:
 | --- | --- | --- | --- |
 | `appId` | `sdkwork-im` | repository directory name and `topology.spec.json` `appId` | source-tree paths, surface directory names |
 | `runtimeCode` | `im` | `topology.database.appPrefix` (`SDKWORK_IM` → `im`) | `/etc/sdkwork/`, `/usr/lib/sdkwork/`, `/usr/share/sdkwork/` |
-| `app.key` | `chat` | `sdkwork.app.config.json` | PlusApp / IAM only; MUST NOT be used for deploy paths |
+| `app.key` | `chat` | `sdkwork.app.config.json` | app.key / IAM only; MUST NOT be used for deploy paths |
 
 Rules:
 

@@ -1,4 +1,4 @@
-﻿# Test And Verification Standard
+# Test And Verification Standard
 
 - Version: 1.0
 - Scope: contract tests, SDK/RPC generation tests, backend tests, frontend tests, parity tests, security tests
@@ -918,7 +918,7 @@ Rules:
 - App manifest tests `MUST` fail when a package id profile segment conflicts
   with explicit package metadata, `runtimeTarget`, or `runtime.framework`.
 - App manifest tests `MUST` prove schema, full example, validator, initializer,
-  and PlusApp export projection stay aligned when deployment profile,
+  and platform_app export projection stay aligned when deployment profile,
   runtimeTarget, package matrix, or release metadata rules change.
 - GitHub workflow planner tests `MUST` prove deployable targets declare
   `deploymentProfile` and `runtimeTarget`, inject `SDKWORK_DEPLOYMENT_PROFILE`
@@ -1007,6 +1007,8 @@ Rules:
 Rules:
 
 - P0/P1 APIs `SHOULD` include pagination/bounded-query verification.
+- P0/P1 list/search APIs `MUST` include tests that prove store-level or index-level pagination and reject in-process full collect + slice patterns per `PAGINATION_SPEC.md` §10.
+- Frontend list service tests `SHOULD` fail when interactive screens use `listAll*` + `slice` instead of server `cursor`/`page`.
 - SDK generation tests `MUST` verify the intended nested resource method surface from `SDK_SPEC.md`.
 - SDK workspace tests `MUST` verify the intended `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-sdk`, and `sdkwork-<domain>-backend-sdk` family contracts from `SDK_SPEC.md`, plus the physical workspace placement required by `SDK_WORKSPACE_GENERATION_SPEC.md`, when those surfaces exist.
 - SDK workspace tests `MUST` verify authored API contracts under `apis/` trace to the materialized

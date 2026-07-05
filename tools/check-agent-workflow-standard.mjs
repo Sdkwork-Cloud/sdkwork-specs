@@ -210,6 +210,15 @@ function validateAgents(root) {
     if (!text.includes('GITHUB_WORKFLOW_SPEC.md')) {
       issues.push(`${label} must reference GITHUB_WORKFLOW_SPEC.md for packaging workflow changes`);
     }
+    if (!hasHeading(text, 'List And Search Pagination')) {
+      issues.push(`${label} missing required section "List And Search Pagination"`);
+    }
+    if (!/PAGINATION_SPEC\.md/u.test(text)) {
+      issues.push(`${label} must reference PAGINATION_SPEC.md for list/search pagination work`);
+    }
+    if (!/check-pagination\.mjs/u.test(text)) {
+      issues.push(`${label} must reference check-pagination.mjs verification for list/search pagination work`);
+    }
     if (LANGUAGE_SPEC_REFERENCES.every((spec) => !text.includes(spec))) {
       issues.push(`${label} must map at least one language-specific spec and state it is loaded on demand`);
     }

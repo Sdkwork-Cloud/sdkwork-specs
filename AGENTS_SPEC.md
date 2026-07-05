@@ -39,6 +39,7 @@ Each authored `AGENTS.md` must include these sections, with local details filled
 ## Code Style Rules
 ## Build, Test, and Verification
 ## Agent Execution Rules
+## App SDK Consumer Imports
 ## HTTP API Response Envelope
 ## Human Review Rules
 ```
@@ -46,6 +47,8 @@ Each authored `AGENTS.md` must include these sections, with local details filled
 Sections may be brief, but they must be actionable and must use repository-relative paths.
 
 `## HTTP API Response Envelope` is mandatory for every repository or application root that owns, serves, generates, or consumes SDKWork HTTP `app-api`, `backend-api`, or SDKWork-owned business `open-api` contracts. Use `node ../sdkwork-specs/tools/align-agents-http-response-standard.mjs --workspace ..` to refresh the canonical section text from `API_SPEC.md` section 4.5 and sections 14–16. Do not paraphrase or weaken the input/output rules locally.
+
+`## App SDK Consumer Imports` is mandatory for every repository or application root that owns or consumes generated HTTP SDK clients in `apps/`, `packages/`, bootstrap, services, UI, or integration contract tests. Copy the canonical section text from `APP_SDK_INTEGRATION_SPEC.md` section 9. Do not paraphrase or weaken the scoped `@sdkwork/*-app-sdk` / `@sdkwork/*-backend-sdk` rules locally. Verify with `node ../sdkwork-specs/tools/check-app-sdk-consumer-imports.mjs --workspace ..`.
 
 ## 3. Relative Path Rules
 
@@ -121,7 +124,7 @@ Rules:
 | Java/Spring code | `JAVA_CODE_SPEC.md`, `WEB_BACKEND_SPEC.md` when HTTP backend code is touched, `RPC_FRAMEWORK_SPEC.md` when gRPC is touched |
 | TypeScript/Node code | `TYPESCRIPT_CODE_SPEC.md` |
 | Frontend/UI code | `FRONTEND_CODE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, and exactly one detailed UI architecture spec |
-| API changes | `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md` when Rust HTTP runtime is touched, `WEB_BACKEND_SPEC.md`, `SDK_SPEC.md`, `TEST_SPEC.md` |
+| API changes | `API_SPEC.md`, `PAGINATION_SPEC.md` when list/search pagination is touched, `WEB_FRAMEWORK_SPEC.md` when Rust HTTP runtime is touched, `WEB_BACKEND_SPEC.md`, `SDK_SPEC.md`, `TEST_SPEC.md` |
 | Rust HTTP route crates / API servers | `API_SPEC.md`, `SUBJECT_ID_SPEC.md` when SQL subject scope is involved, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md` |
 | Database changes | `DATABASE_SPEC.md`, `SUBJECT_ID_SPEC.md` when tenant/user subject columns are involved, `PRIVACY_SPEC.md`, `TEST_SPEC.md` |
 | SDK generation/consumption | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md` when RPC SDKs are touched, `API_SPEC.md`, `TEST_SPEC.md` |
@@ -186,6 +189,10 @@ Use this repository's package manifest scripts. Record commands and outputs.
 ## HTTP API Response Envelope
 
 Follow `../sdkwork-specs/API_SPEC.md` §15. Success bodies use `SdkWorkApiResponse` with numeric `code` (`0`), `data`, and `traceId`; errors use `ProblemDetail` with numeric non-zero `code` and `traceId`. Run `node ../sdkwork-specs/tools/check-api-response-envelope.mjs` for the owning repo or workspace before completing API work.
+
+## List And Search Pagination
+
+Follow `../sdkwork-specs/PAGINATION_SPEC.md`. List/search APIs use standard `SdkWorkListQuery` input and `data.items` + `data.pageInfo` output; pagination must happen at SQL/keyset or maintained indexes, not in-process collect + slice. Run `node ../sdkwork-specs/tools/check-pagination.mjs` before completing list/search work.
 ```
 
 ## 8. Compatibility Shim Templates
@@ -228,6 +235,9 @@ Validation should check:
 - `AGENTS.md` references `CODE_STYLE_SPEC.md` §7 build source integrity rules
   when the repository owns build scripts, dev runners, or cross-repository
   dependency preparation tooling.
+- `AGENTS.md` includes `## List And Search Pagination` with a relative
+  `PAGINATION_SPEC.md` authority reference and `check-pagination.mjs`
+  verification command.
 - When `docs/` is active, `AGENTS.md` and root `README.md` link to `docs/README.md`, `docs/product/prd/PRD.md`, and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 
 Application repositories may call the canonical validators with:

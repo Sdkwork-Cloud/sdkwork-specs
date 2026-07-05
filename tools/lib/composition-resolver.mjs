@@ -12,6 +12,7 @@ import {
   readJson,
   toPosix,
 } from './app-composition.mjs';
+import { loadDiscoverySurfaceForWorkspaceConsumer } from './sdk-manifest-assembly.mjs';
 
 const APP_API_PREFIX = '/app/v3/api';
 const BACKEND_API_PREFIX = '/backend/v3/api';
@@ -78,22 +79,7 @@ function findSiblingRepoRoot(repoRoot, domain) {
 }
 
 function loadAssemblyDiscovery(repoRoot, workspace) {
-  const candidates = [
-    path.join(repoRoot, 'sdks', workspace, '.sdkwork-assembly.json'),
-    path.join(repoRoot, '..', workspace, 'sdks', workspace, '.sdkwork-assembly.json'),
-  ];
-  const siblingDomain = domainFromSdkWorkspace(workspace);
-  if (siblingDomain) {
-    const siblingRoot = findSiblingRepoRoot(repoRoot, siblingDomain);
-    if (siblingRoot) {
-      candidates.unshift(path.join(siblingRoot, 'sdks', workspace, '.sdkwork-assembly.json'));
-    }
-  }
-  for (const candidate of candidates) {
-    const assembly = readJsonIfExists(candidate);
-    if (assembly?.discoverySurface) return assembly.discoverySurface;
-  }
-  return null;
+  return loadDiscoverySurfaceForWorkspaceConsumer(repoRoot, workspace);
 }
 
 function loadDependencyIntegration(repoRoot, workspace) {

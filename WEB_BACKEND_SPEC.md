@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: Java Spring HTTP backends, Rust HTTP route crates, standalone/cloud web backend implementations, and backend API implementation boundaries
-- Related: `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `DOMAIN_SPEC.md`, `RUST_CODE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `COMPONENT_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md`
+- Related: `API_SPEC.md`, `PAGINATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `DOMAIN_SPEC.md`, `RUST_CODE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `COMPONENT_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork web backends are implemented after the HTTP contract has been designed. `API_SPEC.md` remains the contract source of truth. This file owns implementation layering, naming, handler/service/repository boundaries, route path placement, request context usage, and backend verification expectations.
 
@@ -451,4 +451,17 @@ Every web backend change should verify the relevant subset:
   exports with verified coverage; split/server dependency routes have explicit upstream/base URL
   config.
 - [ ] Errors map to problem-detail responses and do not leak sensitive internals.
+- [ ] List/search endpoints implement store-level or index-level pagination per `PAGINATION_SPEC.md`; no in-process full collect + slice.
 - [ ] Tests cover contract generation, security, service behavior, repository isolation, and static boundary scans.
+
+## 12. Pagination Implementation
+
+List/search handlers, services, and repositories `MUST` follow `PAGINATION_SPEC.md` in addition to `API_SPEC.md` §14.1 and §16.
+
+Rules:
+
+- handlers `MUST` translate `page`/`page_size` or `cursor`/`page_size` into repository or maintained-index window parameters before any unbounded read;
+- repositories `MUST` use SQL `LIMIT`/keyset predicates or incrementally maintained sorted indexes for projection stores;
+- services `MUST NOT` call unbounded `find_all`/`list_all` helpers and then `skip`/`take`/`slice` results in process memory;
+- Rust services `SHOULD` reuse `sdkwork-utils-rust::http_api` offset/cursor helpers only on already index-backed iterators, not as a substitute for SQL pagination on persisted tables;
+- list endpoint tests `MUST` prove page boundaries without materializing the full tenant collection in memory.

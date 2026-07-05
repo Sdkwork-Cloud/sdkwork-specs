@@ -17,10 +17,10 @@
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-ports",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-service",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-credential-entry",
-      "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi",
-      "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/generated/server-openapi",
+      "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/src/index.ts",
+      "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/src/index.ts",
       "../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript",
-      "../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript/generated/server-openapi"
+      "../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript/src/index.ts"
     ]
   },
   "catalog": {

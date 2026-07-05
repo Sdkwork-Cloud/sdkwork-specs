@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: architecture-neutral UI-service-SDK layering, reusable UI modules, service facades, state, routing, accessibility, frontend tests
-- Related: `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `PAGINATION_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the shared frontend rules for SDKWork modules. It is architecture-neutral and applies to app PC React, user console React, internal admin React, H5 mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, and standalone backend/admin React packages. Platform-specific package placement, host adapters, tablet/desktop/mobile packaging, route projection, and interaction rules live in the architecture-specific standards. Client application roots follow `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` plus their matching root architecture standard. Cross-architecture SDK composition, app dependency relationships, appbase IAM runtime, and global TokenManager wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
 
@@ -306,6 +306,18 @@ Rules:
 - Local Rust backend client construction belongs in runtime/bootstrap.
 - File, process, window, browser, mobile, and OS permissions must be explicit and reviewed.
 
+### 8.1 List And Search Pagination
+
+Interactive list UIs and frontend feature services `MUST` follow `PAGINATION_SPEC.md` §8 and `API_SPEC.md` §14.1/§16.
+
+Rules:
+
+- table, feed, and infinite-scroll lists `MUST` request one server page at a time using `page`/`page_size` or `cursor`/`page_size` through generated SDK clients;
+- services `MUST` propagate `pageInfo.nextCursor` or increment `page` until `hasMore` is false;
+- `listAll*`, `fetchAll*`, or equivalent helpers `MUST NOT` back normal paginated UI browsing;
+- client-side `Array.prototype.slice`, manual offset math, or virtual paging over a fully downloaded array `MUST NOT` replace server pagination;
+- bulk export/admin scripts that intentionally iterate all pages `MUST` be explicit, cancellable, and documented — not hidden inside shared list services used by interactive screens.
+
 ## 9. Acceptance Checklist
 
 - [ ] UI-service-SDK boundaries are respected.
@@ -319,3 +331,4 @@ Rules:
 - [ ] Permission-denied and validation-error states are covered.
 - [ ] Keyboard and accessible labels are covered for interactive controls.
 - [ ] Tests cover service behavior and representative UI integration.
+- [ ] Interactive lists use server pagination (`cursor`/`page`) and do not slice full client arrays (`PAGINATION_SPEC.md`).

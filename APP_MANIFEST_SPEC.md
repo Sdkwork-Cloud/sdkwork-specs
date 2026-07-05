@@ -1,10 +1,10 @@
 # SDKWork App Manifest Standard v3
 
 - Version: 1.0
-- Scope: app registration, app manifest, release metadata, install packages, media assets, PlusApp projection
+- Scope: app registration, app manifest, release metadata, install packages, media assets, platform_app projection
 - Related: `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_SPEC.md`, `IAM_APPLICATION_BOOTSTRAP_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `CONFIG_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
-SDKWork App Manifest Standard v3 defines the canonical app configuration used by new applications under `apps/`. The standard is intentionally strict: new apps do not carry legacy compatibility branches, and every field is designed to map cleanly into `PlusApp` while retaining enough metadata for professional multi-platform release operations.
+SDKWork App Manifest Standard v3 defines the canonical app configuration used by new applications under `apps/`. The standard is intentionally strict: new apps do not carry legacy compatibility branches, and every field is designed to map cleanly into `platform_app` while retaining enough metadata for professional multi-platform release operations.
 
 ## 1. Source Of Truth
 
@@ -32,8 +32,8 @@ The same `<app-root>` `MUST` contain the source-controlled `.sdkwork/` workspace
 
 - `sdkwork.app.config.json` is the source of truth for registration, package distribution, update checks, and release governance.
 - `.sdkwork/` is the source-controlled workspace metadata directory for the same application root. It stores local skills and plugins; it does not store manifest release payloads, runtime state, generated SDK transport output, or user-private data.
-- `PlusApp` is the database projection, not a second independent source.
-- App icons, screenshots, and preview assets are governed data, not loose files. SDKWork-owned media bytes must be stored through Drive, represented as `MediaResource` where app APIs expose them, and projected into `PlusApp.config.media`.
+- `platform_app` is the database projection, not a second independent source.
+- App icons, screenshots, and preview assets are governed data, not loose files. SDKWork-owned media bytes must be stored through Drive, represented as `MediaResource` where app APIs expose them, and projected into `platform_app.config.media`.
 - Backend enum names are used verbatim. Do not invent aliases such as `DESKTOP_UBUNTU`; use `DESKTOP_LINUX` plus package metadata for the Linux distribution.
 - Latest download resolution is a matrix query across version, channel, platform, architecture, and optional Linux distribution.
 - Production release artifacts require immutable URLs or digests, checksums, signing metadata, and SBOM/provenance references.
@@ -71,11 +71,11 @@ Required sections are `app`, `backend`, `runtime`, `media`, `publish`, `environm
 
 `app.key` is the immutable application key. It must be lower kebab-case and unique under `apps/`.
 
-`app.name` maps to `PlusApp.name`. Current backend upsert flows resolve apps by name, so it must be stable and must not be used as a marketing-only label.
+`app.name` maps to `platform_app.name`. Current backend upsert flows resolve apps by name, so it must be stable and must not be used as a marketing-only label.
 
 `app.displayName` is the UI label. It can change without changing identity.
 
-`app.officialWebsiteUrl` is the canonical public website for the application. It is required for every app, must be an HTTP/HTTPS URL, and is the default landing page used by SDKWork catalog surfaces, store marketing fallback fields, and `PlusApp.config.standard.officialWebsiteUrl`. Do not use environment runtime URLs, CDN download URLs, or app-store listing URLs here. Those belong in `environments`, `artifacts.installConfig.packages[]`, and `publish.stores[]`.
+`app.officialWebsiteUrl` is the canonical public website for the application. It is required for every app, must be an HTTP/HTTPS URL, and is the default landing page used by SDKWork catalog surfaces, store marketing fallback fields, and `platform_app.config.standard.officialWebsiteUrl`. Do not use environment runtime URLs, CDN download URLs, or app-store listing URLs here. Those belong in `environments`, `artifacts.installConfig.packages[]`, and `publish.stores[]`.
 
 `app.appType` must be one of the backend `PlusProjectType` values:
 
@@ -132,7 +132,7 @@ web, mobile, desktop, server, cli, mini-program, library, plugin
 
 `runtime.framework` is descriptive and should be specific, for example `react`, `react-tauri`, `react-h5`, `react-capacitor`, `flutter`, `android-native`, `ios-native`, `harmony-native`, `weixin-mini-program`, `multi-mini-program`, `electron`, `spring-boot`, `node-service`, `go-service`, or `rust-service`.
 
-`runtime.defaultPlatform` and `runtime.defaultArchitecture` drive default latest download resolution and `PlusApp.downloadUrl` projection.
+`runtime.defaultPlatform` and `runtime.defaultArchitecture` drive default latest download resolution and `platform_app.downloadUrl` projection.
 
 `runtime.supportedDeploymentProfiles` declares which SDKWork application
 deployment architectures the app supports:
@@ -199,7 +199,7 @@ Every app must define governed product media. These assets support the SDKWork a
 }
 ```
 
-`media.icons.primary` is the canonical SDKWork app icon. It should be a 1024 x 1024 PNG with no embedded secrets or environment-specific URLs. It projects to `PlusApp.iconUrl`.
+`media.icons.primary` is the canonical SDKWork app icon. It should be a 1024 x 1024 PNG with no embedded secrets or environment-specific URLs. It projects to `platform_app.iconUrl`.
 
 `media.icons.platform[]` stores platform-specific icon variants. Use it for Google Play 512 x 512 icons, Apple App Store 1024 x 1024 icons, desktop taskbar or dock variants, and other catalog-specific variants. It may be empty for desktop-only, server-only, and web-only apps that do not need store-specific icon variants.
 
@@ -253,11 +253,11 @@ The validator encodes the practical parts of current store submission rules:
 
 For Apple screenshots, keep the platform enum as `APP_IOS` and put the device screen class in `displayType`. Do not create platform aliases such as `APP_IOS_IPHONE_6_9`.
 
-## 9. Publish And PlusApp Projection
+## 9. Publish And platform_app Projection
 
-The standard projects to `PlusApp` as follows:
+The standard projects to `platform_app` as follows:
 
-| Manifest | PlusApp |
+| Manifest | platform_app |
 | --- | --- |
 | `app.name` | `name` |
 | `app.description` | `description` |
@@ -279,7 +279,7 @@ The standard projects to `PlusApp` as follows:
 | latest default direct package URL | `downloadUrl` |
 | `publish.stores` | `config.publish.stores` |
 
-Package-level metadata is projected into `installConfig.metadata.packageMetadataById` so `PlusApp.installConfig.packages` stays aligned with the backend `AppInstallPackage` object.
+Package-level metadata is projected into `installConfig.metadata.packageMetadataById` so `platform_app.installConfig.packages` stays aligned with the backend `AppInstallPackage` object.
 
 ## 10. Package Matrix
 
@@ -424,7 +424,7 @@ Resolution order:
 6. For `DESKTOP_LINUX`, prefer matching `metadata.linux.distro`.
 7. Prefer the manifest `defaultPackageId` only when platform and architecture scores do not distinguish candidates.
 
-`PlusApp.downloadUrl` is only the default direct-download fallback. It is not the complete cross-platform download catalog.
+`platform_app.downloadUrl` is only the default direct-download fallback. It is not the complete cross-platform download catalog.
 
 ## 12. Release
 
@@ -518,10 +518,10 @@ Initialize or migrate every real app manifest to v3:
 node apps/scripts/initialize-sdkwork-app-standard-v3.mjs --force
 ```
 
-Export the registration-ready `PlusApp` projection bundle:
+Export the registration-ready `platform_app` projection bundle:
 
 ```bash
-node apps/scripts/initialize-sdkwork-app-standard-v3.mjs --export-plusapp
+node apps/scripts/initialize-sdkwork-app-standard-v3.mjs --export-platform-app
 ```
 
 The validator enforces:
@@ -557,7 +557,7 @@ Schema and examples must stay aligned with validator behavior:
   supported app mode family the example claims: browser, desktop, server,
   container/Docker-compatible, mobile, tablet, mini program, and test-only
   fixtures when present.
-- The validator, schema, full example, initializer, and PlusApp export
+- The validator, schema, full example, initializer, and platform_app export
   projection `MUST` be updated in the same change whenever this package matrix
   changes.
 

@@ -8,7 +8,7 @@
 
 This document defines the API contract standard for SDKWork applications. It is intentionally independent of Java, Rust, TypeScript, Tauri, React, mobile, standalone, cloud, or deployment ownership choices. API contracts must be stable enough to generate SDKs, switch between standalone and cloud deployment profiles, and compose shared application modules without duplicating business logic.
 
-For repository/application root directory placement, use `specs/SDKWORK_WORKSPACE_SPEC.md`: `apis/` is the standard project-root directory for authored API contracts and API materialization inputs across API kinds. For data persistence and database naming rules, use `specs/DATABASE_SPEC.md`. For canonical domain names, use `specs/DOMAIN_SPEC.md`. For file storage, upload sessions, download grants, object-storage providers, Drive spaces/nodes, and SDKWork-owned file lifecycle, use `specs/DRIVE_SPEC.md`. For media representation, generated asset DTOs, and bare URL cleanup, use `specs/MEDIA_RESOURCE_SPEC.md`. For mandatory `sdkwork-web-framework` integration on every SDKWork HTTP `*-api` surface, including open-api, app-api, backend-api, route manifests, API servers, gateways, and Java/Spring parity, use `specs/WEB_FRAMEWORK_SPEC.md`; the framework repository L1 detail standard is `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`. For web backend implementation layering, Java controller/Rust route crate boundaries, handler/service/repository naming, request context consumption, and route materialization responsibilities, use `specs/WEB_BACKEND_SPEC.md`. For SDK naming semantics, generated client behavior, auth integration, and frontend service boundaries, use `specs/SDK_SPEC.md`, `specs/MODULE_SPEC.md`, and `specs/FRONTEND_SPEC.md`; for application-root `sdks/` workspace generation, OpenAPI authority/derived input placement, and generated artifact placement, use `specs/SDK_WORKSPACE_GENERATION_SPEC.md` as the subordinate detail standard under `SDK_SPEC.md`. For IAM login/session integration, appbase auth UI/runtime, logout clearing, and Rust AppContext validation, use `specs/IAM_LOGIN_INTEGRATION_SPEC.md`. For gRPC/protobuf contracts, use `specs/RPC_SPEC.md` and `specs/RUST_RPC_SPEC.md`. HTTP API contracts and RPC contracts must preserve shared operation semantics, but neither document replaces the other.
+For repository/application root directory placement, use `specs/SDKWORK_WORKSPACE_SPEC.md`: `apis/` is the standard project-root directory for authored API contracts and API materialization inputs across API kinds. For data persistence and database naming rules, use `specs/DATABASE_SPEC.md`. For cross-layer pagination contract, implementation prohibition (no in-process pagination), and verification gates, use `specs/PAGINATION_SPEC.md`. For canonical domain names, use `specs/DOMAIN_SPEC.md`. For file storage, upload sessions, download grants, object-storage providers, Drive spaces/nodes, and SDKWork-owned file lifecycle, use `specs/DRIVE_SPEC.md`. For media representation, generated asset DTOs, and bare URL cleanup, use `specs/MEDIA_RESOURCE_SPEC.md`. For mandatory `sdkwork-web-framework` integration on every SDKWork HTTP `*-api` surface, including open-api, app-api, backend-api, route manifests, API servers, gateways, and Java/Spring parity, use `specs/WEB_FRAMEWORK_SPEC.md`; the framework repository L1 detail standard is `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`. For web backend implementation layering, Java controller/Rust route crate boundaries, handler/service/repository naming, request context consumption, and route materialization responsibilities, use `specs/WEB_BACKEND_SPEC.md`. For SDK naming semantics, generated client behavior, auth integration, and frontend service boundaries, use `specs/SDK_SPEC.md`, `specs/MODULE_SPEC.md`, and `specs/FRONTEND_SPEC.md`; for application-root `sdks/` workspace generation, OpenAPI authority/derived input placement, and generated artifact placement, use `specs/SDK_WORKSPACE_GENERATION_SPEC.md` as the subordinate detail standard under `SDK_SPEC.md`. For IAM login/session integration, appbase auth UI/runtime, logout clearing, and Rust AppContext validation, use `specs/IAM_LOGIN_INTEGRATION_SPEC.md`. For gRPC/protobuf contracts, use `specs/RPC_SPEC.md` and `specs/RUST_RPC_SPEC.md`. HTTP API contracts and RPC contracts must preserve shared operation semantics, but neither document replaces the other.
 
 ## 1. Normative Language
 
@@ -1645,7 +1645,7 @@ Rules:
 
 ## 16. Pagination, Filtering, Sorting, And List Output
 
-List and search operations `MUST` use the input rules in §14.1 and the output rules in this section. This section aligns with Google AIP-158 list pagination, RFC 9457 error semantics, and SDKWork envelope rules in §15.
+List and search operations `MUST` use the input rules in §14.1 and the output rules in this section. This section aligns with Google AIP-158 list pagination, RFC 9457 error semantics, and SDKWork envelope rules in §15. Service, repository, database, SDK, and frontend implementation rules — including the prohibition of in-process pagination — are normative in `PAGINATION_SPEC.md`.
 
 ### 16.1 List Output Shape
 
@@ -1666,7 +1666,8 @@ Rules:
 
 - `data.items` `MUST` be an array. Empty results `MUST` return `"items": []`, not `null`.
 - `data.pageInfo.mode` `MUST` be `offset` or `cursor`.
-- List APIs `MUST` be paginated unless the collection is bounded by design and documented as such.
+- List APIs `MUST` be paginated unless the collection is bounded by design and documented as such per `PAGINATION_SPEC.md` §11.
+- Declaring `page_size`, `cursor`, or `page` in OpenAPI while implementing list results by loading an unbounded in-memory collection and slicing with `skip`/`take`/`slice` is a contract violation and `MUST NOT` ship on new L2+ endpoints.
 
 ### 16.2 Offset Pagination
 
@@ -1881,6 +1882,14 @@ Rules:
 - Filtering parameters `SHOULD` be explicit instead of a free-form SQL-like expression.
 - Cursor pagination `SHOULD` be used for high-volume or unstable lists.
 - Shared OpenAPI list query parameters `SHOULD` `$ref` `templates/openapi/components/parameters/query-parameters.yaml`.
+
+### 16.7 Implementation Alignment
+
+HTTP contract rules in §14.1 and §16 define the wire surface only. Implementations `MUST` also satisfy `PAGINATION_SPEC.md`:
+
+- repository and service layers `MUST` bound reads to `page_size` at the store or maintained index;
+- handlers `MUST NOT` materialize unbounded collections and slice them in process;
+- SDK and frontend consumers `MUST NOT` substitute client-side `slice` or `listAll*` aggregation for server pagination on interactive lists.
 
 ## 17. Idempotency And Concurrency
 

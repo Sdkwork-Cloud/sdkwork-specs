@@ -2,7 +2,7 @@
   "pnpm": {
     "packages": [
       "../sdkwork-gameengine/apps/sdkwork-gameengine-pc/packages/*",
-      "../sdkwork-gameengine/sdks/sdkwork-games-app-sdk/sdkwork-games-app-sdk-typescript/generated/server-openapi",
+      "../sdkwork-gameengine/sdks/sdkwork-games-app-sdk/sdkwork-games-app-sdk-typescript/src/index.ts",
       "../sdkwork-utils/packages/sdkwork-utils-typescript",
       "../sdkwork-appbase/packages/common/foundation/sdkwork-runtime-bootstrap",
       "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-appbase-pc-react",
@@ -15,8 +15,8 @@
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-adapter",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-service",
       "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-i18n-pc-react",
-      "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi",
-      "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/generated/server-openapi",
+      "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/src/index.ts",
+      "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/src/index.ts",
       "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript",
       "../sdkwork-ui/sdkwork-ui-pc-react",
       "../sdkwork-core/sdkwork-core-pc-react"

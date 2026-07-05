@@ -24,11 +24,11 @@ export const IAM_PACKAGE_PATHS = {
 
 export const IAM_SDK_PATHS = {
   '@sdkwork/iam-app-sdk':
-    'sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi',
+    'sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript',
   '@sdkwork/iam-backend-sdk':
-    'sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/generated/server-openapi',
+    'sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript',
   '@sdkwork/iam-open-sdk':
-    'sdks/sdkwork-iam-open-sdk/sdkwork-iam-open-sdk-typescript/generated/server-openapi',
+    'sdks/sdkwork-iam-open-sdk/sdkwork-iam-open-sdk-typescript',
 };
 
 /** pnpm-workspace.yaml entries relative to consuming repo root (sibling layout). */
@@ -42,6 +42,9 @@ export const IAM_PNPM_WORKSPACE_PACKAGES = [
   `../${SDKWORK_IAM_REPO}/${IAM_PC_PACKAGES}/sdkwork-auth-pc-react`,
   `../${SDKWORK_IAM_REPO}/${IAM_PC_PACKAGES}/sdkwork-auth-runtime-pc-react`,
   `../${SDKWORK_IAM_REPO}/${IAM_PC_PACKAGES}/sdkwork-iam-react`,
+  `../${SDKWORK_IAM_REPO}/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript`,
+  `../${SDKWORK_IAM_REPO}/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript`,
+  `../${SDKWORK_IAM_REPO}/sdks/sdkwork-iam-open-sdk/sdkwork-iam-open-sdk-typescript`,
 ];
 
 export const LEGACY_IAM_COMMON_PREFIX = 'packages/common/iam';

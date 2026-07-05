@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: top-level SDK architecture, canonical SDK naming vocabulary, generated HTTP and RPC SDK package semantics, frontend service integration, Java/Rust parity clients
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MODULE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `TEST_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `PAGINATION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SPEC.md`, `RUST_RPC_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `MODULE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `TEST_SPEC.md`
 
 Generated SDKs are the contract boundary between applications and APIs. They must be predictable, semantic, modular, and replace handwritten transport logic. HTTP SDKs are generated from OpenAPI. RPC SDKs are generated from proto contracts defined by `RPC_SPEC.md`.
 
@@ -523,6 +523,7 @@ Rules:
 - Generated error types `MUST` model `ProblemDetail` with required numeric `code` (`int32`, non-zero) and `traceId`.
 - Generated SDKs `SHOULD` expose platform result-code constants aligned with `API_SPEC.md` §15.3 (`ResultCode.OK = 0`, `ResultCode.VALIDATION_ERROR = 40001`, etc.) from `SdkWorkPlatformErrorCode`.
 - List/search SDK methods `MUST` accept standard query parameters or typed `SdkWorkListQuery` bodies per `API_SPEC.md` section 14.1 and return unwrapped `{ items, pageInfo }` by default. This rule applies to business `open-api` SDK methods the same way as app-api and backend-api SDK methods.
+- List/search SDK methods `MUST NOT` encourage unbounded reads: default method surfaces `MUST NOT` auto-fetch all pages for P0/P1 interactive resources. Explicit export/batch iterators `MAY` exist only when named and documented per `PAGINATION_SPEC.md` §7.
 - Single-resource methods `MUST` return the typed `data.item` payload to service callers by default.
 - List methods `MUST` return `{ items, pageInfo }` extracted from `data` by default.
 - Command methods `MUST` return typed `data` command payloads by default.
@@ -600,6 +601,7 @@ Rules:
 - Generated SDKs `SHOULD` expose problem-detail error metadata: status, type, title, detail, code, traceId, and retryability when available.
 - Generated SDKs `SHOULD` expose cancellation/abort options where the platform supports them.
 - Generated SDKs `SHOULD` expose pagination helpers without auto-fetching unbounded datasets by default.
+- Frontend and service facades consuming list SDK methods `MUST` pass `cursor`/`page` from `pageInfo` for interactive lists and `MUST NOT` download full datasets then paginate with local `slice` per `PAGINATION_SPEC.md` §8.
 - Generated SDKs `MUST` keep auth header handling in SDK/bootstrap infrastructure, not generated operation call sites in app code.
 
 ## 6.1 Drive SDK Integration

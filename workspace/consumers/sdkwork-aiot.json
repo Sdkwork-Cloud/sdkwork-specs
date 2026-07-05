@@ -1,7 +1,9 @@
 {
   "pnpm": {
     "packages": [
+      "../sdkwork-app-topology",
       "../sdkwork-core/sdkwork-core-pc-react",
+      "../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript",
       "../sdkwork-ui/sdkwork-ui-pc-react",
       "../sdkwork-utils/packages/sdkwork-utils-typescript"
     ]

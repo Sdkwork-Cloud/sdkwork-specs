@@ -25,7 +25,7 @@ SDKWork names use a fixed identity lattice. Do not collapse these layers into on
 Rules:
 
 - `application code` is defined authoritatively in `RUNTIME_DIRECTORY_SPEC.md`. It is the runtime directory and private env stem. Repository names and `app.key` may differ from it; directory names must still use application code, not product display names or repository stems when they differ.
-- `app` in SDKWork already means application root, `app-api`, `app.key`, app/user surface, `apps/`, or PlusApp registration. Do not use bare `<app>` as a naming placeholder.
+- `app` in SDKWork already means application root, `app-api`, `app.key`, app/user surface, `apps/`, or platform_app registration. Do not use bare `<app>` as a naming placeholder.
 - `product` is retired as a naming placeholder. It remains valid only as L1 **product name** in prose, or in the forbidden generic suffix `sdkwork-<application-code>-product`.
 - Commerce sellable-item work uses capability token **`merchandise`**. Public catalog browsing uses **`catalog`**. Shop configuration uses **`shop`**. See `DOMAIN_SPEC.md`.
 - Retired synonyms: `<product>` ??`<application-code>`; use `application-specific` instead of retired `product-specific`; use `application-code-prefix` / `application-code-prefixed` instead of retired pnpm prefix terms.
@@ -58,7 +58,7 @@ After `product`, these words are the most common sources of naming drift. Each r
 
 | Word | Allowed meaning(s) | Forbidden or retired overload | Canonical replacement |
 | --- | --- | --- | --- |
-| `app` | `app-api` surface, `app.key`, app/user UI surface, `apps/` directory, PlusApp registration, prose "application root" | bare placeholder `<app>`; path/env token for L2 | `<application-code>` / `application code` |
+| `app` | `app-api` surface, `app.key`, app/user UI surface, `apps/` directory, platform_app registration, prose "application root" | bare placeholder `<app>`; path/env token for L2 | `<application-code>` / `application code` |
 | `application` | application root, application-owned API ingress, application packages | shortening L2 to just "application" in package tokens | `application code` for L2; `application-owned` for ingress |
 | `catalog` | commerce browse/category capability; i18n **message catalog**; permission/route **metadata catalog**; DB **catalog** name | generic folder name `catalog/` without domain | `i18n catalog`, `message catalog`, commerce `catalog` capability |
 | `console` | user-facing **management console** package role (`*-console-*`) | company-internal operator UI; `backend-admin`; capability token | `*-console-*` + app-api; internal ops ??`*-admin-*` + `backend-admin` |
