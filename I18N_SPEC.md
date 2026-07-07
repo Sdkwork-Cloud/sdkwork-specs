@@ -161,13 +161,14 @@ Equivalent native or non-TypeScript packages may use platform resource formats, 
 Rules:
 
 - Authored locale files `MUST` be split by owning package and feature fragment. Do not create or grow files such as `en-US.ts`, `zh-CN.ts`, `messages.json`, `strings.xml`, `Localizable.strings`, or `arb/app_en.arb` that contain the whole application or whole client root copy.
-- `src/i18n/index.*`, `manifest.*`, app bootstrap locale registries, native resource aggregators, and platform resource indexes `MUST` remain thin. They may export, register, or import fragments; they must not become the place where feature copy is authored.
+- `src/i18n/index.*`, `manifest.*`, `locale.*`, `locales.*`, `registry.*`, `runtime.*`, `types.*`, provider files, app bootstrap locale registries, native resource aggregators, tests, and platform resource indexes `MUST` remain thin. They may export, register, type, test, or import fragments; they must not become the place where feature copy is authored.
 - A reusable package owns its own default fragments. Consuming applications may override those fragments during bootstrap or provider composition, but application-line overrides `MUST` keep the same fragment boundaries.
 - A fragment should normally map to one route/screen, dialog, form, table, workflow, command result, or reusable component family.
 - If a fragment starts mixing unrelated workflows, split it before adding more keys.
 - Cross-client implementations of the same workflow `SHOULD` reuse stable logical key names, while each architecture keeps authored locale resources in its own package-local i18n boundary unless an approved non-UI i18n contract package exists.
 - Generated or build-time merged locale bundles `MUST` identify their source fragments and `MUST NOT` be hand-edited.
 - If a platform requires monolithic runtime resources, the monolith `MUST` be generated from package-local fragments and excluded from authored-message review except for generated-artifact integrity checks.
+- Vendored or third-party source trees such as `external/`, `third_party/`, and `vendor/` are not SDKWork-authored i18n sources. SDKWork wrappers around those integrations `MUST` provide any required localized copy through SDKWork package-local fragments.
 
 ### 6.1 Language And Framework Directory Standards
 
@@ -333,6 +334,7 @@ Rules:
 - Static scans `MUST` reject authored app-wide, backend-root-wide, admin-root-wide, or package-wide locale monoliths.
 - Static scans `MUST` verify authored i18n directories match the language and framework layouts in section 6.1 and that generated platform resources are not treated as source-of-truth copy.
 - `tools/check-i18n-standard.mjs` is the canonical static check for repository/workspace i18n source layout, locale monolith rejection, generated/thin platform projection boundaries, Rust/Java backend message bundle placement, and database locale seed path shape.
+- Static scans `MUST` exclude vendored or third-party source trees from SDKWork-authored i18n layout enforcement; integration wrappers remain subject to this standard.
 - Fragment manifest or aggregation tests `MUST` verify every registered fragment has required keys for active locales unless the missing key is explicitly optional.
 - Duplicate keys in the same precedence layer `MUST` fail validation.
 - Reusable UI modules `SHOULD` test at least one non-default locale for critical flows.

@@ -55,8 +55,9 @@ Rules:
 - `check-i18n-standard.mjs` validates SDKWork i18n source layouts, rejects
   authored locale monoliths, checks generated/thin platform resource projections,
   and enforces Rust/Java backend message bundle plus database locale seed
-  placement. Use `--root` for one repository or `--workspace` for all child
-  `sdkwork-*` repositories.
+  placement. It skips vendored or third-party source trees such as `external/`,
+  `third_party/`, and `vendor/`. Use `--root` for one repository or `--workspace`
+  for all child `sdkwork-*` repositories.
 - `check-pagination.mjs` heuristically scans for in-process pagination smells,
   OpenAPI wire alias debt (`pageSize`, `limit`, `page_no`, `pageNo`,
   `per_page`, `size`), missing `page_size.maximum`, missing `PageInfo.mode`,

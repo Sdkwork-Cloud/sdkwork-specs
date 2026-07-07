@@ -16,6 +16,9 @@ const SKIP_DIRS = new Set([
   'coverage',
   '.next',
   '.turbo',
+  'external',
+  'third_party',
+  'vendor',
 ]);
 
 const SOURCE_EXTENSIONS = new Set([
@@ -125,11 +128,16 @@ function isGitkeep(relativeSegments) {
   return relativeSegments[relativeSegments.length - 1] === '.gitkeep';
 }
 
-function isThinI18nIndex(fileName) {
-  return /^(?:index|manifest)\.(?:ts|js|mjs|json|dart|rs)$/u.test(fileName);
+function isThinI18nBoundaryFile(fileName) {
+  return /^(?:(?:index|manifest|locale|locales|registry|runtime|types|provider|hostLanguageBridge)(?:\.(?:test|spec))?|[^.]+\.(?:test|spec))\.(?:ts|js|mjs|json|dart|rs)$/u.test(fileName);
 }
 
-function validateLocaleSourceLayout({ rel, after, allowedExtensions, label, allowKeys = false, issues }) {
+function hasLikelyAuthoredMessageCopy(text) {
+  return /[\u3400-\u9FFF]/u.test(text)
+    || /\b(?:title|label|message|error|submit|placeholder|description|tooltip|empty|loading|success|cancel|confirm)\b\s*[:=]/iu.test(text);
+}
+
+function validateLocaleSourceLayout({ rel, after, allowedExtensions, label, allowKeys = false, text = '', issues }) {
   if (after.length === 0) return;
   if (isGitkeep(after)) return;
   if (after[0] === 'generated') return;
@@ -141,7 +149,12 @@ function validateLocaleSourceLayout({ rel, after, allowedExtensions, label, allo
   }
 
   const fileName = after[after.length - 1];
-  if (after.length === 1 && isThinI18nIndex(fileName)) return;
+  if (after.length === 1 && isThinI18nBoundaryFile(fileName)) {
+    if (hasLikelyAuthoredMessageCopy(text)) {
+      issues.push(`${rel}: thin i18n registry files must not contain authored message copy`);
+    }
+    return;
+  }
   if (SOURCE_LOCALE_MONOLITH_RE.test(fileName) && after.length <= 2) {
     issues.push(`${rel}: locale monolith is forbidden; split authored messages by <locale>/<domain>/<capability>/<fragment>`);
     return;
@@ -273,6 +286,7 @@ function validateI18nPath(filePath, repoRoot, issues) {
       after: flutterAfter,
       allowedExtensions: new Set(['.arb', '.json']),
       label: 'Flutter/Dart',
+      text,
       issues,
     });
   }
@@ -284,6 +298,7 @@ function validateI18nPath(filePath, repoRoot, issues) {
       after: javaAfter,
       allowedExtensions: new Set(['.properties', '.yaml', '.yml', '.json']),
       label: 'Java/Spring',
+      text,
       issues,
     });
   }
@@ -296,6 +311,7 @@ function validateI18nPath(filePath, repoRoot, issues) {
       allowedExtensions: new Set(['.ts', '.json']),
       label: 'TypeScript',
       allowKeys: true,
+      text,
       issues,
     });
   }
@@ -307,6 +323,7 @@ function validateI18nPath(filePath, repoRoot, issues) {
       after: androidAfter,
       allowedExtensions: new Set(['.json', '.xml', '.properties']),
       label: 'Android',
+      text,
       issues,
     });
   }
@@ -324,6 +341,7 @@ function validateI18nPath(filePath, repoRoot, issues) {
       after: iosAfter,
       allowedExtensions: new Set(['.json', '.strings.json']),
       label: 'iOS/Swift',
+      text,
       issues,
     });
   }
@@ -335,6 +353,7 @@ function validateI18nPath(filePath, repoRoot, issues) {
       after: harmonyAfter,
       allowedExtensions: new Set(['.json', '.ts']),
       label: 'Harmony/ArkTS',
+      text,
       issues,
     });
   }
@@ -346,6 +365,7 @@ function validateI18nPath(filePath, repoRoot, issues) {
       after: rustAfter,
       allowedExtensions: new Set(['.ftl', '.json', '.toml']),
       label: 'Rust',
+      text,
       issues,
     });
   }

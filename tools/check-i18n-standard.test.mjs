@@ -109,4 +109,25 @@ describe('check-i18n-standard', () => {
     assert.match(result.stderr, /sdkwork-demo/u);
     assert.match(result.stderr, /locale monolith/u);
   });
+
+  it('ignores external vendored source trees', () => {
+    const root = makeRepo();
+    write(root, 'external/upstream-app/src/i18n/en.ts', 'export default { loginTitle: "Login" };\n');
+
+    const result = runChecker(['--root', root]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /i18n standard check passed/u);
+  });
+
+  it('allows thin package-local i18n registries without message copy', () => {
+    const root = makeRepo();
+    write(root, 'apps/sdkwork-demo-pc/packages/sdkwork-demo-pc-core/src/i18n/locale.ts', 'export const defaultLocale = "zh-CN";\n');
+    write(root, 'apps/sdkwork-demo-pc/packages/sdkwork-demo-pc-core/src/i18n/types.ts', 'export type LocaleCode = "zh-CN" | "en-US";\n');
+
+    const result = runChecker(['--root', root]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /i18n standard check passed/u);
+  });
 });
