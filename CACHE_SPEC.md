@@ -151,7 +151,7 @@ Minimum cache manager operations:
 | `delete_key(namespace, key)` | Deletes one physical key when instance supports delete. |
 | `delete_namespace(namespace)` | Deletes all keys under a namespace when instance supports delete. |
 | `delete_instance(instanceName)` | Deletes all keys under one configured cache instance when instance supports delete. |
-| `list_namespace_keys(namespace, limit, cursor)` | Returns bounded safe key metadata for one namespace when instance supports inspect. It must not read or return cached values. `cursor` is an opaque backend-issued continuation token. |
+| `list_namespace_keys(namespace, page_size, cursor)` | Returns one cursor page of bounded safe key metadata for one namespace when instance supports inspect. It must not read or return cached values. `cursor` is an opaque backend-issued continuation token. |
 | `refresh_namespace(namespace)` | Cleans or refreshes entries under one namespace when instance supports refresh. |
 | `refresh_instance(instanceName)` | Cleans or refreshes supported instance metadata without exposing values. |
 | `refresh_all()` | Runs refresh over all instances and aggregates counts. |
@@ -175,10 +175,10 @@ Rules:
 - Summary metrics aggregate instance metrics. `cacheErrors` may also include system-level cache errors where no instance can be resolved, such as an unknown namespace or invalid runtime wiring.
 - Snapshot generation must not fail the whole admin overview because one configured backend cannot return stats. The failed instance must still be returned with status `degraded`, zero entry counts for unavailable stats, and an incremented instance `cacheErrors` metric; healthy instances and namespace policies must remain visible.
 - Operation metrics must be counted by the cache manager boundary after policy resolution, not by frontend code or direct backend adapters.
-- Key listing requests must support an optional `limit` from 1 to 1000. Admin UI should use a conservative default such as 200.
-- Key listing responses must include `scannedItems`, `returnedItems`, `limit`, `hasMore`, `scanComplete`, and `nextCursor` so operators can continue a bounded scan without requiring an exact namespace total.
+- Key listing requests must use `cursor` plus standard `page_size` from 1 to 200. Admin UI should use a conservative default such as 200.
+- Key listing responses must use `SdkWorkApiResponse.data.items` plus `data.pageInfo` with `mode: "cursor"`. Additional bounded-scan metadata may live under `data.scanInfo` with `scannedItems`, `returnedItems`, and `scanComplete` so operators can continue a bounded scan without requiring an exact namespace total.
 - Continuation tokens must be opaque to clients, signed by the backend, bound to the cache instance plus namespace scope, short-lived by default, and rejected when expired or reused for another namespace or provider.
-- Key listing must not scan the full Redis namespace merely to compute an exact total count when a limit is supplied. A bounded scan may stop after finding `limit + 1` matching keys.
+- Key listing must not scan the full Redis namespace merely to compute an exact total count when `page_size` is supplied. A bounded scan may stop after finding `page_size + 1` matching keys.
 - Key listing results may include logical key, namespace, instance, status, and TTL metadata. They must not include `value`, `payload`, raw JSON, or backend physical key prefixes.
 
 ## 9. Admin Management API
@@ -195,7 +195,7 @@ Minimum endpoints:
 | `DELETE /backend/v3/api/system/cache/instances/{instanceName}` | Delete all keys under one supported instance. |
 | `POST /backend/v3/api/system/cache/namespaces/{namespace}/refresh` | Refresh one configured namespace. |
 | `DELETE /backend/v3/api/system/cache/namespaces/{namespace}` | Delete namespace entries. |
-| `GET /backend/v3/api/system/cache/namespaces/{namespace}/keys?limit=200` | List bounded safe key metadata for a namespace. |
+| `GET /backend/v3/api/system/cache/namespaces/{namespace}/keys?page_size=200` | List bounded safe key metadata for a namespace. |
 | `DELETE /backend/v3/api/system/cache/namespaces/{namespace}/keys/{key}` | Delete one key. |
 
 Rules:
@@ -203,7 +203,7 @@ Rules:
 - API responses must use `SdkWorkApiResponse` for success bodies and `ProblemDetail` for errors per `API_SPEC.md` §15.
 - Missing instances/namespaces return 404.
 - Unsupported inspect/refresh/delete operations return 409.
-- Invalid key-list limits return 409.
+- Invalid key-list `page_size` or `cursor` inputs return `40003 INVALID_PARAMETER`.
 - Authentication and admin authorization are required.
 - Admin APIs must never return cached values.
 - Frontend admin packages must call generated backend SDK methods through the approved SDK client boundary.

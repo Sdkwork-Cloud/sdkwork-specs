@@ -1,10 +1,12 @@
 # Pagination Standard
 
-- Version: 1.1
+- Version: 1.3
 - Scope: HTTP list/search APIs, web backend services and repositories, database queries, in-memory projection/read models, generated HTTP SDKs, frontend list services, and verification gates
 - Related: `API_SPEC.md` (§14.1, §16), `DATABASE_SPEC.md` (§20.5), `WEB_BACKEND_SPEC.md` (§12), `SDK_SPEC.md` (§4.2, §6), `PERFORMANCE_SPEC.md`, `FRONTEND_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md` (§9), `TEST_SPEC.md`, `CODE_REVIEW_SPEC.md`, `QUALITY_GATE_SPEC.md`
 
 This standard defines the canonical SDKWork pagination contract and implementation rules across API, service, database, SDK, and client layers. It exists to prevent unbounded reads, process-memory pagination, and client-side slicing that cause OOM, latency spikes, and inconsistent list behavior under production load.
+
+The canonical HTTP GET wire vocabulary is strict: multi-word query parameters use lower_snake_case. `page_size` is the only page-size query parameter. `pageSize` is reserved for JSON request bodies, response payloads, and language-level SDK models; it is not an HTTP query alias. New and pre-launch applications `MUST NOT` accept `pageSize`, `limit`, or any other pagination compatibility alias on HTTP list/search query strings.
 
 ## 1. Normative Language
 
@@ -37,6 +39,17 @@ The following `MUST NOT` appear in production list/search paths unless a documen
 | Directory/search helper | Over-fetch `limit * N` then filter/`take` in service | `list_members_window(limit*4)` → `.filter(q).take(limit)` |
 | Batch maintenance | Collect all stale keys then `take(batch_limit)` without index iteration | presence expiration: `collect::<Vec<_>>()` of all stale keys → `take(1024)` |
 
+### 2.2 Required Behavior
+
+Every L2+ list/search operation `MUST`:
+
+1. declare standard pagination input per `API_SPEC.md` §14.1 (`page`/`page_size` or `cursor`/`page_size`, plus typed filters);
+2. return `SdkWorkApiResponse.data.items` and `data.pageInfo` per `API_SPEC.md` §16;
+3. bound work and memory to **O(page size)** for the response payload, plus **O(log n)** or better indexed seek cost where a total-count or deep offset is not required;
+4. push filtering, sorting, and page selection as close to the authoritative store as possible: SQL/keyset first, maintained index second, never unbounded process memory last.
+
+Facade APIs `MUST NOT` claim database pagination while delegating to a service that materializes the full result set.
+
 ### 2.3 Per-Request Rebuild Is Not Index Pagination
 
 Calling `offset_limit_page_from_iter` or `BTreeMap::range` **after** rebuilding an unbounded projection for every list request is **forbidden** for P0/P1 interactive APIs. The helper only legalizes bounded window extraction when the backing iterator comes from an **incrementally maintained** index updated on write (favorites, friend-request inventory, contact tag index), not from a full-scope scan assembled per request (inbox/contacts projection paths).
@@ -51,11 +64,12 @@ Remediation: maintain per-principal/per-scope sorted indexes on projection event
 
 ### 2.4 Legacy Wire Aliases
 
-Existing authorities may still expose `limit` (instead of `page_size`) and numeric offset strings as `cursor`. These are **offset mode** wire aliases, not opaque keyset cursors.
+Only already-launched L0/L1 authorities with real external consumers may temporarily expose pagination aliases, and only with a migration plan, owner, removal milestone, and risk register entry. These aliases are **technical debt**, not alternate standards. New APIs and pre-launch applications `MUST NOT` introduce or retain them.
 
 | Legacy wire | Canonical meaning | Migration |
 | --- | --- | --- |
-| `limit` query param | `page_size` | Keep until OpenAPI/SDK migration ticket closes; new APIs `MUST` use `page_size` |
+| `pageSize` query param | `page_size` | Forbidden for new/pre-launch APIs; remove from OpenAPI, handlers, SDK wire serializers, tests, and docs |
+| `limit` query param | `page_size` | Only already-launched L0/L1 authorities may keep it until the approved OpenAPI/SDK migration closes |
 | numeric `cursor` (`"0"`, `"20"`, …) | offset mode `page` equivalent | Replace with opaque keyset cursor or explicit `page`/`page_size` per `API_SPEC.md` §14.1 |
 | `hasMore` + `nextCursor` without `pageInfo.mode` | partial envelope | Align response to `SdkWorkPageData` + `PageInfo.mode` |
 
@@ -66,17 +80,6 @@ New list APIs `MUST NOT` introduce numeric offset cursors unless documented as o
 Background expiration, reconciliation, or export jobs `MAY` scan bounded batches from maintained indexes using early `take(batch_limit)` on sorted iterators. They `MUST NOT` materialize unbounded stale-key or stale-row collections when the store already provides sorted index iteration (`BTreeSet`, `BTreeMap`).
 
 Interactive list APIs remain subject to §2 regardless of job context.
-
-### 2.2 Required Behavior
-
-Every L2+ list/search operation `MUST`:
-
-1. declare standard pagination input per `API_SPEC.md` §14.1 (`page`/`page_size` or `cursor`/`page_size`, plus typed filters);
-2. return `SdkWorkApiResponse.data.items` and `data.pageInfo` per `API_SPEC.md` §16;
-3. bound work and memory to **O(page size)** for the response payload, plus **O(log n)** or better indexed seek cost where a total-count or deep offset is not required;
-4. push filtering, sorting, and page selection as close to the authoritative store as possible: SQL/keyset first, maintained index second, never unbounded process memory last.
-
-Facade APIs `MUST NOT` claim database pagination while delegating to a service that materializes the full result set.
 
 ## 3. Pagination Modes
 
@@ -91,6 +94,7 @@ Rules:
 
 - `page` and `cursor` `MUST NOT` be combined in one request.
 - `page_size` `MUST` default to `20` and `MUST NOT` exceed `200` unless a documented L3 exception defines a lower ceiling.
+- HTTP GET list/search contracts and handlers `MUST NOT` accept `pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`, or equivalent aliases for `page_size` or `page`.
 - Cursor tokens `MUST` be opaque to clients. Clients `MUST NOT` parse or construct cursor payloads.
 - Stable sorts `SHOULD` include a unique tie-breaker such as `id` or `createdAt`.
 - Offset mode on large or fast-growing tables `SHOULD` be avoided; prefer cursor/keyset mode per `DATABASE_SPEC.md` §20.5.
@@ -102,7 +106,8 @@ Authority for wire names, schema shapes, and examples: `API_SPEC.md` §14.1 and 
 OpenAPI list/search operations `MUST`:
 
 - use shared `SdkWorkListQuery`, `SdkWorkPageData`, and `PageInfo` components from `templates/openapi/components/`;
-- declare `limit` only when migrating legacy APIs; new APIs `MUST` use `page_size`, not ad hoc `limit`, except where an existing authority already documents `limit` with identical semantics and a migration ticket exists;
+- declare HTTP GET page-size parameters with wire name `page_size` only. OpenAPI query parameters named `pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`, or equivalent aliases are forbidden for SDKWork-owned business APIs;
+- keep `limit` only for already-launched L0/L1 authorities with real external consumers and an approved migration plan. New and pre-launch SDKWork-owned APIs `MUST NOT` declare `limit`;
 - document supported filters, sort keys, default sort, pagination mode, and maximum practical volume class (P0/P1/P2 per `PERFORMANCE_SPEC.md`);
 - avoid unbounded list operations; bounded-by-design collections `MAY` omit pagination only when cardinality is documented ≤ 100 and enforced by product contract.
 
@@ -190,6 +195,7 @@ Generated HTTP SDKs and composed facades `MUST` follow `SDK_SPEC.md` and this se
 Rules:
 
 - list/search methods `MUST` accept standard query parameters or typed `SdkWorkListQuery` bodies and return unwrapped `{ items, pageInfo }` by default;
+- generated SDKs may expose language-idiomatic option fields such as `pageSize`, but their HTTP transport `MUST` serialize GET list/search requests as `page_size`; generated operation metadata `MUST NOT` name query parameters `pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, or `size`;
 - generated SDKs `MUST NOT` expose default `listAll*` or unbounded auto-pagination helpers for P0/P1 interactive resources;
 - explicit "fetch all pages" helpers `MAY` exist only when named to signal cost (`listAllPages`, `iterateAll`, etc.), documented as export/batch-only, and disabled by default in UI service facades;
 - SDK consumers `MUST` pass through `pageInfo.nextCursor` or increment `page` until `hasMore` is false; they `MUST NOT` request `page_size=200` (or max) repeatedly as a substitute for proper UI pagination unless performing an approved one-off migration/export script.
@@ -201,6 +207,7 @@ Frontend feature services and UI lists `MUST` follow `FRONTEND_SPEC.md`, `APP_SD
 Rules:
 
 - interactive UI lists `MUST` request one page at a time from the server using standard pagination parameters;
+- frontend services `MUST NOT` hand-build `pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`, or numeric-cursor compatibility query strings; use generated SDK clients or canonical `page_size` wire names only;
 - UI `MUST` render `pageInfo.hasMore`, `nextCursor`, or page controls from server metadata;
 - client-side `slice`, manual offset math, or virtual "page" indexes over a fully downloaded array `MUST NOT` implement server-backed list pagination;
 - `listAll*` aggregation helpers `MUST NOT` be used to populate standard paginated tables or infinite-scroll feeds; reserve them for explicit bulk export/admin scripts with progress and cancellation;
@@ -227,6 +234,7 @@ Pagination work is not complete without:
 - OpenAPI list operation using `SdkWorkListQuery` / standard query params and `SdkWorkPageData` output;
 - service/repository test proving a requested page returns only `page_size` rows without loading total collection size into memory;
 - rejection test for `page_size > 200` (`40003 INVALID_PARAMETER`);
+- rejection tests for forbidden pagination aliases (`pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`, and numeric cursor aliases where cursor mode is declared);
 - frontend or SDK consumer test proving UI/service uses server `cursor`/`page` rather than local slicing for the same resource;
 - performance class declaration for P0/P1 lists per `PERFORMANCE_SPEC.md`.
 
@@ -237,7 +245,7 @@ Reviewers `MUST` block merges that introduce or retain:
 - `collect::<Vec<_>>()` or `toList()` on unbounded repository results before `skip`/`take`/`slice`;
 - per-request projection rebuild (`collect_inbox_*`, `collect_contacts_*`) followed by `offset_limit_page_from_iter` (§2.3);
 - helper names such as `list_window(items: Vec<_>, ...)`, `listAll*`, `fetchAll*` on P0/P1 interactive paths without export-only documentation;
-- OpenAPI list operations missing `pageInfo` or missing `page_size` bounds;
+- OpenAPI list operations missing `pageInfo`, missing `PageInfo.mode`, missing `page_size` bounds, or declaring forbidden `pageSize`/`limit`/`page_no`/`pageNo`/`per_page`/`size` query parameters;
 - frontend table data sources that call `slice` on SDK arrays larger than one page for normal browsing.
 
 Automated gate (heuristic):
@@ -249,6 +257,7 @@ node sdkwork-specs/tools/check-pagination.mjs --workspace <sdkwork-space-or-repo
 ### 10.3 Acceptance Checklist
 
 - [ ] API contract declares mode (`offset` or `cursor`), defaults, max `page_size`, filters, and sort keys.
+- [ ] HTTP GET list/search contracts use `page_size` only; no `pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, or `size` query aliases remain.
 - [ ] Handler maps pagination params before any unbounded read.
 - [ ] Repository/query uses SQL `LIMIT` or keyset predicates, or maintained in-memory index windows.
 - [ ] No production path materializes full tenant/user collection then slices in process.
@@ -269,7 +278,36 @@ A list operation `MAY` omit pagination only when all are true:
 
 L0/L1 legacy endpoints that still perform in-process pagination `MUST` have a migration entry in `MIGRATION_SPEC.md` with target mode, owner, and removal milestone. New endpoints `MUST NOT` add new in-process pagination debt.
 
-## 12. Cross-Reference Summary
+## 12. Pre-Launch Application Zero-Debt Rule
+
+Applications that have not yet shipped to production (`pre-launch`) have no consumers to be backward compatible with. They `MUST NOT` carry any pagination technical debt:
+
+- No `pageSize` wire aliases in query parameters - `pageSize` is valid only in JSON request bodies, response bodies, and language-level SDK models.
+- No legacy `limit` wire aliases in query deserializers — `page_size` only from first release.
+- No compatibility query aliases such as `page_no`, `pageNo`, `per_page`, `size`, or equivalent pagination synonyms.
+- No numeric offset strings as `cursor` — use opaque keyset cursors or explicit `page`/`page_size` per §3.
+- No `OFFSET` pagination on high-volume or fast-growing tables — use keyset/seek pagination per §6.
+- No deprecated pagination helper functions (`bounded_sql_list_page`, `limited_list_page`, `resolve_list_page`, `sql_fetch_offset`, or equivalent) in production code paths.
+- No legacy wire code mappers (`legacy_wire_result_code`, `legacy_wire_*`, or equivalent) for pagination-related error codes.
+- No migration exception entries in `MIGRATION_SPEC.md` for pagination — all list/search APIs `MUST` use canonical `page_size` and keyset/cursor pagination from first release.
+- No dual-parse compatibility branches for pagination query strings in handlers, shared utilities, SDK transports, frontend services, or tests.
+- No `x-request-id` header fallbacks for `traceId` — use `X-SdkWork-Trace-Id` or server-generated `traceId` only per `API_SPEC.md` §17.
+- No `hasMore` + `nextCursor` without `pageInfo.mode` — all list responses `MUST` include `PageInfo.mode` per §3.
+
+Pre-launch applications `MUST` clear all pagination debt before first production release. The pagination debt register (`PAGINATION-DEBT-REGISTER.md` or equivalent) `MUST` show zero residual items for pre-launch applications.
+
+### 12.1 Verification For Pre-Launch Applications
+
+Pre-launch applications `MUST` pass:
+
+```bash
+node <sdkwork-specs>/tools/check-pagination.mjs --workspace <workspace-root>
+node <sdkwork-specs>/tools/check-api-response-envelope.mjs --workspace <workspace-root>
+```
+
+with zero warnings related to pagination query aliases (`pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`), numeric cursor aliases, OFFSET pagination, deprecated helpers, in-process pagination, client-side slicing, or missing `pageInfo.mode`. Pre-launch verification `MUST NOT` use `--allow-known-debt`.
+
+## 13. Cross-Reference Summary
 
 | Topic | Authority |
 | --- | --- |

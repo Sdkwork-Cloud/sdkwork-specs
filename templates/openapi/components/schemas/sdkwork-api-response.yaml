@@ -66,3 +66,44 @@ SdkWorkAsyncData:
     pollUrl:
       type: string
       format: uri-reference
+
+SdkWorkBulkItemResult:
+  type: object
+  additionalProperties: false
+  required: [index, accepted]
+  properties:
+    index:
+      type: integer
+      format: int32
+      minimum: 0
+      description: Zero-based item index from the request items array.
+    accepted:
+      type: boolean
+      description: True when the item was accepted or applied.
+    resourceId:
+      type: string
+      description: Resource id created or affected by this item when applicable.
+    status:
+      type: string
+      description: Domain status for this item when applicable.
+    code:
+      type: integer
+      format: int32
+      description: Numeric item-level result code. 0 for item success; non-zero for item failure when partial results are allowed.
+    detail:
+      type: string
+      description: Safe item-level detail. Do not include stack traces, credentials, SQL, or provider secrets.
+
+SdkWorkBulkData:
+  type: object
+  additionalProperties: false
+  required: [items, allOrNothing]
+  properties:
+    items:
+      type: array
+      maxItems: 100
+      items:
+        $ref: '#/SdkWorkBulkItemResult'
+    allOrNothing:
+      type: boolean
+      description: True when the operation commits all items or none; false when item-partial results are possible.

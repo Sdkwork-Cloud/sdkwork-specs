@@ -4,6 +4,11 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  classifyOperationWireProtocolMarkers,
+  isExternalProtocolOperation,
+  openApiOperationEntriesFromText,
+} from './openapi-operation-utils.mjs';
 
 export const LEGACY_ENVELOPE_SCHEMAS = [
   'PlusApiResult',
@@ -32,29 +37,32 @@ export const AGENTS_SECTION_HEADING = '## HTTP API Response Envelope';
 
 export const AGENTS_SECTION_BODY = `${AGENTS_SECTION_HEADING}
 
-All L2+ \`app-api\`, \`backend-api\`, and SDKWork-owned business \`open-api\` HTTP contracts \`MUST\` follow \`API_SPEC.md\` section 4.5, section 14, and section 15:
+All L2+ SDKWork-owned custom HTTP contracts, including \`app-api\`, \`backend-api\`, and SDKWork-owned business \`open-api\`, \`MUST\` follow \`API_SPEC.md\` section 4.5, section 14, and section 15:
 
+- **Default classification:** omitted \`x-sdkwork-wire-protocol\` means SDKWork-owned custom API (\`sdkwork-v3\`); only operation-level \`x-sdkwork-wire-protocol: external\` plus \`x-sdkwork-external-protocol-id\` identifies a third-party compatibility \`open-api\` operation.
 - **Input:** typed request bodies, section 14.1 list/search/command input, \`SdkWorkListQuery\`, and \`q\` for free-text search.
 - **Success output:** \`SdkWorkApiResponse\` with \`{ "code": 0, "data": <payload>, "traceId": "<server-uuid>" }\`.
-- **Error output:** HTTP 4xx/5xx \`application/problem+json\` (\`ProblemDetail\`) with numeric \`code\` and \`traceId\`.
+- **Error output:** HTTP 4xx/5xx \`application/problem+json\` (\`ProblemDetail\`) with numeric \`code\` and \`traceId\`; SDKWork-owned errors may include \`i18nKey\` and \`locale\` presentation metadata.
 - Success \`code\` is numeric \`int32\`; HTTP 2xx JSON bodies \`MUST\` use \`0\` only. REST semantics remain on HTTP status (\`201\`, \`202\`, etc.).
 - Platform error codes are numeric non-zero values per section 15.3 (\`40001\`, \`40101\`, \`40401\`, …).
 - Single resource: \`data.item\`
 - Lists: \`data.items\` + \`data.pageInfo\` (\`PageInfo.mode\` is \`offset\` or \`cursor\`)
 - Commands: \`data.accepted\` plus optional \`resourceId\` / \`status\`
 - Async accept (\`202\`): \`data.operationId\`, \`data.status\`, optional \`pollUrl\`
+- Operation patterns: retrieve/list/search/create/update/delete/command/async/bulk semantics follow \`API_SPEC.md\` section 15.4; create uses \`201\`, delete uses \`204\` with no JSON body, and \`PUT\`/\`PATCH\` use SDK action \`update\`.
 
-Vendor compatibility \`open-api\` routes that mirror upstream tool or provider wire (for example OpenAI \`/v1/*\`, Claude Code, Codex) \`MAY\` opt out only when every exempt operation declares \`x-sdkwork-wire-protocol: external\` and \`x-sdkwork-external-protocol-id\` per \`API_SPEC.md\` section 4.5.2. SDKWork-owned business \`open-api\` operations \`MUST NOT\` opt out.
+Vendor compatibility \`open-api\` routes that mirror upstream tool or provider wire (for example OpenAI \`/v1/*\`, Anthropic/Claude \`/anthropic/v1/*\`, Google/Gemini \`/google/v1beta/*\`, Claude Code, or Codex) \`MAY\` opt out only when every exempt operation declares operation-level \`x-sdkwork-wire-protocol: external\` and \`x-sdkwork-external-protocol-id\` per \`API_SPEC.md\` section 4.5.2. SDKWork-owned business \`open-api\` operations \`MUST NOT\` opt out. Mixed OpenAPI documents are validated per operation; one external operation never exempts SDKWork-owned operations in the same document.
 
-Errors \`MUST\` use HTTP 4xx/5xx with \`application/problem+json\` (\`ProblemDetail\`) including required numeric \`code\` and \`traceId\`. Business failures \`MUST NOT\` use HTTP 2xx with non-zero \`code\`, string wire codes, \`success\`, or human \`message\`.
+Errors \`MUST\` use HTTP 4xx/5xx with \`application/problem+json\` (\`ProblemDetail\`) including required numeric \`code\` and \`traceId\`. Optional \`i18nKey\` and \`locale\` are display metadata only. Business failures \`MUST NOT\` use HTTP 2xx with non-zero \`code\`, string wire codes, \`success\`, or human \`message\`.
 
 Forbidden legacy envelopes and fields: \`PlusApiResult\`, \`AppbaseApiResult\`, \`StoreApiResult\`, \`SdkWorkResponse\`, per-domain \`*ApiResult\`, wire field \`requestId\`, bare domain DTOs at the HTTP root, and top-level \`{ items, pageInfo, traceId }\` without \`data\`.
 
-Handlers \`MUST\` serialize success and map errors through \`sdkwork-web-framework\` response mapping. Generated HTTP SDKs (\`--standard-profile sdkwork-v3\`) unwrap \`data\` by default and expose typed numeric \`ProblemDetail.code\` / \`traceId\` on errors; use \`.raw\` when the full envelope is required.
+Handlers \`MUST\` serialize success and map errors through \`sdkwork-web-framework\` response mapping. Generated HTTP SDKs (\`--standard-profile sdkwork-v3\`) unwrap \`data\` by default and expose typed numeric \`ProblemDetail.code\` / \`traceId\` and returned localization metadata on errors; use \`.raw\` when the full envelope is required.
 
 Before completing API contract, SDK generation, or frontend service work, run:
 
 \`\`\`bash
+node <sdkwork-specs>/tools/check-api-operation-patterns.mjs --workspace <workspace-root>
 node <sdkwork-specs>/tools/check-api-response-envelope.mjs --workspace <workspace-root>
 \`\`\`
 
@@ -72,14 +80,16 @@ export function repoNameFromPath(filePath) {
 
 export function isAppOrBackendApiOpenApi(filePath) {
   const norm = filePath.replace(/\\/g, '/');
-  return /(open-api|app-api|backend-api)/i.test(norm) && /openapi\.(ya?ml|json)$/i.test(norm);
+  if (/\/generated\/sdks\//i.test(norm)) return false;
+  const hasAuthoritySurface =
+    /(open-api|app-api|backend-api)/i.test(norm) ||
+    /\/sdks\/[^/]+-(?:open|app|backend)-sdk\/openapi\/[^/]+\.openapi\.(?:ya?ml|json)$/i.test(norm);
+  return hasAuthoritySurface && /openapi\.(ya?ml|json)$/i.test(norm);
 }
 
 export function isExternalProtocolOpenApi(text) {
-  return (
-    /x-sdkwork-wire-protocol["']?\s*:\s*["']?external["']?/i.test(text) &&
-    /x-sdkwork-external-protocol-id["']?\s*:/i.test(text)
-  );
+  const { entries } = openApiOperationEntriesFromText(text);
+  return entries.length > 0 && entries.every(({ operation }) => isExternalProtocolOperation(operation));
 }
 
 export function preferredAuthorityScore(filePath) {
@@ -114,8 +124,20 @@ export function walkOpenApiFiles(root, acc = []) {
 }
 
 export function classifyOpenApiWireProtocolMarkers(text) {
+  const { document, entries } = openApiOperationEntriesFromText(text);
   const issues = [];
+  if (document) {
+    const info = document.info && typeof document.info === 'object' ? document.info : {};
+    if (info['x-sdkwork-wire-protocol'] === 'external' && !info['x-sdkwork-external-protocol-id']) {
+      issues.push({
+        kind: 'incomplete-vendor-wire-protocol',
+        detail: 'document-level x-sdkwork-wire-protocol: external requires x-sdkwork-external-protocol-id',
+      });
+    }
+  }
+  issues.push(...classifyOperationWireProtocolMarkers(entries));
   if (
+    entries.length === 0 &&
     /x-sdkwork-wire-protocol["']?\s*:\s*["']?external["']?/i.test(text) &&
     !/x-sdkwork-external-protocol-id["']?\s*:/i.test(text)
   ) {
@@ -129,6 +151,11 @@ export function classifyOpenApiWireProtocolMarkers(text) {
 }
 
 export function classifyOpenApiEnvelope(text) {
+  const parsed = openApiOperationEntriesFromText(text);
+  if (parsed.entries.length > 0) {
+    return classifyStructuredOpenApiEnvelope(text, parsed);
+  }
+
   const issues = [];
   const legacyMatch = text.match(LEGACY_ENVELOPE_PATTERN);
   if (legacyMatch && !text.includes('Forbidden legacy')) {
@@ -169,24 +196,165 @@ export function classifyOpenApiEnvelope(text) {
   return issues;
 }
 
-export function dedupeAuthorities(files) {
-  const map = new Map();
-  for (const file of files) {
-    const repo = repoNameFromPath(file);
-    const norm = file.replace(/\\/g, '/');
-    const surface = norm.includes('backend-api')
-      ? 'backend-api'
-      : norm.includes('open-api')
-        ? 'open-api'
-        : 'app-api';
-    const key = `${repo}::${surface}`;
-    const score = preferredAuthorityScore(file);
-    const prev = map.get(key);
-    if (!prev || score > prev.score) {
-      map.set(key, { file, score, repo, surface });
+function classifyStructuredOpenApiEnvelope(text, parsed) {
+  const issues = [];
+  const ownedEntries = parsed.entries.filter(({ operation }) => !isExternalProtocolOperation(operation));
+  if (ownedEntries.length === 0) {
+    return issues;
+  }
+
+  const legacyMatch = text.match(LEGACY_ENVELOPE_PATTERN);
+  if (legacyMatch && !text.includes('Forbidden legacy')) {
+    issues.push({ kind: 'legacy-envelope', detail: `uses ${legacyMatch[0]}` });
+  }
+  if (FORBIDDEN_REQUEST_ID_PATTERN.test(text)) {
+    issues.push({ kind: 'forbidden-request-id', detail: 'response schema still declares requestId' });
+  }
+  if (LEGACY_STRING_RESULT_CODE_PATTERN.test(text)) {
+    issues.push({
+      kind: 'legacy-string-result-code',
+      detail: 'result code still uses forbidden string enum tokens',
+    });
+  }
+  if (
+    /\bsuccess\s*:\s*\{?\s*type:\s*boolean/.test(text) ||
+    /"success"\s*:\s*\{[^}]*"type"\s*:\s*"boolean"/.test(text)
+  ) {
+    if (/StoreApiResult|CommandResult/.test(text)) {
+      issues.push({ kind: 'success-boolean-envelope', detail: 'success boolean in response schema' });
     }
   }
-  return [...map.values()];
+  if (!PROBLEM_DETAIL_PATTERN.test(text)) {
+    issues.push({ kind: 'missing-problem-detail', detail: 'no ProblemDetail or application/problem+json' });
+  }
+
+  for (const entry of ownedEntries) {
+    const responses = entry.operation.responses && typeof entry.operation.responses === 'object'
+      ? entry.operation.responses
+      : {};
+    for (const [status, response] of Object.entries(responses)) {
+      if (!isJsonSuccessStatus(status)) {
+        continue;
+      }
+      if (!responseUsesSdkWorkApiResponse(response, parsed.document)) {
+        issues.push({
+          kind: 'missing-sdkwork-api-response',
+          detail: `${entry.method.toUpperCase()} ${entry.routePath} HTTP ${status} does not return SdkWorkApiResponse`,
+        });
+      }
+    }
+  }
+  return issues;
+}
+
+export function openApiAuthorityEntries(files) {
+  return files
+    .map((file) => {
+      const norm = file.replace(/\\/g, '/');
+      const surface = norm.includes('backend-api') || /-backend-sdk\/openapi\//i.test(norm)
+        ? 'backend-api'
+        : norm.includes('open-api') || /-open-sdk\/openapi\//i.test(norm)
+          ? 'open-api'
+          : 'app-api';
+      return {
+        file,
+        repo: repoNameFromPath(file),
+        score: preferredAuthorityScore(file),
+        surface,
+      };
+    })
+    .sort((left, right) => left.file.localeCompare(right.file));
+}
+
+function isJsonSuccessStatus(status) {
+  return /^2[0-9][0-9]$/u.test(String(status)) && String(status) !== '204';
+}
+
+function responseUsesSdkWorkApiResponse(response, document) {
+  const resolvedResponse = resolveResponse(response, document);
+  if (!resolvedResponse || typeof resolvedResponse !== 'object') {
+    return false;
+  }
+  if (containsSdkWorkApiResponse(resolvedResponse, document)) {
+    return true;
+  }
+  const content = resolvedResponse.content && typeof resolvedResponse.content === 'object' ? resolvedResponse.content : {};
+  return Object.entries(content).some(([mediaType, media]) => {
+    if (!/json/iu.test(mediaType)) {
+      return false;
+    }
+    const schema = media?.schema;
+    return containsSdkWorkApiResponse(schema, document);
+  });
+}
+
+function resolveResponse(response, document) {
+  if (!response || typeof response !== 'object') {
+    return null;
+  }
+  if (typeof response.$ref === 'string' && document) {
+    const resolved = resolveLocalRef(document, response.$ref);
+    return resolved && typeof resolved === 'object' ? resolved : response;
+  }
+  return response;
+}
+
+function containsSdkWorkApiResponse(value, document, seenRefs = new Set()) {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  if (isInlineSdkWorkApiResponseSchema(value)) {
+    return true;
+  }
+  if (typeof value.$ref === 'string') {
+    if (/SdkWorkApiResponse|SdkWorkResourceData|SdkWorkPageData|SdkWorkCommandData/u.test(value.$ref)) {
+      return true;
+    }
+    if (document && !seenRefs.has(value.$ref)) {
+      seenRefs.add(value.$ref);
+      const resolved = resolveLocalRef(document, value.$ref);
+      if (containsSdkWorkApiResponse(resolved, document, seenRefs)) {
+        return true;
+      }
+    }
+  }
+  const encoded = JSON.stringify(value);
+  if (/SdkWorkApiResponse|SdkWorkResourceData|SdkWorkPageData|SdkWorkCommandData/u.test(encoded)) {
+    return true;
+  }
+  return Object.values(value).some((child) => containsSdkWorkApiResponse(child, document, seenRefs));
+}
+
+function isInlineSdkWorkApiResponseSchema(value) {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  if (
+    Array.isArray(value.required)
+    && ['code', 'data', 'traceId'].every((field) => value.required.includes(field))
+    && value.properties
+    && typeof value.properties === 'object'
+    && ['code', 'data', 'traceId'].every((field) => Object.prototype.hasOwnProperty.call(value.properties, field))
+  ) {
+    return true;
+  }
+  return Object.values(value).some((child) => isInlineSdkWorkApiResponseSchema(child));
+}
+
+function resolveLocalRef(document, ref) {
+  if (!ref.startsWith('#/')) {
+    return null;
+  }
+  return ref
+    .slice(2)
+    .split('/')
+    .map((segment) => segment.replace(/~1/gu, '/').replace(/~0/gu, '~'))
+    .reduce((current, segment) => {
+      if (!current || typeof current !== 'object') {
+        return null;
+      }
+      return current[segment];
+    }, document);
 }
 
 export function walkAgentsFiles(root, acc = []) {

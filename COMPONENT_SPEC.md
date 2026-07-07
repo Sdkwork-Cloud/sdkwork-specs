@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: local `specs/` directories for apps, reusable packages, language modules, SDK families, services, host adapters, and componentized integration units under `apps/`
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `AGENTS_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `MODULE_SPEC.md`, `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `CONFIG_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
+- Related: `COMPOSABLE_ARCHITECTURE_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `AGENTS_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `MODULE_SPEC.md`, `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `CONFIG_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
 This standard defines the local specification boundary for every authored SDKWork module. Global standards live in `sdkwork-specs/*_SPEC.md`; each module owns an independent local spec system under `<module-root>/specs/` that makes the module discoverable, maintainable, and safe to integrate without reading its internals first.
 
@@ -68,7 +68,10 @@ Rules:
     }
   ],
   "contracts": {
+    "layerRole": "frontend-feature",
     "publicExports": ["."],
+    "providedPorts": [{ "name": "exampleServices", "export": "." }],
+    "requiredPorts": [{ "name": "appSdk", "export": "." }],
     "runtimeEntrypoints": ["package.json#scripts.typecheck"],
     "routeManifest": null,
     "sdkClients": [],
@@ -103,19 +106,33 @@ Rules:
 - `canonicalSpecs` must include `CODE_STYLE_SPEC.md` and `NAMING_SPEC.md` when the component owns authored source code.
 - `canonicalSpecs` must include language-specific specs only for languages declared in `component.languages`.
 - `contracts.publicExports` lists supported integration entrypoints, not internal source paths.
+- `contracts.layerRole` classifies the component in the composable architecture profile from
+  `COMPOSABLE_ARCHITECTURE_SPEC.md`: for example `frontend-core`, `frontend-feature`,
+  `backend-route`, `backend-service`, `backend-repository`, `runtime-gateway`, `sdk-facade`, or
+  `tooling`. New composable modules `MUST` declare it; legacy manifests should add it during the
+  next module touch.
+- `contracts.providedPorts` lists named public integration ports offered by the component. Each
+  object `MUST` include `name` and `export`, and `export` must reference `contracts.publicExports`.
+- `contracts.requiredPorts` lists named SDK, service, host, runtime, or provider ports the component
+  needs from its composition root or dependency modules. Each object `MUST` include `name` and
+  should reference a public export, SDK dependency, or documented host/service adapter.
 - `contracts.runtimeEntrypoints` lists executable integration entrypoints, service builders, router
   builders, scripts, or host adapters that a consumer can actually run or mount. Route metadata,
   OpenAPI files, and README examples are not executable runtime entrypoints.
 - `contracts.routeManifest` is used only by Rust HTTP route crate components. It points to the
   route crate manifest entrypoint or normalized `sdks/_route-manifests/<surface>/<packageName>.route-manifest.json`
-  artifact, and it is not an SDK client list.
+  artifact, and it is not an SDK client list. Route manifest paths participate in route registry
+  collision validation.
 - `contracts.sdkClients` lists generated SDK client classes or public SDK client exports only when the component owns a generated SDK family. It is not a runtime credential-injection list and `MUST NOT` be used as an IAM token-manager list, app/backend SDK injection list, or open-api credential provider list.
 - `contracts.sdkDependencies` lists dependency SDK families consumed by this component, SDK family,
   or composed facade. It `MUST` be an explicit array for every authored SDK family, composed facade,
   application core package, or runtime component that consumes dependency SDKs; use `[]` when there
   are no dependency SDKs.
-- `contracts.permissionComposition`, when present, defines permission inheritance and explicit override policy for the owning app surface root.
-  Core packages `SHOULD` point to the app-root manifest with a relative path.
+- `contracts.permissionComposition` defines permission inheritance and explicit override policy for
+  the owning app surface or core package. It is required whenever HTTP `contracts.sdkDependencies`
+  include protected app-api, backend-api, or SDKWork-owned open-api dependencies. Core packages
+  `SHOULD` point to the app-root manifest with a relative path when the app surface owns the
+  permission composition object.
 - `contracts.dependencyApiExports` lists dependency-owned API capabilities intentionally exposed by
   this component's public exports, composed wrappers, service ports, or application core surface.
   It `MUST` be explicit for authored SDK families and composed facades. The default is `[]`, which
@@ -340,6 +357,11 @@ Rules:
 Rules:
 
 - Run `node apps/scripts/validate-component-specs.mjs --apps-root apps` before declaring component specs complete.
+- Run `node ../sdkwork-specs/tools/check-component-port-bindings.mjs --root .` before declaring
+  composable architecture component contracts complete. Use `--strict` when onboarding new modules
+  or finishing migration of existing modules.
+- Run `node ../sdkwork-specs/tools/check-permission-composition.mjs --root .` when component specs declare HTTP `sdkDependencies`.
+- Run `node ../sdkwork-specs/tools/check-route-path-collisions.mjs --root .` when component specs declare route manifests or materialize OpenAPI authorities.
 - Standard changes require tests for the discovery and validation tooling.
 - Component-local README examples and verification commands should stay aligned with the package manifest and generated SDK surface.
 
@@ -353,8 +375,12 @@ Rules:
 - [ ] UI component manifests link to `UI_ARCHITECTURE_SPEC.md` and exactly one architecture-specific UI spec.
 - [ ] Manifest uses canonical domain names.
 - [ ] Public integration entrypoints are declared.
+- [ ] Composable layer role and provided/required ports are declared for new modules, and legacy
+  modules are not left with partial or invalid port declarations.
 - [ ] Dependency SDK consumption is declared through `contracts.sdkDependencies`, including `[]`
   when there are no dependency SDKs.
+- [ ] Permission inheritance is declared through `contracts.permissionComposition` whenever HTTP
+  SDK dependencies require protected permission catalogs.
 - [ ] Dependency API export policy is declared through `contracts.dependencyApiExports`, including
   `[]` when the component does not re-export dependency capabilities.
 - [ ] Runtime dependency API mounting or external-service requirements are declared through

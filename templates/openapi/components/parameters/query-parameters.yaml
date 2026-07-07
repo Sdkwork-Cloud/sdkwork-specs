@@ -13,7 +13,7 @@ PageSizeQuery:
   name: page_size
   in: query
   required: false
-  description: Page size for offset or cursor pagination. Default 20, maximum 200.
+  description: Page size for offset or cursor pagination. Default 20, maximum 200. The HTTP query wire name is page_size; pageSize is reserved for JSON bodies and response payloads.
   schema:
     type: integer
     format: int32

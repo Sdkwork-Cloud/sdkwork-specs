@@ -12,12 +12,26 @@ import {
   readJson,
   toPosix,
 } from './app-composition.mjs';
+import {
+  listComponentPortBindingSpecs,
+} from './component-port-bindings.mjs';
+import {
+  listFrontendAppRoots,
+  listFrontendPackages,
+} from './frontend-composition.mjs';
+import {
+  collectRouteRegistry,
+} from './route-registry.mjs';
+import {
+  parseRustCargoManifest,
+} from './rust-backend-composition.mjs';
 import { loadDiscoverySurfaceForWorkspaceConsumer } from './sdk-manifest-assembly.mjs';
 
 const APP_API_PREFIX = '/app/v3/api';
 const BACKEND_API_PREFIX = '/backend/v3/api';
 
 const PLATFORM_GATEWAY_DOMAINS = new Set(['iam', 'appbase']);
+const SKIP_ARCHITECTURE_DIRS = new Set(['.git', 'node_modules', 'target', 'dist', 'build']);
 
 export const RUNTIME_MODES = new Set([
   'same-origin-embedded',
@@ -218,6 +232,116 @@ function loadCompositionOverrides(repoRoot) {
   return overrides;
 }
 
+function listCargoTomlFiles(repoRoot) {
+  const files = [];
+  const walk = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (SKIP_ARCHITECTURE_DIRS.has(entry.name)) continue;
+        walk(full);
+        continue;
+      }
+      if (entry.name === 'Cargo.toml') files.push(full);
+    }
+  };
+  walk(repoRoot);
+  return files.sort((a, b) => a.localeCompare(b));
+}
+
+function buildArchitectureSummary(repoRoot) {
+  const componentRecords = listComponentPortBindingSpecs(repoRoot);
+  const components = componentRecords.map((record) => {
+    const contracts = record.spec.contracts ?? {};
+    return {
+      name: record.spec.component?.name ?? null,
+      type: record.spec.component?.type ?? null,
+      root: record.spec.component?.root ?? null,
+      domain: record.spec.component?.domain ?? null,
+      capability: record.spec.component?.capability ?? null,
+      surface: record.spec.component?.surface ?? null,
+      languages: record.spec.component?.languages ?? [],
+      source: record.relativePath,
+      layerRole: contracts.layerRole ?? null,
+      publicExports: contracts.publicExports ?? [],
+      providedPorts: contracts.providedPorts ?? [],
+      requiredPorts: contracts.requiredPorts ?? [],
+      sdkDependencies: normalizeSdkDependencies(record.spec),
+      routeManifest: contracts.routeManifest ?? null,
+      runtimeEntrypoints: contracts.runtimeEntrypoints ?? [],
+      dependencyApiSurfaces: contracts.dependencyApiSurfaces ?? [],
+    };
+  });
+
+  const frontendPackages = [];
+  for (const appRoot of listFrontendAppRoots(repoRoot)) {
+    for (const pkg of listFrontendPackages(appRoot.appRoot)) {
+      frontendPackages.push({
+        appRoot: toPosix(path.relative(repoRoot, appRoot.appRoot)),
+        architecture: appRoot.architecture?.id ?? null,
+        directoryName: pkg.directoryName,
+        name: pkg.name,
+        role: pkg.role,
+      });
+    }
+  }
+
+  const crates = listCargoTomlFiles(repoRoot)
+    .map((cargoPath) => {
+      const manifest = parseRustCargoManifest(cargoPath);
+      return {
+        packageName: manifest.packageName,
+        manifest: toPosix(path.relative(repoRoot, cargoPath)),
+        dependencies: manifest.dependencies.map((dep) => dep.name),
+      };
+    })
+    .filter((crate) => crate.packageName);
+
+  const routeManifestMap = new Map();
+  for (const route of collectRouteRegistry(repoRoot)) {
+    if (route.sourceKind !== 'route-manifest') continue;
+    const key = route.source;
+    const existing = routeManifestMap.get(key) ?? {
+      source: route.source,
+      packageName: route.routeCrate ?? null,
+      surface: route.surface ?? null,
+      routeCount: 0,
+    };
+    existing.routeCount += 1;
+    existing.packageName ??= route.routeCrate ?? null;
+    existing.surface ??= route.surface ?? null;
+    routeManifestMap.set(key, existing);
+  }
+
+  const dependencyApiSurfaces = [];
+  for (const component of components) {
+    for (const surface of component.dependencyApiSurfaces) {
+      dependencyApiSurfaces.push({
+        component: component.name,
+        source: component.source,
+        ...surface,
+      });
+    }
+  }
+
+  return {
+    components,
+    frontend: {
+      packages: frontendPackages,
+    },
+    rust: {
+      crates,
+    },
+    routes: {
+      manifests: [...routeManifestMap.values()].sort((a, b) => a.source.localeCompare(b.source)),
+    },
+    runtime: {
+      dependencyApiSurfaces,
+    },
+  };
+}
+
 function findIntegrationOverride(overridesByCore, workspace) {
   for (const overrides of Object.values(overridesByCore)) {
     const integration = overrides?.integrations?.[workspace];
@@ -334,6 +458,7 @@ export function resolveComposition(repoRoot, options = {}) {
       inheritanceMode: 'module-catalog-with-overrides',
       inheritedManifests,
     },
+    architecture: buildArchitectureSummary(repoRoot),
     env,
     requiresPlatformGatewayProcess,
     issues,

@@ -93,6 +93,7 @@ Rules:
 Rules:
 
 - Login, verification, password reset, token refresh, and sensitive commands `MUST` be rate limited.
+- Mandatory-sensitive HTTP operations `MUST` declare `x-sdkwork-rate-limit-tier` in authority OpenAPI and route metadata, and runtimes `MUST` enforce the matching framework policy. This includes login, registration, OAuth/QR session creation or completion, verification code send/check, password reset request/completion, token refresh, API key creation/rotation/revocation, credential binding, and high-risk mutation commands.
 - Idempotency and replay protection `SHOULD` be applied to payment-like or retriable commands.
 - Security events `MUST` be emitted for login failures, suspicious token use, permission changes, key creation, key revocation, and tenant changes.
 
@@ -169,7 +170,7 @@ Rules:
 - [ ] Generated RPC SDK clients support metadata providers for auth, access token, trace, idempotency, and request hash metadata.
 - [ ] RPC SDK examples use metadata providers and do not hard-code live tokens.
 - [ ] RPC reflection and mTLS exposure are controlled by deployment policy.
-- [ ] Web backend handlers/services consume typed request context and do not reparse raw credential, tenant, user, permission, or request-id headers.
+- [ ] Web backend handlers/services consume typed request context and do not reparse raw credential, tenant, user, permission, request-id, locale, or language headers.
 - [ ] Tenant/object authorization is tested.
 - [ ] Drive upload/download grants are short-lived, authorized, and do not leak provider credentials or signed URL material into logs.
 - [ ] Sensitive fields are write-only or omitted.

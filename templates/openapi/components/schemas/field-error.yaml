@@ -15,3 +15,15 @@ FieldError:
       minimum: 40011
       maximum: 40099
       description: Optional field-level validation subcode when ProblemDetail.code is 40001 VALIDATION_ERROR.
+    i18nKey:
+      type: string
+      description: Optional stable localization key for field-level UI display.
+    params:
+      type: object
+      additionalProperties:
+        oneOf:
+          - type: string
+          - type: number
+          - type: integer
+          - type: boolean
+      description: Optional sanitized interpolation parameters for localized validation messages.

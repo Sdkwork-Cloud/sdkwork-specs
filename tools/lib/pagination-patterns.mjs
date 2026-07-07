@@ -15,6 +15,7 @@ All L2+ list/search APIs and their backing services, repositories, SDK consumers
 - **Output:** \`SdkWorkApiResponse.data.items\` + \`data.pageInfo\` with \`PageInfo.mode\` (\`offset\` or \`cursor\`) per \`API_SPEC.md\` §16.
 - **Store-level pagination:** push filtering, sorting, and page selection to SQL \`LIMIT\`/keyset or incrementally maintained indexes — never unbounded collect then \`skip\`/\`take\`/\`slice\` in process memory (\`PAGINATION_SPEC.md\` §2).
 - **SDK and frontend:** interactive lists request one page at a time from the server; no default \`listAll*\` on P0/P1 paths; no client-side \`slice\` pagination over full downloads.
+- **Zero-debt wire contract:** HTTP GET list/search query strings use \`page_size\` only. \`pageSize\`, \`limit\`, numeric cursor offsets, and other pagination aliases are technical debt and are forbidden for new or pre-launch applications.
 
 Before completing list/search API, repository, SDK list helper, projection read model, or paginated UI work, run:
 

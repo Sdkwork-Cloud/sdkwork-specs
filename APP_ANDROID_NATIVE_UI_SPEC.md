@@ -88,7 +88,9 @@ apps/sdkwork-<application-code>-android-mobile/packages/sdkwork-<application-cod
           navigation/
           host/
           models/
-      res/
+      i18n/
+        <locale>/<domain>/<capability>/
+      res/                  # generated or thin platform resource projection
     test/
     androidTest/
   specs/
@@ -116,7 +118,7 @@ Rules:
 - `presentation/` owns view models/controllers and UI state mapping.
 - `services/` owns use-case orchestration.
 - `repositories/` owns thin generated app SDK calls where repository naming is used.
-- `i18n/` and Android resource files own package-local locale fragments. Platform resource aggregates must be generated or assembled from fragments and must not be hand-authored whole-app catalogs; follow `I18N_SPEC.md`.
+- `src/main/i18n/<locale>/<domain>/<capability>/` owns package-local Android locale source fragments. Kotlin files under `i18n/` and `src/main/res/values*/strings.xml` are thin registries or generated platform projections only. Platform resource aggregates must be generated or assembled from fragments and must not be hand-authored whole-app catalogs; follow `I18N_SPEC.md` section 6.1.
 - `models/` owns view models only. API DTOs come from generated Kotlin/Java app SDKs.
 - `host/` owns adapter interfaces for platform capabilities.
 
@@ -164,6 +166,7 @@ Required coverage for new Android capabilities:
 | SDK boundary | Static scan proves generated SDK clients or approved wrappers are used and no raw HTTP, manual auth headers, or generated SDK edits were introduced. |
 | Service/view model | Unit tests use fake generated app SDK clients and fake host adapters. |
 | UI states | Compose/UI tests or documented fixtures cover loading, empty, validation-error, permission-denied, unavailable, and unknown-error states. |
+| I18n layout | Static scan proves authored fragments stay under `src/main/i18n/<locale>/<domain>/<capability>/` and `res/values*/strings.xml` is generated or thin platform projection only. |
 | IAM clearing | Tests prove secure storage, token manager, context store, caches, and sensitive state clear on logout, refresh failure, tenant switch, and account switch. |
 | Host boundary | Static scan proves feature UI does not call Android platform APIs directly for host capabilities. |
 

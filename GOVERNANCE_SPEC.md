@@ -33,6 +33,7 @@ Rules:
 | Lifecycle gate | Change Definition of Ready, Definition of Done, review rule, merge gate, release gate, or exception gate | `QUALITY_GATE_SPEC.md` evidence and reviewer approval |
 | Release-affecting | Change versioning, artifact, rollout, rollback, changelog, signing, or publication policy | `RELEASE_SPEC.md` and `SUPPLY_CHAIN_SECURITY_SPEC.md` review |
 | Supply-chain | Change dependency source, generator authority, build integrity, signing, SBOM, provenance, or attestation policy | Security review, supply-chain evidence, and exception expiry when policy is weakened |
+| Composable architecture | Change module layer roles, ports, dependency SDK composition, permission inheritance, route ownership, frontend package boundaries, Rust crate dependency boundaries, or composition resolver behavior | `COMPOSABLE_ARCHITECTURE_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, and `QUALITY_GATE_SPEC.md` closure evidence |
 | Exception | Temporary legacy deviation | Exception record with owner and expiry |
 
 ## 3. Exception Record
@@ -74,6 +75,7 @@ removal_plan: regenerate app SDK with sdkwork-v3 profile
 - Release compatibility follows `RELEASE_SPEC.md`; release trains, versioning, changelog, rollout, rollback, and freeze rules must remain aligned with app manifests and workflow packaging.
 - Migration compatibility follows `MIGRATION_SPEC.md`; breaking or compatibility-sensitive changes require migration plan, compatibility window, rollback, and owner approval.
 - Supply-chain compatibility follows `SUPPLY_CHAIN_SECURITY_SPEC.md`; dependency, build, generated artifact, SBOM, provenance, signing, checksum, and attestation rules cannot be weakened without explicit security exception.
+- Composable architecture compatibility follows `COMPOSABLE_ARCHITECTURE_SPEC.md`; local standards may narrow module boundaries but cannot skip component ports, SDK dependency composition, permission inheritance, route uniqueness, frontend package boundaries, Rust crate dependency boundaries, or resolver evidence without an approved exception.
 - UI architecture compatibility follows `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, and `BACKEND_UI_SPEC.md`.
 - Security rules cannot be weakened by local exception without explicit owner approval and compensating control.
 
@@ -84,6 +86,7 @@ UI architecture boundary exceptions are breaking architecture exceptions. They m
 - [ ] Correct spec files were consulted.
 - [ ] Requirements and acceptance criteria were added or updated when behavior, contract, runtime, security, release, or migration intent changed.
 - [ ] Architecture decisions were recorded or superseded when boundaries, ownership, runtime topology, or cross-client alignment changed.
+- [ ] Composable architecture closure evidence was updated when module ports, dependency SDK composition, permission inheritance, route ownership, frontend package boundaries, Rust crate boundaries, or resolver behavior changed.
 - [ ] `SOUL.md`, `AGENTS_SPEC.md`, `CODE_STYLE_SPEC.md`, and `NAMING_SPEC.md` were updated or cited when agent behavior, execution entrypoints, code structure, or public naming changed.
 - [ ] Repository/application `.sdkwork/` skills or plugins do not contradict root standards.
 - [ ] Repository/application `AGENTS.md` files do not contradict root standards or copy stale spec bodies.

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
@@ -239,6 +239,26 @@ describe('check-agent-workflow-standard', () => {
 
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /copied packaging workflow is forbidden/);
+  });
+
+  it('does not require application packaging workflow files for standards repositories', () => {
+    const root = makeRepo({
+      mutate(repoRoot) {
+        write(repoRoot, 'README.md', [
+          '# SDKWork Standards',
+          '',
+          'repository-kind: standards',
+          '',
+        ].join('\n'));
+        rmSync(path.join(repoRoot, 'sdkwork.workflow.json'), { force: true });
+        rmSync(path.join(repoRoot, '.github'), { recursive: true, force: true });
+      },
+    });
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /agent and workflow standard ok/);
   });
 
   it('rejects workflow targets without deploymentProfile and runtimeTarget', () => {

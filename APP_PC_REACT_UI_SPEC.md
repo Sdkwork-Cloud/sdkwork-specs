@@ -40,10 +40,10 @@ apps/sdkwork-appbase/
 
 | Surface | Package family | API surface | SDK source | Typical users |
 | --- | --- | --- | --- | --- |
-| App PC React UI | `sdkwork-<capability>-pc-react` or `sdkwork-<application-code>-pc-<capability>` | `/app/v3/api` | `legacy-java-plus-app-api` generated SDK | end users and app users |
+| App PC React UI | `sdkwork-<capability>-pc-react` or `sdkwork-<application-code>-pc-<capability>` | `/app/v3/api` | generated app SDK or approved appbase wrapper | end users and app users |
 | PC user console React UI | `sdkwork-<application-code>-pc-console-<capability>` | `/app/v3/api` or approved console-facing app SDK surface | generated app SDK or approved appbase wrapper | customers, tenants, app owners, business users managing their own resources |
 | PC internal admin React UI | `sdkwork-<application-code>-pc-admin-<capability>` | `/backend/v3/api` | generated backend SDK or approved backend wrapper | internal staff, operators, support, auditors (`backend-admin`) |
-| Standalone backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | `legacy-java-plus-backend-api` generated SDK for `backend-admin` | admins and operators in standalone backend console hosts |
+| Standalone backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | generated backend SDK or approved backend wrapper for `backend-admin` | admins and operators in standalone backend console hosts |
 
 Rules:
 
@@ -110,7 +110,7 @@ Rules:
 - `services/` owns SDK orchestration through injected app SDK ports.
 - `hooks/` owns React integration around services and state.
 - `state/` owns view/cache state only, not backend invariants.
-- `i18n/` owns package-local user-facing locale fragments, thin aggregation exports, and locale fallback wiring through the provider. It must not contain an authored whole-app or whole-package locale monolith; follow `I18N_SPEC.md`.
+- `i18n/` owns package-local user-facing locale fragments, thin aggregation exports, and locale fallback wiring through the provider. React TypeScript packages `MUST` use the `src/i18n/<locale>/<domain>/<capability>/<fragment>.ts|json` layout from `I18N_SPEC.md` section 6.1. It must not contain an authored whole-app or whole-package locale monolith.
 - `types/` owns local view models only. API DTOs come from generated app SDKs or shared contracts.
 - `routes/` owns route metadata when the package contributes routes to an app shell.
 - `specs/` follows `COMPONENT_SPEC.md` when the package is an authored app/component package.
@@ -129,7 +129,7 @@ Rules:
 - Backend SDK and appbase backend SDK wrappers may be constructed only by `backend-admin` packages or their admin-core providers. App auth runtime and user-facing app/console packages `MUST NOT` construct them.
 - Application PC React packages `MUST NOT` create local auth SDK ports such as `auth.login`, `auth.refreshToken`, `auth.register`, `user.getUserProfile`, or user-center session clients when the standard appbase resource exists.
 - UI components `MUST NOT` construct SDK clients, call raw HTTP, manually attach auth/API key headers, or parse JWTs for authorization.
-- Missing app SDK methods `MUST` be fixed in `legacy-java-plus-app-api`, OpenAPI, and generator inputs before integration.
+- Missing app SDK methods `MUST` be fixed in the owning app-api OpenAPI authority and generator inputs before integration. Legacy Java Plus app-api authorities may be used only under registered L0 migration exceptions.
 - App PC React packages `MUST NOT` import generated SDK internals just to bypass an appbase wrapper gap.
 - Tests `SHOULD` use fake clients implementing the same generated app SDK resource surface.
 
@@ -184,7 +184,7 @@ Required coverage for new App PC React capabilities:
 - service test with a fake generated app SDK client;
 - UI/page test for the main success and failure states;
 - route contribution test when adding app shell routes;
-- i18n fallback test for user-facing text when new copy is added;
+- i18n directory/static scan and fallback test for user-facing text when new copy is added;
 - typecheck for the changed package.
 
 Acceptance checklist:

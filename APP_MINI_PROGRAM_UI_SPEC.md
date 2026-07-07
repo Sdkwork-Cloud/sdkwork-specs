@@ -116,7 +116,7 @@ Rules:
 - `components/` owns package-local mini program components and reusable domain components.
 - `services/` owns app SDK orchestration through injected clients or service ports.
 - `state/` owns view/cache state and must clear sensitive state on logout, refresh failure, account switch, and tenant switch.
-- `i18n/` owns package-local mini program locale fragments and thin aggregation exports before platform page/subpackage projection. It must not contain an authored whole-app or whole-package locale monolith; follow `I18N_SPEC.md`.
+- `i18n/` owns package-local mini program locale fragments and thin aggregation exports before platform page/subpackage projection. Mini program source packages `MUST` use the `src/i18n/<locale>/<domain>/<capability>/<fragment>.ts|json` layout from `I18N_SPEC.md` section 6.1. Platform page/subpackage locale resources are generated or thin projections only; this folder must not contain an authored whole-app or whole-package locale monolith.
 - `routes/` owns SDKWork route contributions and mini program route placement metadata.
 - `navigation/` owns tab, stack, redirect, scene, and subpackage preload metadata.
 - `host/` owns adapter contracts used by the package, not platform global implementations.
@@ -232,6 +232,7 @@ Required coverage for new mini program UI capabilities:
 | IAM clearing | Tests prove platform storage, token manager, context store, caches, and sensitive state clear on logout, refresh failure, tenant switch, and account switch. |
 | Host boundary | Static scan proves feature pages/components do not call platform globals directly. |
 | UI states | Tests or documented fixtures cover loading, empty, validation-error, permission-denied, unavailable, and unknown-error states. |
+| I18n layout | Static scan proves authored fragments stay under `src/i18n/<locale>/<domain>/<capability>/` and generated platform resources are not hand-authored feature copy. |
 | Package size | Build or static check proves root package/subpackage size budgets are respected when tooling supports it. |
 
 Acceptance checklist:

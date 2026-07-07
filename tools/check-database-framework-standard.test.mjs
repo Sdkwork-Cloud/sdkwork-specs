@@ -55,9 +55,19 @@ function scaffoldValidDatabaseRoot(rootDir) {
     {
       schemaVersion: 1,
       kind: 'sdkwork.database.seed',
+      i18nVersion: '1.0.0',
       defaultLocale: 'zh-CN',
+      fallbackLocale: 'zh-CN',
       supportedLocales: ['zh-CN', 'en-US', 'ja-JP', 'de-DE', 'fr-FR', 'ru-RU', 'ko-KR'],
       activeLocales: ['zh-CN'],
+      localeSets: {
+        'zh-CN': {
+          version: '1.0.0',
+          required: true,
+          checksum: 'sha256:test',
+          files: [],
+        },
+      },
       profiles: { standard: { common: [], locales: { 'zh-CN': [] } } },
     },
     rootDir,
@@ -103,6 +113,24 @@ scaffoldValidDatabaseRoot(missingLocaleRoot);
 fs.rmSync(path.join(missingLocaleRoot, 'database/seeds/locales/ko-KR'), { recursive: true, force: true });
 const missingLocale = validateDatabaseFramework(missingLocaleRoot);
 assert.equal(missingLocale.ok, false, 'missing locale directory should fail');
+
+const missingI18nRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(missingI18nRoot);
+const seedManifest = JSON.parse(
+  fs.readFileSync(path.join(missingI18nRoot, 'database/seeds/seed.manifest.json'), 'utf8'),
+);
+delete seedManifest.i18nVersion;
+delete seedManifest.localeSets;
+fs.writeFileSync(
+  path.join(missingI18nRoot, 'database/seeds/seed.manifest.json'),
+  `${JSON.stringify(seedManifest, null, 2)}\n`,
+);
+const missingI18n = validateDatabaseModuleLayout(path.join(missingI18nRoot, 'database'));
+assert.equal(missingI18n.ok, false, 'missing seed i18n metadata should fail');
+assert.ok(
+  missingI18n.failures.some((item) => item.includes('i18nVersion') || item.includes('localeSets')),
+  'failure should mention seed i18n metadata',
+);
 
 const templateRoot = path.resolve(toolsDir, '../templates/database');
 const templateResult = validateDatabaseModuleLayout(templateRoot);

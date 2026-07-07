@@ -20,6 +20,7 @@ Rules:
 - Every reusable API resource `SHOULD` declare a performance class.
 - P0/P1 APIs `MUST` avoid unbounded scans, unbounded response bodies, hidden N+1 calls, and in-process pagination (`PAGINATION_SPEC.md` §2).
 - P2/P3 operations `SHOULD` use job resources, progress APIs, events, or callbacks instead of blocking interactive requests.
+- Import, export, report generation, AI execution, media processing, provider synchronization, and other long-running operations that cannot meet the declared synchronous latency budget `MUST` use `API_SPEC.md` section 15.4 async command semantics instead of holding a normal HTTP request open.
 - Web backend services and repositories `MUST` implement the declared performance class from the API contract. A fast OpenAPI contract with an unbounded repository query is not standards-compliant.
 
 ## 2. API Budgets
@@ -41,6 +42,15 @@ Rules:
 - API responses `SHOULD` avoid embedding large related collections; use subresources or explicit expansion.
 - Handler/controller code `MUST NOT` hide extra backend calls that materially change the operation budget, such as per-row provider calls or per-row SDK calls in a list response.
 - Service/use-case code `SHOULD` make expansion and hydration behavior explicit in request parameters, operation documentation, or a separate subresource.
+
+### 2.1 High-Concurrency List Budget
+
+Rules:
+
+- P0/P1 list memory `MUST` be proportional to `page_size`, not total matched rows.
+- Inbox, messages, feeds, notifications, logs, and other fast-growing interactive lists `MUST` default to cursor/keyset pagination.
+- Deep `OFFSET` on fast-growing tables is forbidden unless an approved bounded admin use case caps the page range.
+- List metrics `MUST` expose latency, slow-query count, rows scanned or index-step cost where available, error rate, rate-limit hits, and saturation.
 
 ## 3. Database Budgets
 

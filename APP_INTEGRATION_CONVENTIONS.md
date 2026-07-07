@@ -15,19 +15,20 @@ Rules:
 - Deployment profiles answer only where traffic terminates, not what permissions a route requires.
 - Overrides are explicit, narrow, and optional.
 - Missing integration evidence must fail before user traffic, not at first 401/404.
+- Each dependency must behave as a composable building block: SDK facade, route manifest, OpenAPI authority, permission manifest, and runtime defaults remain owned by the dependency and are consumed by reference.
 
 Forbidden:
 
 - Consumer-side copies of dependency permission code tables.
-- Consumer-side parallel `dependency-api-surfaces.json` as a hand-maintained second source of truth after migration.
-- Silent fallback from platform dependency SDK base URLs to product same-origin URLs.
+- Consumer-side parallel `dependency-api-surfaces.json` as a hand-maintained second source of truth outside an approved migration exception.
+- Silent fallback from platform dependency SDK base URLs to application same-origin URLs.
 - Treating assembly crate linkage as permission configuration.
 
 ## 2. Three-Layer Contract Model
 
 | Layer | Owner | Authority files | Consumer writes |
 | --- | --- | --- | --- |
-| L0 Dependency integration defaults | Dependency repository / SDK family | `.sdkwork-assembly.json`, dependency `component.spec.json#integration`, `iam.module.manifest.json`, route `gateway_mount` exports | Nothing |
+| L0 Dependency integration defaults | Dependency repository / SDK family | SDK family `sdk-manifest.json`, dependency `component.spec.json#integration`, `iam.module.manifest.json`, route `gateway_mount` exports, and optional repo-level `sdks/.sdkwork-assembly.json` generation registry | Nothing |
 | L1 Consumer composition | Consumer application core package | `*-core/specs/component.spec.json#contracts.sdkDependencies`, `composition.overrides` | Dependency list + optional overrides only |
 | L2 Deployment wiring | Consumer repository | `specs/topology.spec.json`, `configs/topology/*.env` | Profile, bind, public URL only |
 
@@ -47,12 +48,12 @@ Everything else must be derived by the composition resolver or owned by the depe
 | --- | --- | --- | --- | --- |
 | `sdkwork-<domain>-app-sdk` | `app-api` | `/app/v3/api` | `authenticated-app-api` | `platform` when domain is `iam`; otherwise inherit consumer archetype |
 | `sdkwork-<domain>-backend-sdk` | `backend-api` | `/backend/v3/api` | `authenticated-backend-admin` | `platform` when domain is `iam`; otherwise inherit consumer archetype |
-| `sdkwork-<domain>-sdk` without `app`/`backend` suffix | `open-api` | from `.sdkwork-assembly.json#discoverySurface.apiPrefix` | from OpenAPI `security` | `application` |
+| `sdkwork-<domain>-sdk` without `app`/`backend` suffix | `open-api` | from SDK family `sdk-manifest.json#discoverySurface.apiPrefix` | from OpenAPI `security` | `application` |
 | `@sdkwork/<domain>-sdk` composed npm alias | same as underlying SDK family workspace | same as underlying family | same as underlying family | same as underlying family |
 
 Resolver rules:
 
-- Prefer `.sdkwork-assembly.json#discoverySurface` over guessed prefixes.
+- Prefer SDK family `sdk-manifest.json#discoverySurface` over guessed prefixes.
 - Never invent `/app/v3/<domain>` prefixes for IM-style open APIs.
 - Product-owned SDK families for the consumer application use the consumer `application.public-ingress` plane unless an explicit override exists.
 
@@ -62,14 +63,14 @@ Resolver rules:
 | --- | --- |
 | Consumer gateway assembly links dependency route crate with public `gateway_mount` and topology `serviceLayout=unified-process` | `same-origin-embedded` |
 | Dependency `integration.defaultRuntimeMode=platform-gateway` | `external-via-platform-gateway` |
-| Legacy `dependency-api-surfaces.json` entry with `runtimeIntegration.mode=external-service` and `mountCoverage.status=not-mounted` | `external-via-platform-gateway` |
+| Migration-only `dependency-api-surfaces.json` entry with `runtimeIntegration.mode=external-service` and `mountCoverage.status=not-mounted` | `external-via-platform-gateway` |
 | No mount export and no platform gateway serving the surface | unresolved; resolver must fail |
 
 Rules:
 
-- `route manifest`, OpenAPI path inventory, and SDK assembly metadata are not executable mounts.
+- `route manifest`, OpenAPI path inventory, and SDK family manifest metadata are not executable mounts.
 - Demo/mock/sample routers never satisfy `same-origin-embedded`.
-- External platform dependencies must not fall back to product same-origin base URLs.
+- External platform dependencies must not fall back to application same-origin base URLs.
 
 ### 3.3 Permission inheritance conventions
 
@@ -101,7 +102,7 @@ Rules:
 
 Forbidden:
 
-- Setting `VITE_SDKWORK_APPBASE_*` from product same-origin fallbacks when IAM is `external-via-platform-gateway`.
+- Setting `VITE_SDKWORK_APPBASE_*` from application same-origin fallbacks when IAM is `external-via-platform-gateway`.
 - Using retired `PORTAL_PUBLIC_SDK_BASE_URL` as the only platform root key in new work.
 
 ## 4. Consumer `composition.overrides`
@@ -171,8 +172,8 @@ Resolver inputs:
 1. consumer core `component.spec.json#contracts.sdkDependencies`
 2. `contracts.composition.overrides`
 3. `specs/topology.spec.json` active profile
-4. dependency `.sdkwork-assembly.json` and dependency `component.spec.json#integration` when resolvable from workspace siblings
-5. transitional legacy `specs/dependency-api-surfaces.json` when present
+4. dependency SDK family `sdk-manifest.json`, dependency `component.spec.json#integration`, and optional repo-level `sdks/.sdkwork-assembly.json` generation registry when resolvable from workspace siblings
+5. migration-only legacy `specs/dependency-api-surfaces.json` when present under an approved exception
 
 Resolver outputs:
 
@@ -202,8 +203,12 @@ When a consumer adds a dependency through gateway assembly or core `sdkDependenc
 1. Add sibling workspace path once at repository root.
 2. Add Cargo workspace dependency or pnpm `workspace:*` package dependency.
 3. Add one `sdkDependencies[]` entry on the relevant core package.
-4. Run `node sdkwork-specs/tools/resolve-composition.mjs --root <repo>`.
-5. Run `node sdkwork-specs/tools/check-composition-resolver.mjs --root <repo>`.
+4. Add or derive `contracts.permissionComposition` so dependency module catalogs are inherited by reference.
+5. Mount dependency route crates only through gateway assembly or an approved external platform gateway.
+6. Run `node sdkwork-specs/tools/resolve-composition.mjs --root <repo>`.
+7. Run `node sdkwork-specs/tools/check-composition-resolver.mjs --root <repo>`.
+8. Run `node sdkwork-specs/tools/check-permission-composition.mjs --root <repo>`.
+9. Run `node sdkwork-specs/tools/check-route-path-collisions.mjs --root <repo>`.
 
 Consumers must not:
 
@@ -211,15 +216,16 @@ Consumers must not:
 - add dependency-owned routes to application OpenAPI authorities;
 - create a new consumer-side dependency surface manifest;
 - hand-author per-SDK `VITE_*` defaults in dev scripts.
+- reuse common URL paths that are already registered by another module on the same surface/listener.
 
 ## 8. Migration
 
 Transitional rules:
 
-- Existing consumer `specs/dependency-api-surfaces.json` files are legacy input to the resolver during Phase 1–2.
-- New consumers must not add hand-maintained `dependency-api-surfaces.json`.
-- Legacy files must be removed after resolver-generated output covers the same facts.
-- `PORTAL_PUBLIC_SDK_BASE_URL` remains readable for one minor migration window but must not be required for new integrations.
+- Existing consumer `specs/dependency-api-surfaces.json` files are resolver input only while an approved migration exception names owner, expiry, and removal plan.
+- New and pre-launch consumers must not add hand-maintained `dependency-api-surfaces.json`; they must use `sdkDependencies`, `composition.overrides`, topology specs, and resolver output.
+- Legacy files must be removed before release once resolver-generated output covers the same facts. Pre-launch release gates must treat remaining legacy files as blocking debt.
+- `PORTAL_PUBLIC_SDK_BASE_URL` remains readable only inside a documented migration window and must not be required for new integrations.
 
 Authority: `MIGRATION_SPEC.md` section on product/application composition migration.
 
@@ -230,6 +236,8 @@ Required commands:
 ```bash
 node sdkwork-specs/tools/resolve-composition.mjs --root <repo>
 node sdkwork-specs/tools/check-composition-resolver.mjs --root <repo>
+node sdkwork-specs/tools/check-permission-composition.mjs --root <repo>
+node sdkwork-specs/tools/check-route-path-collisions.mjs --root <repo>
 node sdkwork-specs/tools/verify-repo.mjs --root <repo>
 node --test sdkwork-specs/tools/check-composition-resolver.test.mjs
 ```
@@ -238,6 +246,7 @@ Acceptance:
 
 - [ ] Consumer adds a dependency with one `sdkDependencies` entry and no permission redeclaration.
 - [ ] Resolver derives prefixes, planes, runtime modes, and permission manifest refs.
-- [ ] Dev/bootstrap does not silently map platform dependencies to product same-origin URLs.
+- [ ] Dev/bootstrap does not silently map platform dependencies to application same-origin URLs.
 - [ ] Overrides are explicit and limited to `composition.overrides`.
+- [ ] Permission composition and route path collision checks pass for the repository.
 - [ ] Legacy consumer dependency surface files trend to zero.

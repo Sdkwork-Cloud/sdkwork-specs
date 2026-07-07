@@ -42,7 +42,7 @@ Rules:
 - `standalone` deployments `MUST` expose one public application ingress for
   SDKWork HTTP `*-api` surfaces unless the app is a pure client package.
 - All application-owned `open-api`, `app-api`, `backend-api`, route crates,
-  controller modules, gateways, and API servers in a standalone deployment
+  controller modules, gateways, and migration-only API servers in a standalone deployment
   `MUST` integrate `sdkwork-web-framework` or the language-equivalent profile
   defined by `WEB_FRAMEWORK_SPEC.md`.
 - Every route/operation served in standalone `MUST` receive

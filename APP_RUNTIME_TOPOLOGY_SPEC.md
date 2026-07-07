@@ -56,7 +56,7 @@ Rules:
 
 | Plane | Owner | Protocols | Terminated by |
 | --- | --- | --- | --- |
-| `application` | Application repository | `http`, `ws`, future `sse` | Application public ingress (`sdkwork-<application-code>-api-server` or equivalent) |
+| `application` | Application repository | `http`, `ws`, future `sse` | Application public ingress (`sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway`) |
 | `platform` | Shared SDKWork platform | `http` | `sdkwork-api-cloud-gateway` or an approved embedded standalone adapter |
 | `operations` | Application operator APIs | `http` | Operations control ingress |
 | `edge` | Device or edge gateway | `ws`, `mqtt`, `udp`, device `http` | Edge device ingress |

@@ -13,9 +13,9 @@ import { parseArgs } from 'node:util';
 import {
   classifyOpenApiEnvelope,
   classifyOpenApiWireProtocolMarkers,
-  dedupeAuthorities,
   isExternalProtocolOpenApi,
   LEGACY_ENVELOPE_PATTERN,
+  openApiAuthorityEntries,
   walkOpenApiFiles,
 } from './lib/http-response-envelope-patterns.mjs';
 import { migrateOpenApiDocument } from './lib/migrate-openapi-legacy-envelope.mjs';
@@ -25,7 +25,7 @@ function usage() {
     'Usage:',
     '  node tools/align-openapi-response-envelope-workspace.mjs --workspace <sdkwork-space-root> [--dry-run]',
     '',
-    'Bootstraps deduplicated app-api, backend-api, and SDKWork-owned business open-api OpenAPI authorities onto SdkWorkApiResponse envelopes.',
+    'Bootstraps app-api, backend-api, and SDKWork-owned business open-api OpenAPI authorities onto SdkWorkApiResponse envelopes.',
   ].join('\n');
 }
 
@@ -77,7 +77,7 @@ function scanWorkspace(workspaceRoot) {
       continue;
     }
     const repoRoot = path.join(workspaceRoot, entry.name);
-    const authorities = dedupeAuthorities(walkOpenApiFiles(repoRoot));
+    const authorities = openApiAuthorityEntries(walkOpenApiFiles(repoRoot));
     for (const { file, repo, surface } of authorities) {
       const text = fs.readFileSync(file, 'utf8');
       if (surface === 'open-api' && isExternalProtocolOpenApi(text)) {

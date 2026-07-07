@@ -83,10 +83,12 @@ apps/sdkwork-<application-code>-harmony-mobile/packages/sdkwork-<application-cod
         repositories/
         state/
         i18n/
+          <locale>/<domain>/<capability>/
         routes/
         navigation/
         host/
         models/
+      resources/            # generated or thin platform resource projection
     ohosTest/
   tests/
   specs/
@@ -112,7 +114,7 @@ Rules:
 - `presentation/` owns view models/controllers and UI state mapping.
 - `services/` owns use-case orchestration.
 - `repositories/` owns thin generated app SDK calls where repository naming is used.
-- `i18n/` and Harmony resource files own package-local locale fragments. Platform resource aggregates must be generated or assembled from fragments and must not be hand-authored whole-app catalogs; follow `I18N_SPEC.md`.
+- `src/main/ets/i18n/<locale>/<domain>/<capability>/` owns package-local Harmony locale source fragments. `src/main/resources/**/element/string.json` and resource indexes are generated or thin platform projections only. Platform resource aggregates must be generated or assembled from fragments and must not be hand-authored whole-app catalogs; follow `I18N_SPEC.md` section 6.1.
 - `models/` owns view models only. API DTOs come from generated ArkTS/TypeScript app SDKs.
 - `host/` owns adapter interfaces for platform capabilities.
 
@@ -160,6 +162,7 @@ Required coverage for new Harmony capabilities:
 | SDK boundary | Static scan proves generated SDK clients or approved wrappers are used and no raw request APIs, manual auth headers, or generated SDK edits were introduced. |
 | Service/view model | Unit tests use fake generated app SDK clients and fake host adapters. |
 | UI states | ArkUI tests or documented fixtures cover loading, empty, validation-error, permission-denied, unavailable, and unknown-error states. |
+| I18n layout | Static scan proves authored fragments stay under `src/main/ets/i18n/<locale>/<domain>/<capability>/` and `resources/**/element/string.json` is generated or thin platform projection only. |
 | IAM clearing | Tests prove secure storage, token manager, context store, caches, and sensitive state clear on logout, refresh failure, tenant switch, and account switch. |
 | Host boundary | Static scan proves feature UI does not call HarmonyOS platform APIs directly for host capabilities. |
 

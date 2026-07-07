@@ -30,6 +30,12 @@ ProblemDetail:
       type: string
       format: uuid
       description: Server-owned request correlation id. Same semantics as SdkWorkApiResponse.traceId.
+    i18nKey:
+      type: string
+      description: Optional stable localization key such as `errors.result.40001`. Presentation metadata only; does not replace numeric code.
+    locale:
+      type: string
+      description: Optional effective BCP 47 locale used by framework message mapping.
     errors:
       type: array
       items:

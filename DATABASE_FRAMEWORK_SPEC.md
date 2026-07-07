@@ -38,7 +38,7 @@ Rules:
 
 - Every SDKWork application or backend service repository that owns a relational database `MUST` follow this standard for lifecycle assets and bootstrap behavior.
 - Table and column semantics `MUST` still follow `DATABASE_SPEC.md`. Lifecycle assets `MUST NOT` redefine naming or logical-type rules.
-- All connection pools `MUST` still be created through `sdkwork-database` as defined in `DATABASE_SPEC.md` section 33.
+- All connection pools `MUST` still be created through `sdkwork-database` as defined in `DATABASE_SPEC.md` section 32.
 - Unified-process application ingress `MUST` install one IM sqlx lifecycle pool and one shared r2d2 PostgreSQL pool per process via `bootstrap_im_process_database_pools_from_env()` (or `bootstrap_im_service_database_from_env()`); embedded modules `MUST NOT` open independent pools against the same DSN. Applies to standalone, cloud, unified-process, and split-service IM processes. See `DATABASE_SPEC.md` section 33.4 and `DATABASE_SPEC_PROCESS_SHARED_POOL.md`.
 - Application-specific lifecycle behavior `MUST` extend the framework through SPI traits defined in `sdkwork-database-spi`. Applications `MUST NOT` fork lifecycle orchestration into ad-hoc installers unless an approved exception exists.
 - The canonical database framework repository is `sdkwork-database`. Business repositories `MAY` ship `database/` assets and SPI implementations; they `MUST NOT` ship competing lifecycle engines.
@@ -120,7 +120,7 @@ Rules:
 
 Default service bootstrap order:
 
-1. Resolve database config from env/TOML per `DATABASE_SPEC.md` section 33.
+1. Resolve database config from env/TOML per `DATABASE_SPEC.md` section 33.2.
 2. Create connection pool through `sdkwork-database-sqlx`.
 3. Discover registered `DatabaseModule` SPI providers for the service.
 4. Resolve lifecycle policy from `database/database.manifest.json` and runtime env.
@@ -247,7 +247,7 @@ Required manifest for lifecycle discovery:
 Rules:
 
 - `moduleId` `MUST` be stable, lowercase, kebab-case or snake_case, and unique within the application root.
-- `serviceCode` `MUST` map to `SDKWORK_{SERVICE}_DATABASE_*` env prefix per `DATABASE_SPEC.md` section 33.
+- `serviceCode` `MUST` map to `SDKWORK_{SERVICE}_DATABASE_*` env prefix per `DATABASE_SPEC.md` section 33.2.
 - `contractVersion` `MUST` follow semantic versioning aligned with `DATABASE_SPEC.md` section 22.
 - `activeSeedLocales` controls which locale directories are eligible for execution. Directories for inactive locales `MUST` still exist once declared in `supportedSeedLocales`.
 - `baselineStrategy` `MUST` be one of: `migrations-only`, `baseline-plus-migrations`, `baseline-only-dev`.
@@ -286,9 +286,19 @@ Rules:
 {
   "schemaVersion": 1,
   "kind": "sdkwork.database.seed",
+  "i18nVersion": "1.0.0",
   "defaultLocale": "zh-CN",
+  "fallbackLocale": "zh-CN",
   "supportedLocales": ["zh-CN", "en-US", "ja-JP", "de-DE", "fr-FR", "ru-RU", "ko-KR"],
   "activeLocales": ["zh-CN"],
+  "localeSets": {
+    "zh-CN": {
+      "version": "1.0.0",
+      "required": true,
+      "checksum": "sha256:<checksum>",
+      "files": ["locales/zh-CN/001_roles.sql", "locales/zh-CN/002_menus.sql"]
+    }
+  },
   "profiles": {
     "minimal": {
       "common": ["001_system_parameters.sql"],
@@ -312,6 +322,10 @@ Rules:
 - Locale-specific content `MUST` live under `seeds/locales/{locale}/`.
 - Language-neutral reference data `MUST` live under `seeds/common/`.
 - A seed file `MUST NOT` mix multiple locales.
+- Seed manifests that contain locale-specific data `MUST` declare `i18nVersion`, `defaultLocale`, `fallbackLocale`, `supportedLocales`, `activeLocales`, and `localeSets`.
+- `activeLocales` `MUST` be a subset of `supportedLocales`; `defaultLocale` and `fallbackLocale` `MUST` be members of `supportedLocales`.
+- `localeSets.{locale}.version` and `checksum` `MUST` change when the locale seed content changes.
+- Locale set files `MUST` reference files under `seeds/locales/{locale}/` for the same locale only.
 
 ## 7. Migration Standard
 
@@ -355,8 +369,8 @@ The framework `MUST` maintain:
 | Table | Purpose |
 | --- | --- |
 | `ops_schema_migration_history` | Applied migration version, checksum, engine, module, applied_at, applied_by, execution_ms |
-| `ops_seed_history` | Applied seed id, locale, profile, checksum, applied_at, applied_by |
-| `ops_database_installation_state` | Overall module install state, schema version, seed locale/profile, environment, status |
+| `ops_seed_history` | Applied seed id, locale, profile, i18n version, checksum, applied_at, applied_by |
+| `ops_database_installation_state` | Overall module install state, schema version, seed locale/profile, i18n version, environment, status |
 
 Rules:
 
@@ -390,7 +404,9 @@ Rules:
 
 - Default deployment `MUST` initialize `common` plus `zh-CN` only unless runtime config explicitly selects another active locale.
 - Reserved locales `MUST` keep directory placeholders and manifest entries so future activation does not require structural migration.
-- UI i18n rules in `I18N_SPEC.md` are separate from database seed locale rules. Seed locale governs persisted initialization data, not frontend message catalogs.
+- Runtime/frontend i18n rules in `I18N_SPEC.md` are separate from database seed locale rules. Seed locale governs persisted initialization data, not frontend message catalogs, SDK locale providers, or request locale negotiation.
+- Production deployments `MUST` fail seed planning when the selected seed locale is not declared in `activeLocales`.
+- Additional locales `SHOULD` be activated by updating the seed manifest and running `db:seed` for that locale/profile; activation should not require schema migration when translation tables already exist.
 
 ### 8.2 Seed Categories
 
@@ -407,6 +423,7 @@ Every seed script `MUST` be safe to re-run:
 - Prefer upsert semantics.
 - Use deterministic primary keys for bootstrap rows where possible.
 - Record execution in `ops_seed_history`.
+- Record locale, profile, `i18nVersion`, locale set version, and checksum for locale-specific seed execution.
 - Partial failure `MUST` roll back the seed transaction when transactional engine support exists.
 
 ### 8.4 Runtime Configuration
@@ -416,6 +433,7 @@ Environment variables `MUST` follow:
 ```bash
 SDKWORK_{SERVICE}_DATABASE_SEED_LOCALE=zh-CN
 SDKWORK_{SERVICE}_DATABASE_SEED_PROFILE=standard
+SDKWORK_{SERVICE}_DATABASE_SEED_I18N_VERSION=1.0.0
 SDKWORK_{SERVICE}_DATABASE_SEED_ON_BOOT=false
 SDKWORK_{SERVICE}_DATABASE_AUTO_MIGRATE=false
 SDKWORK_{SERVICE}_DATABASE_DRIFT_INTERVAL_SEC=60
@@ -425,6 +443,7 @@ SDKWORK_{SERVICE}_DATABASE_MODULE_ID=forum
 Rules:
 
 - Config resolution `MUST` be documented in `ENVIRONMENT_SPEC.md` and surfaced through typed runtime config in `CONFIG_SPEC.md`.
+- `DATABASE_SEED_LOCALE` and `DATABASE_SEED_I18N_VERSION` configure database initialization only. They `MUST NOT` be treated as frontend runtime locale or API request locale.
 - Secrets, credentials, and tenant-private seed values `MUST NOT` be committed in seed SQL.
 
 ## 9. Drift Observation Standard
@@ -821,7 +840,8 @@ Application database lifecycle is compliant when:
 - [ ] `database.manifest.json` and `seeds/seed.manifest.json` exist and validate
 - [ ] `contract/schema.yaml` and registries exist for L2+
 - [ ] Migrations are engine-separated, ordered, checksum-tracked, and history-backed
-- [ ] Seeds split `common` vs locale directories; default locale is `zh-CN`
+- [ ] Seeds split `common` vs locale directories; default seed locale is `zh-CN`
+- [ ] Locale seed manifests declare `i18nVersion`, fallback/default/supported/active locales, locale set versions, and checksums.
 - [ ] Connection pool uses `sdkwork-database`
 - [ ] Lifecycle bootstrap uses `sdkwork-database` orchestrator and SPI registry
 - [ ] Drift ops endpoints or CLI are available for L3

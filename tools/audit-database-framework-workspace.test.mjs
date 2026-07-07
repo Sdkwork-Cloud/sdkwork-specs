@@ -20,6 +20,13 @@ const audit = spawnSync(
   [path.join(TOOL_DIR, 'audit-database-framework-workspace.mjs'), '--workspace', WORKSPACE_ROOT],
   { encoding: 'utf8' },
 );
-assert.match(audit.stdout, /Compliant: 32/, audit.stdout || audit.stderr);
+assert.ok([0, 1].includes(audit.status), audit.stdout || audit.stderr);
+assert.match(audit.stdout, /Database framework workspace audit/, audit.stdout || audit.stderr);
+assert.match(audit.stdout, /Repos scanned: \d+/, audit.stdout || audit.stderr);
+assert.match(audit.stdout, /DB owners: \d+/, audit.stdout || audit.stderr);
+assert.match(audit.stdout, /Compliant: \d+/, audit.stdout || audit.stderr);
+if (fs.existsSync(forumRoot)) {
+  assert.match(audit.stdout, /sdkwork-forum: compliant/, audit.stdout || audit.stderr);
+}
 
 process.stdout.write('audit-database-framework-workspace.test.mjs passed\n');

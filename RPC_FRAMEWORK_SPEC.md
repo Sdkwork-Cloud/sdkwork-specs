@@ -19,7 +19,7 @@ sdkwork-rpc-framework/specs/RPC_FRAMEWORK_STANDARD.md (L1 executable profile)
        -> enforced by
 sdkwork-rpc-framework crates (L2 runtime)
        -> extended by
-business repositories: sdkwork-<domain>-rpc + service-host/api-server (L3)
+business repositories: sdkwork-<domain>-rpc + service-host/gateway runtime (L3)
 ```
 
 Rules:
@@ -38,7 +38,8 @@ The following artifacts `MUST` integrate `sdkwork-rpc-framework` or a language-e
 | --- | --- |
 | `sdkwork-<domain>-rpc-rust` or equivalent domain RPC server crate | Framework server pipeline, interceptor assembly, health/reflection registration |
 | `sdkwork-<application-code>-service-host` when serving RPC | Framework bootstrap, discovery registration lifecycle, drain/shutdown |
-| `sdkwork-<application-code>-api-server` when serving RPC alongside HTTP | Shared runtime wiring; separate listeners allowed |
+| `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` when serving RPC alongside HTTP | Shared runtime wiring; separate listeners allowed only when topology declares them |
+| Migration-only `sdkwork-<application-code>-api-server` when serving RPC alongside HTTP | Shared runtime wiring during listener retirement only; must migrate to service-host or gateway runtime before release |
 | Internal/backend RPC client factories in service hosts | Framework client pipeline, resolver, metadata providers, resilience profile |
 | Contract-only `apis/rpc/` sources | RPC manifests still declare `rpc_surface`, `discovery_service_name`, and `resilience_profile` when dynamic resolution is used |
 

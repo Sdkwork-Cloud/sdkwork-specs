@@ -60,7 +60,7 @@ Rules:
 - Services own SDK calls and business orchestration.
 - Route/menu metadata stays in the owning package family.
 - User-facing text uses i18n/message catalogs when the package is reusable or user-facing.
-- `i18n/` owns package-local locale fragments and thin exports only. Do not author a whole app, whole client root, or whole package locale in one large file; follow `I18N_SPEC.md` catalog fragmentation rules.
+- `i18n/` owns package-local locale fragments and thin exports only. Do not author a whole app, whole client root, or whole package locale in one large file; follow `I18N_SPEC.md` section 6.1 for the selected language/framework directory layout and catalog fragmentation rules.
 
 ## 4. UX And Accessibility
 

@@ -34,7 +34,7 @@ Rules:
 - JSON, YAML, TOML, package manifests, workspace manifests, and SDKWork config files `MUST` use POSIX-style `/` separators for source/build paths unless a native tool format requires otherwise.
 - Runtime install paths may be OS-specific when they are the actual target system contract, for example `/etc/sdkwork/...`, `/var/lib/sdkwork/...`, `%ProgramFiles%/...`, or `%USERPROFILE%/...`; they must not be reused as source dependency paths.
 - Documentation `MUST` use placeholders such as `<workspace-root>`, `<repository-root>`, `<application-root>`, `<release-root>`, and `<dependency-id>` when describing variable local or release paths.
-- Client application roots must express runtime composition semantics through existing manifests (`component.spec.json`, `sdkwork.app.config.json`) and must not introduce a parallel dependency manifest.
+- Client application roots must express runtime composition semantics through existing manifests (`component.spec.json`, `sdkwork.app.config.json`) and must not introduce a parallel dependency manifest. Cross-stack composition follows `COMPOSABLE_ARCHITECTURE_SPEC.md`.
 
 ## 1.1 Native Composition Bridge
 
@@ -44,7 +44,7 @@ Rules:
 
 - `pnpm-workspace.yaml`/Cargo workspace entries are the only machine authority for source dependency paths.
 - Core packages must expose the library dependency import entry defined by `APP_COMPOSITION_SPEC.md`. Feature packages must not import L0 SDK packages directly when a core composition entry exists.
-- Verify with centralized composition checks in `verify-repo.mjs` (workspace, imports, package exports, sdk-dependencies, permission-composition, sdk-closure).
+- Verify with centralized composition checks in `verify-repo.mjs` (workspace, imports, package exports, sdk-dependencies, component-port-bindings, frontend-composition, rust-backend-composition, permission-composition, route registry, sdk-closure).
 
 ## 1.2 Per-Repository Workspace Authority
 
@@ -444,6 +444,16 @@ Rules:
 - Tests `MUST` fail when member `package.json` files declare `file:` or `link:` paths to SDKWork sibling repositories; enforce with `node sdkwork-specs/tools/check-workspace-member-protocol.mjs --root <repo>` (also invoked by `verify-repo.mjs`).
 - Tests `MUST` fail when repository-root `pnpm-workspace.yaml` sibling `packages:` drift from `sdkwork-specs/workspace/consumers/<repo>.json`; enforce with `node sdkwork-specs/tools/sync-workspace.mjs --repo <repo> --root <repo> --check`.
 - Tests `MUST` fail on direct `path = "../sdkwork-..."` declarations in member Cargo crate `Cargo.toml` files; SDKWork cross-workspace sources `MUST` use `{ workspace = true }`.
+- Tests `MUST` fail when Rust service crates depend on concrete SQLx repository crates, route crates
+  depend on generated SDKs for the same API surface, or SQLx repository crates depend on HTTP
+  framework crates; enforce with `node sdkwork-specs/tools/check-rust-backend-composition.mjs --root <repo>`.
+- Tests `MUST` fail when frontend feature packages import generated SDK packages directly,
+  core/commons packages depend on capability packages, host packages depend on business API SDKs,
+  or required core package exports are missing; enforce with
+  `node sdkwork-specs/tools/check-frontend-composition.mjs --root <repo>`.
+- Tests `MUST` fail when component port declarations are partial or same-origin dependency API
+  surfaces claim route metadata as executable coverage; enforce with
+  `node sdkwork-specs/tools/check-component-port-bindings.mjs --root <repo>`.
 - Tests `MUST` verify package manager lockfiles or equivalent reproducibility files are present and updated when required by the repository's build tool.
 - SDK generation tests `MUST` verify dependency-owned API operations are filtered from application-owned SDK generator inputs.
 - Dependency integration tests `MUST` verify `dependencyApiExports` defaults to no export, configured

@@ -2,7 +2,7 @@
 
 - Version: 1.2
 - Scope: client application composition using native build-tool authority, core-package import entrypoints, and component-spec runtime metadata
-- Related: `APPLICATION_SPEC.md`, `APP_INTEGRATION_CONVENTIONS.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `TEST_SPEC.md`
+- Related: `COMPOSABLE_ARCHITECTURE_SPEC.md`, `APPLICATION_SPEC.md`, `APP_INTEGRATION_CONVENTIONS.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines application composition without a parallel dependency manifest. Native build-tool files own dependency graphs; component and app manifests own runtime semantics.
 
@@ -15,16 +15,22 @@ This standard defines application composition without a parallel dependency mani
 | Permission inheritance/overrides | App-surface `specs/component.spec.json#contracts.permissionComposition` |
 | Backend/release SDK inventory | `sdkwork.app.config.json#sdkDependencies` |
 | Dependency API export/runtime policy | `component.spec.json#contracts.dependencyApiExports`; runtime mount/base-url facts derived by composition resolver |
-| Integration defaults | Dependency `component.spec.json#integration` and `.sdkwork-assembly.json` |
+| Integration defaults | Dependency `sdk-manifest.json`, dependency `component.spec.json#integration`, and optional repo-level `sdks/.sdkwork-assembly.json` generation registry |
+| Cross-stack resolved graph | generated `generated/composition.resolved.json#architecture` from `resolve-composition.mjs` |
 
 Rules:
 
 - Consumer repositories should converge on three authoritative files: `sdkwork.app.config.json`, `specs/topology.spec.json`, and `*-core/specs/component.spec.json`.
 - Integration prefixes, planes, runtime modes, permission manifest refs, and bootstrap env defaults are derived by `APP_INTEGRATION_CONVENTIONS.md` and `resolve-composition.mjs`.
-- Consumer-side hand-maintained `specs/dependency-api-surfaces.json` is transitional input only; new consumers must not add one.
+- Consumer-side hand-maintained `specs/dependency-api-surfaces.json` is migration-only input under an approved exception; new or pre-launch consumers must not add one.
 - Do not introduce `specs/dependency.composition.json` or equivalent parallel manifest.
 - A client repository must declare sibling source paths once at the repository workspace root.
 - Feature packages must import SDK access only through core package public exports.
+- Dependency modules are composable building blocks. Consumers declare dependency intent once, then inherit SDK facade, route registry entries, permission catalogs, and runtime defaults by reference.
+- Consumers must not copy dependency-owned routes, permission catalogs, or SDK transport packages into local feature packages.
+- `generated/composition.resolved.json` is generated evidence only. It summarizes components,
+  frontend packages, Rust crates, route manifests, permission inheritance, dependency API surfaces,
+  and runtime integration facts; it must not be hand-edited or used as a parallel source manifest.
 
 ## 2. Composition Layers
 
@@ -36,7 +42,7 @@ Feature packages (L2)
 
 Allowed direction:
 
-- feature/service -> `@sdkwork/<app>-<arch>-core/*`
+- feature/service -> `@sdkwork/<application-code>-<arch>-core/*`
 - bootstrap -> core runtime factory
 - core sdk registry -> generated SDK clients / approved facades
 
@@ -67,7 +73,7 @@ Rules:
 
 Rules:
 
-- App-surface root `specs/component.spec.json` must include `contracts.permissionComposition` when modular permissions apply.
+- App-surface root or core-package `specs/component.spec.json` must include `contracts.permissionComposition` when HTTP `sdkDependencies` or modular permissions apply.
 - Core package `component.spec.json` must include `contracts.sdkDependencies` with explicit `surface` and `credentialMode`.
 - Bootstrap runtime must derive SDK wiring from core composition and component manifests; no second handwritten inventory.
 
@@ -97,14 +103,23 @@ Required checks:
 - `verify-import-closure`: workspace member imports match declared package dependencies
 - `verify-package-exports`: required core export subpaths
 - `verify-sdk-dependencies`: surface segregation and package resolvability
+- `verify-component-port-bindings`: component layer roles, ports, and executable runtime entrypoints
+- `verify-frontend-composition`: core/feature/host dependency direction and SDK import boundaries
+- `verify-rust-backend-composition`: Rust service/route/repository Cargo dependency boundaries
 - `verify-permission-composition`: app-surface permission composition integrity
+- `verify-route-path-collisions`: normalized `(surface, method, path)` uniqueness across OpenAPI authorities and route manifests
 
 Workspace commands:
 
 ```bash
 node sdkwork-specs/tools/verify-repo.mjs --root <repo>
+node sdkwork-specs/tools/check-component-port-bindings.mjs --root <repo>
+node sdkwork-specs/tools/check-frontend-composition.mjs --root <repo>
+node sdkwork-specs/tools/check-rust-backend-composition.mjs --root <repo>
 node sdkwork-specs/tools/resolve-composition.mjs --root <repo> --write
 node sdkwork-specs/tools/check-composition-resolver.mjs --root <repo>
+node sdkwork-specs/tools/check-permission-composition.mjs --root <repo>
+node sdkwork-specs/tools/check-route-path-collisions.mjs --root <repo>
 node sdkwork-specs/tools/verify-repo.mjs --root <repo> --strict-import-closure
 node sdkwork-specs/tools/sweep-verify-repo.mjs
 node sdkwork-specs/tools/audit-app-composition.mjs
@@ -117,5 +132,6 @@ Acceptance:
 - [ ] No `dependency.composition.json` in target repository
 - [ ] Core imports are the only dependency entry for feature packages
 - [ ] Runtime and permission metadata are resolved from existing manifest authorities
+- [ ] Route registry uniqueness is verified before dependency routes are mounted
 - [ ] Cross-repository imports use workspace package names and public exports only
 - [ ] Consumed sibling packages self-declare direct third-party dependencies

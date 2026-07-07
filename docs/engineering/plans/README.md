@@ -6,6 +6,6 @@ Store `PLAN-*` records here.
 
 | Plan | Status | Description |
 | --- | --- | --- |
-| [PLAN-20260629-composition-architecture-execution.md](PLAN-20260629-composition-architecture-execution.md) | Completed | Native composition architecture rollout; remove `dependency.composition.json` |
+| [PLAN-2026-0629-composition-architecture-execution.md](PLAN-2026-0629-composition-architecture-execution.md) | Completed | Native composition architecture rollout; remove `dependency.composition.json` |
 
 Evidence files: [evidence/](evidence/)

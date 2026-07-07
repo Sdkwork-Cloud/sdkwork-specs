@@ -113,7 +113,7 @@ Rules:
 - `host/` owns injected host adapter contracts only, not native implementation details unless the package is a host package.
 - `services/` owns app SDK orchestration through injected clients or shared service interfaces.
 - `state/` owns mobile view/cache state and must clear sensitive state on logout and account/tenant switch.
-- `i18n/` owns package-local mobile locale fragments and thin aggregation exports. It must not contain an authored whole-app or whole-package locale monolith; follow `I18N_SPEC.md`.
+- `i18n/` owns package-local mobile locale fragments and thin aggregation exports. H5/mobile React TypeScript packages `MUST` use the `src/i18n/<locale>/<domain>/<capability>/<fragment>.ts|json` layout from `I18N_SPEC.md` section 6.1. It must not contain an authored whole-app or whole-package locale monolith.
 
 ## 4. SDK And Host Integration
 
@@ -128,7 +128,7 @@ Rules:
 - UI components `MUST NOT` construct SDK clients, call raw HTTP, manually attach auth/API key headers, or call native bridge globals directly.
 - Push notification, QR scan, camera, location, biometric, secure storage, and deep-link handling must be represented as typed adapters with test doubles.
 - Secure storage adapters may persist appbase token/context data for the central runtime, but they `MUST NOT` own login, refresh, permission checks, or business authorization.
-- Missing app SDK methods must be fixed in `legacy-java-plus-app-api` and generator inputs before the mobile package consumes them.
+- Missing app SDK methods must be fixed in the owning app-api OpenAPI authority and generator inputs before the mobile package consumes them. Legacy Java Plus app-api authorities may be used only under registered L0 migration exceptions.
 
 ## 5. Mobile Interaction And Design
 
@@ -159,6 +159,7 @@ Required coverage for new mobile React capabilities:
 - host adapter contract test for native-dependent behavior;
 - screen/hook test for loading, empty, validation, permission-denied, and failure states;
 - navigation/deep-link mapping test when adding routes;
+- i18n directory/static scan and fallback test when user-facing copy is added;
 - typecheck for changed packages.
 
 Acceptance checklist:

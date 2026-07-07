@@ -4,11 +4,11 @@
 - Baseline: OpenAPI 3.1.2 stable contract profile, JSON Schema 2020-12, RFC 9457 Problem Details
 - Forward-looking baseline: Track OpenAPI 3.2.0, but do not use 3.2-only features until the SDK generator, validators, Java tooling, Rust tooling, and generated TypeScript clients prove parity.
 - Scope: Java Spring app-api, Java Spring backend-api, Rust HTTP APIs, generated HTTP SDKs, frontend services, API tests, web backend implementation alignment, and contract governance
-- Canonical location: `specs/API_SPEC.md`
+- Canonical location: `API_SPEC.md` in the `sdkwork-specs` standards root
 
 This document defines the API contract standard for SDKWork applications. It is intentionally independent of Java, Rust, TypeScript, Tauri, React, mobile, standalone, cloud, or deployment ownership choices. API contracts must be stable enough to generate SDKs, switch between standalone and cloud deployment profiles, and compose shared application modules without duplicating business logic.
 
-For repository/application root directory placement, use `specs/SDKWORK_WORKSPACE_SPEC.md`: `apis/` is the standard project-root directory for authored API contracts and API materialization inputs across API kinds. For data persistence and database naming rules, use `specs/DATABASE_SPEC.md`. For cross-layer pagination contract, implementation prohibition (no in-process pagination), and verification gates, use `specs/PAGINATION_SPEC.md`. For canonical domain names, use `specs/DOMAIN_SPEC.md`. For file storage, upload sessions, download grants, object-storage providers, Drive spaces/nodes, and SDKWork-owned file lifecycle, use `specs/DRIVE_SPEC.md`. For media representation, generated asset DTOs, and bare URL cleanup, use `specs/MEDIA_RESOURCE_SPEC.md`. For mandatory `sdkwork-web-framework` integration on every SDKWork HTTP `*-api` surface, including open-api, app-api, backend-api, route manifests, API servers, gateways, and Java/Spring parity, use `specs/WEB_FRAMEWORK_SPEC.md`; the framework repository L1 detail standard is `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`. For web backend implementation layering, Java controller/Rust route crate boundaries, handler/service/repository naming, request context consumption, and route materialization responsibilities, use `specs/WEB_BACKEND_SPEC.md`. For SDK naming semantics, generated client behavior, auth integration, and frontend service boundaries, use `specs/SDK_SPEC.md`, `specs/MODULE_SPEC.md`, and `specs/FRONTEND_SPEC.md`; for application-root `sdks/` workspace generation, OpenAPI authority/derived input placement, and generated artifact placement, use `specs/SDK_WORKSPACE_GENERATION_SPEC.md` as the subordinate detail standard under `SDK_SPEC.md`. For IAM login/session integration, appbase auth UI/runtime, logout clearing, and Rust AppContext validation, use `specs/IAM_LOGIN_INTEGRATION_SPEC.md`. For gRPC/protobuf contracts, use `specs/RPC_SPEC.md` and `specs/RUST_RPC_SPEC.md`. HTTP API contracts and RPC contracts must preserve shared operation semantics, but neither document replaces the other.
+For repository/application root directory placement, use `SDKWORK_WORKSPACE_SPEC.md`: `apis/` is the standard project-root directory for authored API contracts and API materialization inputs across API kinds. For data persistence and database naming rules, use `DATABASE_SPEC.md`. For cross-layer pagination contract, implementation prohibition (no in-process pagination), and verification gates, use `PAGINATION_SPEC.md`. For canonical domain names, use `DOMAIN_SPEC.md`. For file storage, upload sessions, download grants, object-storage providers, Drive spaces/nodes, and SDKWork-owned file lifecycle, use `DRIVE_SPEC.md`. For media representation, generated asset DTOs, and bare URL cleanup, use `MEDIA_RESOURCE_SPEC.md`. For cross-stack locale, localized problem metadata, and message-key rules, use `I18N_SPEC.md`. For mandatory `sdkwork-web-framework` integration on every SDKWork HTTP `*-api` surface, including open-api, app-api, backend-api, route manifests, standalone/cloud gateways, migration-only API servers, and Java/Spring parity, use `WEB_FRAMEWORK_SPEC.md`; the framework repository L1 detail standard is `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`. For web backend implementation layering, Java controller/Rust route crate boundaries, handler/service/repository naming, request context consumption, and route materialization responsibilities, use `WEB_BACKEND_SPEC.md`. For SDK naming semantics, generated client behavior, auth integration, and frontend service boundaries, use `SDK_SPEC.md`, `MODULE_SPEC.md`, and `FRONTEND_SPEC.md`; for application-root `sdks/` workspace generation, OpenAPI authority/derived input placement, and generated artifact placement, use `SDK_WORKSPACE_GENERATION_SPEC.md` as the subordinate detail standard under `SDK_SPEC.md`. For IAM login/session integration, appbase auth UI/runtime, logout clearing, and Rust AppContext validation, use `IAM_LOGIN_INTEGRATION_SPEC.md`. For gRPC/protobuf contracts, use `RPC_SPEC.md` and `RUST_RPC_SPEC.md`. HTTP API contracts and RPC contracts must preserve shared operation semantics, but neither document replaces the other.
 
 ## 1. Normative Language
 
@@ -116,8 +116,8 @@ Rules:
 - Open API is the external and public integration surface for every SDKWork HTTP API that is not app-api and not backend-api. Each open-api domain `MUST` declare one approved versioned prefix, for example `/im/v3/api`; using the literal `/open/v3/api` is allowed only when a domain explicitly chooses that prefix.
 - Domain-specific open API systems such as Craw Chat IM use their locked prefix such as `/im/v3/api`, but they remain `open-api` for authority naming, request context classification, SDK family mapping, and security semantics.
 - Craw Chat IM open routes `MUST` start with `/im/v3/api`, be generated from the IM open contract, and be consumed through the generated IM SDK.
-- App API is the app/client integration surface for application development across mobile App, H5, PC applications, desktop shells, and other clients. Shared appbase capabilities such as IAM login, registration, token refresh, workspaces, app bootstrap, and reusable application modules `MUST` come from `sdkwork-appbase` / `legacy-java-plus-app-api`; verification-code delivery and verification `MUST` come from the owning messaging app API and generated messaging SDK surface.
-- Craw Chat `MUST NOT` reimplement, fork, or shadow `/app/v3/api` routes already owned by `sdkwork-appbase` or `legacy-java-plus-app-api`.
+- App API is the app/client integration surface for application development across mobile App, H5, PC applications, desktop shells, and other clients. Shared appbase capabilities such as IAM login, registration, token refresh, workspaces, app bootstrap, and reusable application modules `MUST` come from `sdkwork-appbase`, the canonical generated app SDK, or an approved appbase wrapper; verification-code delivery and verification `MUST` come from the owning messaging app API and generated messaging SDK surface. Legacy Java Plus app-api authorities may appear only as registered L0 migration exceptions with owner, risk, and removal plan.
+- Craw Chat `MUST NOT` reimplement, fork, or shadow `/app/v3/api` routes already owned by `sdkwork-appbase` or another registered shared app-api authority.
 - Applications integrating those shared IAM flows `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md` instead of creating application-local auth/session endpoints.
 - Backend API is the management, admin, operator, and control-plane surface. It `MUST` be generated from backend contracts and consumed through backend SDKs or backend-admin integrations.
 - Open-api authority documents `MUST` be declared as `sdkwork-<domain>-open-api` and placed under the owning `sdks/sdkwork-<domain>-sdk/openapi/` workspace when the application owns local SDK generation.
@@ -166,9 +166,9 @@ Rules:
 - Method-level relative mappings may use subpaths such as `/list` or `/{id}` only when the owning class-level mapping is already canonical.
 - Rust APIs that implement shared app modules `MUST` expose the same
   `/app/v3/api` paths as app-api only when that module is not already owned by
-  sdkwork-appbase. If the module exists in `sdkwork-appbase` or
-  `legacy-java-plus-app-api`, the consuming application must integrate that
-  module instead of duplicating it locally.
+  sdkwork-appbase. If the module exists in `sdkwork-appbase`, a canonical
+  generated app SDK, or a registered L0 migration authority, the consuming
+  application must integrate that module instead of duplicating it locally.
 - Backend-api `MUST NOT` publish bare `/v3/api/*` resources. If a resource is part of backend-api, it must move under `/backend/v3/api/...`; if it is not part of backend-api, it must be documented as a non-SDK static/public resource outside the backend-api OpenAPI surface.
 - Generated SDK manifests and OpenAPI source contracts `MUST` fail validation if any runtime path uses a forbidden prefix.
 - Environment examples and app bootstrap defaults `MUST` use canonical prefixes. Historical or migration documents may mention old prefixes only when explicitly labeled `legacy`, `deprecated`, `noncanonical`, or `migration-only`.
@@ -220,6 +220,7 @@ Rules:
 - Route crates `MUST` use lowercase kebab-case package names. The Rust crate import may use snake case, for example package `sdkwork-routes-merchandise-app-api` imports as `sdkwork_routes_merchandise_app_api`.
 - Route crates may be split by business capability for maintainability, for example merchandise, cart, order, payment, catalog, shipment, tenant, and report. They `MUST` still preserve the canonical domain names from `DOMAIN_SPEC.md` in tags, operationIds, schemas, and route manifests.
 - Route crates `MUST` produce or feed a route manifest that can be materialized into an owner-only OpenAPI authority. Java controller mappings and Rust route crates are implementation inputs; the aggregated OpenAPI authority remains the HTTP contract source of truth for SDK generation.
+- Route manifests and OpenAPI authorities `MUST` pass normalized route registry collision validation before gateway assembly or SDK generation. The collision key is `(surface, method, normalizedPath)`; `{id}`, `:id`, and `<id>` normalize to `{param}`.
 - A route crate `MUST NOT` copy appbase-owned routes. If a route is owned by `sdkwork-appbase`, the consuming application uses the appbase Rust crate or appbase SDK dependency instead of creating `sdkwork-routes-<capability>-app-api` for that route.
 
 ### 4.2.1 Route Manifest Shape
@@ -362,10 +363,10 @@ Every SDKWork HTTP API contract for open-api, app-api, backend-api, or any SDKWo
 
 Rules:
 
-- All SDKWork HTTP API runtime implementations `MUST` integrate `sdkwork-web-framework` for Rust route crates, API servers, gateways, and any Rust-backed application module that owns, serves, proxies, or composes an HTTP `*-api` surface according to `WEB_FRAMEWORK_SPEC.md`.
+- All SDKWork HTTP API runtime implementations `MUST` integrate `sdkwork-web-framework` for Rust route crates, standalone/cloud gateways, migration-only API servers, and any Rust-backed application module that owns, serves, proxies, or composes an HTTP `*-api` surface according to `WEB_FRAMEWORK_SPEC.md`.
 - API contracts `MUST NOT` require clients to choose the current tenant, organization, user, app, or permission scope through path, query, header, cookie, or client-writable body fields when token or API-key context already defines that scope.
 - Contract authors `MUST` design operations assuming handlers consume `WebRequestContext` injected by the framework. Handlers `MUST NOT` reparse `Authorization`, `Access-Token`, `X-API-Key`, or SDKWork identity projection headers.
-- Rust route crates and API servers `MUST NOT` bypass the framework to assemble ad hoc Axum/Tower security chains, custom credential parsers, or parallel request-context types.
+- Rust route crates, gateways, and migration-only API servers `MUST NOT` bypass the framework to assemble ad hoc Axum/Tower security chains, custom credential parsers, or parallel request-context types.
 - Java Spring controllers `MUST` preserve equivalent `WebRequestContext` vocabulary, 18-stage interceptor semantics, and problem-detail behavior even though they do not cargo-depend on Rust crates.
 - Framework bootstrap, Cargo dependencies, extension trait registration, and verification commands are defined in `WEB_FRAMEWORK_SPEC.md`. Handler/service/repository layering after the framework boundary follows `WEB_BACKEND_SPEC.md`.
 - Every route manifest entry `MUST` declare `requestContext: WebRequestContext` and `apiSurface`; every materialized OpenAPI operation `MUST` declare `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface` according to section 19.
@@ -373,6 +374,21 @@ Rules:
 ### 4.5 Open API Input And Output Standard
 
 Open-api is the external integration surface. SDKWork-owned business open-api contracts use the same HTTP input and output wire rules as app-api and backend-api except where section 4.5.2 documents a vendor compatibility exemption. Authentication and tenant resolution differ by surface; wire contract rules do not.
+
+SDKWork HTTP contract classification is explicit and conservative:
+
+| Contract category | Applies to | Wire protocol marker | Required wire contract |
+| --- | --- | --- | --- |
+| SDKWork-owned custom API | All `app-api`, all `backend-api`, and SDKWork-owned business `open-api` operations | Omitted `x-sdkwork-wire-protocol` or `x-sdkwork-wire-protocol: sdkwork-v3` | SDKWork v3 input/output rules: section 14, section 15, section 16, `SdkWorkApiResponse`, `ProblemDetail`, and standard pagination |
+| Vendor compatibility open-api | Open-api operations that intentionally mirror a third-party or tool platform such as OpenAI, Anthropic/Claude, Google/Gemini, Claude Code, or Codex | Operation-level `x-sdkwork-wire-protocol: external` plus `x-sdkwork-external-protocol-id` | The upstream platform wire contract exactly, including request body, response body, status semantics, error shape, streaming shape, and field names |
+
+Rules:
+
+- The default is SDKWork-owned custom API. If an operation does not declare `x-sdkwork-wire-protocol`, validators, code review, SDK generation, and runtime mapping `MUST` treat it as `sdkwork-v3`.
+- `x-sdkwork-wire-protocol: sdkwork-v3` is optional metadata for SDKWork-owned custom APIs; omitting it has the same meaning.
+- A route, path prefix, tag, SDK family name, or document-level marker `MUST NOT` make an operation vendor-compatible by inference. Vendor compatibility requires operation-level `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id`.
+- Mixed OpenAPI documents are valid only when each operation is classified independently. An external operation never exempts SDKWork-owned operations in the same document from section 14, section 15, or section 16.
+- Document-level `x-sdkwork-wire-protocol: external` is allowed only as human-visible metadata for an external-only document; it does not replace operation-level markers.
 
 #### 4.5.1 SDKWork Business Open API Wire Contract
 
@@ -412,9 +428,11 @@ Vendor compatibility APIs:
 
 - `MAY` opt out of `SdkWorkApiResponse`, section 14.1 list query vocabulary, and `ProblemDetail` error envelopes when the upstream protocol defines its own request and response shapes.
 - `MUST NOT` mix SDKWork business envelope fields with vendor-native wire on the same operation.
-- `MUST` declare `x-sdkwork-wire-protocol: external` on every exempt operation.
-- `MUST` declare `x-sdkwork-external-protocol-id` with a stable lowercase kebab-case identifier such as `openai-v1`, `anthropic-messages`, `claude-code`, or `codex`.
-- `SHOULD` group exempt operations under dedicated path prefixes such as `/v1/` or tags that make the exemption visible in OpenAPI review.
+- `MUST` declare operation-level `x-sdkwork-wire-protocol: external` on every exempt operation.
+- `MUST` declare operation-level `x-sdkwork-external-protocol-id` on the same operation with a stable lowercase kebab-case identifier such as `openai-v1`, `anthropic-messages`, `google-gemini-v1beta`, `claude-code`, or `codex`.
+- `MUST` follow the upstream platform standard exactly for request bodies, response bodies, HTTP statuses, error payloads, streaming protocol, path/query/header names, and provider-specific field names. SDKWork envelope, pagination, and ProblemDetail rules must not be injected into these operations unless the upstream protocol itself defines them.
+- `MUST` preserve those markers through route manifests, authority OpenAPI, derived `*.sdkgen.*` inputs, generated SDK metadata, and materialized API snapshots.
+- `SHOULD` group exempt operations under dedicated path prefixes such as `/v1/`, `/anthropic/v1/`, or `/google/v1beta/`, or tags that make the upstream protocol visible in OpenAPI review.
 - `MAY` declare route manifest `auth.mode: compatibility` only for these vendor compatibility routes; compatibility auth mode `MUST NOT` be used to bypass section 14 or section 15 for SDKWork-owned business operations.
 - `MUST NOT` use this exemption for SDKWork-owned domain business APIs that happen to be consumed by external integrators. Those integrators consume generated SDKs with the standard envelope from section 4.5.1.
 
@@ -426,7 +444,7 @@ All other open-api operations `MUST` follow section 4.5.1.
 
 ### 5.1 Path Format
 
-URL paths use lowercase `lower_snake_case`.
+URL path ordinary segments use lowercase `lower_snake_case`. SDKWork custom method suffixes use the final-segment form `:<lowerCamelAction>` only when section 14.1 or section 15.4 defines the operation as search, command, or bulk.
 
 Good:
 
@@ -435,6 +453,8 @@ Good:
 /app/v3/api/auth/sessions/current
 /app/v3/api/iam/organizations/{organizationId}/members
 /backend/v3/api/iam/roles/{roleId}/permissions
+/app/v3/api/iam/users:search
+/app/v3/api/iam/users:bulkCreate
 ```
 
 Forbidden:
@@ -452,9 +472,11 @@ Rules:
 - Static path segments `MUST` be lowercase `lower_snake_case`.
 - Path parameters `MUST` be `lowerCamelCase`.
 - Paths `MUST` be resource-oriented, not RPC-oriented by default.
-- Command-like action segments `MAY` be used only when the operation is not naturally represented by CRUD, for example `activate`, `deactivate`, `cancel`, `submit`, `verify`, `resend`, `revoke`, `restore`.
-- Action segments `MUST` still use lowercase `lower_snake_case`.
-- Do not use double underscores, colons, uppercase path segments, or mixed naming styles.
+- Slash action segments such as `/<resource>/{id}/cancel` `MAY` be used only when the operation is not naturally represented by CRUD, for example `activate`, `deactivate`, `cancel`, `submit`, `verify`, `resend`, `revoke`, or `restore`. Slash action segments `MUST` use lowercase `lower_snake_case`.
+- SDKWork custom method suffixes `MAY` be used only as the final path suffix after a collection or resource path: `:<action>`, `:search`, or `:bulk<Action>`. The suffix action `MUST` use lowerCamelCase and `bulk<Action>` `MUST` use an uppercase action word after `bulk`.
+- Do not use double underscores, uppercase ordinary path segments, mixed naming styles, or colons except for the SDKWork custom method suffixes allowed above.
+- A path `MUST NOT` duplicate another operation on the same surface/listener after template normalization. For collision checks, `/users/{userId}`, `/users/:id`, and `/users/<id>` are the same path. Intentional overrides require an ADR and an explicit route override marker.
+- Standard app/backend health and readiness paths (`/app/v3/api/system/health`, `/app/v3/api/system/ready`, `/backend/v3/api/system/health`, `/backend/v3/api/system/ready`) are reserved for the standard health route owner. Business capabilities `MUST` use capability-specific paths and must not claim these common system paths.
 
 ### 5.2 Resource Naming
 
@@ -623,15 +645,16 @@ Use standard action names consistently.
 | `POST /resources/{resourceId}/revoke` | `revoke` | `apiKeys.revoke` |
 | `POST /resources/{resourceId}/verify` | `verify` | `messaging.verificationCodes.verify` |
 | `POST /resources/refresh` | `refresh` | `sessions.refresh` |
-| `POST /resources/batch_create` | `batchCreate` | `users.batchCreate` |
-| `POST /resources/batch_update` | `batchUpdate` | `users.batchUpdate` |
-| `POST /resources/batch_delete` | `batchDelete` | `users.batchDelete` |
+| `POST /resources:bulkCreate` | `bulkCreate` | `users.bulkCreate` |
+| `POST /resources:bulkUpdate` | `bulkUpdate` | `users.bulkUpdate` |
+| `POST /resources:bulkDelete` | `bulkDelete` | `users.bulkDelete` |
 
 Rules:
 
 - Do not use `get` for resource retrieval; use `retrieve`.
 - Do not use `remove` for resource deletion; use `delete` unless the domain specifically distinguishes detach/remove from delete.
 - Do not use `add` for collection creation; use `create`.
+- Do not introduce new `batch_*` URL segments or `batch<Action>` operationIds for SDKWork-owned APIs. Use `:bulk<Action>` paths and `bulk<Action>` operationIds.
 - Do not encode HTTP method names into operationIds, such as `postSession` or `getUsers`.
 - Do not use vague actions such as `handle`, `process`, `do`, `execute`, or `operate`.
 - If a business command needs a domain verb, the verb must match the final URL action segment and be stable, for example `submit`, `approve`, `reject`, `cancel`, `archive`, `publish`, or `unpublish`.
@@ -1120,7 +1143,7 @@ CreateSessionRequest:
       maxLength: 128
 ```
 
-### 14.1 Query, List, And Search Input Standard
+### 14.1 Query, List, Search, And Mutation Input Standard
 
 List, search, and filter inputs `MUST` use explicit typed parameters or typed request bodies. Free-form SQL-like filter expressions, ad hoc JSON query DSLs, and duplicate search parameter aliases are forbidden unless a governance register entry documents an L3 exception.
 
@@ -1150,10 +1173,12 @@ Rules:
 
 - Query parameter names `MUST` use lowercase URL wire names (`page_size`, `created_after`).
 - JSON request body field names `MUST` use camelCase (`pageSize`, `createdAfter`) per §13.
+- `pageSize` is the JSON/body or response field equivalent of `page_size`; it `MUST NOT` be accepted or documented as a GET query parameter.
+- List/search GET operations `MUST NOT` accept `limit`, `page_no`, `pageNo`, `per_page`, `size`, or other aliases for the standard pagination parameters. Pre-launch applications `MUST` reject those aliases with `40003 INVALID_PARAMETER` instead of silently mapping them.
 - `GET` list operations `MUST NOT` accept a request body.
 - Domain filters beyond the standard set `MUST` use explicit query parameters such as `status`, `organization_id`, or `role_id`. Each filter parameter `MUST` be typed and documented.
 - A list operation `MUST NOT` accept both `page` and `cursor` in the same request.
-- When `cursor` is present, servers `MUST` ignore `page` if both are supplied and `SHOULD` reject the request with `40003 INVALID_PARAMETER` when strict validation is enabled.
+- When `cursor` and `page` are both supplied, servers `MUST` reject the request with `40003 INVALID_PARAMETER`. Already-launched L0/L1 authorities that temporarily keep ignore semantics `MUST` record a migration exception per `MIGRATION_SPEC.md`; new and pre-launch authorities have no exception path.
 
 Sort grammar:
 
@@ -1176,7 +1201,7 @@ Use `POST /<collection>/search` or `POST /<collection>:search` when any of the f
 
 - filter cardinality exceeds practical URL limits;
 - the query requires nested filter objects;
-- the product requires saved or audited search bodies;
+- the application requires saved or audited search bodies;
 - the search input would exceed safe URL length.
 
 Rules:
@@ -1199,22 +1224,31 @@ ForumTopicSearchRequest:
           $ref: "#/components/schemas/ForumTopicSearchFilters"
 ```
 
-#### 14.1.3 Single-Resource And Command Input
+#### 14.1.3 Single-Resource, Mutation, And Command Input
 
 | Operation kind | HTTP | Path pattern | Request input | Required headers |
 | --- | --- | --- | --- | --- |
 | Retrieve | `GET` | `/<collection>/{id}` | path `id` | auth per surface |
-| Create | `POST` | `/<collection>` | typed create body | auth; `Idempotency-Key` when retriable |
-| Replace | `PUT` | `/<collection>/{id}` | typed full body | auth; optional `If-Match` |
-| Patch | `PATCH` | `/<collection>/{id}` | typed partial body | auth; optional `If-Match` |
-| Delete | `DELETE` | `/<collection>/{id}` | path `id` only | auth |
+| Create | `POST` | `/<collection>` | typed create body | auth; `Idempotency-Key` when retriable or externally visible |
+| Replace | `PUT` | `/<collection>/{id}` | typed full body | auth; `If-Match` when optimistic concurrency is required |
+| Patch | `PATCH` | `/<collection>/{id}` | typed partial body | auth; `If-Match` when optimistic concurrency is required |
+| Delete | `DELETE` | `/<collection>/{id}` | path `id` only; no JSON body | auth |
 | Command | `POST` | `/<collection>/{id}/<action>` or `/<collection>:<action>` | typed command body | auth; `Idempotency-Key` when retriable |
+| Bulk command | `POST` | `/<collection>:bulk<Action>` | typed bulk body | auth; `Idempotency-Key` when retriable |
 
 Rules:
 
 - Path parameters `MUST` identify the resource. Business filters `MUST NOT` be passed as undocumented query aliases on retrieve/delete routes.
 - Create/update/command bodies `MUST` be explicit schemas with `additionalProperties: false` unless a documented open extension object is required.
 - Optimistic concurrency `SHOULD` use entity `version` fields and/or `If-Match` headers. Version conflicts `MUST` map to `40901 CONFLICT`.
+- Create request schemas `SHOULD` use `Create<Resource>Request`; partial update schemas `SHOULD` use `Update<Resource>Request`; command schemas `SHOULD` use `<Action><Resource>Request` or `<Resource><Action>Request` when that reads better in the domain.
+- Create bodies `MUST NOT` require client-filled resource ids, tenant selectors, audit fields, timestamps, version fields, `traceId`, or `requestId`. Natural idempotency keys such as `externalOrderNo` are allowed only when they are real domain identifiers and not SDKWork correlation ids.
+- `PUT` means full replacement of the resource representation. If omitted fields should remain unchanged, use `PATCH` instead.
+- `PATCH` means partial update. Omitted fields mean no change; explicit `null` means clear the field only when the target schema allows null and the operation documents clear semantics.
+- `DELETE` request bodies are forbidden for SDKWork-owned business APIs. If a deletion needs a reason, confirmation, cascade policy, or workflow transition, model it as a command such as `archive`, `disable`, `revoke`, or `cancel`.
+- Command operations `MUST` use stable domain verbs. They `MUST NOT` hide read/list/search behavior behind `POST` only to avoid query parameters or pagination.
+- Bulk bodies `MUST` contain an `items` array or an equivalent typed batch member, define a maximum item count, and document whether execution is all-or-nothing or item-partial.
+- Import and export APIs that exceed normal request/response budgets `MUST` be modeled as asynchronous commands and use Drive or MediaResource contracts for file references instead of app-local upload/download lifecycle.
 
 ## 15. Response Standard
 
@@ -1298,6 +1332,7 @@ Example single-resource response:
 | `SdkWorkPageData` | list/search | `items`, `pageInfo` |
 | `SdkWorkCommandData` | command/mutation without full resource body | `accepted` |
 | `SdkWorkAsyncData` | async accept (`202`) | `accepted`, `operationId`, `status` |
+| `SdkWorkBulkData` | bulk command | `items`, `allOrNothing` |
 
 `SdkWorkResourceData`:
 
@@ -1362,6 +1397,23 @@ SdkWorkAsyncData:
     pollUrl:
       type: string
       format: uri-reference
+```
+
+`SdkWorkBulkData`:
+
+```yaml
+SdkWorkBulkData:
+  type: object
+  additionalProperties: false
+  required: [items, allOrNothing]
+  properties:
+    items:
+      type: array
+      maxItems: 100
+      items:
+        $ref: "#/components/schemas/SdkWorkBulkItemResult"
+    allOrNothing:
+      type: boolean
 ```
 
 Rules:
@@ -1546,6 +1598,12 @@ ProblemDetail:
       type: string
       format: uuid
       description: Server-owned request correlation id. Same semantics as SdkWorkApiResponse.traceId.
+    i18nKey:
+      type: string
+      description: Optional stable localization key such as `errors.result.40001`. It is presentation metadata only and does not replace numeric code.
+    locale:
+      type: string
+      description: Optional effective BCP 47 locale used by the framework message mapper, for example `zh-CN`.
     errors:
       type: array
       items:
@@ -1576,8 +1634,12 @@ Rules:
 - `instance` `SHOULD` identify the failing endpoint as `{METHOD} {routeTemplate}` using the OpenAPI route template when available; raw request paths `MUST` redact user, tenant, file, object, token, and provider identifiers per `OBSERVABILITY_SPEC.md`.
 - `operationId` `SHOULD` be present when the web framework resolves the matched OpenAPI operation for the request.
 - `code` `MUST` use stable numeric values from §15.3.
+- SDKWork-owned problem details `SHOULD` include `i18nKey` when a safe localized message exists. The standard key for result codes is `errors.result.<code>` per `I18N_SPEC.md`.
+- SDKWork-owned problem details `SHOULD` include `locale` when the framework resolved `WebRequestContext.locale`.
+- Field-level validation errors intended for UI display `SHOULD` include `errors[].i18nKey` and sanitized `errors[].params`; localized strings must not replace stable field paths or numeric codes.
 - Security-sensitive `404` may hide unauthorized resource existence, but this must be consistent for the operation.
 - Business failures `MUST NOT` be encoded as HTTP 2xx `SdkWorkApiResponse` bodies with non-success `code`, `success`, or human `message` fields.
+- Business failures `MUST NOT` use localized `message` fields, string result tokens, or translated text as machine state.
 - Response field `requestId` `MUST NOT` appear in new or migrated contracts.
 
 Example validation error:
@@ -1589,6 +1651,8 @@ Example validation error:
   "status": 422,
   "code": 40001,
   "traceId": "0195f2a0-7c44-7b2e-9f3a-2a6f5d8e91ab",
+  "i18nKey": "errors.result.40001",
+  "locale": "zh-CN",
   "instance": "POST /app/v3/api/auth/login",
   "operationId": "auth.login.create",
   "detail": "One or more fields are invalid.",
@@ -1596,7 +1660,9 @@ Example validation error:
     {
       "field": "loginName",
       "message": "must not be blank",
-      "code": 40011
+      "code": 40011,
+      "i18nKey": "validation.iam.auth.loginName.required",
+      "params": {}
     }
   ]
 }
@@ -1619,29 +1685,36 @@ Example internal error:
 
 ### 15.4 Operation Input And Output Contract Matrix
 
-Every L2+ business operation `MUST` map to one of the standard contract patterns below. Domain-specific names replace `<Resource>` and `<Action>`, but input/output shapes `MUST NOT` invent alternate envelope roots.
+Every L2+ business operation `MUST` map to one of the standard contract patterns below. Domain-specific names replace `<resources>` and `<action>`, but input/output shapes `MUST NOT` invent alternate envelope roots.
 
-| Pattern | Method | Path | Request | Success body | HTTP | `data` shape |
-| --- | --- | --- | --- | --- | --- | --- |
-| Retrieve | `GET` | `/<resources>/{id}` | path id | `SdkWorkApiResponse` | `200` | `SdkWorkResourceData.item` |
-| List | `GET` | `/<resources>` | §14.1.1 query | `SdkWorkApiResponse` | `200` | `SdkWorkPageData` |
-| Search | `POST` | `/<resources>/search` | §14.1.2 body | `SdkWorkApiResponse` | `200` | `SdkWorkPageData` |
-| Create | `POST` | `/<resources>` | create body | `SdkWorkApiResponse` | `201` | `SdkWorkResourceData.item` |
-| Replace | `PUT` | `/<resources>/{id}` | full body | `SdkWorkApiResponse` | `200` | `SdkWorkResourceData.item` |
-| Patch | `PATCH` | `/<resources>/{id}` | partial body | `SdkWorkApiResponse` | `200` | `SdkWorkResourceData.item` |
-| Delete | `DELETE` | `/<resources>/{id}` | path id | no JSON body | `204` | header-only `traceId` |
-| Command | `POST` | `/<resources>/{id}/<action>` | command body | `SdkWorkApiResponse` | `200` | `SdkWorkCommandData` |
-| Async command | `POST` | `/<resources>/{id}/<action>` | command body | `SdkWorkApiResponse` | `202` | `SdkWorkAsyncData` |
-| Bulk command | `POST` | `/<resources>:bulk<Action>` | bulk body | `SdkWorkApiResponse` | `200` or `202` | typed bulk result in `data` |
+| Pattern | Standard action | Method | Path | Request | Success body | HTTP | `data` shape |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Retrieve | `retrieve` | `GET` | `/<resources>/{id}` | path id | `SdkWorkApiResponse` | `200` | `SdkWorkResourceData.item` |
+| List | `list` | `GET` | `/<resources>` | section 14.1.1 query | `SdkWorkApiResponse` | `200` | `SdkWorkPageData` |
+| Search | `search` | `POST` | `/<resources>/search` or `/<resources>:search` | section 14.1.2 body | `SdkWorkApiResponse` | `200` | `SdkWorkPageData` |
+| Create | `create` | `POST` | `/<resources>` | create body | `SdkWorkApiResponse` | `201` | `SdkWorkResourceData.item` |
+| Replace | `update` | `PUT` | `/<resources>/{id}` | full body | `SdkWorkApiResponse` | `200` | `SdkWorkResourceData.item` |
+| Patch | `update` | `PATCH` | `/<resources>/{id}` | partial body | `SdkWorkApiResponse` | `200` | `SdkWorkResourceData.item` |
+| Delete | `delete` | `DELETE` | `/<resources>/{id}` | path id only | no JSON body | `204` | header-only `traceId` |
+| Command | `<action>` | `POST` | `/<resources>/{id}/<action>` or `/<resources>:<action>` | command body | `SdkWorkApiResponse` | `200` | `SdkWorkCommandData` |
+| Async command | `<action>` | `POST` | `/<resources>/{id}/<action>` or `/<resources>:<action>` | command body | `SdkWorkApiResponse` | `202` | `SdkWorkAsyncData` |
+| Bulk command | `bulk<Action>` | `POST` | `/<resources>:bulk<Action>` | bulk body | `SdkWorkApiResponse` | `200` or `202` | `SdkWorkBulkData` or typed bulk result |
 
 Rules:
 
 - Every pattern above `MUST` declare `application/problem+json` error responses using numeric `ProblemDetail.code`.
 - Open-api business operations `MUST` use the same input and output patterns as app-api and backend-api per section 4.5.1. Vendor compatibility open-api operations `MAY` opt out only under section 4.5.2.
 - List/search patterns `MUST` return `items[]` even when empty.
-- Delete success `MUST NOT` return legacy `{ success: true }` JSON bodies.
-- Bulk operations `MUST` document per-item success/failure semantics inside typed `data` and `MUST NOT` return partial success as HTTP 2xx with failure encoded only in human text.
-- OpenAPI `operationId` `MUST` follow §7 and align with the pattern (`list`, `search`, `create`, `retrieve`, `update`, `patch`, `delete`, `<action>`).
+- Create success `MUST` use HTTP `201`; do not return `200` for newly created resources. Upsert behavior `MUST` be explicit and must not be hidden behind a normal create operation.
+- Update success `MUST` use HTTP `200` with `data.item` unless the operation is intentionally modeled as a command without a full resource payload.
+- Delete success `MUST` use HTTP `204` and `MUST NOT` return legacy `{ success: true }`, `{ deleted: true }`, `SdkWorkCommandData`, or any JSON success body.
+- Command success `MUST` return `data.accepted: true` or a typed command result. Business failures `MUST` use `ProblemDetail`, not `accepted: false` or human text inside HTTP `200`.
+- Async command success `MUST` use `202` and `SdkWorkAsyncData`. The returned `operationId` is the asynchronous operation instance id; it is not the OpenAPI `operationId`.
+- Bulk operations `MUST` document per-item success/failure semantics inside typed `data`, define max item count, define all-or-nothing versus partial execution, and `MUST NOT` encode partial failure only in human text.
+- OpenAPI `operationId` `MUST` follow section 7 and align with the pattern (`list`, `search`, `create`, `retrieve`, `update`, `delete`, `bulk<Action>`, or the stable domain `<action>`). `PUT` and `PATCH` both use the standard SDK action `update`; do not introduce `patch<Resource>` or `replace<Resource>` method aliases unless a governance exception documents why the SDK surface needs two public update verbs.
+- `POST` search operations are safe and idempotent. They `MUST NOT` mutate audit-visible domain state except optional search audit records explicitly required by product or compliance.
+- Long-running import, export, report generation, AI execution, media processing, or provider synchronization operations `MUST` use async command semantics when they cannot reliably complete within the normal P0/P1 HTTP latency budget.
+- Every SDKWork-owned operation `SHOULD` be covered by `node <sdkwork-specs>/tools/check-api-operation-patterns.mjs --workspace <workspace-root>` in addition to the response-envelope and pagination validators when the repository owns or materializes HTTP API contracts.
 
 ## 16. Pagination, Filtering, Sorting, And List Output
 
@@ -1668,6 +1741,7 @@ Rules:
 - `data.pageInfo.mode` `MUST` be `offset` or `cursor`.
 - List APIs `MUST` be paginated unless the collection is bounded by design and documented as such per `PAGINATION_SPEC.md` §11.
 - Declaring `page_size`, `cursor`, or `page` in OpenAPI while implementing list results by loading an unbounded in-memory collection and slicing with `skip`/`take`/`slice` is a contract violation and `MUST NOT` ship on new L2+ endpoints.
+- OpenAPI query parameters named `pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`, or equivalent pagination aliases are contract violations for SDKWork-owned business APIs unless the operation is an already-launched L0/L1 migration case with explicit removal evidence.
 
 ### 16.2 Offset Pagination
 
@@ -1877,6 +1951,8 @@ Rules:
 - Query parameter names `MUST` use lowercase URL names because they are part of the URL contract.
 - Multi-word query parameter names `MUST` use `lower_snake_case`, such as `page_size`, `created_after`, and `organization_id`.
 - Single-word query parameter names `MUST` stay lowercase without an underscore, such as `q`, `page`, `sort`, `cursor`, and `status`.
+- `pageSize` `MUST NOT` appear as an OpenAPI query parameter name. It is allowed only as the JSON body equivalent of `page_size` and as `PageInfo.pageSize` in response payloads.
+- `limit` `MUST NOT` be used as a list/search page-size alias in SDKWork-owned business APIs. Use `page_size` for HTTP GET and `pageSize` inside `SdkWorkListQuery` request bodies.
 - The standard free-text search parameter is `q`. OpenAPI URL query parameters and generated SDK query parameters `MUST NOT` use `keyword`, `search`, `searchQuery`, or `search_query` for generic search.
 - A list operation `MUST NOT` expose multiple names such as `q`, `keyword`, `search`, `searchQuery`, or `search_query` for the same free-text search meaning. Use `q` for generic keyword search; reserve explicit multi-word filters for distinct domain concepts. SDK or implementation variables may use language-idiomatic names such as `searchQuery`, but those names must map to the wire parameter `q`.
 - Filtering parameters `SHOULD` be explicit instead of a free-form SQL-like expression.
@@ -1888,6 +1964,7 @@ Rules:
 HTTP contract rules in §14.1 and §16 define the wire surface only. Implementations `MUST` also satisfy `PAGINATION_SPEC.md`:
 
 - repository and service layers `MUST` bound reads to `page_size` at the store or maintained index;
+- handlers `MUST` reject forbidden pagination aliases before invoking service or repository code;
 - handlers `MUST NOT` materialize unbounded collections and slice them in process;
 - SDK and frontend consumers `MUST NOT` substitute client-side `slice` or `listAll*` aggregation for server pagination on interactive lists.
 
@@ -1897,16 +1974,22 @@ Rules:
 
 - Retriable create and payment-like commands `MUST` support `Idempotency-Key`.
 - `Idempotency-Key` values are scoped by tenant, principal, method, and path.
+- OpenAPI operations that require retry safety `MUST` declare an `Idempotency-Key` header parameter or equivalent shared header `$ref`.
+- A replay with the same idempotency key and the same request fingerprint `SHOULD` return the original success result or current operation status without executing side effects again.
+- A replay with the same idempotency key and a different request fingerprint `MUST` return `40901 CONFLICT`.
+- Non-idempotent commands `MUST` either reject duplicate client submission through domain state checks or document why retries are unsafe.
 - `traceId` is server-owned request correlation identity, not an idempotency key and not a browser/client-generated field.
-- App and backend API servers MUST generate a canonical UUID `traceId` for each request that records request correlation.
+- App/backend HTTP runtimes `MUST` generate a canonical UUID `traceId` for each request that records request correlation.
 - App and backend OpenAPI contracts MUST NOT declare `X-Request-Id`, wire field `requestId`, or generated `xRequestId` parameters.
 - Browser, frontend, app SDK, and backend-admin SDK consumers `MUST NOT` send `X-Request-Id`, client-generated `traceId`, or wire field `requestId`.
 - If an edge gateway or trusted upstream component needs to preserve its own correlation id, it must use a domain-specific upstream correlation field and must not override the SDKWork server `traceId`.
 - Request body schemas for new create/update/command operations `MUST NOT` require a client-filled `traceId` or `requestId` for SDKWork request correlation.
 - Success and error responses MUST expose `traceId` when the API contract exposes request correlation, including `SdkWorkApiResponse`, problem details, audit records, runtime records, usage logs, and asynchronous command responses.
 - Resource updates `SHOULD` support optimistic concurrency with `version`, `If-Match`, or equivalent domain versioning.
+- Operations that require optimistic concurrency `MUST` document the version source (`version`, `etag`, or domain revision), declare `If-Match` when header preconditions are used, and map missing required preconditions to `42801 PRECONDITION_REQUIRED`.
+- Failed `If-Match`, ETag, or version preconditions `MUST` return `41201 PRECONDITION_FAILED`; domain state conflicts that are not direct precondition failures `MUST` return `40901 CONFLICT` or a registered `60000`-range domain code.
 - Duplicate idempotency keys with different payloads `MUST` return `409`.
-- Idempotency records `SHOULD` follow database rules in `specs/DATABASE_SPEC.md`.
+- Idempotency records `SHOULD` follow database rules in `DATABASE_SPEC.md`.
 
 ## 18. Multi-Tenant And Authorization Semantics
 
@@ -1957,8 +2040,8 @@ SDKWork governance tools may read these extensions.
 | `x-sdkwork-source` | Physical source or scanned module that produced the operation |
 | `x-sdkwork-source-route-crate` | Rust route crate package name when the operation was materialized from `sdkwork.route.manifest` |
 | `x-sdkwork-integration-source` | Integrated dependency source when an operation is present only for runtime composition or compatibility |
-| `x-sdkwork-wire-protocol` | Wire contract profile: `sdkwork-v3` for SDKWork-owned business APIs, or `external` for vendor compatibility APIs exempt from section 14 and section 15 |
-| `x-sdkwork-external-protocol-id` | Stable lowercase kebab-case upstream protocol identifier required when `x-sdkwork-wire-protocol: external`, for example `openai-v1`, `anthropic-messages`, `claude-code`, or `codex` |
+| `x-sdkwork-wire-protocol` | Wire contract profile: omitted or `sdkwork-v3` means SDKWork-owned custom API; `external` means operation-level vendor compatibility API exempt from section 14 and section 15 only when paired with `x-sdkwork-external-protocol-id` |
+| `x-sdkwork-external-protocol-id` | Stable lowercase kebab-case upstream protocol identifier required on the same operation when `x-sdkwork-wire-protocol: external`, for example `openai-v1`, `anthropic-messages`, `google-gemini-v1beta`, `claude-code`, or `codex` |
 
 Rules:
 
@@ -1966,7 +2049,7 @@ Rules:
 - Extensions are governance metadata; behavior still needs server enforcement.
 - Every HTTP operation `MUST` declare `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface`. Missing either extension makes the contract non-compliant for SDKWork HTTP APIs.
 - `x-sdkwork-api-surface` values `MUST` use canonical kebab-case contract labels: `open-api`, `app-api`, `backend-api`, or another approved `*-api` surface label. CamelCase runtime labels such as `openApi`, `appApi`, `backendApi`, and `gatewayApi` are invalid in OpenAPI and derived `*.sdkgen.*` inputs.
-- Abuse-sensitive operations such as auth, key management, verification, and high-risk mutations `SHOULD` declare `x-sdkwork-rate-limit-tier`.
+- Abuse-sensitive operations `MUST` declare `x-sdkwork-rate-limit-tier` and the runtime framework `MUST` enforce the matching policy. Mandatory-sensitive operations include login, registration, OAuth session creation, QR auth session creation or completion, verification code send/check, password reset request/completion, token refresh, API key creation/rotation/revocation, credential binding, and high-risk commands or mutation hot paths. Low-risk read/list operations `MAY` omit the extension only when the owning API threat model does not require throttling.
 - Public operations that are generated into SDKs and must not receive stored user credentials `MUST` declare `security: []` and `x-sdkwork-auth-mode: anonymous`. TypeScript, Flutter, and other generated SDKs `MUST` use that marker to skip automatic credential injection for that operation.
 - Login, registration, OAuth session creation, QR auth session creation or password completion, password reset request, password reset completion, and equivalent credential-entry commands `MUST` additionally declare `x-sdkwork-forbid-credential-headers: true`. Runtime routers, gateways, and handlers `MUST` reject inbound dual-token credentials, SDKWork context-projection headers, and equivalent credential headers for these operations instead of silently ignoring them.
 - `security: []` alone does not imply `x-sdkwork-forbid-credential-headers: true`; public metadata and bootstrap endpoints may be anonymous without rejecting irrelevant credentials unless their contract explicitly sets the extension.
@@ -1974,7 +2057,8 @@ Rules:
 - `x-sdkwork-owner` is the SDK generation ownership key. It identifies the app/repo/module that is allowed to generate the operation into its SDK family.
 - `x-sdkwork-api-authority` identifies the logical API authority and should include both owner and surface, for example `sdkwork-iam-app-api`, `sdkwork-iam-backend-api`, `sdkwork-im.im`, or `sdkwork-drive.app`.
 - `x-sdkwork-source` and `x-sdkwork-integration-source` may describe where the operation was scanned from, but they `MUST NOT` replace `x-sdkwork-owner` for generation decisions.
-- SDKWork-owned business operations on open-api, app-api, and backend-api `MUST` omit `x-sdkwork-wire-protocol` or declare `x-sdkwork-wire-protocol: sdkwork-v3`. Vendor compatibility operations `MUST` declare `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id` per section 4.5.2.
+- SDKWork-owned custom operations on open-api, app-api, and backend-api `MUST` omit `x-sdkwork-wire-protocol` or declare `x-sdkwork-wire-protocol: sdkwork-v3`; omitted is the default and means `sdkwork-v3`.
+- Vendor compatibility operations `MUST` declare operation-level `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id` per section 4.5.2. A document-level external marker, path prefix, tag, SDK family, or auth mode is not enough to opt out.
 - OpenAPI documents may temporarily include dependency-owned operations for runtime integration inspection only when those operations are clearly marked with the dependency owner. The generated SDK input for an app/repo `MUST` filter them out unless the current SDK family owner matches the operation owner.
 - Path prefix, tag, Rust crate name, Java controller package, or filesystem location `MUST NOT` be the only authority for SDK ownership. Those signals may help infer metadata during migration, but the materialized OpenAPI operation must carry explicit ownership before generation.
 
@@ -2095,6 +2179,7 @@ An API is standard only when this checklist passes:
 - [ ] `apis/` does not contain generated SDK transport output, SDK family directories, generated SDK control-plane `.sdkwork/` files, or runnable controller/handler/service/repository implementation code.
 - [ ] Domain name follows `DOMAIN_SPEC.md`.
 - [ ] SDK API paths use the approved prefix for their API surface: `/app/v3/api` for app-api, `/backend/v3/api` for backend-api, and an approved versioned non-app/non-backend prefix such as `/im/v3/api` for open-api.
+- [ ] Common URL paths do not collide: `/healthz`, `/readyz`, `/livez`, and `/metrics` are infrastructure probes from `HEALTH_CHECK_SPEC.md`; `/app/v3/api/system/health`, `/app/v3/api/system/ready`, `/backend/v3/api/system/health`, and `/backend/v3/api/system/ready` are reserved business system health paths; feature modules use capability-specific paths.
 - [ ] Runtime source, OpenAPI snapshots, generated SDK inputs, route tables, frontend SDK bootstrap code, and environment examples contain no forbidden legacy API prefix.
 - [ ] Rust HTTP route crates, when present, are named `sdkwork-routes-<capability>-open-api`, `sdkwork-routes-<capability>-app-api`, or `sdkwork-routes-<capability>-backend-api`.
 - [ ] Rust route crate names, declared surfaces, and mounted path prefixes agree.
@@ -2126,16 +2211,20 @@ An API is standard only when this checklist passes:
 - [ ] Token validation uses tenant-bound signing keys or an equivalent server-side tenant-bound token lookup.
 - [ ] Multi-organization login uses a documented continuation response instead of returning normal business tokens before organization selection.
 - [ ] Runtime routers resolve `WebRequestContext` through `sdkwork-web-framework` (Rust) or an equivalent typed context framework (Java) before protected handlers run.
-- [ ] Handlers consume typed `WebRequestContext` and do not reparse credential, tenant, user, permission, or request-id headers.
+- [ ] Handlers consume typed `WebRequestContext` and do not reparse credential, tenant, user, permission, request-id, locale, or language headers.
 - [ ] Runtime routers run the standard API call chain or a stricter documented superset.
 - [ ] Backend API has no login/session creation/refresh/logout endpoint.
 - [ ] Error responses include `application/problem+json` with numeric `ProblemDetail.code` from §15.3.
+- [ ] SDKWork-owned error responses preserve numeric `ProblemDetail.code` and may include `i18nKey`/`locale` metadata per `I18N_SPEC.md`; localized text is not used as machine state.
+- [ ] SDKWork-owned operations follow the section 15.4 operation matrix: create `201`, update/retrieve/list/search `200`, delete `204` without JSON body, async `202`, and typed bulk results.
 - [ ] Success list/search responses use `SdkWorkApiResponse` + `SdkWorkPageData`; inputs follow §14.1 and §16.
 - [ ] List/search operations use standard query parameters or `SdkWorkListQuery` bodies; generic search uses `q` only.
 - [ ] `int64` and `decimal` API fields are strings.
 - [ ] Request and response schemas use `additionalProperties` intentionally.
 - [ ] List APIs are paginated or explicitly bounded.
 - [ ] Retriable create/command APIs define idempotency behavior.
+- [ ] `node <sdkwork-specs>/tools/check-api-operation-patterns.mjs --workspace <root>` passes for touched repositories that own or materialize OpenAPI authorities.
+- [ ] `node <sdkwork-specs>/tools/check-route-path-collisions.mjs --workspace <root>` passes for touched repositories that own route manifests or OpenAPI authorities.
 - [ ] Required permission, tenant scope, and audit metadata are documented.
 - [ ] Generated SDK compiles and exposes resource-style methods.
 - [ ] SDK generation uses `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`, and the generation manifest records the generator package, canonical path or resolved package location, version or commit, command, input, output, language, SDK type, and standard profile.

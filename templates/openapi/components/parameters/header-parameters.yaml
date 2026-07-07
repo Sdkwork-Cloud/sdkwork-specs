@@ -1,0 +1,20 @@
+IdempotencyKeyHeader:
+  name: Idempotency-Key
+  in: header
+  required: false
+  description: Client retry key for retriable create, command, async command, or bulk command operations. The server scopes the key by tenant, principal, method, and path.
+  schema:
+    type: string
+    minLength: 8
+    maxLength: 128
+    pattern: '^[A-Za-z0-9._:-]+$'
+
+IfMatchHeader:
+  name: If-Match
+  in: header
+  required: false
+  description: Optimistic concurrency precondition using the current resource ETag, version, or domain revision. Required when the operation declares precondition enforcement.
+  schema:
+    type: string
+    minLength: 1
+    maxLength: 256

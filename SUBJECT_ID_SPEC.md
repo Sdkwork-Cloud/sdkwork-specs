@@ -41,8 +41,8 @@ Rules:
 
 - Protected app-api and backend-api handlers that query tenant-scoped SQL tables `MUST` resolve subject scope from `WebRequestContext` / `TenantAppContext` and map into native `i64` values before repository access.
 - Handlers `MUST NOT` trust client-supplied `tenant_id`, `tenantId`, `user_id`, `userId`, or equivalent headers/parameters to choose ambient subject scope. Current scope comes from validated dual-token claims or validated API-key/OAuth context per `API_SPEC.md` and `IAM_SPEC.md`.
-- Mapping failure because principal IDs are not positive numeric SQL subjects `MUST` fail closed with HTTP `422 Unprocessable Entity` and business code `4220`. It `MUST NOT` be reported as HTTP `500` or internal error code `5001`.
-- Legacy opaque IAM ids in an otherwise authenticated principal `SHOULD` produce a `4220` message that tells the operator to restart IAM repair or sign in again after repair.
+- Mapping failure because principal IDs are not positive numeric SQL subjects `MUST` fail closed with HTTP `422 Unprocessable Entity` and business code `42201`. It `MUST NOT` be reported as HTTP `500` or internal error code `5001`.
+- Legacy opaque IAM ids in an otherwise authenticated principal `SHOULD` produce a `42201` message that tells the operator to restart IAM repair or sign in again after repair.
 
 ### 2.1 Projection Chain
 
@@ -136,12 +136,12 @@ Rules:
 | Condition | HTTP status | Business code | Meaning |
 | --- | --- | --- | --- |
 | Missing or invalid auth on protected route | `401` | `4010` or surface-specific auth code | Unauthenticated |
-| Authenticated principal present but IDs cannot map to SQL subject scope | `422` | `4220` | Subject mapping failure |
-| Legacy opaque IAM id still present in principal after auth | `422` | `4220` | Repair or re-login required |
+| Authenticated principal present but IDs cannot map to SQL subject scope | `422` | `42201` | Subject mapping failure |
+| Legacy opaque IAM id still present in principal after auth | `422` | `42201` | Repair or re-login required |
 
 Rules:
 
-- `4220` is a client-actionable contract error, not a server fault. Do not map it to `500`/`5001`.
+- `42201` is a client-actionable contract error, not a server fault. Do not map it to `500`/`5001`.
 - Logs `MAY` include tenant/user id strings for diagnosis; they `MUST NOT` log signing keys or raw tokens.
 
 ## 7. Related Standards
@@ -160,7 +160,7 @@ Rules:
 - [ ] New IAM users and tenants receive positive numeric snowflake string primary keys.
 - [ ] JWT `tenant_id` and `user_id` claims match the IAM row ids and parse into positive SQL `BIGINT` values.
 - [ ] Protected SQL handlers resolve subject scope from `WebRequestContext`, not raw headers or client parameters.
-- [ ] Subject mapping failures return `422` / `4220`, not `500` / `5001`.
+- [ ] Subject mapping failures return `422` / `42201`, not `500` / `5001`.
 - [ ] OpenAPI and SDK expose snowflake ids as strings at the HTTP boundary only.
 - [ ] Legacy opaque IAM ids are repaired on IAM startup or covered by an explicit migration plan.
 - [ ] Reserved bootstrap ids remain stable across repair and upgrade.

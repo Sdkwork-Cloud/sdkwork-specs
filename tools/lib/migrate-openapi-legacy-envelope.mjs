@@ -362,6 +362,9 @@ function wrapBareSchema(document, schema, hint = '') {
   if (typeof schema?.$ref === 'string') {
     const refName = schema.$ref.split('/').pop();
     const resolved = document.components?.schemas?.[refName];
+    if (isEnvelopeSchema(resolved)) {
+      return schema;
+    }
     if (resolved?.properties?.items) {
       return buildListEnvelope({
         properties: {

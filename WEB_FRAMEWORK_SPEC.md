@@ -1,11 +1,11 @@
 # SDKWork Web Framework Integration Standard
 
 - Version: 1.0
-- Scope: mandatory integration of `sdkwork-web-framework` for every SDKWork HTTP `*-api` runtime surface, including `open-api`, `app-api`, `backend-api`, Rust route crates, API servers, gateways, and Java Spring parallel runtime semantics
-- Related: `API_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SECURITY_SPEC.md` section 5.1, `RUST_CODE_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`, `COMPONENT_SPEC.md`, `APPLICATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `MIGRATION_SPEC.md`
+- Scope: mandatory integration of `sdkwork-web-framework` for every SDKWork HTTP `*-api` runtime surface, including `open-api`, `app-api`, `backend-api`, Rust route crates, standalone/cloud gateways, migration-only API servers, and Java Spring parallel runtime semantics
+- Related: `COMPOSABLE_ARCHITECTURE_SPEC.md`, `API_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `WEB_BACKEND_SPEC.md`, `I18N_SPEC.md`, `SECURITY_SPEC.md` section 5.1, `RUST_CODE_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`, `COMPONENT_SPEC.md`, `APPLICATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `MIGRATION_SPEC.md`
 - Detail standard: `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md` (L1 framework repository authoritative for crate APIs, pipeline stages, extension traits, and capability matrix)
 
-This standard defines when and how SDKWork applications **must** integrate the `sdkwork-web-framework` repository. `API_SPEC.md` owns HTTP contract semantics. This file owns **runtime framework integration**. `WEB_BACKEND_SPEC.md` owns handler/service/repository layering after the framework boundary.
+This standard defines when and how SDKWork applications **must** integrate the `sdkwork-web-framework` repository. `API_SPEC.md` owns HTTP contract semantics. `I18N_SPEC.md` owns cross-stack internationalization semantics. This file owns **runtime framework integration**, including request context, locale context, interceptor behavior, and centralized response mapping. `WEB_BACKEND_SPEC.md` owns handler/service/repository layering after the framework boundary. Cross-stack runtime entrypoint and dependency surface composition follows `COMPOSABLE_ARCHITECTURE_SPEC.md`.
 
 ## 1. System Model
 
@@ -19,14 +19,14 @@ sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md (L1 executable profile)
        -> enforced by
 sdkwork-web-framework crates (L2 runtime)
        -> extended by
-business repositories: sdkwork-routes-* / sdkwork-*-api-server + appbase/application-line adapters (L3)
+business repositories: sdkwork-routes-* + standalone/cloud gateways + appbase/application-line adapters (L3)
 ```
 
 Rules:
 
 - The canonical SDKWork HTTP application framework repository is
   `sdkwork-web-framework`.
-- Any SDKWork application repository, application module, route crate, API server, backend service, gateway, or reusable component that owns, serves, develops, proxies, or composes an SDKWork HTTP `*-api` surface `MUST` follow this standard.
+- Any SDKWork application repository, application module, route crate, migration-only API server, backend service, gateway, or reusable component that owns, serves, develops, proxies, or composes an SDKWork HTTP `*-api` surface `MUST` follow this standard.
 - SDKWork HTTP `*-api` includes `open-api`, `app-api`, `backend-api`, and any package, crate, module, service, gateway, or authority whose name ends with `-api` and exposes HTTP routes.
 - Business repositories with Rust HTTP APIs `MUST` depend on `sdkwork-web-framework` crates; they `MUST NOT` fork, copy, or reimplement the standard interceptor chain, request-context resolution, route manifest contract metadata, or secure defaults locally.
 - `sdkwork-web-framework` `MUST NOT` depend on any business repository, business route crate, application-owned OpenAPI authority, or application-owned SDK family.
@@ -41,7 +41,7 @@ The following artifacts `MUST` integrate `sdkwork-web-framework` or its language
 | `sdkwork-routes-<capability>-open-api` | Framework router mounting, route manifest framework metadata, and `WebRequestContext` injection |
 | `sdkwork-routes-<capability>-app-api` | Same |
 | `sdkwork-routes-<capability>-backend-api` | Same |
-| `sdkwork-<application-code>-api-server` | Framework bootstrap, pipeline assembly, route mounting, adapter registration, and preflight |
+| `sdkwork-<application-code>-api-server` | Migration-only framework bootstrap and route mounting until retired listener crates move to standalone/cloud gateway |
 | `sdkwork-<application-code>-standalone-gateway` | Framework pipeline for proxied, dependency, or composed HTTP `*-api` surfaces in `deploymentProfile=standalone` before proxying or dispatch |
 | `sdkwork-<application-code>-cloud-gateway` | Framework pipeline for proxied, dependency, or composed HTTP `*-api` surfaces in `deploymentProfile=cloud` before proxying or dispatch |
 | `sdkwork-api-cloud-gateway` | Framework pipeline for shared `platform.api-gateway` surfaces |
@@ -80,6 +80,8 @@ Rules:
 - Application shells `MUST` mount SDKWork HTTP route crates, dependency routers, backend controllers, and gateway routes through the framework bootstrap or an approved language-equivalent runtime profile.
 - UI packages, frontend services, backend-admin UI packages, SDK consumers, and application feature services `MUST` consume generated SDKs or approved composed wrappers. They `MUST NOT` import route crates, controller classes, path constants, or framework route internals as transport APIs.
 - Dependency-owned API surfaces are integrated through `sdkDependencies`, `dependencyApiSurfaces`, executable dependency router/controller exports, external upstreams, or approved composed wrappers. They `MUST NOT` be copied into the consuming application-owned route crate or SDK authority.
+- Framework bootstrap and gateway composition `MUST` consume route manifests/OpenAPI authorities through the route registry and fail before startup/release when normalized `(surface, method, path)` collisions exist.
+- Standard app/backend health and readiness paths (`/app/v3/api/system/health`, `/app/v3/api/system/ready`, `/backend/v3/api/system/health`, `/backend/v3/api/system/ready`) are reserved for the standard health route owner. Business framework routers and dependency route mounts `MUST NOT` claim those paths.
 - Framework adoption is a repository/application architecture requirement, not an optional per-team implementation style.
 
 ## 4. Dependency Rules
@@ -88,7 +90,7 @@ Rules:
 
 - Rust HTTP-capable repositories that own, serve, develop, proxy, or compose any SDKWork HTTP `*-api` surface `MUST` declare `sdkwork-web-framework` through the native build tool (`Cargo.toml` path or pinned Git dependency) according to `DEPENDENCY_MANAGEMENT_SPEC.md`.
 - Route crates `MUST` depend on public framework crates such as `sdkwork-web-context`, `sdkwork-web-axum`, `sdkwork-web-contract`, and related `sdkwork-web-*` packages. Exact crate boundaries are defined in the L1 standard.
-- API server crates `MUST` assemble the HTTP runtime through `sdkwork-web-bootstrap` or an equivalent documented public bootstrap API from the framework repository.
+- Standalone/cloud gateways and migration-only API server crates `MUST` assemble the HTTP runtime through `sdkwork-web-bootstrap` or an equivalent documented public bootstrap API from the framework repository.
 - Gateways that proxy or compose SDKWork `*-api` routes `MUST` run the framework surface classification, context, auth, policy, logging, audit, and response identity stages before dispatching to upstreams, except for explicitly documented health/readiness probes.
 - Business repositories `MUST NOT` deep-import private framework modules. They use only public framework crates and public package-root exports.
 - Business repositories `MUST NOT` depend on deprecated appbase-only HTTP context crates such as `sdkwork-platform-http-context-service` for new work. Migration guidance lives in `../sdkwork-web-framework/docs/10-migration-from-appbase.md` and `MIGRATION_SPEC.md`.
@@ -103,6 +105,7 @@ The canonical typed request context is **`WebRequestContext`**.
 | Request context | `WebRequestContext` | Required handler/controller context on all SDKWork HTTP operations |
 | Principal | `WebRequestPrincipal` | `None` only on public routes |
 | API surface | `WebApiSurface` | `OpenApi`, `AppApi`, `BackendApi`, `GatewayApi` |
+| Locale context | `WebLocaleContext` | Framework-resolved locale, fallback, active locale, and message bundle version metadata |
 | Service view | `TenantAppContext` | Tenant/app/subject ids for service-layer scoping |
 | Legacy alias | `AppRequestContext` | Migration-only alias; new code and OpenAPI extensions use `WebRequestContext` |
 
@@ -110,8 +113,9 @@ Rules:
 
 - `WebRequestContext` `MUST` be resolved once at the framework boundary and injected before protected business handlers run.
 - Every SDKWork HTTP operation `MUST` have a `WebRequestContext`, including public operations. Public operations receive a context with `principal: None`; protected operations use `WebRequestPrincipal` or `RequirePrincipal`.
-- Handlers `MUST` declare `WebRequestContext` or `RequirePrincipal` as a function parameter. They `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant, organization, user, permission, request-id, or SDKWork identity projection headers.
-- Java/Spring controller methods `MUST` consume the typed context through a method parameter, request attribute, argument resolver, or equivalent central framework mechanism. They `MUST NOT` reparse credential or tenant headers in controller logic.
+- `WebRequestContext` `MUST` include a framework-resolved `WebLocaleContext` following `I18N_SPEC.md` section 3.
+- Handlers `MUST` declare `WebRequestContext` or `RequirePrincipal` as a function parameter. They `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant, organization, user, permission, request-id, locale, language, or SDKWork identity projection headers.
+- Java/Spring controller methods `MUST` consume the typed context through a method parameter, request attribute, argument resolver, or equivalent central framework mechanism. They `MUST NOT` reparse credential, tenant, or locale headers in controller logic.
 - Domain projections such as IAM `AppContext` `MUST` be injected only through `DomainContextInjector` or an equivalent framework-registered extension. Route crates and controllers `MUST NOT` hardcode domain context construction.
 - OpenAPI operations `MUST` declare `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface` according to `API_SPEC.md` section 19.
 - Route manifests `MUST` declare `requestContext: WebRequestContext` and `apiSurface` on every route entry so materialization can write the OpenAPI extensions deterministically.
@@ -130,9 +134,40 @@ Handlers and repositories that persist SQL `BIGINT` `tenant_id`, `organization_i
 Rules:
 
 - Positive numeric parsing is required for `tenant_id` and `user_id`; `organization_id` `MUST` parse as `>= 0`, with `0` meaning tenant-level scope.
-- Mapping failure on an authenticated principal `MUST` return HTTP `422` with business code `4220`, not HTTP `500` or internal code `5001`.
+- Mapping failure on an authenticated principal `MUST` return HTTP `422` with business code `42201`, not HTTP `500` or internal code `5001`.
 - Legacy `TrustedRequestSubject` bridges `MAY` exist only for migration and `MUST` use the same numeric parse rules.
 - Handlers `MUST NOT` read client-supplied tenant/user selector headers or parameters to establish ambient SQL subject scope.
+
+### 5.2 Locale Context Projection
+
+`WebLocaleContext` is the framework-owned request locale view. It is resolved once and then consumed by handlers, message mappers, response mappers, SDK gateway adapters, audit enrichers, and backend/admin controllers.
+
+Required logical fields:
+
+```text
+WebLocaleContext {
+  requestedLocale?: LocaleTag
+  effectiveLocale: LocaleTag
+  fallbackLocale: LocaleTag
+  supportedLocales: LocaleTag[]
+  activeLocales: LocaleTag[]
+  source: user-preference | tenant-preference | app-default | accept-language | sdk-header | system-default
+  catalogVersion?: string
+  messageBundleVersion?: string
+  timezone?: string
+  numberingSystem?: string
+}
+```
+
+Rules:
+
+- Locale tags `MUST` be normalized according to `I18N_SPEC.md`.
+- Locale resolution precedence `MUST` follow `I18N_SPEC.md` section 2: authenticated user preference, tenant/application preference, approved SDK/host runtime locale, `Accept-Language`, application default, explicit fallback.
+- Public, login, registration, OAuth, password reset, refresh-token, open-api, app-api, backend-api, gateway, and framework control-plane routes `MUST` receive locale context.
+- The framework `MUST` emit `Content-Language` on localized responses and `Vary: Accept-Language` when representation varies by language.
+- The framework `MAY` emit diagnostic bundle version headers defined by `I18N_SPEC.md`.
+- Business handlers and controllers `MUST NOT` parse `Accept-Language`, `X-SdkWork-Locale`, cookies, query parameters, or user-agent headers to choose locale.
+- Production locale resolution `MUST NOT` trust query parameters unless the route is a documented preview/test route and route metadata declares the exception.
 
 ## 6. API Surfaces And Auth Modes
 
@@ -226,9 +261,10 @@ Standard stages:
 Rules:
 
 - Chain errors `MUST` map to `application/problem+json` through the framework error boundary.
+- Locale resolution `MUST` run as a standard sub-stage of request context resolution and complete before context injection. Authentication may enrich the locale context with user or tenant preference before protected handlers run.
 - Cloud production and standalone production `MUST NOT` use dev-only
   claim-string resolvers.
-- Sensitive operations `SHOULD` declare `x-sdkwork-rate-limit-tier` in OpenAPI and configure the corresponding framework policy.
+- Sensitive operations defined by `SECURITY_SPEC.md` section 5 and `API_SPEC.md` section 19 `MUST` declare `x-sdkwork-rate-limit-tier` in OpenAPI and configure the corresponding framework policy.
 - Gateways and dependency proxy routes `MUST` run the relevant stages before upstream dispatch unless the route is an explicitly documented local health/readiness endpoint.
 
 ## 9. Business Extension Traits
@@ -241,14 +277,21 @@ The framework defines extension points; business repositories implement them.
 | `ApiKeyLookupService` | 10 (open-api api-key) | appbase or owning domain |
 | `OAuthTokenLookupService` | 10 (open-api oauth) | appbase or owning domain |
 | `OpenApiCredentialSchemeDetector` | 10 (open-api flexible) | appbase or product override |
+| `LocaleResolver` | 10 | framework default + appbase/application preference providers |
+| `UserLocalePreferenceProvider` | 10/11 | appbase or application user profile service |
+| `TenantLocalePreferenceProvider` | 10/11 | appbase or application tenant profile service |
 | `AuthorizationPolicy` | 12 | appbase or product policy service |
 | `TenantIsolationPolicy` | 13 | appbase or product policy service |
 | `DomainContextInjector` | 14 | appbase IAM injector, product injectors |
+| `MessageBundleProvider` | response/error boundary | framework, appbase, or application message bundle registry |
+| `LocalizedProblemMapper` | response/error boundary | framework response mapper |
+| `ValidationMessageResolver` | extractor/validation boundary | framework validation adapter |
 
 Rules:
 
 - Business adapters `MUST` register through framework runtime assembly. They `MUST NOT` bypass the standard chain.
 - IAM token validation, API key lookup, OAuth bearer lookup, RBAC, and tenant isolation remain business-owned, but their hook positions and semantics are framework-owned.
+- Locale preference lookup and message resolution remain extension-owned, but their hook positions, context vocabulary, headers, and safe problem-detail semantics are framework-owned.
 - appbase and application repositories `MUST` implement framework traits instead of exposing a parallel HTTP context framework.
 
 ## 10. Handler, Service, And Repository Rules
@@ -257,6 +300,7 @@ Rules:
 
 - Handlers `MUST` take `WebRequestContext` via framework injection (`FromRequestParts` in Rust or an equivalent argument resolver in Java).
 - Handlers `MUST NOT` use raw `Extension<WebRequestContext>` as the only pattern when `FromRequestParts` is available.
+- Handlers `MUST` read locale, timezone, numbering system, and message bundle version only from `WebRequestContext.locale` or approved service context projections.
 - Services `MUST` accept `&WebRequestContext` or `TenantAppContext` for tenant/app scoping and `MUST NOT` depend on Axum, Spring, or gateway request types.
 - Repositories `MUST NOT` accept bare `tenant_id` without provenance from service/context inputs.
 - Route manifests `MUST` use framework contract types such as `HttpRoute` and `RouteAuth` when materializing OpenAPI.
@@ -270,6 +314,7 @@ Forbidden:
 - Local Java filter/interceptor chains that implement different request-context, auth, tenant, or problem-detail semantics.
 - Local request-context structs that compete with `WebRequestContext`.
 - Handler/controller parsing of raw credential, tenant, organization, user, permission, or request identity headers.
+- Handler/controller parsing of raw locale, language, cookie, query, or user-agent values to choose user-facing language.
 - Deprecated context crates such as `sdkwork-platform-http-context-service` for new HTTP work.
 - Vendored framework source or copied framework pipeline code in application repositories.
 - SDK generation from OpenAPI or route manifests that omit request-context/surface metadata.
@@ -295,9 +340,11 @@ Rules:
 - Controllers `MUST` consume the typed context and `MUST NOT` reparse credential or tenant headers.
 - Java controller scan or route manifest tooling `MUST` emit `requestContext: WebRequestContext` and `apiSurface` metadata so materialized OpenAPI contains the same extensions as Rust routes.
 - Problem-detail mapping `MUST` remain centralized through framework exception handling or a shared response mapper.
+- Java locale resolution `MUST` produce the same logical `WebLocaleContext`, response headers, and localized problem-detail extension fields as the Rust framework profile.
 - Success responses `MUST` be serialized as `SdkWorkApiResponse` from `API_SPEC.md` section 15 for SDKWork-owned business operations on `app-api`, `backend-api`, and business `open-api`. Vendor compatibility `open-api` operations declared with `x-sdkwork-wire-protocol: external` per section 4.5.2 `MAY` preserve upstream wire through documented adapter handlers instead of `SdkWorkApiResponse`. Framework response identity `MUST` inject server-owned `traceId` and success `code` into every JSON success body that uses the SDKWork envelope and `SHOULD` echo `traceId` through `X-SdkWork-Trace-Id`.
 - Handlers `MUST NOT` return legacy envelopes such as `PlusApiResult`, `AppbaseApiResult`, `StoreApiResult`, `SdkWorkResponse`, or per-domain `*ApiResult`. Business failures `MUST` map to `ProblemDetail`, not HTTP 2xx bodies with non-success `code`, `success`, or human `message`. Wire field `requestId` is forbidden.
-- Java and Rust implementations of the same `operationId` `MUST` preserve identical auth, tenant, request-context, success-envelope, and error semantics.
+- Java and Rust implementations of the same `operationId` `MUST` preserve identical auth, tenant, request-context, success-envelope, operation-pattern status, and error semantics.
+- Framework response mapping `MUST` preserve `API_SPEC.md` section 15.4 operation semantics: create maps to `201`, update/retrieve/list/search maps to `200`, delete maps to `204` with no JSON body, async accept maps to `202`, and SDKWork-owned business failures map to `ProblemDetail`.
 
 ## 14. Verification
 
@@ -311,11 +358,18 @@ Business repository after framework integration:
 
 - Dependency graph check: `cargo tree` includes public `sdkwork-web-*` crates and has no reverse dependency from framework crates to business crates.
 - Route manifest check: every route declares `requestContext: WebRequestContext`, `apiSurface`, auth mode, owner, source, and handler binding metadata.
+- Route collision check: `check-route-path-collisions.mjs` passes for route manifests and OpenAPI authorities before framework routers or gateways are merged.
+- Component runtime check: `check-component-port-bindings.mjs` passes when same-origin dependency API surfaces or runtime entrypoints are declared.
 - Contract label check: route manifests, materialized OpenAPI, and derived SDK inputs use canonical `x-sdkwork-api-surface` values such as `open-api`, `app-api`, `backend-api`, and `internal-api`, not camelCase runtime enum labels.
 - Pipeline order contract test: standard chain stages are not bypassed.
 - Handler static scan: no raw credential, tenant, organization, user, permission, or request-id header parsing in route crates or controllers.
-- Bootstrap smoke test: API server or gateway mounts routes through framework bootstrap.
+- Locale static scan: no handler/controller-local parsing of `Accept-Language`, `X-SdkWork-Locale`, locale query parameters, cookies, or user-agent language values.
+- Locale context test: public and protected routes receive `WebRequestContext.locale`; unsupported requested locales resolve through the configured fallback chain.
+- Locale response test: localized responses emit `Content-Language`, and language-varying responses emit `Vary: Accept-Language`.
+- Localized problem test: framework errors and validation errors preserve numeric `ProblemDetail.code` and `traceId`, and expose `i18nKey`/`locale` when safe messages exist.
+- Bootstrap smoke test: gateway or migration-only API server mounts routes through framework bootstrap.
 - OpenAPI check: every operation declares `x-sdkwork-request-context: WebRequestContext` and canonical `x-sdkwork-api-surface`; protected operations declare the required security scheme; public SDK-generated operations declare `security: []` and `x-sdkwork-auth-mode: anonymous`.
+- Operation pattern check: SDKWork-owned operations preserve the `API_SPEC.md` section 15.4 method/path/status/data matrix; delete routes return `204` without JSON bodies and create routes return `201`.
 - Credential-entry check: login-like anonymous operations declare route-level `forbidCredentialHeaders: true`, materialize `x-sdkwork-forbid-credential-headers: true`, and reject inbound credential/context headers before handler logic.
 - Open-api auth check: protected routes declare `api-key`, `oauth`, or `open-api-flexible`; security vectors cover missing credentials, API key resolution, OAuth bearer resolution, and flexible scheme selection.
 - SDK generation check: authority OpenAPI and derived `*.sdkgen.*` inputs preserve request-context and surface extensions.
@@ -328,12 +382,16 @@ Detailed test requirements: `TEST_SPEC.md` section 2.3.1.
 - [ ] Every repository/application/module that owns, serves, develops, proxies, or composes an SDKWork HTTP `*-api` surface follows this standard.
 - [ ] Rust HTTP `*-api` runtimes declare `sdkwork-web-framework` and public `sdkwork-web-*` crate dependencies.
 - [ ] Route crates mount through framework router helpers and inject `WebRequestContext`.
-- [ ] API server or gateway uses framework bootstrap; no handwritten Axum/Tower security stack replaces the standard chain.
+- [ ] Gateway or migration-only API server uses framework bootstrap; no handwritten Axum/Tower security stack replaces the standard chain.
 - [ ] Every route manifest entry declares `requestContext: WebRequestContext` and `apiSurface`.
+- [ ] Route manifests and OpenAPI authorities pass normalized route path collision validation.
 - [ ] Every materialized OpenAPI operation declares `x-sdkwork-request-context: WebRequestContext`, canonical kebab-case `x-sdkwork-api-surface`, and rate-limit tier when required.
 - [ ] Public SDK-generated operations declare `security: []` and `x-sdkwork-auth-mode: anonymous`.
 - [ ] Login-like anonymous credential-entry operations declare and enforce `x-sdkwork-forbid-credential-headers: true`.
 - [ ] Handlers/controllers declare typed `WebRequestContext`; no raw credential, tenant, organization, user, permission, or request-id header parsing.
+- [ ] `WebRequestContext` includes `WebLocaleContext` and all SDKWork HTTP routes receive locale context.
+- [ ] Handlers/controllers do not parse locale headers, cookies, query parameters, or user-agent language values.
+- [ ] Localized responses emit standard locale headers and problem-detail localization metadata without changing numeric error semantics.
 - [ ] Business adapters implement framework traits; no parallel HTTP context framework in appbase or application repositories.
 - [ ] Java controllers, when present, preserve equivalent typed context, interceptor semantics, route metadata, and problem-detail behavior.
 - [ ] Protected open-api routes declare `api-key`, `oauth`, or `open-api-flexible` auth mode and resolve credentials through framework extension traits, not handler-local header parsing.

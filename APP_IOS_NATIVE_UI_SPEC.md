@@ -81,11 +81,12 @@ apps/sdkwork-<application-code>-ios-mobile/packages/sdkwork-<application-code>-i
       Repositories/
       State/
       I18n/
+        <locale>/<domain>/<capability>/
       Routes/
       Navigation/
       Host/
       Models/
-      Resources/
+      Resources/            # generated or thin .lproj projection
   Tests/
   specs/
 ```
@@ -108,7 +109,7 @@ Rules:
 - `Presentation/` owns view models/controllers and UI state mapping.
 - `Services/` owns use-case orchestration.
 - `Repositories/` owns thin generated app SDK calls where repository naming is used.
-- `I18n/`, `Resources/`, and platform localization files own package-local locale fragments. Platform resource aggregates must be generated or assembled from fragments and must not be hand-authored whole-app catalogs; follow `I18N_SPEC.md`.
+- `I18n/<locale>/<domain>/<capability>/` owns package-local iOS locale source fragments. `Resources/*.lproj/Localizable.strings`, `.stringsdict`, and other platform localization files are generated or thin projections only. Platform resource aggregates must be generated or assembled from fragments and must not be hand-authored whole-app catalogs; follow `I18N_SPEC.md` section 6.1.
 - `Models/` owns view models only. API DTOs come from generated Swift app SDKs.
 - `Host/` owns adapter interfaces for platform capabilities.
 
@@ -156,6 +157,7 @@ Required coverage for new iOS capabilities:
 | SDK boundary | Static scan proves generated SDK clients or approved wrappers are used and no raw HTTP, manual auth headers, or generated SDK edits were introduced. |
 | Service/view model | Unit tests use fake generated app SDK clients and fake host adapters. |
 | UI states | SwiftUI/UIKit tests or documented fixtures cover loading, empty, validation-error, permission-denied, unavailable, and unknown-error states. |
+| I18n layout | Static scan proves authored fragments stay under `I18n/<locale>/<domain>/<capability>/` and `.lproj/Localizable.strings` files are generated or thin platform projections only. |
 | IAM clearing | Tests prove secure storage, token manager, context store, caches, and sensitive state clear on logout, refresh failure, tenant switch, and account switch. |
 | Host boundary | Static scan proves feature UI does not call iOS platform APIs directly for host capabilities. |
 

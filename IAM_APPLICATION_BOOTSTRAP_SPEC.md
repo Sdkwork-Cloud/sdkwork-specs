@@ -118,6 +118,24 @@ Rules:
 - Bootstrap `MUST` fail closed when default access permissions are missing.
 - Manifest content `MUST NOT` contain secrets, live tokens, or bootstrap passwords.
 
+### 4.1 Bootstrap Owner, Default Permissions, And Production Guards
+
+Bootstrap has two different principals and they must not be conflated:
+
+| Principal | Purpose | Allowed lifetime |
+| --- | --- | --- |
+| Bootstrap operator | Registers/provisions/enables the tenant application and issues initial access credentials | Operational action only; credentials come from a secret store or interactive operator auth |
+| Application bootstrap owner | First tenant/organization owner or invite target for the new application | Runtime subject with ordinary `org_admin` or application-owned owner role, never implicit platform authority |
+
+Rules:
+
+- Production bootstrap `MUST NOT` create a live `platform_super_admin` user, default password, default API key, or unbounded bootstrap token.
+- Production bootstrap owner creation `MUST` use an explicit owner subject, invitation, or operator-approved binding in the deployment profile. Demo defaults are allowed only in dev/test profiles.
+- `backend.accessTokenPermissionScope` is a bootstrap transport allowlist. It `MUST` be minimal, standard-formatted, and limited to credential-entry/pre-login or explicitly documented bootstrap calls. It must not duplicate entire module catalogs.
+- Application bootstrap scripts `MUST` be idempotent: repeated runs reconcile template, tenant application, owner binding, access credential, and environment handoff by stable keys instead of inserting duplicates.
+- Default role bindings created by bootstrap `MUST` follow the actor initialization and default grant matrix in `PERMISSION_STANDARD_SPEC.md` and pass the same IMF role assignability and exclusion checks as runtime grants unless a seed-only exception is declared in `IAM_MODULE_MANIFEST_SPEC.md`.
+- Super-admin activation, rotation, and emergency access `MUST` be governed by `PERMISSION_STANDARD_SPEC.md` and `IAM_RBAC_FEDERATION_SPEC.md`, not application-local bootstrap scripts.
+
 ## 5. Runtime Environments
 
 The same framework `MUST` work across these environments by swapping only the transport adapter and environment resolution:

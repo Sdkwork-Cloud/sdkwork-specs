@@ -28,6 +28,8 @@ Rules:
 - Deny bindings override allow bindings when both match.
 - Custom tenant roles cannot exceed the assigner's effective `permission_scope`.
 - Product domains must not fork RBAC evaluation engines.
+- Role grant, revoke, and update operations `MUST` evaluate the assignability policy from the merged IMF catalog before writing `iam_role_binding`.
+- Cross-domain grants are allowed only when the target module declares the permission or role relationship in IMF and the assigning principal has the required effective scope.
 
 ## 2. Ownership Boundaries
 
@@ -43,6 +45,26 @@ Rules:
 | Domain dept/position subtree templates | no | yes | no |
 | Enabled module set | default bundled list | no | yes (`sdkwork.app.config.json`) |
 | Tenant custom roles | no | no | runtime only |
+
+## 2.1 Role Relationship And Grant Governance
+
+The merged RBAC catalog is a relationship graph, not just a permission list. Each role catalog entry `MUST` materialize:
+
+- `assignable`: whether the role may be granted through runtime APIs.
+- `bindingPrincipalKind`: user, tenant member, organization membership, service account, or platform staff binding.
+- `scope`: tenant, organization, service, or platform.
+- `grantableBy`: explicit role or permission requirements for grant and revoke operations.
+- `exclusions`: separation-of-duty rules that prevent conflicting grants.
+- `sensitive`: whether grant/revoke/update requires MFA or recent reauthentication.
+
+Rules:
+
+- `platform_super_admin` `MUST` be platform-owned, non-tenant-assignable, and protected by break-glass governance: MFA, recent reauthentication, reason, audit event, and expiry policy when temporary grants are supported.
+- `platform_system_admin` and `platform_super_admin` `MUST NOT` be granted by organization admins, tenant custom roles, application bootstrap scripts, or dependency modules.
+- `org_admin` may grant only roles in the same organization whose permission set is within the assigner's effective scope and assignability ceiling.
+- Deny bindings and role exclusions `MUST` take precedence over role grant extensions.
+- Role grant extensions `MUST` name the target role and permission patterns; they must not silently expand a platform role into a domain-wide wildcard unless the module owns the domain and governance approves the extension.
+- Every sensitive role operation `MUST` emit an audit event containing assigner, assignee, target role, scope, organization/service/platform context, reason, and trace id.
 
 ## 3. Discovery And Materialization
 

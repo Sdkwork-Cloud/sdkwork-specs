@@ -2,7 +2,7 @@
 
 - Version: 1.2
 - Scope: TypeScript, JavaScript, Node tooling, package exports, service facades, generated TypeScript SDK composition, and TypeScript tests
-- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `FRONTEND_SPEC.md`, `TEST_SPEC.md`
+- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `FRONTEND_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
 
 This standard applies only when TypeScript, JavaScript, Node scripts, package manifests, or TypeScript SDK facades are touched.
 
@@ -110,6 +110,7 @@ src/
   runtime/
   config/
   errors/
+  i18n/        # present when the package owns messages or key contracts
   tests/
 ```
 
@@ -121,6 +122,7 @@ Rules:
 - Service modules accept SDK clients through typed ports.
 - Runtime/bootstrap constructs concrete SDK clients and injects token managers.
 - Node scripts should be deterministic, fail fast, and avoid hidden global state.
+- TypeScript packages that own user-facing copy, operator-facing copy, backend message resources, or i18n key contracts `MUST` use the `src/i18n/<locale>/<domain>/<capability>/<fragment>.ts|json` or `src/i18n/keys/<domain>/<capability>.ts|json` layouts from `I18N_SPEC.md` section 6.1. `src/i18n/index.ts` and `manifest.ts` remain thin exports or generated aggregators.
 
 ### 2.1 `@sdkwork/utils` Package Exports
 
@@ -183,6 +185,7 @@ Rules:
 
 - [ ] Public TypeScript APIs are typed.
 - [ ] `src/index.ts` is a stable export boundary.
+- [ ] Authored TypeScript i18n messages or key contracts, when present, use `src/i18n/<locale>/<domain>/<capability>/` or `src/i18n/keys/<domain>/<capability>`.
 - [ ] SDK clients are injected through typed ports.
 - [ ] Raw HTTP did not replace generated SDK calls.
 - [ ] Generated TypeScript output was not hand-edited.

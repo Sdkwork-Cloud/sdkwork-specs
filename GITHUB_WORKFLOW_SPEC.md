@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: SDKWork application GitHub Actions packaging, release workflow integration, artifact publication, deployment workflow integration, supply-chain policy execution, and the reusable `sdkwork-github-workflow` framework
-- Related: `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `CODE_STYLE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, `APP_MANIFEST_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `RELEASE_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `QUALITY_GATE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`
+- Related: `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `CODE_STYLE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, `APP_MANIFEST_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `DEPLOYMENT_SPEC.md`, `RELEASE_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `QUALITY_GATE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork applications integrate with GitHub Actions for packaging and deployment. The goal is one reusable framework and one application-side contract, not copied release YAML in every application repository.
 
@@ -122,6 +122,7 @@ Rules:
 - Step `env` values `MUST` be strings.
 - Step `workingDirectory` values `MUST` be safe relative paths.
 - Lifecycle execution `MUST` stop on the first failed step.
+- Release workflows for composable applications `MUST` run the applicable composition validators in `preflight` or `validate` before artifact publication when module, dependency SDK, route, permission, frontend package, Rust backend, or resolver behavior is part of the release scope.
 - The framework `MUST` provide standard environment variables to every package
   target lifecycle step:
   - `SDKWORK_APP_ID`

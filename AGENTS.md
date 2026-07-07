@@ -53,7 +53,7 @@ This repository is a standards repository, not an SDKWork application. If a futu
 
 ## Spec Resolution Order
 
-This repository maintains global standards only. Resolution order for standards work here:
+This repository maintains global standards only. Use dynamic progressive loading before implementation files. Resolution order for standards work here:
 
 1. Read this `AGENTS.md`.
 2. Read `SOUL.md`, especially section 2 (Spec System Hierarchy).
@@ -77,7 +77,8 @@ Code style or naming changes:
 
 - `CODE_STYLE_SPEC.md`
 - `NAMING_SPEC.md`
-- only the relevant language-specific spec: `RUST_CODE_SPEC.md`, `JAVA_CODE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, or `FRONTEND_CODE_SPEC.md`
+- language-specific specs are on-demand: load only the touched language spec (`RUST_CODE_SPEC.md`, `JAVA_CODE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, or `FRONTEND_CODE_SPEC.md`)
+- `PNPM_SCRIPT_SPEC.md` when package command standardization, package scripts, or root lifecycle commands are touched
 
 Contract or platform changes:
 
@@ -125,6 +126,13 @@ node tools/align-workspace-federation-paths.mjs --workspace .. [--dry-run]
 node tools/check-workspace-lock-package-paths.mjs --workspace ..
 node tools/align-workspace-lock-package-paths.mjs --workspace ..
 node tools/check-api-response-envelope.mjs --workspace ..
+node tools/check-api-operation-patterns.mjs --workspace ..
+node tools/check-route-path-collisions.mjs --workspace ..
+node tools/check-permission-composition.mjs --workspace ..
+node tools/check-component-port-bindings.mjs --workspace ..
+node tools/check-frontend-composition.mjs --workspace ..
+node tools/check-rust-backend-composition.mjs --workspace ..
+node tools/check-i18n-standard.mjs --workspace ..
 node tools/align-openapi-response-envelope-workspace.mjs --workspace .. [--dry-run]
 node tools/align-apps-directory-index.mjs --root .
 node tools/audit-apps-directory-index-workspace.mjs --workspace ..
@@ -152,8 +160,22 @@ node tools/audit-route-crate-naming-workspace.mjs --workspace ..
 node tools/align-database-framework-workspace.mjs --workspace ..
 node tools/audit-database-framework-workspace.mjs --workspace ..
 node tools/check-api-response-envelope.mjs --root .
+node tools/check-api-operation-patterns.mjs --root .
+node tools/check-route-path-collisions.mjs --root .
+node tools/check-permission-composition.mjs --root .
+node tools/check-component-port-bindings.mjs --root .
+node tools/check-frontend-composition.mjs --root .
+node tools/check-rust-backend-composition.mjs --root .
+node tools/check-i18n-standard.mjs --root .
 node tools/align-agents-http-response-standard.mjs --workspace ..
 node --test tools/check-api-response-envelope.test.mjs
+node --test tools/check-api-operation-patterns.test.mjs
+node --test tools/check-route-path-collisions.test.mjs
+node --test tools/check-permission-composition.test.mjs
+node --test tools/check-component-port-bindings.test.mjs
+node --test tools/check-frontend-composition.test.mjs
+node --test tools/check-rust-backend-composition.test.mjs
+node --test tools/check-i18n-standard.test.mjs
 node --test tools/check-workspace-packages-layout.test.mjs
 node --test tools/check-workspace-federation-paths.test.mjs
 node --test tools/check-composition-resolver.test.mjs
@@ -243,33 +265,34 @@ node <sdkwork-specs>/tools/check-app-sdk-consumer-imports.mjs --workspace <works
 
 Authority: `APP_SDK_INTEGRATION_SPEC.md` section 9, `SDK_SPEC.md` package naming table, `SDK_WORKSPACE_GENERATION_SPEC.md` composed facade rules.
 
-
-
 ## HTTP API Response Envelope
 
-All L2+ `app-api`, `backend-api`, and SDKWork-owned business `open-api` HTTP contracts `MUST` follow `API_SPEC.md` section 4.5, section 14, and section 15:
+All L2+ SDKWork-owned custom HTTP contracts, including `app-api`, `backend-api`, and SDKWork-owned business `open-api`, `MUST` follow `API_SPEC.md` section 4.5, section 14, and section 15:
 
+- **Default classification:** omitted `x-sdkwork-wire-protocol` means SDKWork-owned custom API (`sdkwork-v3`); only operation-level `x-sdkwork-wire-protocol: external` plus `x-sdkwork-external-protocol-id` identifies a third-party compatibility `open-api` operation.
 - **Input:** typed request bodies, section 14.1 list/search/command input, `SdkWorkListQuery`, and `q` for free-text search.
 - **Success output:** `SdkWorkApiResponse` with `{ "code": 0, "data": <payload>, "traceId": "<server-uuid>" }`.
-- **Error output:** HTTP 4xx/5xx `application/problem+json` (`ProblemDetail`) with numeric `code` and `traceId`.
+- **Error output:** HTTP 4xx/5xx `application/problem+json` (`ProblemDetail`) with numeric `code` and `traceId`; SDKWork-owned errors may include `i18nKey` and `locale` presentation metadata.
 - Success `code` is numeric `int32`; HTTP 2xx JSON bodies `MUST` use `0` only. REST semantics remain on HTTP status (`201`, `202`, etc.).
 - Platform error codes are numeric non-zero values per section 15.3 (`40001`, `40101`, `40401`, …).
 - Single resource: `data.item`
 - Lists: `data.items` + `data.pageInfo` (`PageInfo.mode` is `offset` or `cursor`)
 - Commands: `data.accepted` plus optional `resourceId` / `status`
 - Async accept (`202`): `data.operationId`, `data.status`, optional `pollUrl`
+- Operation patterns: retrieve/list/search/create/update/delete/command/async/bulk semantics follow `API_SPEC.md` section 15.4; create uses `201`, delete uses `204` with no JSON body, and `PUT`/`PATCH` use SDK action `update`.
 
-Vendor compatibility `open-api` routes that mirror upstream tool or provider wire (for example OpenAI `/v1/*`, Claude Code, Codex) `MAY` opt out only when every exempt operation declares `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id` per `API_SPEC.md` section 4.5.2. SDKWork-owned business `open-api` operations `MUST NOT` opt out.
+Vendor compatibility `open-api` routes that mirror upstream tool or provider wire (for example OpenAI `/v1/*`, Anthropic/Claude `/anthropic/v1/*`, Google/Gemini `/google/v1beta/*`, Claude Code, or Codex) `MAY` opt out only when every exempt operation declares operation-level `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id` per `API_SPEC.md` section 4.5.2. SDKWork-owned business `open-api` operations `MUST NOT` opt out. Mixed OpenAPI documents are validated per operation; one external operation never exempts SDKWork-owned operations in the same document.
 
-Errors `MUST` use HTTP 4xx/5xx with `application/problem+json` (`ProblemDetail`) including required numeric `code` and `traceId`. Business failures `MUST NOT` use HTTP 2xx with non-zero `code`, string wire codes, `success`, or human `message`.
+Errors `MUST` use HTTP 4xx/5xx with `application/problem+json` (`ProblemDetail`) including required numeric `code` and `traceId`. Optional `i18nKey` and `locale` are display metadata only. Business failures `MUST NOT` use HTTP 2xx with non-zero `code`, string wire codes, `success`, or human `message`.
 
 Forbidden legacy envelopes and fields: `PlusApiResult`, `AppbaseApiResult`, `StoreApiResult`, `SdkWorkResponse`, per-domain `*ApiResult`, wire field `requestId`, bare domain DTOs at the HTTP root, and top-level `{ items, pageInfo, traceId }` without `data`.
 
-Handlers `MUST` serialize success and map errors through `sdkwork-web-framework` response mapping. Generated HTTP SDKs (`--standard-profile sdkwork-v3`) unwrap `data` by default and expose typed numeric `ProblemDetail.code` / `traceId` on errors; use `.raw` when the full envelope is required.
+Handlers `MUST` serialize success and map errors through `sdkwork-web-framework` response mapping. Generated HTTP SDKs (`--standard-profile sdkwork-v3`) unwrap `data` by default and expose typed numeric `ProblemDetail.code` / `traceId` and returned localization metadata on errors; use `.raw` when the full envelope is required.
 
 Before completing API contract, SDK generation, or frontend service work, run:
 
 ```bash
+node <sdkwork-specs>/tools/check-api-operation-patterns.mjs --workspace <workspace-root>
 node <sdkwork-specs>/tools/check-api-response-envelope.mjs --workspace <workspace-root>
 ```
 
@@ -291,6 +314,21 @@ node <sdkwork-specs>/tools/check-pagination.mjs --workspace <workspace-root>
 ```
 
 Authority: `PAGINATION_SPEC.md`, `API_SPEC.md` §14.1/§16, `DATABASE_SPEC.md` §20.5, `WEB_BACKEND_SPEC.md` §12, `SDK_SPEC.md` §4.2/§6, `FRONTEND_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md` §9.
+
+## Permission Composition And Route Registry
+
+Client app roots with HTTP `contracts.sdkDependencies` `MUST` declare `contracts.permissionComposition` and inherit dependency IAM module catalogs by reference. OpenAPI `x-sdkwork-permission` codes `MUST` resolve to inherited or application-owned IMF catalogs.
+
+Route manifests and OpenAPI authorities `MUST` pass normalized route path collision validation before gateway assembly, SDK generation, or release. `{id}`, `:id`, and `<id>` path parameters collide as the same `{param}` segment.
+
+Before completing SDK dependency integration, permission catalog changes, route manifests, OpenAPI authority changes, or gateway assembly work, run:
+
+```bash
+node <sdkwork-specs>/tools/check-permission-composition.mjs --workspace <workspace-root>
+node <sdkwork-specs>/tools/check-route-path-collisions.mjs --workspace <workspace-root>
+```
+
+Authority: `APP_PERMISSION_COMPOSITION_SPEC.md`, `PERMISSION_STANDARD_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`.
 
 ## Human Review Rules
 

@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import os from 'node:os';
 
 import {
   deriveFoundationEnvFromResolution,
@@ -14,6 +15,16 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clawRouterRoot = path.resolve(__dirname, '../../../sdkwork-clawrouter');
+
+function writeJson(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
+function writeText(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, value, 'utf8');
+}
 
 test('resolveComposition derives platform IAM integration from clawrouter sdkDependencies', () => {
   if (!fs.existsSync(clawRouterRoot)) return;
@@ -82,4 +93,112 @@ test('deriveFoundationEnvFromResolution maps platform dependencies to gateway or
 
   assert.equal(env.VITE_SDKWORK_APPBASE_APP_API_BASE_URL, 'http://127.0.0.1:3902/app/v3/api');
   assert.equal(env.VITE_SDKWORK_DRIVE_APP_API_BASE_URL, 'http://127.0.0.1:3902/app/v3/api');
+});
+
+test('resolveComposition includes cross-stack architecture summary', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-composition-architecture-'));
+  writeJson(path.join(root, 'specs/component.spec.json'), {
+    component: { name: 'sdkwork-demo', type: 'application-root' },
+    composition: { consumerIntegrationsExempt: true },
+    contracts: {
+      dependencyApiSurfaces: [
+        {
+          workspace: 'sdkwork-iam-app-sdk',
+          surface: 'app-api',
+          runtimeMode: 'external-service',
+          apiPrefix: '/app/v3/api/iam',
+        },
+      ],
+    },
+  });
+  const appRoot = path.join(root, 'apps/sdkwork-demo-pc');
+  writeJson(path.join(appRoot, 'sdkwork.app.config.json'), {
+    schemaVersion: 1,
+    applicationCode: 'demo',
+  });
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-core/package.json'), {
+    name: '@sdkwork/demo-pc-core',
+    version: '0.0.0',
+  });
+  fs.mkdirSync(path.join(appRoot, 'packages/sdkwork-demo-pc-core/src/composition'), { recursive: true });
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-core/specs/component.spec.json'), {
+    component: {
+      name: '@sdkwork/demo-pc-core',
+      type: 'frontend-core',
+      root: 'apps/sdkwork-demo-pc/packages/sdkwork-demo-pc-core',
+      domain: 'demo',
+      capability: 'core',
+      languages: ['typescript'],
+    },
+    contracts: {
+      layerRole: 'frontend-core',
+      publicExports: ['.', './composition'],
+      providedPorts: [],
+      requiredPorts: [],
+      sdkDependencies: [],
+    },
+  });
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-chat/package.json'), {
+    name: '@sdkwork/demo-pc-chat',
+    version: '0.0.0',
+  });
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-chat/specs/component.spec.json'), {
+    component: {
+      name: '@sdkwork/demo-pc-chat',
+      type: 'react-package',
+      root: 'apps/sdkwork-demo-pc/packages/sdkwork-demo-pc-chat',
+      domain: 'demo',
+      capability: 'chat',
+      languages: ['typescript'],
+    },
+    contracts: {
+      layerRole: 'frontend-feature',
+      publicExports: ['.'],
+      providedPorts: [{ name: 'chatServices', export: '.' }],
+      requiredPorts: [{ name: 'demoSdk', export: '.' }],
+    },
+  });
+  writeText(
+    path.join(root, 'crates/sdkwork-demo-chat-service/Cargo.toml'),
+    '[package]\nname = "sdkwork-demo-chat-service"\nversion = "0.0.0"\n',
+  );
+  writeJson(path.join(root, 'crates/sdkwork-routes-chat-app-api/specs/component.spec.json'), {
+    component: {
+      name: 'sdkwork-routes-chat-app-api',
+      type: 'rust-route-crate',
+      root: 'crates/sdkwork-routes-chat-app-api',
+      domain: 'demo',
+      capability: 'chat',
+      languages: ['rust'],
+    },
+    contracts: {
+      layerRole: 'backend-route',
+      publicExports: ['.'],
+      runtimeEntrypoints: ['build_sdkwork_chat_app_api_router'],
+      routeManifest: 'sdks/_route-manifests/app-api/sdkwork-routes-chat-app-api.route-manifest.json',
+    },
+  });
+  writeJson(path.join(root, 'sdks/_route-manifests/app-api/sdkwork-routes-chat-app-api.route-manifest.json'), {
+    kind: 'sdkwork.route.manifest',
+    surface: 'app-api',
+    packageName: 'sdkwork-routes-chat-app-api',
+    routes: [{ method: 'GET', path: '/app/v3/api/chat/messages', operationId: 'chat.messages.list' }],
+  });
+
+  const resolution = resolveComposition(root);
+
+  assert.ok(resolution.architecture.components.some((entry) => entry.name === '@sdkwork/demo-pc-chat'));
+  assert.ok(resolution.architecture.frontend.packages.some((entry) => entry.name === '@sdkwork/demo-pc-chat'));
+  assert.ok(resolution.architecture.rust.crates.some((entry) => entry.packageName === 'sdkwork-demo-chat-service'));
+  assert.ok(resolution.architecture.routes.manifests.some((entry) => entry.packageName === 'sdkwork-routes-chat-app-api'));
+  assert.ok(resolution.architecture.runtime.dependencyApiSurfaces.some((entry) => entry.workspace === 'sdkwork-iam-app-sdk'));
+});
+
+test('standards repositories are exempt from consumer SDK dependency requirements', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-composition-standards-'));
+  writeText(path.join(root, 'README.md'), '# SDKWork Standards\n\nrepository-kind: standards\n');
+
+  const resolution = resolveComposition(root);
+
+  assert.equal(resolution.issues.includes('no sdkDependencies found in consumer core component.spec.json files'), false);
 });

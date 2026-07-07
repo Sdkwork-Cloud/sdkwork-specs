@@ -100,6 +100,14 @@ export const sdkWorkEnvelopeComponentSchemas = {
         format: 'uuid',
         description: 'Server-owned request correlation id.',
       },
+      i18nKey: {
+        type: 'string',
+        description: 'Optional stable localization key such as errors.result.40001.',
+      },
+      locale: {
+        type: 'string',
+        description: 'Optional effective BCP 47 locale used by framework message mapping.',
+      },
       errors: {
         type: 'array',
         items: { $ref: '#/components/schemas/FieldError' },
@@ -118,6 +126,13 @@ export const sdkWorkEnvelopeComponentSchemas = {
         format: 'int32',
         minimum: 40011,
         maximum: 40099,
+      },
+      i18nKey: { type: 'string' },
+      params: {
+        type: 'object',
+        additionalProperties: {
+          oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'integer' }, { type: 'boolean' }],
+        },
       },
     },
   },

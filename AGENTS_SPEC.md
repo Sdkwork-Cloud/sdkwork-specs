@@ -46,7 +46,7 @@ Each authored `AGENTS.md` must include these sections, with local details filled
 
 Sections may be brief, but they must be actionable and must use repository-relative paths.
 
-`## HTTP API Response Envelope` is mandatory for every repository or application root that owns, serves, generates, or consumes SDKWork HTTP `app-api`, `backend-api`, or SDKWork-owned business `open-api` contracts. Use `node ../sdkwork-specs/tools/align-agents-http-response-standard.mjs --workspace ..` to refresh the canonical section text from `API_SPEC.md` section 4.5 and sections 14–16. Do not paraphrase or weaken the input/output rules locally.
+`## HTTP API Response Envelope` is mandatory for every repository or application root that owns, serves, generates, or consumes SDKWork HTTP `app-api`, `backend-api`, or SDKWork-owned business `open-api` contracts. Omitted `x-sdkwork-wire-protocol` means SDKWork-owned custom API (`sdkwork-v3`); only operation-level `x-sdkwork-wire-protocol: external` plus `x-sdkwork-external-protocol-id` identifies a third-party compatibility `open-api` operation. The section must also reference the standard operation matrix for retrieve/list/search/create/update/delete/command/async/bulk patterns and the `check-api-operation-patterns.mjs` validator. Use `node ../sdkwork-specs/tools/align-agents-http-response-standard.mjs --workspace ..` to refresh the canonical section text from `API_SPEC.md` section 4.5 and sections 14-16. Do not paraphrase or weaken the input/output rules locally.
 
 `## App SDK Consumer Imports` is mandatory for every repository or application root that owns or consumes generated HTTP SDK clients in `apps/`, `packages/`, bootstrap, services, UI, or integration contract tests. Copy the canonical section text from `APP_SDK_INTEGRATION_SPEC.md` section 9. Do not paraphrase or weaken the scoped `@sdkwork/*-app-sdk` / `@sdkwork/*-backend-sdk` rules locally. Verify with `node ../sdkwork-specs/tools/check-app-sdk-consumer-imports.mjs --workspace ..`.
 
@@ -123,11 +123,12 @@ Rules:
 | Rust code | `RUST_CODE_SPEC.md`, plus `RUST_RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, and `RPC_RESILIENCE_SPEC.md` when RPC is touched |
 | Java/Spring code | `JAVA_CODE_SPEC.md`, `WEB_BACKEND_SPEC.md` when HTTP backend code is touched, `RPC_FRAMEWORK_SPEC.md` when gRPC is touched |
 | TypeScript/Node code | `TYPESCRIPT_CODE_SPEC.md` |
-| Frontend/UI code | `FRONTEND_CODE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, and exactly one detailed UI architecture spec |
+| Frontend/UI code | `COMPOSABLE_ARCHITECTURE_SPEC.md` when reusable package boundaries or SDK composition are touched, `FRONTEND_CODE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, and exactly one detailed UI architecture spec |
 | API changes | `API_SPEC.md`, `PAGINATION_SPEC.md` when list/search pagination is touched, `WEB_FRAMEWORK_SPEC.md` when Rust HTTP runtime is touched, `WEB_BACKEND_SPEC.md`, `SDK_SPEC.md`, `TEST_SPEC.md` |
-| Rust HTTP route crates / API servers | `API_SPEC.md`, `SUBJECT_ID_SPEC.md` when SQL subject scope is involved, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md` |
+| Rust HTTP route crates / gateways / migration-only API servers | `COMPOSABLE_ARCHITECTURE_SPEC.md`, `API_SPEC.md`, `SUBJECT_ID_SPEC.md` when SQL subject scope is involved, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md` |
 | Database changes | `DATABASE_SPEC.md`, `SUBJECT_ID_SPEC.md` when tenant/user subject columns are involved, `PRIVACY_SPEC.md`, `TEST_SPEC.md` |
-| SDK generation/consumption | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md` when RPC SDKs are touched, `API_SPEC.md`, `TEST_SPEC.md` |
+| SDK generation/consumption | `COMPOSABLE_ARCHITECTURE_SPEC.md` when dependency SDKs, runtime surfaces, or component ports are touched, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md` when RPC SDKs are touched, `API_SPEC.md`, `TEST_SPEC.md` |
+| Composable module or dependency integration | `COMPOSABLE_ARCHITECTURE_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `TEST_SPEC.md`, plus the touched frontend/Rust/API specs |
 | RPC contracts / gRPC services | `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md` |
 | Service discovery / dynamic RPC resolution | `DISCOVERY_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md` |
 | App identity/release | `APP_MANIFEST_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md` |
@@ -188,11 +189,11 @@ Use this repository's package manifest scripts. Record commands and outputs.
 
 ## HTTP API Response Envelope
 
-Follow `../sdkwork-specs/API_SPEC.md` §15. Success bodies use `SdkWorkApiResponse` with numeric `code` (`0`), `data`, and `traceId`; errors use `ProblemDetail` with numeric non-zero `code` and `traceId`. Run `node ../sdkwork-specs/tools/check-api-response-envelope.mjs` for the owning repo or workspace before completing API work.
+Follow `../sdkwork-specs/API_SPEC.md` section 4.5 and section 15. Omitted `x-sdkwork-wire-protocol` means SDKWork-owned custom API (`sdkwork-v3`). Success bodies use `SdkWorkApiResponse` with numeric `code` (`0`), `data`, and `traceId`; errors use `ProblemDetail` with numeric non-zero `code` and `traceId`. Operation patterns follow section 15.4: create returns `201`, delete returns `204` with no JSON body, and `PUT`/`PATCH` use SDK action `update`. Third-party compatibility `open-api` operations may preserve upstream wire only when every exempt operation declares `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id`. Run `node ../sdkwork-specs/tools/check-api-operation-patterns.mjs` and `node ../sdkwork-specs/tools/check-api-response-envelope.mjs` for the owning repo or workspace before completing API work.
 
 ## List And Search Pagination
 
-Follow `../sdkwork-specs/PAGINATION_SPEC.md`. List/search APIs use standard `SdkWorkListQuery` input and `data.items` + `data.pageInfo` output; pagination must happen at SQL/keyset or maintained indexes, not in-process collect + slice. Run `node ../sdkwork-specs/tools/check-pagination.mjs` before completing list/search work.
+Follow `../sdkwork-specs/PAGINATION_SPEC.md`. List/search APIs use standard `SdkWorkListQuery` input and `data.items` + `data.pageInfo` output; pagination must happen at SQL/keyset or maintained indexes, not in-process collect + slice. HTTP GET list/search query strings use `page_size` only; `pageSize`, `limit`, numeric cursor offsets, and other pagination aliases are technical debt and are forbidden for new or pre-launch applications. Run `node ../sdkwork-specs/tools/check-pagination.mjs` before completing list/search work.
 ```
 
 ## 8. Compatibility Shim Templates
@@ -238,6 +239,8 @@ Validation should check:
 - `AGENTS.md` includes `## List And Search Pagination` with a relative
   `PAGINATION_SPEC.md` authority reference and `check-pagination.mjs`
   verification command.
+- `AGENTS.md` includes the HTTP operation-pattern validator command when the
+  repository owns, generates, serves, or consumes SDKWork HTTP APIs.
 - When `docs/` is active, `AGENTS.md` and root `README.md` link to `docs/README.md`, `docs/product/prd/PRD.md`, and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 
 Application repositories may call the canonical validators with:
