@@ -2,9 +2,9 @@
 
 - Version: 1.2
 - Scope: TypeScript, JavaScript, Node tooling, package exports, service facades, generated TypeScript SDK composition, and TypeScript tests
-- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `FRONTEND_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
+- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `FRONTEND_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
 
-This standard applies only when TypeScript, JavaScript, Node scripts, package manifests, or TypeScript SDK facades are touched.
+This standard applies only when TypeScript, JavaScript, Node scripts, package manifests, or TypeScript SDK facades are touched. TypeScript service, adapter, and runtime/bootstrap boundaries follow `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`.
 
 ## 1. Baseline
 
@@ -121,6 +121,7 @@ Rules:
 - Do not import another package through `src/` internals.
 - Service modules accept SDK clients through typed ports.
 - Runtime/bootstrap constructs concrete SDK clients and injects token managers.
+- UI-facing TypeScript packages preserve the UI -> service -> injected SDK/client-port flow from `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`.
 - Node scripts should be deterministic, fail fast, and avoid hidden global state.
 - TypeScript packages that own user-facing copy, operator-facing copy, backend message resources, or i18n key contracts `MUST` use the `src/i18n/<locale>/<domain>/<capability>/<fragment>.ts|json` or `src/i18n/keys/<domain>/<capability>.ts|json` layouts from `I18N_SPEC.md` section 6.1. `src/i18n/index.ts` and `manifest.ts` remain thin exports or generated aggregators.
 
@@ -178,6 +179,7 @@ Rules:
 
 - Run `pnpm typecheck`, `pnpm test`, `pnpm lint`, or the package-specific wrapper when present.
 - Run narrow package tests first, then workspace verification for shared package exports, SDK facades, or codegen changes.
+- Run `node ../sdkwork-specs/tools/check-application-layering.mjs --root .` when TypeScript UI, service, SDK injection, or runtime/bootstrap boundaries are touched in an application repository.
 - Static scans should fail on raw SDKWork HTTP calls, manual auth headers, and cross-package `/src/` imports when those boundaries are governed.
 - Build runner tests `SHOULD` verify that missing build-critical source files trigger self-healing, not an immediate crash.
 
@@ -187,6 +189,7 @@ Rules:
 - [ ] `src/index.ts` is a stable export boundary.
 - [ ] Authored TypeScript i18n messages or key contracts, when present, use `src/i18n/<locale>/<domain>/<capability>/` or `src/i18n/keys/<domain>/<capability>`.
 - [ ] SDK clients are injected through typed ports.
+- [ ] TypeScript UI/service/runtime boundaries follow `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md` when the package is part of an application.
 - [ ] Raw HTTP did not replace generated SDK calls.
 - [ ] Generated TypeScript output was not hand-edited.
 - [ ] Typecheck/test/lint commands are documented.
