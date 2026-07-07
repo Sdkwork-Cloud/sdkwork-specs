@@ -71,10 +71,10 @@ describe('check-pnpm-script-standard', () => {
       name: 'sdkwork-demo',
       scripts: {
         dev: 'pnpm dev:browser',
-        'dev:browser': 'pnpm dev:browser:postgres:unified-process:standalone',
-        'dev:browser:postgres:unified-process:standalone': 'node scripts/demo-dev.mjs --target browser --database postgres --service-layout unified-process --deployment-profile standalone',
-        'dev:desktop': 'pnpm dev:desktop:postgres:unified-process:standalone',
-        'dev:desktop:postgres:unified-process:standalone': 'node scripts/demo-dev.mjs --target desktop --database postgres --service-layout unified-process --deployment-profile standalone',
+        'dev:browser': 'pnpm dev:browser:postgres:standalone',
+        'dev:browser:postgres:standalone': 'node scripts/demo-dev.mjs --target browser --database postgres --deployment-profile standalone',
+        'dev:desktop': 'pnpm dev:desktop:postgres:standalone',
+        'dev:desktop:postgres:standalone': 'node scripts/demo-dev.mjs --target desktop --database postgres --deployment-profile standalone',
         build: 'node scripts/sdkwork-command.mjs build',
         test: 'node scripts/sdkwork-command.mjs test',
         check: 'node scripts/sdkwork-command.mjs check',
@@ -93,8 +93,8 @@ describe('check-pnpm-script-standard', () => {
       name: 'sdkwork-demo',
       scripts: {
         dev: 'node scripts/sdkwork-command.mjs dev',
-        'dev:browser': 'node scripts/demo-dev.mjs --target browser --database sqlite --service-layout unified-process --deployment-profile standalone',
-        'dev:desktop': 'node scripts/demo-dev.mjs --target desktop --database postgres --service-layout unified-process --deployment-profile cloud',
+        'dev:browser': 'node scripts/demo-dev.mjs --target browser --database sqlite --deployment-profile standalone',
+        'dev:desktop': 'node scripts/demo-dev.mjs --target desktop --database postgres --deployment-profile cloud',
         build: 'node scripts/sdkwork-command.mjs build',
         test: 'node scripts/sdkwork-command.mjs test',
         check: 'node scripts/sdkwork-command.mjs check',
@@ -116,14 +116,14 @@ describe('check-pnpm-script-standard', () => {
     );
   });
 
-  it('rejects browser and desktop dev defaults that do not resolve to unified-process service layout', () => {
+  it('rejects retired service layout tokens in dev scripts and command values', () => {
     const root = makeRepo({
       name: 'sdkwork-demo',
       scripts: {
         dev: 'pnpm dev:browser',
         'dev:browser': 'pnpm dev:browser:postgres:split-services:standalone',
         'dev:browser:postgres:split-services:standalone': 'node scripts/demo-dev.mjs --target browser --database postgres --service-layout split-services --deployment-profile standalone',
-        'dev:desktop': 'node scripts/demo-dev.mjs --target desktop --database postgres --deployment-profile standalone',
+        'dev:desktop': 'node scripts/demo-dev.mjs --target desktop --database postgres --service-layout unified-process --deployment-profile standalone',
         build: 'node scripts/sdkwork-command.mjs build',
         test: 'node scripts/sdkwork-command.mjs test',
         check: 'node scripts/sdkwork-command.mjs check',
@@ -137,11 +137,11 @@ describe('check-pnpm-script-standard', () => {
     assert.notEqual(result.status, 0);
     assert.match(
       result.stderr,
-      /dev:browser: default dev runtime must resolve to service layout "unified-process"/,
+      /dev:browser:postgres:split-services:standalone: retired token "split-services" must not appear in public scripts/,
     );
     assert.match(
       result.stderr,
-      /dev:desktop: default dev runtime must resolve to service layout "unified-process"/,
+      /dev:desktop: command value uses retired deployment token "service-layout"/,
     );
   });
 
@@ -150,8 +150,8 @@ describe('check-pnpm-script-standard', () => {
       name: 'sdkwork-demo',
       scripts: {
         dev: 'node scripts/sdkwork-command.mjs dev',
-        'dev:browser': 'node scripts/demo-dev.mjs --target browser --database postgres --service-layout unified-process --hosting self-hosted',
-        'dev:desktop': 'node scripts/demo-dev.mjs --target desktop --database postgres --service-layout unified-process --hosting cloud-hosted',
+        'dev:browser': 'node scripts/demo-dev.mjs --target browser --database postgres --hosting self-hosted',
+        'dev:desktop': 'node scripts/demo-dev.mjs --target desktop --database postgres --hosting cloud-hosted',
         build: 'node scripts/sdkwork-command.mjs build',
         test: 'node scripts/sdkwork-command.mjs test',
         check: 'node scripts/sdkwork-command.mjs check',
@@ -294,10 +294,10 @@ describe('check-pnpm-script-standard', () => {
       name: 'sdkwork-demo',
       scripts: {
         dev: 'pnpm dev:browser',
-        'dev:browser': 'pnpm dev:browser:postgres:unified-process:standalone',
-        'dev:browser:postgres:unified-process:standalone': 'node scripts/demo-dev.mjs --target browser --database postgres --service-layout unified-process --deployment-profile standalone',
-        'dev:desktop': 'pnpm dev:desktop:postgres:unified-process:standalone',
-        'dev:desktop:postgres:unified-process:standalone': 'node scripts/demo-dev.mjs --target desktop --database postgres --service-layout unified-process --deployment-profile standalone',
+        'dev:browser': 'pnpm dev:browser:postgres:standalone',
+        'dev:browser:postgres:standalone': 'node scripts/demo-dev.mjs --target browser --database postgres --deployment-profile standalone',
+        'dev:desktop': 'pnpm dev:desktop:postgres:standalone',
+        'dev:desktop:postgres:standalone': 'node scripts/demo-dev.mjs --target desktop --database postgres --deployment-profile standalone',
         'dev:portal': 'node scripts/demo-dev.mjs --target browser-only',
         'dev:service': 'node scripts/demo-dev.mjs --target service',
         build: 'node scripts/sdkwork-command.mjs build',

@@ -66,6 +66,8 @@ const DECOMPOSED_HTTP_SURFACE_IDS = new Set([
   'application.admin-http',
 ]);
 
+const RETIRED_PROFILE_TOKENS = new Set(['unified-process', 'split-services']);
+
 function usage() {
   return [
     'Usage: node tools/check-single-http-ingress.mjs [--root <repo>]',
@@ -194,6 +196,59 @@ function countDecomposedHttpViolations(processes = []) {
   return processes.filter((entry) => isDecomposedHttpViolation(entry));
 }
 
+function isApplicationHttpProcess(processEntry) {
+  if (!isHttpIngressProcess(processEntry)) {
+    return false;
+  }
+  const id = String(processEntry.id ?? '');
+  if (id.startsWith('platform.') || id.startsWith('operations.') || id.startsWith('edge.')) {
+    return false;
+  }
+  return true;
+}
+
+function hasRetiredProfileToken(value) {
+  return String(value)
+    .split('.')
+    .some((part) => RETIRED_PROFILE_TOKENS.has(part));
+}
+
+function pushRetiredTopologyIssues(spec, rel, errors) {
+  if (spec.vocabulary?.serviceLayout) {
+    errors.push(`${rel}: retired vocabulary.serviceLayout is not allowed; use deploymentProfile standalone|cloud plus environment`);
+  }
+  if (String(spec.profilePattern ?? '').includes('serviceLayout')) {
+    errors.push(`${rel}: profilePattern must not contain retired serviceLayout`);
+  }
+  if (spec.envKeys?.serviceLayout) {
+    errors.push(`${rel}: envKeys.serviceLayout is retired and must be removed`);
+  }
+  for (const [key, value] of Object.entries(spec.defaults ?? {})) {
+    if (typeof value === 'string' && hasRetiredProfileToken(value)) {
+      errors.push(`${rel}: defaults.${key} uses retired profile id ${value}`);
+    }
+  }
+}
+
+function validateProfileId(profileId, rel, errors) {
+  if (hasRetiredProfileToken(profileId)) {
+    errors.push(`${rel}: retired profile id ${profileId}; use <deploymentProfile>.<environment> such as standalone.development or cloud.production`);
+    return;
+  }
+  const parts = profileId.split('.');
+  if (parts.length !== 2) {
+    errors.push(`${rel}: profile id ${profileId} must use <deploymentProfile>.<environment>`);
+    return;
+  }
+  const [deploymentProfile, environment] = parts;
+  if (!['standalone', 'cloud'].includes(deploymentProfile)) {
+    errors.push(`${rel}: profile id ${profileId} uses invalid deployment profile ${deploymentProfile}`);
+  }
+  if (!environment) {
+    errors.push(`${rel}: profile id ${profileId} is missing environment segment`);
+  }
+}
+
 function checkTopologySpec(repoRoot, errors, warnings) {
   const specPath = path.join(repoRoot, 'specs', 'topology.spec.json');
   if (!fs.existsSync(specPath)) {
@@ -204,21 +259,19 @@ function checkTopologySpec(repoRoot, errors, warnings) {
   const spec = readJson(specPath);
   const profiles = spec.orchestration?.profiles ?? {};
 
+  pushRetiredTopologyIssues(spec, rel, errors);
+
   for (const [profileId, profile] of Object.entries(profiles)) {
+    validateProfileId(profileId, rel, errors);
     const processes = profile.processes ?? [];
     const httpProcesses = countHttpIngressProcesses(processes);
     const httpIds = httpProcesses.map((entry) => entry.id ?? entry.binary ?? 'unknown');
 
-    if (profileId.includes('unified-process')) {
-      const applicationHttp = httpProcesses.filter((entry) => (
-        entry.id !== 'platform.api-gateway'
-        && entry.id !== 'platform.standalone-gateway'
-      ));
-      if (applicationHttp.length > 1) {
-        errors.push(
-          `${rel}: ${profileId} starts ${applicationHttp.length} application HTTP ingress processes (${httpIds.join(', ')}); standalone unified-process must expose one application.public-ingress bind`,
-        );
-      }
+    const applicationHttp = httpProcesses.filter(isApplicationHttpProcess);
+    if (applicationHttp.length > 1) {
+      errors.push(
+        `${rel}: ${profileId} starts ${applicationHttp.length} application HTTP ingress processes (${httpIds.join(', ')}); standalone/cloud profiles must expose one application.public-ingress bind`,
+      );
     }
 
     const decomposedHttp = countDecomposedHttpViolations(processes);
@@ -257,7 +310,7 @@ function checkDevScripts(repoRoot, errors) {
       }
     }
     if (SIDEcar_PORT_MATRIX_PATTERN.test(content)) {
-      errors.push(`${rel}: reserved loopback sidecar port matrix is forbidden for unified single-port ingress`);
+      errors.push(`${rel}: reserved loopback sidecar port matrix is forbidden for single application ingress`);
     }
   }
 }

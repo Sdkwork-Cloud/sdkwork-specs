@@ -40,11 +40,22 @@ const ALLOWED_FIRST_SEGMENTS = new Set([
   'smoke',
 ]);
 
-const RETIRED_SCRIPT_TOKENS = new Set(['self-hosted', 'cloud-hosted', 'hosting', 'deploymentMode']);
+const RETIRED_SCRIPT_TOKENS = new Set([
+  'self-hosted',
+  'cloud-hosted',
+  'hosting',
+  'deploymentMode',
+  'unified-process',
+  'split-services',
+]);
 const RETIRED_COMMAND_VALUE_PATTERNS = [
   ['--hosting', /(?:^|\s)--hosting(?:\s|=|$)/iu],
+  ['service-layout', /(?:^|\s)--service-layout(?:\s|=|$)/iu],
   ['self-hosted', /\bself-hosted\b/iu],
   ['cloud-hosted', /\bcloud-hosted\b/iu],
+  ['unified-process', /\bunified-process\b/iu],
+  ['split-services', /\bsplit-services\b/iu],
+  ['serviceLayout', /\bserviceLayout\b/iu],
   ['deploymentMode', /\bdeploymentMode\b/iu],
 ];
 const DEPLOYMENT_PROFILES = new Set(['standalone', 'cloud']);
@@ -66,7 +77,6 @@ const RUNTIME_TARGETS = new Set([
   'test-runner',
 ]);
 const DATABASE_ALIASES = new Set(['postgres', 'sqlite']);
-const SERVICE_LAYOUTS = new Set(['unified-process', 'split-services']);
 const QUALITY_TIERS = new Set([
   'fast',
   'precommit',
@@ -82,7 +92,6 @@ const QUALITY_TIERS = new Set([
 const DEV_AXIS_VALUES = new Set([
   ...RUNTIME_TARGETS,
   ...DATABASE_ALIASES,
-  ...SERVICE_LAYOUTS,
   ...DEPLOYMENT_PROFILES,
   ...QUALITY_TIERS,
 ]);
@@ -237,7 +246,7 @@ function pushDevAxisIssues(scriptName, issues, prefix = '') {
     }
     if (RUNTIME_TARGETS.has(parts[1])) {
       issues.push(
-        `${prefix}${scriptName}: "${part}" is not a standard dev axis value; use runtimeTarget, database, serviceLayout, deploymentProfile, or tier suffixes`,
+        `${prefix}${scriptName}: "${part}" is not a standard dev axis value; use runtimeTarget, database, deploymentProfile, or tier suffixes`,
       );
     } else {
       issues.push(
@@ -344,11 +353,6 @@ function pushDefaultDevRuntimeIssues(defaultScriptName, scripts, issues) {
     || commandHasFlagValue(commandText, 'deployment-profile', 'standalone');
   const hasCloud = scriptNames.some((scriptName) => scriptNameHasSegment(scriptName, 'cloud'))
     || commandHasFlagValue(commandText, 'deployment-profile', 'cloud');
-  const hasUnifiedProcess = scriptNames.some((scriptName) => scriptNameHasSegment(scriptName, 'unified-process'))
-    || commandHasFlagValue(commandText, 'service-layout', 'unified-process');
-  const hasSplitServices = scriptNames.some((scriptName) => scriptNameHasSegment(scriptName, 'split-services'))
-    || commandHasFlagValue(commandText, 'service-layout', 'split-services');
-
   if (commandUsesRetiredHostingAxis(commandText)) {
     issues.push(
       `${defaultScriptName}: default dev runtime must use --deployment-profile standalone instead of retired --hosting`,
@@ -357,11 +361,6 @@ function pushDefaultDevRuntimeIssues(defaultScriptName, scripts, issues) {
   if (hasSqlite || !hasPostgres) {
     issues.push(
       `${defaultScriptName}: default dev runtime must resolve to database "postgres" through script suffix or --database postgres`,
-    );
-  }
-  if (hasSplitServices || !hasUnifiedProcess) {
-    issues.push(
-      `${defaultScriptName}: default dev runtime must resolve to service layout "unified-process" through script suffix or --service-layout unified-process`,
     );
   }
   if (hasCloud || !hasStandalone) {
