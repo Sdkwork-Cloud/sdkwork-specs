@@ -11,6 +11,7 @@ import { validateComponentPortBindings } from './lib/component-port-bindings.mjs
 import { validateFrontendComposition } from './lib/frontend-composition.mjs';
 import { validateRustBackendComposition } from './lib/rust-backend-composition.mjs';
 import { validateI18nStandard } from './check-i18n-standard.mjs';
+import { validateApplicationLayering } from './check-application-layering.mjs';
 import { specsRoot } from './lib/workspace-registry.mjs';
 import { validateWorkspaceMemberProtocol } from './lib/workspace-member-protocol.mjs';
 
@@ -133,6 +134,7 @@ function main() {
     issues.push(...classifyPermissionComposition(args.root));
     issues.push(...classifyRouteRegistry(args.root).map((issue) => `${issue.kind}: ${issue.detail}`));
     issues.push(...validateComponentPortBindings(args.root));
+    issues.push(...validateApplicationLayering(args.root));
     issues.push(...validateFrontendComposition(args.root));
     issues.push(...validateRustBackendComposition(args.root));
     issues.push(...validateI18nStandard(args.root));

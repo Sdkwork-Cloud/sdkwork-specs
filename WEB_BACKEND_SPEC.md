@@ -445,6 +445,7 @@ Every web backend change should verify the relevant subset:
 
 - Route/controller paths match `API_SPEC.md` prefixes and surface rules.
 - Rust route manifests pass `API_SPEC.md` and `SDK_WORKSPACE_GENERATION_SPEC.md` validation when Rust routes are touched.
+- `node ../sdkwork-specs/tools/check-application-layering.mjs --root .` passes when API/service/repository/frontend/runtime layer boundaries are touched.
 - `node ../sdkwork-specs/tools/check-rust-backend-composition.mjs --root .` passes when Rust service, repository, route, runtime, or gateway Cargo dependencies are touched.
 - `node ../sdkwork-specs/tools/check-component-port-bindings.mjs --root .` passes when backend components expose runtime entrypoints or dependency API surfaces.
 - `node ../sdkwork-specs/tools/check-route-path-collisions.mjs --root .` passes when route manifests or OpenAPI authorities are present.

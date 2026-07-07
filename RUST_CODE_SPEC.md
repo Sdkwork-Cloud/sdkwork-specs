@@ -2,9 +2,9 @@
 
 - Version: 1.1
 - Scope: Rust crates, workspaces, route crates, Tauri/native Rust, Rust services, Rust SDK facades, and Rust tests
-- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `I18N_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`
+- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `I18N_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`
 
-This standard applies only when Rust source, Cargo manifests, Rust route crates, Tauri Rust code, or Rust RPC code is touched. Cross-stack Rust composition and layer roles follow `COMPOSABLE_ARCHITECTURE_SPEC.md`.
+This standard applies only when Rust source, Cargo manifests, Rust route crates, Tauri Rust code, or Rust RPC code is touched. Rust crate responsibilities implement the L0-L6 profile from `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`; cross-stack Rust composition and layer roles follow `COMPOSABLE_ARCHITECTURE_SPEC.md`.
 
 ## 1. Crate And Module Shape
 
@@ -145,7 +145,9 @@ Rules:
 - Runtime crates construct and wire dependencies; service crates decide business policy; repository crates persist data; route crates adapt HTTP. A crate that owns more than one of those roles must be split before new behavior is added.
 - Member `Cargo.toml` files `MUST` consume sibling SDKWork crates through root `[workspace.dependencies]` and `{ workspace = true }`. Direct sibling `path = "../sdkwork-..."` entries in member crates are forbidden.
 - Same-origin dependency API coverage requires executable public router/controller/service exports declared in `contracts.runtimeEntrypoints` and `contracts.dependencyApiSurfaces`. Route manifests and OpenAPI files alone are metadata, not runtime coverage.
-- `check-rust-backend-composition.mjs` is the executable gate for crate dependency direction. Route, API, SDK, and gateway checks still apply when the crate owns HTTP behavior.
+- `check-application-layering.mjs` validates cross-language application layer violations, and
+  `check-rust-backend-composition.mjs` is the executable gate for Rust crate dependency direction.
+  Route, API, SDK, and gateway checks still apply when the crate owns HTTP behavior.
 
 Standard SQLx repository crate layout:
 

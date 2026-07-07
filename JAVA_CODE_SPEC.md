@@ -2,9 +2,9 @@
 
 - Version: 1.0
 - Scope: Java 21, Spring services, Maven modules, Java SDKs, Java backend implementation, and Java tests
-- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `DATABASE_SPEC.md`, `I18N_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `DATABASE_SPEC.md`, `I18N_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard applies only when Java source, Maven configuration, Spring backend code, or Java SDK code is touched.
+This standard applies only when Java source, Maven configuration, Spring backend code, or Java SDK code is touched. Java backend package boundaries implement the L0-L6 profile from `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`.
 
 ## 1. Baseline
 
@@ -25,7 +25,8 @@ src/main/java/com/sdkwork/<domain>/<capability>/
   api/          # controllers, request/response mapping
   application/  # use cases and services
   domain/       # domain models, policies, value objects
-  repository/   # persistence ports and implementations
+  repository/   # migration-compatible persistence ports and implementations
+  infrastructure/persistence/ # preferred concrete persistence adapters for new modules
   adapter/      # provider or SDK adapters
   config/       # Spring configuration
   error/        # domain errors and exception mapping
@@ -49,6 +50,7 @@ Rules:
 
 - Do not put business logic in controllers.
 - Do not put HTTP concerns in repositories.
+- Controllers must not import repository, persistence, or infrastructure implementation packages directly.
 - Use typed request context for tenant, user, organization, permissions, request id, and trace context.
 - Transactions belong at service/use-case boundaries, not controllers.
 - Validation annotations may tighten OpenAPI only when the contract documents the same constraints.
@@ -73,6 +75,7 @@ Rules:
 
 - Run the narrowest Maven test for touched modules first.
 - Run `mvn test` or the repository wrapper when shared contracts change.
+- Run `node ../sdkwork-specs/tools/check-application-layering.mjs --root .` when controller, service, repository, infrastructure, or frontend/service SDK injection boundaries are touched.
 - API changes must prove OpenAPI and generated SDK compatibility.
 - Persistence changes must include migration/schema verification from `DATABASE_SPEC.md`.
 - Security-sensitive changes must cover negative authorization and tenant cases.
@@ -81,6 +84,7 @@ Rules:
 
 - [ ] Java 21 and UTF-8 expectations are preserved.
 - [ ] Controller, service, repository, adapter, and config responsibilities are separated.
+- [ ] Controllers do not import repositories/infrastructure directly, transactions stay in services, and repositories do not import HTTP framework types.
 - [ ] Authored Java/Spring backend message resources, when present, live under `src/main/resources/i18n/<locale>/<domain>/<capability>/` and not in backend-wide `MessageSource` monoliths.
 - [ ] OpenAPI DTOs and validation stay aligned.
 - [ ] Generated Java SDK output was not hand-edited.

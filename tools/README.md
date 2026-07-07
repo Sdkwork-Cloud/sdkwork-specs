@@ -41,6 +41,11 @@ Rules:
   `contracts.layerRole`, valid provided/required port declarations, and executable
   runtime entrypoints for same-origin dependency API surfaces. Use `--root` for one
   repository or `--workspace` for all child `sdkwork-*` repositories.
+- `check-application-layering.mjs` validates cross-language application L0-L6
+  boundaries: Java controllers stay out of repositories/infrastructure and
+  transactions, repositories stay out of HTTP framework types, frontend UI stays
+  out of raw HTTP, and frontend services receive injected SDK clients. Use `--root`
+  for one repository or `--workspace` for all child `sdkwork-*` repositories.
 - `check-frontend-composition.mjs` validates client package composition boundaries:
   required core exports, core/commons not depending on capability packages, host
   packages not depending on business SDKs, and feature packages not importing

@@ -24,6 +24,7 @@ No standard is complete until it is executable.
 | Release | Validate `RELEASE_SPEC.md`: version, artifacts, changelog, rollout, rollback, freeze, post-release evidence, and release gate satisfaction |
 | Migration | Validate `MIGRATION_SPEC.md`: migration plan, compatibility window, affected consumers, sequencing, rollback, data/contract/config/package coverage, and owner approval |
 | Dependency management | Validate `DEPENDENCY_MANAGEMENT_SPEC.md`: native build-tool dependency management, one repository-root workspace manifest per git repository, forbidden umbrella application workspaces at multi-repository checkout roots, package import closure, source/build dependency paths, release Git refs, stale dependency cleanup, cross-platform path separators, lockfiles or equivalent reproducibility evidence, dependency-owned SDK/API filtering, single-source-of-truth workspace declarations, `workspace:*` for pnpm, `{ workspace = true }` for Cargo, Flutter/Dart path centralization, and forbidden scattered sibling paths in member packages |
+| Application layered architecture | Validate `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`: L0-L6 API/service/domain/repository/adapter/runtime/frontend dependency direction, controller/service/repository separation, frontend UI-service-SDK injection, open-closed extension boundaries, route ownership, and common URL path reservation |
 | Composable architecture | Validate `COMPOSABLE_ARCHITECTURE_SPEC.md`: standard closure matrix coverage, component layer roles, provided/required ports, executable runtime entrypoints, frontend core/feature/host package boundaries, Rust service/route/repository Cargo dependency boundaries, generated resolved architecture graph, route ownership, common URL path reservation, and permission inheritance |
 | Supply chain security | Validate `SUPPLY_CHAIN_SECURITY_SPEC.md`: dependency integrity, build integrity, generator authority, SBOM, provenance, signing, checksums, attestations, and supply-chain exceptions |
 | API | OpenAPI validation, strict profile validation, `SdkWorkApiResponse` envelope validation (`check-api-response-envelope.mjs`), route path collision validation (`check-route-path-collisions.mjs`), legacy envelope bootstrap (`align-openapi-response-envelope.mjs`, `align-openapi-response-envelope-workspace.mjs`), request/response examples, Rust route crate naming and route-manifest aggregation checks |
@@ -62,6 +63,12 @@ No standard is complete until it is executable.
 
 Rules:
 
+- Application layering scans `MUST` fail when Java controllers import repository, persistence, or
+  infrastructure implementation packages directly; when controllers own transaction annotations;
+  when repository or persistence code imports HTTP framework types; when frontend UI calls raw HTTP;
+  or when frontend services construct SDK clients instead of receiving injected clients.
+- `check-application-layering.mjs` `MUST` support both `--root <repo>` and `--workspace <workspace>`
+  and report repository-qualified issues for workspace scans.
 - Every API change `MUST` include a test that proves the OpenAPI contract can generate the intended SDK shape and declares `SdkWorkApiResponse` success schemas plus `ProblemDetail` errors for L2+ SDKWork-owned custom `app-api`, `backend-api`, and business `open-api` surfaces. Omitted `x-sdkwork-wire-protocol` means SDKWork-owned custom API (`sdkwork-v3`) and is not an exemption. Vendor compatibility open-api operations declared with operation-level `x-sdkwork-wire-protocol: external` plus `x-sdkwork-external-protocol-id` per `API_SPEC.md` section 4.5.2 are exempt from envelope checks.
 - API tests for SDKWork-owned localized errors `SHOULD` prove `ProblemDetail.code` and `traceId` remain stable machine fields while optional `i18nKey`, `locale`, and field-level localization metadata follow `I18N_SPEC.md`.
 - `check-api-response-envelope.mjs` `MUST` scan app-api, backend-api, and open-api authority OpenAPI documents, including SDK family authority files under `sdks/*-sdk/openapi/`, and fail when SDKWork-owned custom operations omit `SdkWorkApiResponse` or `ProblemDetail`. It `MUST` skip only operations marked operation-level `x-sdkwork-wire-protocol: external` with `x-sdkwork-external-protocol-id`; mixed documents are validated per operation.
@@ -1073,6 +1080,7 @@ Rules:
 - [ ] OpenAPI/SDK generation verification passes under `SDK_SPEC.md`.
 - [ ] OpenAPI/SDK scans prove current tenant context is not generated as `tenant_id` or `tenantId` inputs.
 - [ ] Web backend implementation checks pass under `WEB_BACKEND_SPEC.md` when controllers, route crates, handlers, services, repositories, or runtime composition are touched.
+- [ ] Application layered architecture checks pass under `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md` when API/service/domain/repository/adapter/runtime/frontend boundaries are touched.
 - [ ] Web framework integration checks pass under `WEB_FRAMEWORK_SPEC.md` when any SDKWork HTTP
       `*-api` route crate, controller module, migration-only API server, gateway, framework adapter, or runtime
       composition is touched.

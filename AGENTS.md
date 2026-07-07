@@ -130,6 +130,7 @@ node tools/check-api-operation-patterns.mjs --workspace ..
 node tools/check-route-path-collisions.mjs --workspace ..
 node tools/check-permission-composition.mjs --workspace ..
 node tools/check-component-port-bindings.mjs --workspace ..
+node tools/check-application-layering.mjs --workspace ..
 node tools/check-frontend-composition.mjs --workspace ..
 node tools/check-rust-backend-composition.mjs --workspace ..
 node tools/check-i18n-standard.mjs --workspace ..
@@ -164,6 +165,7 @@ node tools/check-api-operation-patterns.mjs --root .
 node tools/check-route-path-collisions.mjs --root .
 node tools/check-permission-composition.mjs --root .
 node tools/check-component-port-bindings.mjs --root .
+node tools/check-application-layering.mjs --root .
 node tools/check-frontend-composition.mjs --root .
 node tools/check-rust-backend-composition.mjs --root .
 node tools/check-i18n-standard.mjs --root .
@@ -173,6 +175,7 @@ node --test tools/check-api-operation-patterns.test.mjs
 node --test tools/check-route-path-collisions.test.mjs
 node --test tools/check-permission-composition.test.mjs
 node --test tools/check-component-port-bindings.test.mjs
+node --test tools/check-application-layering.test.mjs
 node --test tools/check-frontend-composition.test.mjs
 node --test tools/check-rust-backend-composition.test.mjs
 node --test tools/check-i18n-standard.test.mjs
