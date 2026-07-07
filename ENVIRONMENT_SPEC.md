@@ -222,11 +222,11 @@ Checked-in root templates for an application may include:
 .env.staging.example
 .env.production.example
 .env.postgres.example
-config/<app>.toml.example
-config/<app>.development.toml.example
-config/<app>.test.toml.example
-config/<app>.staging.toml.example
-config/<app>.production.toml.example
+config/<application-code>.toml.example
+config/<application-code>.development.toml.example
+config/<application-code>.test.toml.example
+config/<application-code>.staging.toml.example
+config/<application-code>.production.toml.example
 ```
 
 Ignored host-local files must include:
@@ -254,20 +254,20 @@ apps/sdkwork-<application-code>-pc/
       runtime-env.staging.example.json
       runtime-env.production.example.json
     desktop/
-      <app>.development.toml.example
-      <app>.test.toml.example
-      <app>.staging.toml.example
-      <app>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     server/
-      <app>.development.toml.example
-      <app>.test.toml.example
-      <app>.staging.toml.example
-      <app>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     container/
-      <app>.development.toml.example
-      <app>.test.toml.example
-      <app>.staging.toml.example
-      <app>.production.toml.example
+      <application-code>.development.toml.example
+      <application-code>.test.toml.example
+      <application-code>.staging.toml.example
+      <application-code>.production.toml.example
     tauri/
       tauri.conf.json
       tauri.windows.conf.json
@@ -296,7 +296,7 @@ one PC application root.
 | Runtime target | Default config location | Default persistence | Standard profile behavior |
 | --- | --- | --- | --- |
 | `browser` | `/runtime-env.js` or `/runtime-env.json` served by the trusted host | Browser storage only through approved auth/session adapter | Public SDK URLs and flags only; no secrets, database URLs, or private endpoints. |
-| `desktop` | `~/.sdkwork/<application-code>/config/<app>.toml` or `%USERPROFILE%\.sdkwork\<application-code>\config\<app>.toml` | SQLite under SDKWork user-private data directory | Installed desktop runtime; may start local services but desktop user config stays separate. |
+| `desktop` | `~/.sdkwork/<application-code>/config/<application-code>.toml` or `%USERPROFILE%\.sdkwork\<application-code>\config\<application-code>.toml` | SQLite under SDKWork user-private data directory | Installed desktop runtime; may start local services but desktop user config stays separate. |
 | `tablet-ipados` | Platform app-private config plus approved Tauri iOS config | SQLite or approved encrypted platform-local storage | Same PC renderer and SDK/IAM runtime; iPadOS packaging metadata is target config. |
 | `tablet-android` | Platform app-private config plus approved Tauri Android config | SQLite or approved encrypted platform-local storage | Same PC renderer and SDK/IAM runtime; Android package/signing metadata is target config. |
 | `capacitor-ios` | H5 mobile `config/browser` plus `config/host` Capacitor iOS profile and platform app-private storage | Approved secure storage adapter; local caches only | Same H5 mobile renderer and SDK/IAM runtime; iOS package/signing metadata is host config. |
@@ -307,7 +307,7 @@ one PC application root.
 | `ios-native` | iOS native `config/app` plus `config/host` iOS profile and platform app-private storage | Approved secure storage adapter; local caches only | Generated Swift SDK/IAM runtime; iOS package/signing metadata is host config. |
 | `harmony-native` | Harmony native `config/app` plus `config/host` Harmony profile and platform app-private storage | Approved secure storage adapter; local caches only | Generated ArkTS/TypeScript SDK/IAM runtime adapted for Harmony; Harmony package/signing metadata is host config. |
 | `mini-program` | Mini program `config/mini-program` plus `config/host` platform profile | Platform storage through approved host adapter | Generated TypeScript app SDK or approved wrapper; platform pages/subpackages are route projections. |
-| `server` | `/etc/sdkwork/<application-code>/<process>.toml` or `%ProgramData%\sdkwork\<app>\<process>.toml` | PostgreSQL, Redis when required | Long-running service, explicit bind, reverse proxy assumptions, strict secret handling. |
+| `server` | `/etc/sdkwork/<application-code>/<process>.toml` or `%ProgramData%\sdkwork\<application-code>\<process>.toml` | PostgreSQL, Redis when required | Long-running service, explicit bind, reverse proxy assumptions, strict secret handling. |
 | `container` | Mounted `/etc/sdkwork/<application-code>/<process>.toml`, env, and `/run/secrets/...` | External PostgreSQL/Redis or mounted volumes | Image contains examples only; runtime config and secrets are injected. |
 | `test-runner` | Ephemeral generated config under test temp directory | Isolated SQLite or isolated PostgreSQL schema/database | No shared dev/prod state; deterministic cleanup. |
 
@@ -560,17 +560,17 @@ Applications with `.env.postgres.example` `MUST` expose `db:postgres:init` and `
 applications. Environment handling must reference that file instead of defining
 app-local directory schemes.
 
-For application code `<app>`:
+For application code `<application-code>`:
 
 | OS/profile | Config file | Data directory | Log directory |
 | --- | --- | --- | --- |
-| Linux service/container | `/etc/sdkwork/<application-code>/<app>.toml` or `/etc/sdkwork/<application-code>/<process>.toml` | `/var/lib/sdkwork/<application-code>` | `/var/log/sdkwork/<application-code>` |
-| Linux user/desktop | `~/.sdkwork/<application-code>/config/<app>.toml` or `~/.sdkwork/<application-code>/config/<process>.toml` | `~/.sdkwork/<application-code>/data` | `~/.sdkwork/<application-code>/logs` |
-| macOS service | `/Library/Application Support/sdkwork/<application-code>/<app>.toml` or process-specific equivalent | `/Library/Application Support/sdkwork/<application-code>/Data` | `/Library/Logs/sdkwork/<application-code>` |
-| macOS user/desktop | `~/.sdkwork/<application-code>/config/<app>.toml` or process-specific equivalent | `~/.sdkwork/<application-code>/data` | `~/.sdkwork/<application-code>/logs` |
-| Windows service | `%ProgramData%\sdkwork\<app>\<app>.toml` or process-specific equivalent | `%ProgramData%\sdkwork\<app>\Data` | `%ProgramData%\sdkwork\<app>\Logs` |
-| Windows user/desktop | `%USERPROFILE%\.sdkwork\<application-code>\config\<app>.toml` or process-specific equivalent | `%USERPROFILE%\.sdkwork\<application-code>\data` | `%USERPROFILE%\.sdkwork\<application-code>\logs` |
-| Container | `/etc/sdkwork/<application-code>/<app>.toml` or process-specific equivalent | `/var/lib/sdkwork/<application-code>` or mounted volume | stdout/stderr, optional `/var/log/sdkwork/<application-code>` |
+| Linux service/container | `/etc/sdkwork/<application-code>/<application-code>.toml` or `/etc/sdkwork/<application-code>/<process>.toml` | `/var/lib/sdkwork/<application-code>` | `/var/log/sdkwork/<application-code>` |
+| Linux user/desktop | `~/.sdkwork/<application-code>/config/<application-code>.toml` or `~/.sdkwork/<application-code>/config/<process>.toml` | `~/.sdkwork/<application-code>/data` | `~/.sdkwork/<application-code>/logs` |
+| macOS service | `/Library/Application Support/sdkwork/<application-code>/<application-code>.toml` or process-specific equivalent | `/Library/Application Support/sdkwork/<application-code>/Data` | `/Library/Logs/sdkwork/<application-code>` |
+| macOS user/desktop | `~/.sdkwork/<application-code>/config/<application-code>.toml` or process-specific equivalent | `~/.sdkwork/<application-code>/data` | `~/.sdkwork/<application-code>/logs` |
+| Windows service | `%ProgramData%\sdkwork\<application-code>\<application-code>.toml` or process-specific equivalent | `%ProgramData%\sdkwork\<application-code>\Data` | `%ProgramData%\sdkwork\<application-code>\Logs` |
+| Windows user/desktop | `%USERPROFILE%\.sdkwork\<application-code>\config\<application-code>.toml` or process-specific equivalent | `%USERPROFILE%\.sdkwork\<application-code>\data` | `%USERPROFILE%\.sdkwork\<application-code>\logs` |
+| Container | `/etc/sdkwork/<application-code>/<application-code>.toml` or process-specific equivalent | `/var/lib/sdkwork/<application-code>` or mounted volume | stdout/stderr, optional `/var/log/sdkwork/<application-code>` |
 
 Rules:
 
@@ -684,7 +684,7 @@ enabled = true
 host = "127.0.0.1"
 port = 6379
 database = 0
-key_prefix = "<app>:dev"
+key_prefix = "<application-code>:dev"
 tls = false
 ```
 
@@ -698,19 +698,19 @@ runtime_target = "test-runner"
 config_profile = "test"
 
 [paths]
-data_directory = "<test-temp>/<app>/data"
-log_directory = "<test-temp>/<app>/logs"
-cache_directory = "<test-temp>/<app>/cache"
-runtime_directory = "<test-temp>/<app>/run"
-temp_directory = "<test-temp>/<app>/tmp"
+data_directory = "<test-temp>/<application-code>/data"
+log_directory = "<test-temp>/<application-code>/logs"
+cache_directory = "<test-temp>/<application-code>/cache"
+runtime_directory = "<test-temp>/<application-code>/run"
+temp_directory = "<test-temp>/<application-code>/tmp"
 
 [database]
 engine = "postgresql"
 host = "127.0.0.1"
 port = 5432
-database = "<app>_test_<run_id>"
-schema = "<app>_test_<run_id>"
-username = "<app>test"
+database = "<application_code>_test_<run_id>"
+schema = "<application_code>_test_<run_id>"
+username = "<application_code>test"
 password = "test-only-change-me"
 ssl_mode = "disable"
 max_connections = 4
@@ -720,7 +720,7 @@ enabled = true
 host = "127.0.0.1"
 port = 6379
 database = 15
-key_prefix = "<app>:test:<run_id>"
+key_prefix = "<application-code>:test:<run_id>"
 tls = false
 ```
 
@@ -755,7 +755,7 @@ host = "redis.internal"
 port = 6379
 database = 0
 password_file = "/etc/sdkwork/<application-code>/redis.secret"
-key_prefix = "<app>:prod"
+key_prefix = "<application-code>:prod"
 tls = true
 ```
 
@@ -775,7 +775,7 @@ secure_storage_provider = "os-keychain"
 
 [database]
 engine = "sqlite"
-file = "~/.sdkwork/<application-code>/data/<app>.sqlite"
+file = "~/.sdkwork/<application-code>/data/<application-code>.sqlite"
 max_connections = 1
 
 [redis]
@@ -884,7 +884,7 @@ runtime_target = "desktop"
 
 [database]
 engine = "sqlite"
-file = "~/.sdkwork/<application-code>/data/<app>.sqlite"
+file = "~/.sdkwork/<application-code>/data/<application-code>.sqlite"
 max_connections = 1
 ```
 
@@ -903,7 +903,7 @@ Required behavior:
 Example server env:
 
 ```text
-SDKWORK_<APPLICATION_CODE>_CONFIG_FILE=/etc/sdkwork/<application-code>/<app>.toml
+SDKWORK_<APPLICATION_CODE>_CONFIG_FILE=/etc/sdkwork/<application-code>/<application-code>.toml
 SDKWORK_<APPLICATION_CODE>_ENVIRONMENT=production
 SDKWORK_<APPLICATION_CODE>_CONFIG_PROFILE=prod
 SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE=standalone
@@ -937,7 +937,7 @@ Required behavior:
 Example container env:
 
 ```text
-SDKWORK_<APPLICATION_CODE>_CONFIG_FILE=/etc/sdkwork/<application-code>/<app>.toml
+SDKWORK_<APPLICATION_CODE>_CONFIG_FILE=/etc/sdkwork/<application-code>/<application-code>.toml
 SDKWORK_<APPLICATION_CODE>_ENVIRONMENT=production
 SDKWORK_<APPLICATION_CODE>_CONFIG_PROFILE=prod
 SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE=cloud
