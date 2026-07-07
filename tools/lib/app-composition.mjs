@@ -143,6 +143,11 @@ export function isCompositionConsumerExempt(componentSpec) {
 }
 
 export function isCompositionExemptRepo(repoRoot) {
+  const readmePath = path.join(repoRoot, 'README.md');
+  if (fs.existsSync(readmePath) && /^repository-kind:\s*standards\s*$/imu.test(readText(readmePath))) {
+    return true;
+  }
+
   const repoName = path.basename(repoRoot);
   if (repoName === 'sdkwork-web-framework') return true;
   const repoSpec = fs.existsSync(path.join(repoRoot, 'specs/component.spec.json'))
@@ -207,8 +212,14 @@ export function isRuntimeIntegrationPackageDirectory(name) {
   return /-commons$/u.test(name);
 }
 
+export function isBackendAdminSdkPackageDirectory(name) {
+  return /-(?:pc|h5|mp|android-mobile|ios-mobile|harmony-mobile)-admin-sdk$/u.test(name)
+    || /_flutter_mobile_admin_sdk$/u.test(name);
+}
+
 export function isCapabilityPackageDirectory(name) {
   if (isCorePackageDirectory(name)) return false;
+  if (isBackendAdminSdkPackageDirectory(name)) return false;
   if (/-(?:shell|host)$/.test(name)) return false;
   if (isRuntimeIntegrationPackageDirectory(name)) return false;
   return true;

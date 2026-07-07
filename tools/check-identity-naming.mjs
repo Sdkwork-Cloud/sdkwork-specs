@@ -240,6 +240,8 @@ const standardsRules = [
         snippet.includes('sdkwork-api-cloud-gateway') ||
         snippet.includes('-standalone-gateway') ||
         snippet.includes('-cloud-gateway') ||
+        snippet.includes('-gateway-assembly') ||
+        lineText.includes('-gateway-assembly') ||
         snippet.includes('Retired') ||
         snippet.includes('retired') ||
         isLegacyTableRow(rel, line, text, index) ||

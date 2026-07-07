@@ -2,9 +2,9 @@
 
 - Version: 1.0
 - Scope: architecture-neutral UI-service-SDK layering, reusable UI modules, service facades, state, routing, accessibility, frontend tests
-- Related: `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `PAGINATION_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `PAGINATION_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `I18N_SPEC.md`, `CONFIG_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines the shared frontend rules for SDKWork modules. It is architecture-neutral and applies to app PC React, user console React, internal admin React, H5 mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, and standalone backend/admin React packages. Platform-specific package placement, host adapters, tablet/desktop/mobile packaging, route projection, and interaction rules live in the architecture-specific standards. Client application roots follow `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` plus their matching root architecture standard. Cross-architecture SDK composition, app dependency relationships, appbase IAM runtime, and global TokenManager wiring follow `APP_SDK_INTEGRATION_SPEC.md`.
+This standard defines the shared frontend rules for SDKWork modules. It is architecture-neutral and applies to app PC React, user console React, internal admin React, H5 mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, and standalone backend/admin React packages. Platform-specific package placement, host adapters, tablet/desktop/mobile packaging, route projection, and interaction rules live in the architecture-specific standards. Client application roots follow `COMPOSABLE_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, and their matching root architecture standard. Cross-architecture SDK composition, app dependency relationships, appbase IAM runtime, and global TokenManager wiring follow `APP_SDK_INTEGRATION_SPEC.md`. Cross-stack internationalization, locale fallback, message key ownership, and SDK locale propagation follow `I18N_SPEC.md`.
 
 `UI_ARCHITECTURE_SPEC.md` is the required selection gate. Architecture-specific UI standards extend this common standard:
 
@@ -56,6 +56,11 @@ Rules:
 - Runtime/bootstrap code `MUST` bind the same global token manager to `appbaseApp`, optional `backend-admin` `appbaseBackend`, every authenticated downstream app-api SDK client, and every explicit `backend-admin` backend-api SDK client through generated SDK credential APIs such as `setTokenManager`.
 - IAM login/session bootstrap, AuthGate behavior, token refresh, logout clearing, and appbase auth UI/runtime integration `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - App SDK and dependency composition `MUST` follow `APP_SDK_INTEGRATION_SPEC.md`; product UI packages consume dependency capabilities through generated SDKs, service ports, or approved composed wrappers.
+- Feature packages `MUST` consume SDK capabilities through core public exports, injected SDK clients,
+  declared service ports, or approved composed wrappers. They `MUST NOT` import generated SDK
+  packages directly.
+- Core and commons packages `MUST NOT` depend on capability packages. Host packages `MUST NOT`
+  depend on business app/backend SDK packages.
 - App shell code `MUST` stay thin: router, layout, providers, environment selection, host integration.
 - Frontend work `MUST` select exactly one primary UI architecture through `UI_ARCHITECTURE_SPEC.md` before package placement.
 - App/user-facing UI `MUST NOT` import `backend-admin` UI packages or call backend-api for user workflows.
@@ -87,6 +92,28 @@ Rules:
 - Standalone backend/admin React UI uses `BACKEND_UI_SPEC.md`.
 - A package cannot implement more than one of these architecture families. Shared logic belongs in non-UI contracts or services.
 - Shared common rules remain in this file; package naming, route ownership, host/platform adapters, and SDK surface selection come from the architecture-specific spec.
+
+## 1.2 Frontend Package Role Dependency Matrix
+
+Frontend modules compose like building blocks only when their dependency direction is visible from package names, `exports`, and `specs/component.spec.json`.
+
+| Package role | Typical `contracts.layerRole` | May depend on | Must not depend on | SDK surface |
+| --- | --- | --- | --- | --- |
+| App shell/root | `frontend-shell` | core package, route contributions, providers, host adapters, generated app SDK construction in bootstrap | feature private `src/**`, generated transport internals, backend SDKs outside explicit `backend-admin` shell | app SDK by default; backend SDK only for declared `backend-admin` root |
+| Core / console-core / admin-core | `frontend-core` | generated SDK facades, appbase runtime, module registry, host/session contracts | capability packages, feature pages, UI implementation internals | core exposes typed SDK/service ports; `admin-core` may expose backend SDK helpers only with `component.surface = "backend-admin"` |
+| Commons / design primitives | `frontend-commons` | design tokens, domain-neutral components, utility packages, i18n primitives | business SDKs, capability packages, route ownership, auth/session state | no direct business API SDK |
+| Feature/capability package | `frontend-feature` | core public exports, injected SDK clients, service ports, host adapter ports, local UI/state/i18n | generated SDK package imports, backend SDKs unless package is explicit admin, sibling feature private paths | app SDK or approved service facade; backend SDK only in explicit `backend-admin` package |
+| User console package | `frontend-feature` | console core, app SDK resources, route/menu hints, inherited permission codes | internal admin packages, backend SDK wrappers, backend base URL resolvers | app SDK or approved console-facing app SDK |
+| Internal admin package | `frontend-feature` | admin core, backend SDK clients, backend-admin service ports, route/menu permission hints | app/user workflow internals, app login/session creation, non-admin core helpers that hide backend SDKs | backend SDK through explicit `backend-admin` boundary |
+| Host/native adapter | `frontend-host` | platform APIs, native bridges, storage adapters, host capability contracts | business SDK orchestration, permission decisions, domain service rules | no business SDK unless the adapter is the approved SDK bootstrap boundary |
+
+Rules:
+
+- Package role classification `MUST` be declared in `specs/component.spec.json` through `component.surface` and `contracts.layerRole` when SDK access, route exposure, or admin/user separation depends on it.
+- Feature packages `MUST` import SDK access through core package public exports, injected clients, service ports, or approved composed wrappers. Direct generated SDK imports are forbidden even when the package manager can resolve them.
+- Backend SDK imports require an explicit `backend-admin` package/component boundary. A route path, menu group, page title, or file name containing `admin` is not enough.
+- Shared frontend code `MUST` stay installable without consuming application globals. Environment, endpoint, TokenManager, and open-api credential providers belong in bootstrap/runtime composition.
+- `check-frontend-composition.mjs`, `check-app-sdk-consumer-imports.mjs`, and `verify-repo.mjs` are the executable gates for this matrix.
 
 ## 2. Architecture-Neutral Package Shape
 
@@ -159,7 +186,7 @@ Rules:
 - `hooks/` contains React integration around services and state.
 - `services/` contains SDK orchestration and domain methods.
 - `state/` contains cache/view state only, not backend source-of-truth rules.
-- `i18n/` contains package-local locale fragments and thin aggregation exports. It must not become an authored monolithic app or package catalog.
+- `i18n/` contains package-local locale fragments and thin aggregation exports. It must follow the language/framework directory layout in `I18N_SPEC.md` section 6.1 and must not become an authored monolithic app or package catalog.
 - `types/` contains local view models only. API DTOs come from generated SDKs or standard contracts.
 
 The selected `architecture` must be one of:
@@ -215,6 +242,7 @@ Rules:
 - Service interfaces `SHOULD` mirror generated SDK resource surfaces.
 - Tests `SHOULD` provide fake clients implementing the same resource surface.
 - Application-specific generated SDK constructors belong in runtime/bootstrap, not shared modules.
+- Application-specific locale providers and SDK locale-provider construction belong in runtime/bootstrap, not shared modules.
 - A module must not import a generated SDK package only to construct clients internally.
 - Appbase login/session service ports `MUST` name the login authority `appbaseApp` or `appbaseAppClient`, not a generic `appClient`, so product SDK clients cannot be mistaken for the IAM authority.
 - App-api service modules and explicit `backend-admin` backend-api service modules `MUST` receive token-manager-aware SDK clients from bootstrap. They must not create independent token stores, refresh flows, or login clients.
@@ -223,7 +251,12 @@ Rules:
 - Frontend services MUST NOT generate `traceId`, `requestId`, `xRequestId`, `X-Request-Id`, or `x-request-id`, and MUST NOT pass generated SDK `xRequestId` params. They may generate business `Idempotency-Key` values for retriable commands and must read returned `traceId` values from `SdkWorkApiResponse.raw`, generated SDK error types, or `ProblemDetail` when correlation is needed.
 - Frontend services MUST consume generated SDK unwrap behavior for `SdkWorkApiResponse` and MUST NOT parse legacy `success`, human `message`, `requestId`, `PlusApiResult`, `AppbaseApiResult`, or per-domain `*ApiResult` envelopes in business modules.
 - Business services that consume protected open-api SDKs `MUST` use the same section 14 list/search input and section 15 unwrap semantics as app-api services unless the consumed operation is a vendor compatibility API declared with `x-sdkwork-wire-protocol: external` per `API_SPEC.md` section 4.5.2.
-- UI error presentation SHOULD map numeric `ProblemDetail.code` to localized user-facing text through i18n keys such as `errors.result.<code>` (for example `errors.result.40001`). UI layers MUST NOT branch on HTTP 2xx legacy `success` flags or string wire codes such as `validation_error`.
+- UI error presentation SHOULD map `ProblemDetail.i18nKey` or numeric `ProblemDetail.code` to localized user-facing text through i18n keys such as `errors.result.<code>` (for example `errors.result.40001`). UI layers MUST NOT branch on HTTP 2xx legacy `success` flags, localized backend text, or string wire codes such as `validation_error`.
+- Frontend services and UI components `MUST NOT` set `Accept-Language`, `X-SdkWork-Locale`, or equivalent locale headers manually. Locale propagation goes through the generated SDK locale provider wired by runtime/bootstrap.
+- Frontend services `MUST` consume generated SDK operation methods that match `API_SPEC.md` section 15.4: `retrieve`, `list`, `search`, `create`, `update`, `delete`, domain command actions, and `bulk<Action>` where declared. They `MUST NOT` add raw HTTP fallbacks or local aliases such as `patchUser`, `replaceUser`, `deleteUserById`, or `batchCreateUsers` for SDKWork v3 APIs.
+- Delete service methods `MUST` treat generated SDK `void`/`204` success as the normal result. They `MUST NOT` parse `{ success: true }`, `{ deleted: true }`, or command-style JSON bodies for delete success.
+- Retriable create/command UI flows `MAY` create business idempotency keys and pass them through SDK method options when the generated SDK exposes `idempotencyKey`; they `MUST NOT` generate `traceId`, `requestId`, or manual idempotency headers outside SDK-supported options.
+- Update forms that edit versioned resources `MUST` preserve and pass the declared `version` or `ifMatch` precondition through the generated SDK/service contract. Silent last-write-wins updates are forbidden when the API declares optimistic concurrency.
 - File upload, download, import, and generated-asset storage services `MUST` use generated Drive SDK clients governed by `DRIVE_SPEC.md`. All client-side uploads must go through `sdkwork-drive-app-sdk client.uploader.*`; UI-local `File`, object URL previews, upload progress, local resumable state, and presigned URLs must remain transient view or service state.
 - Media upload, picker, import, and generated-asset services `MUST` use `MediaResource` contracts from `MEDIA_RESOURCE_SPEC.md` once data crosses the business service boundary.
 - Frontend DTO field names for media should use natural business roles such as `avatar`, `cover`, `thumbnail`, `poster`, `video`, `audio`, `file`, `document`, `asset`, `mainImage`, `galleryImage`, `detailImage`, or `skuImage`. Do not use redundant names such as `coverMedia` when the type is already `MediaResource`.
@@ -293,6 +326,9 @@ Rules:
 - Forms `MUST` connect labels, validation messages, and field descriptions.
 - Icon-only buttons `MUST` have accessible names and tooltips where helpful.
 - Reusable modules `SHOULD` accept i18n text providers or message catalogs instead of hard-coded L1 brand/store copy.
+- Reusable modules `MUST` keep locale resources in package-local fragments defined by `I18N_SPEC.md` section 6.1; root-level aggregators and platform resource bundles must be thin or generated.
+- Frontend runtime providers `MUST` resolve locale fallback centrally and must not let individual components import fallback locale fragments directly.
+- Cross-client workflows `SHOULD` share stable route title keys, permission hint keys, validation keys, and error keys while each platform keeps its own package-local resource format.
 - Text must fit responsive containers without overlap.
 - Design tokens and component primitives should be imported from the app's design system rather than redefined locally.
 
@@ -313,6 +349,7 @@ Interactive list UIs and frontend feature services `MUST` follow `PAGINATION_SPE
 Rules:
 
 - table, feed, and infinite-scroll lists `MUST` request one server page at a time using `page`/`page_size` or `cursor`/`page_size` through generated SDK clients;
+- frontend services `MUST NOT` hand-build `pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`, or numeric-cursor pagination compatibility query strings. When a service builds a URL directly for a standard SDKWork API, it must use `page_size` exactly;
 - services `MUST` propagate `pageInfo.nextCursor` or increment `page` until `hasMore` is false;
 - `listAll*`, `fetchAll*`, or equivalent helpers `MUST NOT` back normal paginated UI browsing;
 - client-side `Array.prototype.slice`, manual offset math, or virtual paging over a fully downloaded array `MUST NOT` replace server pagination;
@@ -325,10 +362,16 @@ Rules:
 - [ ] Appbase IAM runtime and one global token manager are wired in runtime/bootstrap when authenticated app-api SDK clients or explicit `backend-admin` backend-api SDK clients are used.
 - [ ] Architecture-specific SDK language and dependency SDK composition follow `APP_SDK_INTEGRATION_SPEC.md`.
 - [ ] No raw HTTP, manual auth headers, or manual API key headers exist in shared business modules.
+- [ ] `node ../sdkwork-specs/tools/check-frontend-composition.mjs --root .` passes for frontend
+      package role, dependency direction, core export, and SDK import boundaries.
 - [ ] Upload services use injected Drive app SDK `client.uploader.*`, supply required attribution/profile/retention metadata, and persist only Drive references or `MediaResource`.
 - [ ] UI upload components keep files, previews, progress, retry state, and presigned URLs transient.
 - [ ] Auth/session/tenant switch clears sensitive state.
 - [ ] Permission-denied and validation-error states are covered.
 - [ ] Keyboard and accessible labels are covered for interactive controls.
+- [ ] Authored frontend i18n resources follow the selected language/framework layout from `I18N_SPEC.md` section 6.1 and generated platform bundles are thin or generated.
 - [ ] Tests cover service behavior and representative UI integration.
 - [ ] Interactive lists use server pagination (`cursor`/`page`) and do not slice full client arrays (`PAGINATION_SPEC.md`).
+- [ ] Frontend services do not emit `pageSize` or `limit` query aliases for SDKWork list/search APIs.
+- [ ] Frontend services call generated SDK operation methods aligned with `API_SPEC.md` section 15.4 and do not parse legacy delete/create/update/command response bodies.
+- [ ] Retriable commands use SDK-supported idempotency options only; UI code does not generate `traceId`, `requestId`, or manual auth/idempotency headers.

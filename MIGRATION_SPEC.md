@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: API migration, database migration, SDK migration, config migration, package migration, route migration, compatibility windows, rollback
-- Related: `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `API_SPEC.md`, `PAGINATION_SPEC.md`, `DATABASE_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 This standard defines how SDKWork changes existing contracts without breaking consumers unexpectedly.
 
@@ -89,7 +89,7 @@ Rules:
 
 - Repositories migrating from `sdkwork-platform-http-context-service` or other appbase-local HTTP context frameworks to `sdkwork-web-framework` must follow `WEB_FRAMEWORK_SPEC.md` and the framework migration guide at `../sdkwork-web-framework/docs/10-migration-from-appbase.md`.
 - During migration, `AppRequestContext` may remain as a type alias for `WebRequestContext`, but new handlers, OpenAPI extensions, and documentation must use `WebRequestContext`.
-- Migration plans must name affected route crates, API servers, appbase adapters, and verification commands before removing legacy HTTP context crates.
+- Migration plans must name affected route crates, migration-only API servers, gateways, appbase adapters, and verification commands before removing legacy HTTP context crates.
 
 ### 4.2 HTTP Response Envelope Migration
 
@@ -104,6 +104,30 @@ Rules:
 - Bare domain DTO success bodies and top-level `{ items, pageInfo, traceId }` list bodies `MUST` be wrapped into `SdkWorkApiResponse.data`.
 - HTTP 2xx responses that encode business failure through `success`, human `message`, or non-success `code` `MUST` be replaced with `ProblemDetail` and the correct HTTP error status.
 - Migration steps for each owning repository: update OpenAPI schemas, regenerate SDKs with `--standard-profile sdkwork-v3`, update framework response mapping, update frontend/backend services to generated unwrap behavior and typed `ProblemDetail.code`/`traceId`, and run `node <sdkwork-specs>/tools/check-api-response-envelope.mjs --workspace <workspace-root>`.
+
+### 4.3 Pagination Debt Migration
+
+Pagination migrations follow `PAGINATION_SPEC.md`. For applications that have not shipped to production, pagination migration plans are forbidden: there are no consumers to protect, so the correct action is direct cleanup before release.
+
+Rules:
+
+- Pre-launch applications `MUST NOT` create migration exceptions for pagination query aliases (`pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`), numeric cursor offsets, in-process pagination, client-side `slice` pagination, missing `PageInfo.mode`, or default `listAll*` interactive helpers.
+- Already-launched L0/L1 authorities may keep pagination compatibility only when the migration plan names affected consumers, owner, removal date, OpenAPI/SDK regeneration steps, frontend/backend call-site changes, and rollback or forward-fix behavior.
+- Pagination compatibility aliases `MUST` fail new-authority and pre-launch quality gates. `page_size` is the only HTTP GET page-size wire name; `pageSize` is allowed only in JSON request/response models and language-level SDK option types.
+- A pagination migration is not complete until OpenAPI authorities, handlers, services, repositories or maintained indexes, generated SDKs, frontend services, tests, and documentation all use the canonical contract and `node <sdkwork-specs>/tools/check-pagination.mjs --workspace <workspace-root>` passes without `--allow-known-debt`.
+
+### 4.4 Operation Pattern Debt Migration
+
+Operation pattern migrations follow `API_SPEC.md` section 15.4. For pre-launch applications, compatibility plans for non-standard create, update, delete, search, command, async, or bulk behavior are forbidden; fix the contract and generated SDKs directly before first release.
+
+Rules:
+
+- Pre-launch applications `MUST NOT` preserve create operations that return `200`, delete operations that return JSON success bodies, `batch_*` URL segments, flat SDK aliases, local frontend response parsers, or command responses that encode business failure inside HTTP `200`.
+- Already-launched L0/L1 authorities may migrate operation patterns only with a plan naming affected consumers, old and new OpenAPI operations, SDK regeneration sequence, frontend/backend call-site changes, rollout window, and rollback or forward-fix behavior.
+- Delete migrations `MUST` remove `{ success: true }`, `{ deleted: true }`, and command-style delete envelopes from OpenAPI, handlers, generated SDKs, frontend services, and docs.
+- Create/update/command migrations `MUST` add `Idempotency-Key`, `If-Match`, version, or async operation status semantics where the operation requires retry safety or optimistic concurrency.
+- Bulk operation migrations `MUST` replace ad hoc arrays, human summary strings, and `batch_*` aliases with `:bulk<Action>` paths, `bulk<Action>` operationIds, bounded item counts, and typed item-level results.
+- An operation pattern migration is not complete until `node <sdkwork-specs>/tools/check-api-operation-patterns.mjs --workspace <workspace-root>` and `node <sdkwork-specs>/tools/check-api-response-envelope.mjs --workspace <workspace-root>` pass for the touched repository.
 
 ## 5. Data Migration
 
@@ -161,7 +185,8 @@ Public naming migrations for application identity and commerce capabilities foll
 | `shared foundation gateway` (without plane) | `platform connectivity-plane gateway` | domain `platform` |
 | `sdkwork-<application-code>-gateway` | `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` | application gateway crate; see `APPLICATION_GATEWAY_SPEC.md` and `NAMING_SPEC.md` §4.3.1 |
 | `sdkwork-api-cloud-gateway` | `sdkwork-api-cloud-gateway` | platform gateway crate and repository; see `APPLICATION_GATEWAY_SPEC.md` |
-| `sdkwork-api-cloud-gateway-*` support crates | `sdkwork-api-cloud-gateway-*` | platform gateway config, registry, observability, api-server |
+| `sdkwork-api-cloud-gateway-api-server` listener crate | `sdkwork-api-cloud-gateway` | retired platform listener folds into the canonical platform gateway crate |
+| `sdkwork-api-cloud-gateway-*` support crates | `sdkwork-api-cloud-gateway-*` | platform gateway config, registry, observability, and approved support roles |
 | bare `gateway` in crate/script names | `standalone-gateway`, `cloud-gateway`, or `api-cloud-gateway` | deployment-profile-qualified gateway ingress |
 | bare `catalog` (i18n normative) | `message catalog` / `i18n catalog fragment` | commerce `catalog` capability |
 | `identity` domain packages | `iam` | identity projection headers |

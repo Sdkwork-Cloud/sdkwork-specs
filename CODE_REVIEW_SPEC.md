@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: code review, spec review, generated artifact review, risk-based review, review evidence
-- Related: `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `QUALITY_GATE_SPEC.md`, `GOVERNANCE_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `TEST_SPEC.md`
+- Related: `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `QUALITY_GATE_SPEC.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `GOVERNANCE_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines SDKWork review expectations. Review is a correctness and risk-control activity, not a formatting ceremony.
 
@@ -31,6 +31,7 @@ A review should include:
 - affected specs.
 - architecture decision or migration plan when required.
 - changed files or package list.
+- composable architecture closure rows and validator evidence when module, SDK dependency, route, permission, frontend, Rust backend, or composition resolver behavior changed.
 - verification commands and outcomes.
 - known risks, non-goals, and deferred work.
 - screenshots or rendered artifacts when UI or documents changed.
@@ -48,6 +49,7 @@ Reviewers check:
 - requirement coverage and non-goal preservation.
 - package/component ownership.
 - dependency direction and public export boundaries.
+- component layer roles, ports, permission inheritance, route ownership, frontend package boundaries, Rust crate boundaries, and resolved composition graph correctness when applicable.
 - generated SDK/API/RPC/database contract correctness.
 - security, privacy, tenant isolation, auth, and secret handling.
 - test quality and negative cases.
@@ -61,6 +63,39 @@ Rules:
 - Review feedback should distinguish blocking issues from suggestions.
 - Authors must address or explicitly reject each blocking finding with technical reasoning.
 - Review cannot approve known root-spec violations without a `GOVERNANCE_SPEC.md` exception.
+
+### 3.1 Pagination Blocking Findings
+
+Reviewers `MUST` request changes for SDKWork-owned list/search work that introduces or retains:
+
+- HTTP query aliases `pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, or `size`.
+- numeric offset strings as `cursor`, or responses with `hasMore`/`nextCursor` but no `PageInfo.mode`.
+- unbounded repository reads, full collect plus `skip`/`take`/`slice`, or per-request projection rebuild followed by window helpers.
+- `listAll*` plus local `slice` for P0/P1 interactive UI or service paths.
+- hand-edited generated SDK transport instead of fixing OpenAPI, sdkgen inputs, or composed facades.
+- pagination migration exceptions for pre-launch applications.
+
+### 3.2 HTTP Operation Blocking Findings
+
+Reviewers `MUST` request changes for SDKWork-owned HTTP API work that introduces or retains:
+
+- create operations returning HTTP `200` instead of `201`.
+- delete operations returning JSON success bodies such as `{ success: true }` or `{ deleted: true }` instead of HTTP `204`.
+- command operations that encode business failure as HTTP `200` with `accepted: false`, `success: false`, human text, or non-zero success-envelope codes.
+- `batch_*` URL segments, `batch<Action>` SDK aliases, or flat SDK aliases that bypass `API_SPEC.md` section 15.4 operation actions.
+- update operations that silently ignore required `If-Match`, version, or optimistic concurrency semantics.
+- operation-pattern migration exceptions for pre-launch applications.
+
+### 3.3 Composable Architecture Blocking Findings
+
+Reviewers `MUST` request changes for composable module or dependency-integration work that introduces or retains:
+
+- missing `contracts.layerRole`, `publicExports`, `providedPorts`, or `requiredPorts` for authored modules that are meant to compose.
+- frontend feature packages importing generated SDK transport packages directly instead of core public exports, injected SDK clients, or declared ports.
+- service crates depending on concrete SQLx repositories, route crates depending on generated SDKs for the same surface, or repository crates depending on HTTP framework crates.
+- duplicated dependency permission catalogs, missing `contracts.permissionComposition`, or OpenAPI permissions that do not reconcile with inherited module manifests.
+- duplicate normalized `(surface, method, path)` route ownership, generic health/status paths claimed by feature modules, or dependency-owned paths copied into application-owned authorities.
+- hand-edited `generated/composition.resolved.json` or missing `resolve-composition.mjs --write` / `check-composition-resolver.mjs` evidence.
 
 ## 4. Risk-Based Review
 

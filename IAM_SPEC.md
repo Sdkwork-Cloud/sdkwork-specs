@@ -224,6 +224,7 @@ Rules:
 - `user_surface.organizationMember` reflects persistent membership and `MAY` remain `true` while `login_scope = "TENANT"`. Data access and backend-api authorization `MUST` use `login_scope` and `organization_id`, not `user_surface` alone.
 - Refresh and session rotation `MUST` preserve the active `login_scope` and `organization_id` unless the user explicitly switches context through the documented current-session update flow.
 - Login, registration, OAuth, QR, session-bridge, and refresh flows `MUST NOT` synthesize tenant, organization, user, chat id, display name, or relationship state from the submitted account string, email normalization, demo defaults, or mock profile objects.
+- Login output `MUST` map the session into exactly one actor/surface/scope row from `PERMISSION_STANDARD_SPEC.md`. C-end app users, organization admin users, platform system admins, platform super admins, and service principals must follow the actor initialization and default grant matrix in `PERMISSION_STANDARD_SPEC.md`; they must not share implicit permission initialization logic.
 
 #### 5.1.1 Login Context Selection Protocol
 
@@ -440,6 +441,8 @@ Rules:
 - ABAC conditions `SHOULD` cover tenant, organization, owner, resource type, resource state, environment, device trust, auth level, and time.
 - Policy evaluation `SHOULD` be deterministic, testable, and auditable.
 - Sensitive authorization changes `MUST` emit audit events and, when security-relevant, security events.
+- Role assignment, revocation, custom role updates, bootstrap default bindings, and super-admin activation `MUST` follow `PERMISSION_STANDARD_SPEC.md`, `IAM_RBAC_FEDERATION_SPEC.md`, and `IAM_MODULE_MANIFEST_SPEC.md` assignability rules.
+- Application bootstrap access token scopes `MUST NOT` be treated as user-session RBAC. Runtime authorization uses token `login_scope`, subject bindings, role bindings, permission catalog materialization, and per-route policy.
 
 ## 8. Standalone And Cloud Parity
 
@@ -461,7 +464,7 @@ Rules:
 - [ ] OperationIds are resource-style and SDK-friendly.
 - [ ] Protected operations use `Authorization: Bearer <JWT auth_token>` and `Access-Token: <JWT access_token>`.
 - [ ] Login/session creation does not trust inbound auth/context headers and derives tenant from real IAM user/tenant data.
-- [ ] Multi-organization login returns an organization-selection challenge instead of choosing a default organization.
+- [ ] Login with one or more active organization memberships returns `LOGIN_CONTEXT_SELECTION` instead of choosing a default organization.
 - [ ] Both `authToken` and `accessToken` include matching `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims.
 - [ ] New IAM `tenant_id` and `user_id` values are positive numeric snowflake strings that map to SQL `BIGINT` subject scope per `SUBJECT_ID_SPEC.md`; legacy opaque `iamu_` / `iamt_` ids are repaired or migrated.
 - [ ] Token signing and validation use tenant-bound signing keys with key id and tenant binding checks.
@@ -474,5 +477,6 @@ Rules:
 - [ ] Appbase HTTP handlers consume typed `WebRequestContext`/`AppContext` and do not reparse credentials.
 - [ ] Tenant and organization isolation is enforced in Java and Rust.
 - [ ] Permissions use stable dotted codes.
+- [ ] Role assignability, bootstrap defaults, and super-admin governance follow `PERMISSION_STANDARD_SPEC.md` and `IAM_RBAC_FEDERATION_SPEC.md`.
 - [ ] Audit/security events are emitted for sensitive actions.
 - [ ] React UI depends on IAM service/runtime contracts, not concrete SDK constructors or raw HTTP.

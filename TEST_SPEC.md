@@ -24,17 +24,18 @@ No standard is complete until it is executable.
 | Release | Validate `RELEASE_SPEC.md`: version, artifacts, changelog, rollout, rollback, freeze, post-release evidence, and release gate satisfaction |
 | Migration | Validate `MIGRATION_SPEC.md`: migration plan, compatibility window, affected consumers, sequencing, rollback, data/contract/config/package coverage, and owner approval |
 | Dependency management | Validate `DEPENDENCY_MANAGEMENT_SPEC.md`: native build-tool dependency management, one repository-root workspace manifest per git repository, forbidden umbrella application workspaces at multi-repository checkout roots, package import closure, source/build dependency paths, release Git refs, stale dependency cleanup, cross-platform path separators, lockfiles or equivalent reproducibility evidence, dependency-owned SDK/API filtering, single-source-of-truth workspace declarations, `workspace:*` for pnpm, `{ workspace = true }` for Cargo, Flutter/Dart path centralization, and forbidden scattered sibling paths in member packages |
+| Composable architecture | Validate `COMPOSABLE_ARCHITECTURE_SPEC.md`: standard closure matrix coverage, component layer roles, provided/required ports, executable runtime entrypoints, frontend core/feature/host package boundaries, Rust service/route/repository Cargo dependency boundaries, generated resolved architecture graph, route ownership, common URL path reservation, and permission inheritance |
 | Supply chain security | Validate `SUPPLY_CHAIN_SECURITY_SPEC.md`: dependency integrity, build integrity, generator authority, SBOM, provenance, signing, checksums, attestations, and supply-chain exceptions |
-| API | OpenAPI validation, strict profile validation, `SdkWorkApiResponse` envelope validation (`check-api-response-envelope.mjs`), legacy envelope bootstrap (`align-openapi-response-envelope.mjs`, `align-openapi-response-envelope-workspace.mjs`), request/response examples, Rust route crate naming and route-manifest aggregation checks |
+| API | OpenAPI validation, strict profile validation, `SdkWorkApiResponse` envelope validation (`check-api-response-envelope.mjs`), route path collision validation (`check-route-path-collisions.mjs`), legacy envelope bootstrap (`align-openapi-response-envelope.mjs`, `align-openapi-response-envelope-workspace.mjs`), request/response examples, Rust route crate naming and route-manifest aggregation checks |
 | Web backend | Controller/router path checks, handler/service/repository boundary tests, typed request-context checks, transaction/idempotency tests, static scans for raw credential parsing |
 | RPC | Proto compile, proto lint, breaking-change check, service manifest, unary server/client smoke tests, generated cross-language client checks, RPC framework integration, discovery resolver integration, resilience profile checks |
 | Discovery | Registry upsert/renew/deregister, config publish/effective resolution, watch replay, permission enforcement, production config safety validation |
-| SDK | Validate `SDK_SPEC.md` semantics, validate application-root `sdks/` layout from `SDK_WORKSPACE_GENERATION_SPEC.md`, trace authored `apis/` contracts to materialized authority OpenAPI when `apis/` is used, materialize OpenAPI authority to derived generator inputs, generate SDK through `..\sdkwork-sdk-generator` (`@sdkwork/sdk-generator` / `sdkgen`), compile SDK, verify README examples and method surface |
+| SDK | Validate `SDK_SPEC.md` semantics, validate application-root `sdks/` layout from `SDK_WORKSPACE_GENERATION_SPEC.md`, validate SDK package naming from `SDK_PACKAGE_NAMING_SPEC.md`, validate family-root manifests from `SDK_MANIFEST_SPEC.md`, trace authored `apis/` contracts to materialized authority OpenAPI when `apis/` is used, materialize OpenAPI authority to derived generator inputs, generate SDK through `..\sdkwork-sdk-generator` (`@sdkwork/sdk-generator` / `sdkgen`), compile SDK, verify README examples and method surface |
 | App SDK composition | Validate `APP_SDK_INTEGRATION_SPEC.md`: architecture-specific SDK language, dependency SDK declarations, appbase IAM runtime wiring, one global TokenManager, explicit dependency API export policy, and no dependency API regeneration |
 | Dependency API export | Validate dependency API export policy: `dependencyApiExports` defaults to no export, configured exports reference declared `sdkDependencies`, generated application-owned SDKs stay owner-only, and exported dependency capabilities live only in approved authored facades, service ports, dependency SDK injection, host adapters, or documentation-only surfaces |
 | Dependency API surface | Validate dependency SDK runtime composition: every `sdkDependencies` HTTP entry has a `dependencyApiSurfaces` runtime declaration, same-origin dependency SDK defaults have verified executable mount coverage, route metadata is not treated as an executable router, external dependency SDKs fail fast without explicit base URLs, and missing mounts/upstreams fail before `502` or `404` user requests |
 | Client architecture alignment | Validate `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`: package taxonomy, dependency direction, route identity, host adapter boundary, SDK/IAM/runtime composition, and cross-client workflow alignment |
-| Dependency composition | Validate `APP_COMPOSITION_SPEC.md` and `APP_INTEGRATION_CONVENTIONS.md`: core-package composition layout, bootstrap SDK inventory derivation, frontend/backend dependency chains, feature-package import boundaries, and composition resolver output |
+| Dependency composition | Validate `APP_COMPOSITION_SPEC.md`, `APP_INTEGRATION_CONVENTIONS.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, and `APP_PERMISSION_COMPOSITION_SPEC.md`: core-package composition layout, bootstrap SDK inventory derivation, frontend/backend dependency chains, component port bindings, permission catalog inheritance, feature-package import boundaries, Rust crate boundaries, and composition resolver output |
 | PC application architecture | Validate `APP_PC_ARCHITECTURE_SPEC.md`: application root layout, normalized `sdkwork-<application-code>-pc-*` package names, app/console/admin separation, shared renderer, desktop/tablet host placement, SDK/IAM boundaries |
 | H5 application architecture | Validate `APP_H5_ARCHITECTURE_SPEC.md`: `sdkwork-<application-code>-h5-*`, `sdkwork-<application-code>-h5-console-*`, and `sdkwork-<application-code>-h5-admin-*` package names, shared H5/Capacitor renderer, typed host adapters, SDK/IAM boundaries, mobile config, and release metadata |
 | Flutter app mobile architecture | Validate `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`: default, console, and admin Dart package naming, thin root `lib/`, generated Dart app/backend SDK boundary, platform adapters, route identity, and Flutter release metadata |
@@ -44,7 +45,7 @@ No standard is complete until it is executable.
 | iOS native mobile architecture | Validate `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`: `sdkwork-<application-code>-ios-mobile-*`, `sdkwork-<application-code>-ios-mobile-console-*`, and `sdkwork-<application-code>-ios-mobile-admin-*` package names, thin root `App/`, generated Swift app/backend SDK boundary, iOS host adapters, route identity, iOS config, and release metadata |
 | Harmony native mobile architecture | Validate `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`: `sdkwork-<application-code>-harmony-mobile-*`, `sdkwork-<application-code>-harmony-mobile-console-*`, and `sdkwork-<application-code>-harmony-mobile-admin-*` package names, thin root `entry/`, generated ArkTS/TypeScript app/backend SDK boundary, HarmonyOS host adapters, route identity, Harmony config, and release metadata |
 | Native mobile UI | Validate `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, or `APP_HARMONY_NATIVE_UI_SPEC.md`: package-local screens/pages/components/services/state/i18n/routes, host adapter contracts, app/user-console SDK boundary, UI states, and lifecycle/security checks |
-| Internationalization | Validate `I18N_SPEC.md`: package-local **message catalog** fragments, thin aggregators, duplicate-key checks, missing-key checks, fallback behavior, commerce `catalog` vs i18n catalog disambiguation, and no authored app/root/package locale monoliths |
+| Internationalization | Validate `I18N_SPEC.md`: language/framework i18n directory layouts through `tools/check-i18n-standard.mjs`, package-local **message catalog** fragments, backend message bundles, framework `WebLocaleContext`, locale fallback, API `ProblemDetail` i18n metadata, SDK locale providers, database seed i18n versions, duplicate-key checks, missing-key checks, commerce `catalog` vs i18n catalog disambiguation, and no authored app/root/backend/admin/package locale monoliths |
 | Environment/config | Validate `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`: lifecycle environment, profile alias, deployment profile, build mode, runtime target, dev/test/staging/prod files, browser/desktop/H5/Capacitor/Flutter/mini-program/native Android/native iOS/native Harmony/server/container/Tauri config separation, public/private/secret boundaries |
 | Database | Schema lint, migration test, tenant/index checks, and `DATABASE_FRAMEWORK_SPEC.md` lifecycle asset checks when `database/` exists |
 | Drive | Drive API/SDK contract tests, Drive Uploader App SDK tests, Rust `DriveUploaderService` tests, upload-session idempotency, resumable part tests, attribution/statistic tests, retention cleanup tests, provider capability tests, business-module scans for forbidden app-local storage lifecycle |
@@ -61,8 +62,15 @@ No standard is complete until it is executable.
 
 Rules:
 
-- Every API change `MUST` include a test that proves the OpenAPI contract can generate the intended SDK shape and declares `SdkWorkApiResponse` success schemas plus `ProblemDetail` errors for L2+ `app-api`, `backend-api`, and SDKWork-owned business `open-api` surfaces. Vendor compatibility open-api operations declared with `x-sdkwork-wire-protocol: external` per `API_SPEC.md` section 4.5.2 are exempt from envelope checks but `MUST` still declare `x-sdkwork-external-protocol-id`.
-- `check-api-response-envelope.mjs` `MUST` scan open-api authority OpenAPI documents and fail when SDKWork-owned business open-api operations omit `SdkWorkApiResponse` or `ProblemDetail`, while skipping documents or operations marked `x-sdkwork-wire-protocol: external`.
+- Every API change `MUST` include a test that proves the OpenAPI contract can generate the intended SDK shape and declares `SdkWorkApiResponse` success schemas plus `ProblemDetail` errors for L2+ SDKWork-owned custom `app-api`, `backend-api`, and business `open-api` surfaces. Omitted `x-sdkwork-wire-protocol` means SDKWork-owned custom API (`sdkwork-v3`) and is not an exemption. Vendor compatibility open-api operations declared with operation-level `x-sdkwork-wire-protocol: external` plus `x-sdkwork-external-protocol-id` per `API_SPEC.md` section 4.5.2 are exempt from envelope checks.
+- API tests for SDKWork-owned localized errors `SHOULD` prove `ProblemDetail.code` and `traceId` remain stable machine fields while optional `i18nKey`, `locale`, and field-level localization metadata follow `I18N_SPEC.md`.
+- `check-api-response-envelope.mjs` `MUST` scan app-api, backend-api, and open-api authority OpenAPI documents, including SDK family authority files under `sdks/*-sdk/openapi/`, and fail when SDKWork-owned custom operations omit `SdkWorkApiResponse` or `ProblemDetail`. It `MUST` skip only operations marked operation-level `x-sdkwork-wire-protocol: external` with `x-sdkwork-external-protocol-id`; mixed documents are validated per operation.
+- SDKWork-owned HTTP API contract tests `MUST` prove every operation maps to one `API_SPEC.md` section 15.4 pattern: retrieve, list, search, create, update, delete, command, async command, or bulk command. New and pre-launch APIs `MUST NOT` keep non-standard statuses such as create returning `200` or delete returning a JSON success body.
+- `check-api-operation-patterns.mjs` `MUST` scan app-api, backend-api, and business open-api authority OpenAPI documents and fail on operationId/action drift, create/update/delete/search status mismatches, delete JSON success bodies, and non-external SDKWork-owned operations that bypass the operation matrix. It `MUST` skip only vendor compatibility operations marked with operation-level `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id`.
+- `check-route-path-collisions.mjs` `MUST` scan route manifests and app-api/backend-api/SDKWork-owned open-api authority OpenAPI documents and fail on duplicate normalized `(surface, method, path)` registrations. Path-template dialects `{id}`, `:id`, and `<id>` `MUST` normalize to the same parameter segment. Intentional overrides require an ADR marker. Standard health/readiness paths such as `/app/v3/api/system/health`, `/app/v3/api/system/ready`, `/backend/v3/api/system/health`, and `/backend/v3/api/system/ready` are reserved for the standard health route owner.
+- Route path tests `MUST` fail when feature or dependency modules claim common infrastructure-like or system paths such as `/status`, `/health`, `/ready`, `/system/health`, or `/system/ready` instead of a capability-specific resource path. Infrastructure probes remain `/healthz`, `/readyz`, `/livez`, and `/metrics`; business system health endpoints remain single-owner API operations under the reserved app/backend system paths.
+- Security and API contract tests `MUST` fail when mandatory-sensitive operations from `SECURITY_SPEC.md` section 5 omit `x-sdkwork-rate-limit-tier` or when the runtime framework does not enforce the declared tier.
+- Create, update, delete, command, async command, and bulk command tests `MUST` cover success status, `SdkWorkApiResponse.data` or `204` semantics, `ProblemDetail` failure mapping, idempotency behavior when declared, and optimistic concurrency behavior when declared.
 - Every Rust HTTP route crate change `MUST` include or update verification that the crate name,
   declared surface, mounted path prefix, route manifest, aggregated API authority, and generated SDK
   family mapping satisfy `API_SPEC.md`, `SDK_SPEC.md`, and `SDK_WORKSPACE_GENERATION_SPEC.md`.
@@ -72,6 +80,7 @@ Rules:
   `apiSurface`, `x-sdkwork-request-context: WebRequestContext`, and `x-sdkwork-api-surface`.
 - Every SDK workspace or OpenAPI generation change `MUST` satisfy `SDK_SPEC.md` first for canonical SDK/API naming vocabulary, family naming, package semantics, generated client behavior, auth behavior, and service integration; then satisfy `SDK_WORKSPACE_GENERATION_SPEC.md` for application-root `sdks/` layout, authority OpenAPI location, deterministic derived inputs, generated-output placement, and component specs.
 - SDK generation verification `MUST` prove the command uses the canonical `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`; `sdkwork-code-generator`, local stubs, copied generator code, or generic OpenAPI generators are not valid production SDK verification evidence.
+- SDK family verification `MUST` prove `SDK_PACKAGE_NAMING_SPEC.md` and `SDK_MANIFEST_SPEC.md` are satisfied: composed consumer package names and generated transport package names are not conflated, family-root `sdk-manifest.json` is present when required, and ownership/dependency metadata does not live under generated transport output.
 - SDK/OpenAPI contract tests `MUST` fail when route manifests, authority OpenAPI, derived `*.sdkgen.*` inputs, generated SDK method surfaces, generated README examples, or generated type models expose `tenant_id` or `tenantId` as a current-tenant path, query, header, cookie, method, `params`, per-call option, credential option, or client-writable request body input.
 - Dependency API surface verification `MUST` prove each HTTP `sdkDependencies` entry has a matching
   `dependencyApiSurfaces` runtime declaration. The test must fail when route contracts, route
@@ -328,15 +337,16 @@ Rules:
 - Rust crate naming scans `MUST` verify authored Rust crates use one of the responsibility-specific
   families from `RUST_CODE_SPEC.md` and `APPLICATION_GATEWAY_SPEC.md`: `sdkwork-<domain>-<capability>-service`,
   `sdkwork-<domain>-<capability>-repository-sqlx`, `sdkwork-routes-<capability>-<surface>`,
-  `sdkwork-<application-code>-api-server`, `sdkwork-<application-code>-service-host`,
+  `sdkwork-<application-code>-service-host`,
   `sdkwork-<application-code>-native-host`, `sdkwork-<application-code>-tauri-host`,
   `sdkwork-<domain>-<capability>-worker`, `sdkwork-<application-code>-standalone-gateway`,
   `sdkwork-<application-code>-cloud-gateway`, or platform `sdkwork-api-cloud-gateway` as the
   platform `api-cloud-gateway`.
 - Rust crate naming scans `MUST` fail on bare application gateway crate names such as
   `sdkwork-<application-code>-gateway` without a `standalone` or `cloud` qualifier.
-- Rust crate naming scans `MUST` fail on bare platform gateway crate names such as
-  `sdkwork-api-cloud-gateway` without the `cloud` qualifier.
+- Rust crate naming scans `MUST` fail on retired platform listener crate names such as
+  `sdkwork-api-cloud-gateway-api-server`; the canonical platform gateway crate is
+  `sdkwork-api-cloud-gateway`.
 - Application gateway crate scans `MUST` verify gateway crates live under `crates/` and declare
   `component.type` of `rust-standalone-gateway` or `rust-cloud-gateway` per `APPLICATION_GATEWAY_SPEC.md`.
 - Rust HTTP route crate naming scans `MUST` verify Cargo package names follow
@@ -352,7 +362,7 @@ Rules:
   schema, row mapping, query bodies, and repository implementations under `db/`, `mapper/`, and
   `repository/`, and do not parse HTTP context or own business authorization.
 - Rust route crate scans `MUST` verify `paths.rs`, `routes.rs`, `handlers.rs`, and `manifest.rs` exist when a crate owns SDKWork HTTP routes.
-- Rust API server, service host, native host, worker, standalone gateway, cloud gateway, and
+- Rust migration-only API server, service host, native host, worker, standalone gateway, cloud gateway, and
   platform gateway scans `MUST` verify runnable
   crates use the standard directories from `RUST_CODE_SPEC.md` and do not collapse business rules,
   SQL query bodies, route authority, and process startup into one catch-all crate.
@@ -360,6 +370,12 @@ Rules:
 - TypeScript code scans `MUST` verify `src/index.ts` is a public export boundary and that business modules do not import package internals through `/src/...`.
 - Frontend code scans `MUST` verify UI components do not construct SDK clients or raw HTTP requests.
 - I18n scans `MUST` fail when authored locale resources collapse a whole app, client root, backend/admin root, or package into one locale file instead of package-local fragments defined by `I18N_SPEC.md`.
+- I18n directory scans `MUST` verify authored source fragments use the language/framework layouts from `I18N_SPEC.md` section 6.1: React and TypeScript under `src/i18n/<locale>/<domain>/<capability>/`, Flutter under `lib/src/i18n/<locale>/<domain>/<capability>/`, Android under `src/main/i18n/<locale>/<domain>/<capability>/`, iOS under `Sources/<Module>/I18n/<locale>/<domain>/<capability>/`, Harmony under `src/main/ets/i18n/<locale>/<domain>/<capability>/`, Rust under `resources/i18n/<locale>/<domain>/<capability>/`, Java/Spring under `src/main/resources/i18n/<locale>/<domain>/<capability>/`, and database seeds under `database/seeds/locales/<locale>/<domain>/<capability>/`.
+- `tools/check-i18n-standard.mjs` is the canonical repository/workspace validator for authored i18n source layout, locale monolith rejection, platform aggregate projection markers, Rust/Java backend message bundle placement, and database locale seed path shape.
+- I18n scans `MUST` fail when platform aggregate files such as Android `res/values*/strings.xml`, iOS `*.lproj/Localizable.strings`, Harmony `resources/**/element/string.json`, Flutter `lib/l10n/app_*.arb`, or mini program platform resource bundles are hand-authored as feature-copy source instead of generated or thin projections from package-local fragments.
+- I18n scans `MUST` fail when frontend services, UI components, backend handlers, or controllers manually parse or set locale headers instead of using runtime/framework locale providers.
+- I18n scans `MUST` fail when runtime config, env templates, app manifests, or feature flags embed translated message content instead of strategy, manifest URLs, or bundle versions.
+- I18n scans `MUST` fail when locale directory names use platform suffixes as authored source directories instead of normalized BCP 47 tags such as `zh-CN` and `en-US`.
 - Generated-code scans `MUST` fail when generated SDK transport output is hand-edited outside approved `custom/` roots or composed facades.
 
 ## 2.0.2.1 Database Framework Tests
@@ -370,6 +386,7 @@ Rules:
 
 - Application repositories that own a `database/` directory `MUST` provide `tests/contract/database-framework.contract.test.*` or call the canonical validator.
 - Database framework tests `MUST` verify `database/database.manifest.json`, `database/contract/schema.yaml`, `database/seeds/seed.manifest.json`, required locale directories, and drift policy presence.
+- Database framework tests `MUST` verify seed `i18nVersion`, fallback/default/supported/active locales, locale set versions, and checksums when locale-specific seed files exist.
 - Database framework tests `MUST` verify L2 contract fields: `contractVersion: "1.0.0"`, `lifecycle.autoMigrate: true`, non-empty prefix/table registries, and at least one baseline `.sql` file under `database/ddl/baseline/<engine>/` for every engine declared in `database.manifest.json`.
 - Database framework tests `MUST` verify root `db:validate`, `db:migrate`, `db:status`, `db:materialize:contract`, and `db:bootstrap` scripts exist when database lifecycle is active.
 - Database framework tests `MUST` fail when crate-local `migrations/` remain the only migration source without an approved exception or adoption plan.
@@ -392,7 +409,7 @@ node ../sdkwork-specs/tools/bootstrap-database-module.mjs --repo <repo-name>
 ```
 
 - Migration smoke tests `MUST` bootstrap an empty database to the latest schema on each supported engine.
-- Seed smoke tests `MUST` prove `seeds/common` plus default locale `zh-CN` are idempotent.
+- Seed smoke tests `MUST` prove `seeds/common` plus default locale `zh-CN` are idempotent and record locale/profile/`i18nVersion`/checksum evidence in seed history.
 - Drift tests `MUST` prove a fresh bootstrap yields zero error-level drift.
 - Drift tests `MUST` cover constraint/index diffs (`missing_constraint`, `extra_index`) and column nullability mismatches under `type_mismatch`.
 - Checksum immutability tests `MUST` prove modified applied migration files fail migrate/plan with `checksum_mismatch`.
@@ -512,6 +529,9 @@ Rules:
   kebab-case labels such as `open-api`, `app-api`, and `backend-api`.
 - Duplicate tests `MUST` fail on duplicate `(method, path)` pairs after path-template
   normalization.
+- Route registry tests `MUST` prove `check-route-path-collisions.mjs` fails when two route manifests,
+  two OpenAPI authorities, or a route manifest and an OpenAPI authority declare distinct operations
+  with the same normalized `(surface, method, path)`.
 - Ownership and framework metadata tests `MUST` prove the route manifest owner, API authority, SDK
   family, route-level ownership, `requestContext`, `apiSurface`, and optional `rateLimitTier`
   materialize to `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`,
@@ -588,10 +608,11 @@ Rules:
 
 - Controller/router tests `MUST` prove mounted paths, HTTP methods, class/module prefixes, and route
   manifests match the approved API surface and authority OpenAPI.
-- Handler tests `MUST` cover request decoding, `SdkWorkApiResponse` success mapping, problem-detail mapping, typed list/search input per section 14.1 for business open-api handlers, vendor adapter passthrough only for operations marked `x-sdkwork-wire-protocol: external`, request context consumption, and the absence of raw credential parsing.
+- Handler tests `MUST` cover request decoding, operation-pattern success mapping from `API_SPEC.md` section 15.4, `SdkWorkApiResponse` success mapping, delete `204` no-body mapping, problem-detail mapping, typed list/search input per section 14.1 for business open-api handlers, vendor adapter passthrough only for operations marked `x-sdkwork-wire-protocol: external`, request context consumption, and the absence of raw credential parsing.
 - Service/use-case tests `MUST` run without an HTTP server and cover business rules, authorization
   decisions, tenant/data-scope behavior, idempotency, transaction boundaries, events, cache
   invalidation, and provider adapter calls where relevant.
+- Create/update/delete/command service tests `MUST` prove transaction boundaries, idempotency replay/conflict behavior, optimistic concurrency conflict mapping, audit/event/cache side effects, and no duplicate irreversible side effects on retry.
 - Repository tests `MUST` cover tenant predicates, organization/data-scope predicates, optimistic
   concurrency, migration compatibility, TEXT-stored `instant` cast comparisons for IAM/session/token expiry paths, and index/query shape for high-traffic queries.
 - Static scans `MUST` fail when handlers or services parse `Authorization`, `Access-Token`,
@@ -612,12 +633,14 @@ Rules:
 
 - Application repositories and modules that own, serve, develop, proxy, or compose any SDKWork HTTP
   `*-api` surface `MUST` include framework integration checks.
-- Repositories with Rust HTTP route crates, API servers, or gateways `MUST` include verification that
+- Repositories with Rust HTTP route crates, migration-only API servers, or gateways `MUST` include verification that
   `sdkwork-web-framework` is declared as a dependency.
-- Bootstrap smoke tests `MUST` prove API servers and gateways mount routes through framework
+- Bootstrap smoke tests `MUST` prove gateways and migration-only API servers mount routes through framework
   bootstrap rather than ad hoc Axum/Tower security stacks.
 - Pipeline contract tests `MUST` prove the standard 18-stage interceptor order is not bypassed for
   protected routers or gateway proxy/composition routes.
+- Locale context tests `MUST` prove public and protected SDKWork HTTP routes receive `WebRequestContext.locale`, unsupported requested locales resolve through the configured fallback chain, and handlers/controllers do not parse locale headers directly.
+- Locale response tests `MUST` prove localized responses emit `Content-Language`, language-varying responses emit `Vary: Accept-Language`, and framework problem mapping preserves numeric `ProblemDetail.code`/`traceId` while exposing safe `i18nKey`/`locale` metadata when configured.
 - Route manifest tests `MUST` fail when any route entry omits `requestContext: WebRequestContext` or
   `apiSurface`.
 - OpenAPI/materialization tests `MUST` fail when HTTP operations omit
@@ -627,7 +650,7 @@ Rules:
   authority OpenAPI.
 - Static scans `MUST` fail when route crate handlers or Java controller methods parse
   `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission
-  scopes, or request IDs from raw headers instead of consuming `WebRequestContext` or the Java
+  scopes, request IDs, locale, or language from raw headers instead of consuming `WebRequestContext` or the Java
   typed-context equivalent.
 - Java/Spring tests, when Java API modules are present, `MUST` prove typed context argument
   resolution, interceptor order, centralized problem-detail mapping, and OpenAPI/manifest metadata
@@ -684,7 +707,8 @@ Rules:
 - Dependency direction tests `MUST` fail when `core` or `commons` imports capability packages, when capability packages deep import each other, or when host packages own business SDK transport.
 - Route identity tests `MUST` prove route ids follow `<surface>.<domain>.<capability>.<screen>` and route metadata does not declare API URLs, SDK methods, or HTTP path constants.
 - Cross-client alignment tests `SHOULD` prove workflows implemented in multiple client roots share route id, title key, permission hint, SDK surface, service contract, and i18n key.
-- I18n alignment tests `SHOULD` prove shared workflows use stable key prefixes while each client architecture keeps authored locale resources in its own package-local fragments.
+- I18n alignment tests `SHOULD` prove shared workflows use stable key prefixes while each client architecture keeps authored locale resources in its own package-local fragments and language/framework layout from `I18N_SPEC.md` section 6.1.
+- SDK locale provider tests `SHOULD` prove generated SDK clients receive locale providers from runtime/bootstrap and feature services do not set `Accept-Language` or `X-SdkWork-Locale` manually.
 - Host adapter tests `MUST` prove feature packages depend on adapter contracts instead of platform globals or native plugin APIs.
 - SDK/IAM tests `MUST` prove bootstrap/core constructs SDK clients, binds the authenticated token manager, and injects SDK/service ports into feature packages.
 
@@ -692,13 +716,21 @@ Native composition tests make `APP_COMPOSITION_SPEC.md` executable across client
 
 Rules:
 
+- Composable architecture tests `MUST` prove every applicable row in `COMPOSABLE_ARCHITECTURE_SPEC.md` section 1.1 maps from primary standard to machine contract to validator evidence. Missing `component.spec.json` fields, route manifest metadata, permission catalog refs, OpenAPI extensions, SDK dependency declarations, or generated `composition.resolved.json#architecture` output must fail before merge.
 - Client app roots must expose composition metadata through `*-core/specs/component.spec.json#contracts.sdkDependencies` without a parallel dependency manifest file.
+- Component closure tests `MUST` include `node tools/check-component-port-bindings.mjs --root <repo-root>` whenever new authored modules, package roles, runtime entrypoints, dependency API surfaces, provided ports, or required ports are added or changed.
+- Frontend composition verification `MUST` include `node tools/check-frontend-composition.mjs --root <repo-root>` whenever client package roles, core imports, SDK access, host adapters, app/user console packages, or internal admin packages are added or changed.
+- Rust backend composition verification `MUST` include `node tools/check-rust-backend-composition.mjs --root <repo-root>` whenever Cargo members, route crates, service crates, repository crates, service-hosts, gateway crates, workers, or Rust runtime dependencies are added or changed.
+- Internationalization verification `MUST` include `node tools/check-i18n-standard.mjs --root <repo-root>` whenever authored locale fragments, generated platform localization projections, backend message resources, or database locale seeds are added or changed.
 - Composition tests `MUST` prove backend SDK clients appear only under `backend-admin` core packages.
 - Core package tests `MUST` prove `src/composition/` or `lib/composition/` exists and required public export subpaths are declared for TypeScript/React core packages.
 - Bootstrap tests `MUST` prove runtime SDK inventory is derived from core `component.spec.json` and composition entry rather than a second handwritten inventory.
 - Feature package import tests `MUST` fail when capability packages import generated SDK packages or sibling capability private paths directly.
 - Workspace verification `MUST` include `node tools/verify-repo.mjs --root <repo-root>` and repo-root `pnpm-workspace.yaml` must be synchronized via `node tools/sync-workspace.mjs --repo <repo-name> --root <repo-root>`.
 - Composition resolver verification `MUST` include `node tools/resolve-composition.mjs --root <repo-root> --write` and `node tools/check-composition-resolver.mjs --root <repo-root>` for client application repositories with `sdkDependencies`.
+- Composition resolver tests `MUST` fail when generated `generated/composition.resolved.json#architecture` is missing component layer roles, frontend package role graph, Rust crate graph summary, route manifest inventory, runtime dependency API surfaces, or inherited permission refs required by declared SDK dependencies.
+- Permission composition verification `MUST` include `node tools/check-permission-composition.mjs --root <repo-root>` for client application repositories with HTTP `sdkDependencies`.
+- Permission composition tests `MUST` fail when HTTP `sdkDependencies` have no `contracts.permissionComposition`, when dependency SDKs lack inherited module catalog refs, or when OpenAPI `x-sdkwork-permission` codes are absent from inherited or application-owned catalogs.
 
 ## 2.4.2 H5 Application Architecture Tests
 
@@ -760,7 +792,7 @@ Rules:
 
 - Mini program UI package tests `MUST` verify package placement under `apps/sdkwork-<application-code>-mini-program/packages/sdkwork-<application-code>-mp-*`, `apps/sdkwork-<application-code>-mini-program/packages/sdkwork-<application-code>-mp-console-*`, `apps/sdkwork-<application-code>-mini-program/packages/sdkwork-<application-code>-mp-admin-*`, or approved `packages/mini-program/<domain>/sdkwork-<capability>-mini-program` shared packages.
 - Package-local boundary tests `MUST` prove `pages`, `components`, `services`, `state`, `i18n`, `routes`, `navigation`, `host`, and `types` responsibilities remain visible when those concerns exist.
-- I18n tests `MUST` prove mini program locale resources are package-local fragments and that platform page/subpackage resource aggregates are generated or thin assemblies, not hand-authored app-wide locale files.
+- I18n tests `MUST` prove mini program locale resources use the `src/i18n/<locale>/<domain>/<capability>/` source layout from `I18N_SPEC.md` section 6.1 and that platform page/subpackage resource aggregates are generated or thin assemblies, not hand-authored app-wide locale files.
 - Route contribution tests `MUST` prove every route declares `id`, `surface`, `domain`, `capability`, `screen`, `titleKey`, `auth`, and mini program placement metadata without API URLs or SDK method names.
 - SDK tests `MUST` prove services receive generated app SDK clients or approved wrappers through injection and do not use raw request APIs or manual auth headers.
 - Host adapter tests `MUST` prove source pages/components/services do not call platform globals such as `wx.*`, `my.*`, `dd.*`, or `tt.*` directly.
@@ -824,7 +856,7 @@ Rules:
 
 - Native UI package tests `MUST` verify package placement under the selected root family, including default app packages, user console packages, and admin packages such as `apps/sdkwork-<application-code>-android-mobile/packages/sdkwork-<application-code>-android-mobile-*`, `apps/sdkwork-<application-code>-android-mobile/packages/sdkwork-<application-code>-android-mobile-console-*`, `apps/sdkwork-<application-code>-android-mobile/packages/sdkwork-<application-code>-android-mobile-admin-*`, `apps/sdkwork-<application-code>-ios-mobile/packages/sdkwork-<application-code>-ios-mobile-*`, `apps/sdkwork-<application-code>-ios-mobile/packages/sdkwork-<application-code>-ios-mobile-console-*`, `apps/sdkwork-<application-code>-ios-mobile/packages/sdkwork-<application-code>-ios-mobile-admin-*`, `apps/sdkwork-<application-code>-harmony-mobile/packages/sdkwork-<application-code>-harmony-mobile-*`, `apps/sdkwork-<application-code>-harmony-mobile/packages/sdkwork-<application-code>-harmony-mobile-console-*`, or `apps/sdkwork-<application-code>-harmony-mobile/packages/sdkwork-<application-code>-harmony-mobile-admin-*`.
 - Package-local boundary tests `MUST` prove screens/pages, components/views, presentation/view models/controllers, services, state, i18n/resources, routes/navigation, host adapter contracts, and models remain visible when those concerns exist.
-- I18n/resource tests `MUST` prove platform resource aggregates are generated or assembled from package-local fragments and that authored resources do not collapse whole-root copy into one file.
+- I18n/resource tests `MUST` prove Android, iOS, and Harmony authored resources use the source layouts from `I18N_SPEC.md` section 6.1, platform resource aggregates are generated or assembled from package-local fragments, and authored resources do not collapse whole-root copy into one file.
 - SDK tests `MUST` prove app and user console services receive generated app SDK clients or approved wrappers through injection, admin services receive generated backend SDK clients or approved backend wrappers through injection, and no UI service uses raw HTTP/request APIs or manual auth headers.
 - Host adapter tests `MUST` prove feature UI and view models do not call platform APIs directly for host capabilities.
 - State clearing tests `MUST` prove logout, refresh failure, account switch, and tenant switch clear token storage, context state, sensitive package state, caches, and realtime/session bridges.
@@ -950,7 +982,7 @@ Rules:
 - IAM login tests `MUST` prove login requests do not trust inbound credentials or SDKWork context-projection headers as tenant/user/organization context.
 - IAM token tests `MUST` prove `authToken` and `accessToken` both include tenant, organization, login scope, user, and session claims, that overlapping claims resolve from `authToken` when both tokens are present, and that contradictory overlapping `accessToken` claims are rejected.
 - IAM tenant signing tests `MUST` prove different tenants use different signing keys or key references, `kid` resolves to the expected tenant key, and a token signed with another tenant's key fails validation.
-- IAM organization login tests `MUST` cover zero organization membership as tenant-level login, one active organization membership as automatic organization login, multiple active memberships as an organization-selection challenge, and final selection membership validation before token issuance.
+- IAM organization login tests `MUST` cover zero active organization membership as tenant-level login, one or more active organization memberships as a `LOGIN_CONTEXT_SELECTION` challenge that includes the personal-login option when allowed, and final context selection membership validation before token issuance.
 - Static or contract tests `MUST` fail when authenticated backend code fills request context from demo tenants, hard-coded tenants, mock users, email-normalized user ids, or raw request context headers instead of verified token/session context.
 - App SDK composition tests `MUST` prove the application bootstrap declares or derives an SDK inventory and classifies every consumed SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake before feature services are constructed.
 - App SDK composition tests `MUST` prove appbase app SDK, application/dependency app SDKs, explicit `backend-admin` appbase backend/application backend/dependency backend SDKs, and approved composed wrappers backed by those SDKs share one TokenManager through `setTokenManager`, constructor injection, or the language-equivalent credential hook.
@@ -1008,7 +1040,10 @@ Rules:
 
 - P0/P1 APIs `SHOULD` include pagination/bounded-query verification.
 - P0/P1 list/search APIs `MUST` include tests that prove store-level or index-level pagination and reject in-process full collect + slice patterns per `PAGINATION_SPEC.md` §10.
+- SDKWork-owned list/search API tests `MUST` reject forbidden pagination aliases (`pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`) on HTTP GET query strings with `40003 INVALID_PARAMETER` for new and pre-launch applications.
+- Cursor-mode list/search API tests `MUST` reject requests that combine `page` and `cursor`; numeric offset strings as cursor are forbidden for new and pre-launch applications.
 - Frontend list service tests `SHOULD` fail when interactive screens use `listAll*` + `slice` instead of server `cursor`/`page`.
+- Frontend list service tests for SDKWork-owned APIs `MUST` prove emitted HTTP query strings or generated SDK calls use canonical `page_size`, not `pageSize` or `limit`, when the test boundary observes wire parameters.
 - SDK generation tests `MUST` verify the intended nested resource method surface from `SDK_SPEC.md`.
 - SDK workspace tests `MUST` verify the intended `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-sdk`, and `sdkwork-<domain>-backend-sdk` family contracts from `SDK_SPEC.md`, plus the physical workspace placement required by `SDK_WORKSPACE_GENERATION_SPEC.md`, when those surfaces exist.
 - SDK workspace tests `MUST` verify authored API contracts under `apis/` trace to the materialized
@@ -1039,8 +1074,9 @@ Rules:
 - [ ] OpenAPI/SDK scans prove current tenant context is not generated as `tenant_id` or `tenantId` inputs.
 - [ ] Web backend implementation checks pass under `WEB_BACKEND_SPEC.md` when controllers, route crates, handlers, services, repositories, or runtime composition are touched.
 - [ ] Web framework integration checks pass under `WEB_FRAMEWORK_SPEC.md` when any SDKWork HTTP
-      `*-api` route crate, controller module, API server, gateway, framework adapter, or runtime
+      `*-api` route crate, controller module, migration-only API server, gateway, framework adapter, or runtime
       composition is touched.
+- [ ] Composable architecture closure checks pass under `COMPOSABLE_ARCHITECTURE_SPEC.md` when module boundaries, dependency SDKs, frontend packages, Rust crates, routes, permissions, or runtime composition are touched.
 - [ ] SDK workspace layout and OpenAPI authority/derived input checks pass under `SDK_WORKSPACE_GENERATION_SPEC.md` when SDK generation is touched.
 - [ ] Rust route crate naming, surface prefix, route manifest, and authority aggregation checks pass when Rust HTTP routes are touched.
 - [ ] Proto/RPC generation verification passes when RPC contracts are touched.
@@ -1053,6 +1089,7 @@ Rules:
 - [ ] Security and tenant isolation tests cover negative cases.
 - [ ] IAM login/session integration tests cover appbase route guard, logout clearing, SDK boundary, Rust AppContext validation, and forbidden local auth namespaces when relevant.
 - [ ] Frontend service uses injected SDK clients.
+- [ ] I18n verification covers language/framework directory layout, package-local fragments, generated platform resource boundaries, duplicate keys, missing active-locale keys, locale fallback, and safe localized errors when user-facing or operator-facing copy is touched.
 - [ ] UI architecture package placement and SDK surface checks pass for touched UI packages.
 - [ ] PC application architecture root layout, package naming, app/console/admin separation, desktop/tablet host checks, and iPadOS/Android tablet packaging checks pass when a PC application root is touched.
 - [ ] H5 mobile, Flutter mobile, mini program, Android native, iOS native, and Harmony native architecture checks pass when those client roots or packages are touched.

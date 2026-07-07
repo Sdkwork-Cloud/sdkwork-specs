@@ -41,6 +41,52 @@ function readJsonAt(baseDir, relativePath) {
   return JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
 }
 
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function validateLocaleSetManifest(seedManifest, fail) {
+  if (!isNonEmptyString(seedManifest.i18nVersion)) {
+    fail('seeds/seed.manifest.json i18nVersion must be defined');
+  }
+  if (!isNonEmptyString(seedManifest.fallbackLocale)) {
+    fail('seeds/seed.manifest.json fallbackLocale must be defined');
+  }
+  const supportedLocales = Array.isArray(seedManifest.supportedLocales) ? seedManifest.supportedLocales : [];
+  const activeLocales = Array.isArray(seedManifest.activeLocales) ? seedManifest.activeLocales : [];
+  if (supportedLocales.length === 0) {
+    fail('seeds/seed.manifest.json supportedLocales must be non-empty');
+  }
+  if (activeLocales.length === 0) {
+    fail('seeds/seed.manifest.json activeLocales must be non-empty');
+  }
+  for (const locale of [seedManifest.defaultLocale, seedManifest.fallbackLocale, ...activeLocales]) {
+    if (locale && !supportedLocales.includes(locale)) {
+      fail(`seeds/seed.manifest.json locale ${locale} must be listed in supportedLocales`);
+    }
+  }
+  if (!seedManifest.localeSets || typeof seedManifest.localeSets !== 'object' || Array.isArray(seedManifest.localeSets)) {
+    fail('seeds/seed.manifest.json localeSets must be defined');
+    return;
+  }
+  for (const locale of activeLocales) {
+    const localeSet = seedManifest.localeSets[locale];
+    if (!localeSet) {
+      fail(`seeds/seed.manifest.json localeSets.${locale} must be defined for active locale`);
+      continue;
+    }
+    if (!isNonEmptyString(localeSet.version)) {
+      fail(`seeds/seed.manifest.json localeSets.${locale}.version must be defined`);
+    }
+    if (!isNonEmptyString(localeSet.checksum)) {
+      fail(`seeds/seed.manifest.json localeSets.${locale}.checksum must be defined`);
+    }
+    if (!Array.isArray(localeSet.files)) {
+      fail(`seeds/seed.manifest.json localeSets.${locale}.files must be an array`);
+    }
+  }
+}
+
 function listBaselineSqlFiles(moduleRootDir, engine) {
   const baselineDir = path.join(moduleRootDir, 'ddl/baseline', engine);
   if (!fs.existsSync(baselineDir)) {
@@ -185,6 +231,7 @@ export function validateDatabaseModuleLayout(moduleRootDir) {
     if (seedManifest.defaultLocale !== 'zh-CN') {
       fail('seeds/seed.manifest.json defaultLocale must be zh-CN');
     }
+    validateLocaleSetManifest(seedManifest, fail);
   } catch (error) {
     fail(`seeds/seed.manifest.json must be valid JSON (${error.message})`);
   }

@@ -96,9 +96,12 @@ export function uniquePackages(entries) {
 
 export function buildWorkspacePackages(localPackages, repoName) {
   const overlay = loadConsumerOverlay(repoName);
+  const foundationPackages = repoName === 'sdkwork-appbase'
+    ? FOUNDATION_PNPM_PACKAGES.filter((entry) => !entry.startsWith('../sdkwork-appbase/'))
+    : FOUNDATION_PNPM_PACKAGES;
   return uniquePackages([
     ...localPackages,
-    ...FOUNDATION_PNPM_PACKAGES,
+    ...foundationPackages,
     ...overlay.pnpmPackages,
   ]);
 }

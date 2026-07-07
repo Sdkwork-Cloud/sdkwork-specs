@@ -2,9 +2,9 @@
 
 - Version: 1.1
 - Scope: Rust crates, workspaces, route crates, Tauri/native Rust, Rust services, Rust SDK facades, and Rust tests
-- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`
+- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, `I18N_SPEC.md`, `RUST_RPC_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`
 
-This standard applies only when Rust source, Cargo manifests, Rust route crates, Tauri Rust code, or Rust RPC code is touched.
+This standard applies only when Rust source, Cargo manifests, Rust route crates, Tauri Rust code, or Rust RPC code is touched. Cross-stack Rust composition and layer roles follow `COMPOSABLE_ARCHITECTURE_SPEC.md`.
 
 ## 1. Crate And Module Shape
 
@@ -37,7 +37,6 @@ Allowed authored Rust crate families:
 | Business service/use case | `sdkwork-<domain>-<capability>-service` | domain models, commands, results, business rules, service ports |
 | SQLx repository implementation | `sdkwork-<domain>-<capability>-repository-sqlx` | database schema constants, row mapping, SQLx queries, repository trait implementation |
 | HTTP route/API adapter | `sdkwork-routes-<capability>-<surface>` | paths, routes, handlers, route manifest, API/service mapping |
-| HTTP API server process | `sdkwork-<application-code>-api-server` | config loading, dependency construction, route mounting, HTTP listener, preflight |
 | In-process service host | `sdkwork-<application-code>-service-host` | standalone/native service container, no HTTP route mounting |
 | Native/Tauri host | `sdkwork-<application-code>-native-host` or `sdkwork-<application-code>-tauri-host` | native commands, host state, platform adapters |
 | Background job process | `sdkwork-<domain>-<capability>-worker` | jobs, scheduling, queues, retries, cursors, locks |
@@ -45,7 +44,9 @@ Allowed authored Rust crate families:
 | API gateway/proxy (cloud deployment) | `sdkwork-<application-code>-cloud-gateway` | cloud application ingress, upstream routing, route precedence, dependency API surface proxying |
 | Platform API gateway | `sdkwork-api-cloud-gateway` | shared `platform.api-gateway` ingress for SDKWork platform APIs |
 
-Forbidden Rust crate suffixes for new and existing SDKWork Rust crates:
+`sdkwork-<application-code>-api-server` is a migration-only listener name. New application HTTP ingress `MUST` use `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` per `APPLICATION_GATEWAY_SPEC.md`. Single-surface smoke binaries may exist only as package-local test or cloud scale-out artifacts when they do not become default dev/release public ingress.
+
+Forbidden Rust crate suffixes for SDKWork Rust crates:
 
 - `sdkwork-<application-code>-gateway` (bare application gateway without `standalone` or `cloud` qualifier)
 - `sdkwork-<application-code>-product`
@@ -63,6 +64,12 @@ not preserve an old forbidden crate name through a wrapper crate, package alias,
 public re-export alias. Breaking package renames still follow `MIGRATION_SPEC.md`, but the final
 state must not keep the forbidden name.
 
+Retired listener rule:
+
+- `sdkwork-<application-code>-api-server` `MUST NOT` be introduced as a new default application ingress listener.
+- Existing `sdkwork-<application-code>-api-server` crates are migration-only and `MUST` have a migration plan to `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway`.
+- A package-local test or cloud scale-out single-surface listener `MAY` keep a narrowly documented binary only when topology, dev scripts, release manifests, and client bootstrap do not treat it as `application.public-ingress`.
+
 Standard business service crate layout:
 
 ```text
@@ -71,6 +78,8 @@ crates/sdkwork-<domain>-<capability>-service/
   README.md
   specs/
     component.spec.json
+  resources/
+    i18n/        # present when the crate owns backend message resources
   src/
     lib.rs
     config.rs
@@ -112,6 +121,31 @@ Rules:
   SQLx repository crates.
 - Service crates `MUST NOT` depend on HTTP framework request/response types.
 - Service crates `MUST NOT` depend on generated SDKs for the API authority they implement.
+- Crates that own user-facing or operator-facing backend message resources `MUST` keep authored bundles under `resources/i18n/<locale>/<domain>/<capability>/` per `I18N_SPEC.md` section 6.1. `src/i18n.rs` or `src/i18n/mod.rs` may register or resolve bundles, but it `MUST NOT` become the authored message catalog.
+- Service crates `MUST NOT` declare direct sibling SDKWork `path = "../sdkwork-..."` dependencies in
+  member `Cargo.toml`; sibling source paths belong once in root `[workspace.dependencies]`, and
+  member crates consume them with `{ workspace = true }`.
+
+### 1.1 Rust Crate Role Dependency Matrix
+
+Rust backend crates `MUST` keep business policy, HTTP adaptation, persistence, and runtime composition separate.
+
+| Crate role | Typical `contracts.layerRole` | May depend on | Must not depend on | Required evidence |
+| --- | --- | --- | --- | --- |
+| `sdkwork-<domain>-<capability>-service` | `backend-service` or `backend-domain` | domain models, ports, provider traits, event/cache abstractions, utility crates | concrete `*-repository-sqlx`, `sdkwork-web-framework` request/response types, same-authority generated SDKs | service tests for authorization, transactions, idempotency, domain behavior |
+| `sdkwork-<domain>-<capability>-repository-sqlx` | `backend-repository` | service-declared repository traits, SQLx, database utilities, row mappers | HTTP framework crates, route crates, business permission decisions, API DTO ownership | repository tests for tenant/data-scope predicates and query bounds |
+| `sdkwork-routes-<capability>-<surface>` | `backend-route` | service traits/structs, DTO mappers, `sdkwork-web-framework` public route helpers, route manifest types | concrete repository crates, same-authority generated SDKs, raw credential parsing, hidden route copies | route manifest tests, handler mapping tests, `check-route-path-collisions.mjs` |
+| `sdkwork-<application-code>-service-host` | `runtime-service-host` | service crates, repositories/providers, config, host adapters | HTTP listener startup, API path ownership, business rules | dependency wiring tests and no HTTP listener evidence |
+| `sdkwork-<application-code>-standalone-gateway` / `sdkwork-<application-code>-cloud-gateway` | `runtime-gateway` | gateway assembly crate, framework bootstrap, platform/dependency adapters, topology config | route crate hand-merge matrices, business rules, concrete generated SDK ownership | gateway assembly validation, route registry checks, readiness/preflight tests |
+| `sdkwork-<application-code>-native-host` / `sdkwork-<application-code>-tauri-host` | `runtime-native-host` | service-host boundary, host commands, native storage/bridge adapters | SQL ownership, HTTP route authority, copied web handlers | host adapter tests and component port declarations |
+| `sdkwork-<domain>-<capability>-worker` | `backend-provider` or `runtime-service-host` | service use cases, queue/scheduler adapters, cursors, locks | public HTTP API ownership, direct table writes that bypass services | job idempotency, retry, and service-boundary tests |
+
+Rules:
+
+- Runtime crates construct and wire dependencies; service crates decide business policy; repository crates persist data; route crates adapt HTTP. A crate that owns more than one of those roles must be split before new behavior is added.
+- Member `Cargo.toml` files `MUST` consume sibling SDKWork crates through root `[workspace.dependencies]` and `{ workspace = true }`. Direct sibling `path = "../sdkwork-..."` entries in member crates are forbidden.
+- Same-origin dependency API coverage requires executable public router/controller/service exports declared in `contracts.runtimeEntrypoints` and `contracts.dependencyApiSurfaces`. Route manifests and OpenAPI files alone are metadata, not runtime coverage.
+- `check-rust-backend-composition.mjs` is the executable gate for crate dependency direction. Route, API, SDK, and gateway checks still apply when the crate owns HTTP behavior.
 
 Standard SQLx repository crate layout:
 
@@ -158,8 +192,10 @@ Rules:
   request state.
 - Repository implementations `MUST NOT` own business policy, permission checks, HTTP concerns, or
   provider calls.
+- Repository implementation crates `MUST NOT` depend on HTTP framework crates such as
+  `sdkwork-web-framework`, `axum`, `actix-web`, `poem`, `rocket`, `hyper`, or `tower-http`.
 
-Standard HTTP API server process crate layout:
+Migration-only HTTP API server process crate layout:
 
 ```text
 crates/sdkwork-<application-code>-api-server/
@@ -197,13 +233,11 @@ crates/sdkwork-<application-code>-api-server/
 
 Rules:
 
-- API server crates are runnable HTTP processes. They mount route crates, construct services,
-  inject repository/adapters, run preflight checks, and start the listener.
-- API server crates `MUST` assemble the HTTP runtime through `sdkwork-web-bootstrap` or an equivalent documented bootstrap API from `sdkwork-web-framework` according to `WEB_FRAMEWORK_SPEC.md`.
-- API server crates `MUST NOT` define core business rules, SQL queries, OpenAPI authority, or
-  generated SDK ownership.
-- API server crates may depend on route crates, service crates, repository implementation crates,
-  provider/cache/event adapters, and config/runtime support crates.
+- New application ingress crates `MUST NOT` use this layout. Use `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway`.
+- Existing API server crates are migration-only runnable HTTP processes. They may mount route crates, construct services, inject repository/adapters, run preflight checks, and start the listener only until the repository migrates to the standard gateway role.
+- Migration-only API server crates `MUST` assemble the HTTP runtime through `sdkwork-web-bootstrap` or an equivalent documented bootstrap API from `sdkwork-web-framework` according to `WEB_FRAMEWORK_SPEC.md`.
+- Migration-only API server crates `MUST NOT` define core business rules, SQL queries, OpenAPI authority, or generated SDK ownership.
+- Migration plans `MUST` move default dev/release public ingress from `sdkwork-<application-code>-api-server` to `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` before production release.
 
 Standard in-process service host crate layout:
 
@@ -311,8 +345,8 @@ Rules:
   maintenance loops.
 - Worker crates should call service use cases instead of bypassing service rules with direct table
   writes.
-- Worker crates `MUST NOT` expose HTTP route authority unless they are split into an `api-server`
-  crate.
+- Worker crates `MUST NOT` expose HTTP route authority unless the HTTP surface is split into a
+  route crate mounted by a standalone/cloud gateway or another topology-approved HTTP runtime.
 
 Standard standalone application gateway crate layout:
 
@@ -461,8 +495,10 @@ Rules:
 
 - Cargo package names use lowercase kebab-case, for example `sdkwork-routes-merchandise-app-api`.
 - Rust import names use snake_case, for example `sdkwork_routes_merchandise_app_api`.
-- Runnable crate names must use a specific suffix such as `api-server`, `service-host`,
-  `native-host`, `worker`, or `gateway`; generic `product` and `runtime` suffixes are forbidden.
+- Runnable crate names must use a specific suffix such as `service-host`, `native-host`,
+  `tauri-host`, `worker`, `standalone-gateway`, `cloud-gateway`, or platform
+  `api-cloud-gateway`; `api-server` is migration-only and generic `product` and
+  `runtime` suffixes are forbidden.
 - Modules use snake_case.
 - Types and traits use PascalCase.
 - Constants use SCREAMING_SNAKE_CASE only for true constants.
@@ -496,6 +532,9 @@ Rules:
 - Run `cargo fmt` or the repository wrapper before completion.
 - Run `cargo clippy` when the repository requires it or when shared Rust code changes.
 - Run the narrowest `cargo test -p <crate>` first, then `cargo test --workspace` when shared contracts are touched.
+- Run `node ../sdkwork-specs/tools/check-rust-backend-composition.mjs --root .` when Rust service,
+  repository, route, migration-only API server, service host, native host, worker, or gateway crates are added or
+  their Cargo dependencies change.
 - Route crates must pass route manifest, prefix, authority, and SDK family checks from `TEST_SPEC.md`.
 - Same-origin dependency surface crates must pass executable mount coverage checks from
   `APP_SDK_INTEGRATION_SPEC.md`, `COMPONENT_SPEC.md`, and `TEST_SPEC.md`.
@@ -510,6 +549,10 @@ Forbidden:
 - Route handlers that perform persistence or provider calls directly.
 - Framework-specific types leaking into domain/service contracts.
 - Generated SDK clients imported by route crates implementing the same authority.
+- Service crates depending on concrete SQLx repository crates instead of ports.
+- Repository crates depending on HTTP framework/request context crates.
+- Member Cargo manifests declaring sibling SDKWork source `path` dependencies instead of
+  `{ workspace = true }`.
 - App-local upload/provider logic that bypasses Drive Uploader.
 - Treating a route manifest, path constant, or OpenAPI document as proof that a dependency API is
   mounted in the current Rust runtime.
@@ -522,10 +565,11 @@ Forbidden:
 - [ ] Rust crate names use an allowed responsibility-specific family and avoid forbidden generic
       suffixes.
 - [ ] Business logic is in focused modules.
-- [ ] Business service, repository implementation, route adapter, API server, service host,
+- [ ] Business service, repository implementation, route adapter, migration-only API server, service host,
       native host, worker, and gateway responsibilities are split into their standard directories
       when those capabilities exist.
 - [ ] Route crates use `paths.rs`, `routes.rs`, `handlers.rs`, and `manifest.rs` when they own HTTP routes.
+- [ ] Authored Rust backend message resources, when present, live under `resources/i18n/<locale>/<domain>/<capability>/` and not in `src/i18n.rs` monoliths.
 - [ ] Mountable dependency surfaces expose stable public router/controller/service builders and
   declare them in component specs.
 - [ ] Errors are typed or mapped at the boundary.

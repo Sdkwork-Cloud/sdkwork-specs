@@ -145,9 +145,13 @@ export interface SdkworkAuthRuntimeConfig {
 export interface SdkworkI18nRuntimeConfig {
   defaultLocale: string;
   supportedLocales: string[];
+  activeLocales?: string[];
   fallbackLocale: string;
   loadingStrategy?: "eager-core-lazy-feature" | "lazy-route-fragments" | "platform-generated-bundle";
   catalogManifestUrl?: string;
+  catalogVersion?: string;
+  messageBundleVersion?: string;
+  backendMessageBundleVersion?: string;
 }
 
 export interface SdkworkPublicRuntimeConfig {
@@ -282,7 +286,9 @@ Rules:
   `[]`; dependency APIs are not exported by a consuming app merely because dependency SDK clients
   are configured.
 - `auth` config describes how the runtime obtains and stores credentials. It must not contain actual `authToken`, `accessToken`, `refreshToken`, API key values, or session DTOs.
-- `i18n` config describes locale selection, supported locale list, fallback locale, and message-catalog loading strategy only. It must not contain translated message content, L1 brand/store copy, validation copy, or generated message-catalog bundles.
+- `i18n` config describes locale selection, supported locale list, active locale list, fallback locale, message-catalog loading strategy, manifest URL, and bundle versions only. It must not contain translated message content, L1 brand/store copy, validation copy, or generated message-catalog bundles.
+- `defaultLocale`, `fallbackLocale`, and every `activeLocales[]` entry `MUST` be members of `supportedLocales` for production and production-like profiles.
+- `i18n` runtime config is separate from database seed locale config. Database seed locale and `i18nVersion` follow `DATABASE_FRAMEWORK_SPEC.md` and `ENVIRONMENT_SPEC.md`.
 - Runtime config `MUST NOT` define `tenantId` or `organizationId` as API/SDK call defaults. Tenant and organization context after authentication is resolved from tokens, API key records, or server-side request context. Pre-auth tenant or organization selection must use IAM login/selection flows, not SDK config or per-call options.
 - Config objects crossing host/native boundaries `SHOULD` be serializable.
 - `publicRuntime` is browser-visible and may contain only non-secret values such
@@ -604,7 +610,7 @@ Rules:
 - Production config must come from deployment infrastructure or secret manager.
 - Config keys `SHOULD` be namespaced by capability, such as `SDKWORK_IAM_*`.
 - Unknown config keys in machine-readable manifests `SHOULD` fail validation to prevent drift.
-- Locale and i18n runtime config keys should stay small and declarative: default locale, supported locales, fallback locale, and message-catalog manifest URL. Translation message catalogs follow `I18N_SPEC.md` package-local fragment ownership and must not be embedded in runtime config, feature flags, app manifests, or environment files.
+- Locale and i18n runtime config keys should stay small and declarative: default locale, supported locales, active locales, fallback locale, message-catalog manifest URL, and bundle versions. Translation message catalogs follow `I18N_SPEC.md` package-local fragment ownership and must not be embedded in runtime config, feature flags, app manifests, or environment files.
 
 ## 5. Feature Flags
 
@@ -638,7 +644,8 @@ Rules:
 - [ ] Appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, application/dependency backend SDKs, and approved composed wrappers in the same authenticated application session receive the same global `TokenManager`; server service-context runtimes use one request/service credential provider per service context.
 - [ ] Protected open-api SDKs receive credentials through a separate open-api credential provider matching their declared auth mode and are not placed in login TokenManager client lists.
 - [ ] Runtime config contains SDK base URL values and token-manager behavior, but does not contain actual auth/access/refresh tokens or raw API keys.
-- [ ] Runtime config contains only i18n locale strategy and message-catalog manifest references, not translated message content or monolithic locale bundles.
+- [ ] Runtime config contains only i18n locale strategy, active locale list, message-catalog manifest references, and bundle versions, not translated message content or monolithic locale bundles.
+- [ ] Runtime i18n config is not reused as database seed locale configuration; seed locale and seed i18n version are handled by database lifecycle config.
 - [ ] Dependency SDK base URLs are keyed by SDK family id and are injected during bootstrap instead of hard-coded in services.
 - [ ] RPC client inventory classifies every consumed RPC SDK family, resolver profile, resilience profile, and discovery endpoint before feature services are constructed when RPC is enabled.
 - [ ] Discovery registration and renew loops are wired in bootstrap for RPC servers that use dynamic resolution.

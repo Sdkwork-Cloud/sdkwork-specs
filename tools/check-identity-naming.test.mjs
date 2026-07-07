@@ -69,4 +69,22 @@ describe('check-identity-naming route crate prefix', () => {
     assert.notEqual(result.status, 0, 'expected checker failure');
     assert.match(result.stderr, /sdkwork-shell-pc-react|sdkwork-workspace-pc-react/);
   });
+
+  it('accepts gateway assembly crate names in standards mode', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-identity-standards-'));
+    writeFileSync(path.join(root, 'README.md'), '# Standards\nrepository-kind: standards\n');
+    writeFileSync(
+      path.join(root, 'APPLICATION_GATEWAY_SPEC.md'),
+      [
+        '# Application Gateway Standard',
+        '',
+        'Gateway assembly crates use `sdkwork-<application-code>-gateway-assembly`.',
+        '',
+      ].join('\n'),
+    );
+
+    const result = runChecker(root, 'standards');
+
+    assert.equal(result.status, 0, result.stderr);
+  });
 });

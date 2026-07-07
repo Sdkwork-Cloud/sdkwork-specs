@@ -69,7 +69,7 @@ Directory templates describe seedable subject trees. They do not replace runtime
   "membershipKind": "owner",
   "organizationRef": "$orgref:root",
   "isPrimary": true,
-  "defaultRoleBindings": ["org_admin", "platform_super_admin", "app_user"]
+  "defaultRoleBindings": ["org_admin", "app_user"]
 }
 ```
 
@@ -87,3 +87,11 @@ Directory templates describe seedable subject trees. They do not replace runtime
 | `minimal` | tenant + root org only |
 | `standard` | minimal + general department + member position |
 | `operational` | standard + enabled module templates + optional bootstrap owner membership template |
+
+Seed profile rules:
+
+- `minimal` and `standard` `MUST NOT` create live administrator credentials.
+- `operational` may create an organization bootstrap owner only when the deployment manifest declares the owner subject or invite flow. It must not create a default password.
+- No seed profile may grant `platform_super_admin` by default. Super-admin activation belongs to platform break-glass governance in `PERMISSION_STANDARD_SPEC.md` and `IAM_RBAC_FEDERATION_SPEC.md`.
+- Dev/test demo subjects `MUST` be marked by profile metadata and must not be promoted into production seed data.
+- Re-running materialization `MUST` reconcile by stable references and must not duplicate memberships, positions, or role bindings.

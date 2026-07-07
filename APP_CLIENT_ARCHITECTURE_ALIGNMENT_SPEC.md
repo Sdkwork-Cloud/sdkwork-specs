@@ -2,9 +2,9 @@
 
 - Version: 1.0
 - Scope: cross-client application architecture alignment for SDKWork PC, H5/mobile React, Flutter, mini program, native Android, native iOS, native HarmonyOS, backend/admin UI, and future client roots
-- Related: `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `NAMING_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `I18N_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `COMPOSABLE_ARCHITECTURE_SPEC.md`, `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `NAMING_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `I18N_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines the common client architecture contract that keeps SDKWork application roots readable, composable, and aligned across PC, H5/Capacitor, Flutter, mini program, native Android, native iOS, native HarmonyOS, and future client surfaces.
+This standard defines the common client architecture contract that keeps SDKWork application roots readable, composable, and aligned across PC, H5/Capacitor, Flutter, mini program, native Android, native iOS, native HarmonyOS, and future client surfaces. Cross-stack layer roles, component ports, and package composition closure follow `COMPOSABLE_ARCHITECTURE_SPEC.md`.
 
 Architecture-specific standards own technology details. This file owns the shared structure: package taxonomy, dependency direction, route identity, component boundaries, SDK/IAM/runtime composition, and verification rules. Client applications should feel like different implementations of one system, not unrelated projects with different vocabulary.
 
@@ -146,7 +146,7 @@ Rules:
 
 - Capability packages `MUST` have one primary domain and one capability.
 - Small features may keep UI, services, state, routes, and i18n in one package, but the internal folders and public exports must keep the boundaries visible.
-- Capability package i18n resources `MUST` follow `I18N_SPEC.md`: split by locale, domain, capability, and route/screen/state fragment; package or app-level aggregators are thin exports or generated bundles only.
+- Capability package i18n resources `MUST` follow `I18N_SPEC.md` section 6.1: split by locale, domain, capability, and route/screen/state fragment using the selected language/framework layout; package or app-level aggregators are thin exports or generated bundles only.
 - Shared business behavior across capabilities should use a new explicit domain/capability package or a service/contract package, not a catch-all `commons` package.
 - `core`, `commons`, and `shell` package names are reserved for infrastructure and must not own business pages or business services.
 - Console and admin package families are optional. They should be created only when the product has that surface.
@@ -343,6 +343,7 @@ Acceptance checklist:
 - [ ] Package names include the correct architecture segment.
 - [ ] Packages are split into core, commons, shell, capability, optional console/admin, and host roles.
 - [ ] Components and services are integrated through public exports, service ports, SDK clients, route contributions, i18n keys, and design tokens.
+- [ ] `node ../sdkwork-specs/tools/check-frontend-composition.mjs --root .` and `node ../sdkwork-specs/tools/check-component-port-bindings.mjs --root .` pass for changed client packages.
 - [ ] Route identity is stable across client architectures where the same workflow exists.
 - [ ] SDK/IAM/runtime/bootstrap boundaries follow `APP_SDK_INTEGRATION_SPEC.md`.
 - [ ] Host adapters are typed and local-only.

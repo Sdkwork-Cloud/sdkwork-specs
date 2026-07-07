@@ -6,7 +6,7 @@
 
 This standard defines how SDKWork applications integrate generated SDKs and reusable appbase capabilities without copying APIs, forking clients, or creating local auth behavior. Applications are composition roots. Applications compose dependency SDKs, shared modules, appbase IAM runtime, Rust route/service crates, and architecture-specific UI packages through explicit boundaries. The application root owns one SDK credential topology for every runtime target; feature packages only receive injected clients, services, or ports.
 
-Consumer integration facts such as dependency SDK base URLs, runtime modes, and inherited permission manifest refs must be derived through `APP_INTEGRATION_CONVENTIONS.md` and `resolve-composition.mjs`. Consumers declare `contracts.sdkDependencies` and optional `contracts.composition.overrides`; they must not hand-maintain parallel dependency surface manifests or duplicate dependency permission catalogs.
+Consumer integration facts such as dependency SDK base URLs, runtime modes, inherited permission manifest refs, component layer roles, frontend package roles, Rust crate summaries, route manifests, and runtime dependency surfaces must be derived through `APP_INTEGRATION_CONVENTIONS.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, and `resolve-composition.mjs`. Consumers declare `contracts.sdkDependencies` and optional `contracts.composition.overrides`; they must not hand-maintain parallel dependency surface manifests or duplicate dependency permission catalogs.
 
 The normative IAM reference is `sdkwork-iam`:
 
@@ -252,6 +252,7 @@ Rules:
 - Application bootstrap `MUST NOT` import `@sdkwork/iam-sdk-adapter`, call `createIamAppSdkAdapter(...)`, call `createIamBackendSdkAdapter(...)`, or locally wire appbase SDK resources into IAM ports when an appbase high-level runtime/factory can do that wiring.
 - Application bootstrap `MUST NOT` call `createIamRuntime(...)` directly except inside an approved appbase-owned wrapper package that exposes the same high-level inputs.
 - Runtime/bootstrap `MUST` resolve SDK base URLs from `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md` before creating generated SDK clients.
+- Runtime/bootstrap `MUST` resolve i18n runtime config from `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, and `I18N_SPEC.md` before constructing SDK clients, app auth runtime, frontend i18n providers, or host adapters that expose locale.
 - Application-owned app SDK, application-owned backend SDK, appbase app SDK, appbase backend SDK, Drive SDK, IM SDK, and other dependency SDK base URLs `SHOULD` be derived from one common SDK root when a single public gateway serves those SDK surfaces. Per-surface and per-SDK base URL overrides `MUST` remain available for split services, external dependency services, private dependency hosts, or tenant-specific routing.
 - A common SDK root is not the same as an arbitrary application `API_BASE_URL`. It must be a root/origin/path prefix that can safely derive standard SDK surface URLs by appending prefixes such as `/v1`, `/app/v3/api`, and `/backend/v3/api`; a surface URL such as `/v1` must not be reused as the root for app/backend SDKs.
 - Base URL config may come from private process env, public browser runtime env, or runtime TOML depending on target, but token values must never come from these config sources.
@@ -271,7 +272,8 @@ Rules:
 - Context propagation failure after token persistence `MUST` clear token store, context store, and token manager before rejecting.
 - New session flows `MUST NOT` inherit an old `refreshToken` when appbase does not return one.
 - Current-session bootstrap, current-session update, refresh continuation, and equivalent restoration flows may preserve the existing refresh token only through `commitSession(session, { preserveRefreshToken: true })`.
-- `getAuthHeaders()` or the language-equivalent runtime helper may expose `Authorization: Bearer <JWT authToken>`, `Access-Token: <JWT accessToken>`, and optional locale headers for approved runtime bridges. Protected SDK transports must send JWT `Access-Token` whenever an access token is available. UI and feature services must not manually assemble these headers or semicolon claim-string tokens.
+- `getAuthHeaders()` or the language-equivalent runtime helper may expose `Authorization: Bearer <JWT authToken>`, `Access-Token: <JWT accessToken>`, and optional locale headers for approved runtime bridges. Protected SDK transports must send JWT `Access-Token` whenever an access token is available. UI and feature services must not manually assemble these headers, locale headers, or semicolon claim-string tokens.
+- Application bootstrap `MUST` pass the approved locale provider or i18n provider into generated SDK clients that support locale propagation. Feature packages must receive the provider or translated text through injected runtime ports, not through direct environment reads or manual `Accept-Language` mutation.
 - Application roots `MUST` document private bootstrap `SDKWORK_ACCESS_TOKEN` in env templates when protected app-api or backend-api surfaces are consumed. Service-context runtimes may seed TokenManager from that value before interactive login. Browser/renderer runtimes must obtain session tokens from sdkwork-iam instead of public env. `AUTH_TOKEN`, `REFRESH_TOKEN`, `API_KEY`, `VITE_*_TOKEN`, and `PORTAL_PUBLIC_*_TOKEN` remain forbidden in environment variables outside explicit test fixtures.
 - Logout and refresh failure `MUST` clear local token store, global token manager, context store, sensitive caches, realtime/session bridges, and native secure storage when present, even when remote session deletion fails.
 
@@ -379,13 +381,17 @@ Frontend applications compose UI packages, services, SDK clients, IAM runtime, a
 Rules:
 
 - Runtime/bootstrap constructs concrete SDK clients, the global token manager, appbase IAM runtime, open-api credential providers, secure storage adapters, and host adapters.
+- Runtime/bootstrap constructs the i18n provider and SDK locale provider from the same resolved locale config so frontend UI, generated SDK transports, and backend framework locale negotiation remain aligned.
 - UI packages call hooks/services. Hooks/services call injected SDK clients or narrow service ports.
-- UI components `MUST NOT` construct SDK clients, parse tokens, set `Authorization`, set `Access-Token`, set `X-API-Key`, or call raw `fetch`/`axios` for app business.
+- UI components `MUST NOT` construct SDK clients, parse tokens, set `Authorization`, set `Access-Token`, set `X-API-Key`, set locale headers, or call raw `fetch`/`axios` for app business.
 - Service facades should preserve generated SDK resource names unless they intentionally compose multiple SDK calls into a domain use case.
 - Component packages `MUST` define their external dependencies through package root exports and component specs. Consumers should be able to wire the package without reading private implementation files.
 - Shared cross-architecture state must be modeled as contracts or service ports. React state, Flutter blocs/controllers, Android view models, iOS view models, Harmony view models, and host lifecycle code do not cross architecture families.
 - IAM user/session state is a runtime concern. Feature packages may observe authenticated user/context through injected services, but they `MUST NOT` persist their own copy of tokens or AppContext.
 - List/search feature services `MUST` consume SDK `{ items, pageInfo }` pagination and `MUST NOT` implement interactive browsing with `listAll*` aggregation plus local `slice` per `PAGINATION_SPEC.md` §8.
+- Create/update/delete/command feature services `MUST` consume generated SDK operation methods aligned with `API_SPEC.md` section 15.4. They `MUST NOT` introduce raw HTTP fallbacks, local DTO/envelope parsers, delete success JSON parsing, or SDK aliases that bypass `create`, `update`, `delete`, domain command actions, or `bulk<Action>` methods.
+- Retriable feature services `MUST` pass idempotency keys and optimistic concurrency preconditions only through generated SDK-supported options such as `idempotencyKey` and `ifMatch`; they `MUST NOT` construct manual `Idempotency-Key`, `If-Match`, auth, tenant, or trace headers in UI/service code.
+- Service facades `MUST NOT` hand-build `pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`, or numeric-cursor query strings. Language-level `pageSize` options must serialize through generated SDK transport as HTTP `page_size`, and interactive lists must not request maximum `page_size` just to page locally.
 
 ## 7. Verification
 
@@ -395,7 +401,11 @@ Required checks for app SDK composition:
 | --- | --- |
 | Appbase IAM boundary | Static scan shows login/register/session/refresh/logout/current-user calls use appbase SDK resources or appbase wrappers, and application bootstrap uses the approved high-level IAM auth runtime/factory instead of low-level IAM SDK adapters. |
 | SDK inventory closure | Tests or deterministic static checks list every appbase, application-owned, and dependency SDK consumed by the app, prove they are declared in core/surface `component.spec.json` contracts, and classify credential mode before service construction. |
+| Component port closure | `check-component-port-bindings.mjs` proves new composable modules expose layer roles, valid provided/required ports, and executable runtime entrypoints for same-origin dependency surfaces. |
+| Frontend composition closure | `check-frontend-composition.mjs` proves feature packages consume SDK access through core/ports and host packages do not depend on business SDKs. |
+| Rust backend composition closure | `check-rust-backend-composition.mjs` proves route/service/repository/runtime Cargo dependency boundaries. |
 | Global TokenManager | Tests prove one `TokenManager` is bound to appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend/application backend/dependency backend SDKs, and approved composed wrappers through `setTokenManager`, constructor injection, or the language equivalent. |
+| I18n provider closure | Tests prove runtime/bootstrap derives one locale strategy for UI providers, host adapters, and generated SDK locale providers; feature services do not set `Accept-Language` or `X-SdkWork-Locale` manually. |
 | Session commit order | Tests prove persistence failure does not update token manager, context propagation failure rolls back token/context state, stale context is cleared, and continuation flows preserve refresh token only when allowed. |
 | Logout clearing | Tests prove local token/context state clears even when remote logout fails. |
 | Architecture SDK boundary | Static scans prove PC React/H5 mobile React/Flutter/mini program/Android/iOS/Harmony/backend-admin packages use the correct generated SDK language and surface. |
@@ -404,6 +414,7 @@ Required checks for app SDK composition:
 | User console SDK boundary | Static scans prove app and user-facing console packages do not import backend SDKs, backend SDK wrapper functions, backend base URL resolvers, or appbase backend SDK clients; missing user-facing capabilities fail closed or are added to app-api/app SDK. |
 | Drive Uploader dependency | Tests and static scans prove upload-capable apps use injected `sdkwork-drive-app-sdk client.uploader.*`, Rust server upload paths use `DriveUploaderService` or an approved Drive server-side facade, and application-owned SDK authorities do not contain Drive uploader operations. |
 | No transport bypass | Static scans prove no raw HTTP, manual auth headers, local DTO forks, generated SDK edits, application-local appbase auth routes, direct application-side `@sdkwork/iam-sdk-adapter` imports, or application-side `createIamRuntime(...)` wiring were introduced. |
+| Operation semantics | Tests prove application services use generated SDK methods aligned with `API_SPEC.md` section 15.4 and do not parse legacy create/update/delete/command envelopes. |
 | Rust composition | Route manifest tests prove route crate naming, authority aggregation, owner-only SDK generation, and no frontend imports of route crates. |
 | Dependency ownership | SDK ownership checks prove dependency-owned appbase/Drive/provider routes are declared as dependencies and not regenerated into application-owned SDKs. |
 | Backend SDK auth namespace | Tests prove backend SDK IAM clients do not expose user-facing `auth.sessions.create` or equivalent login/session creation. |
@@ -507,6 +518,7 @@ Authority: `SDK_SPEC.md` package naming table, `SDK_WORKSPACE_GENERATION_SPEC.md
 - [ ] Upload-capable apps declare Drive app SDK as a dependency, client upload services call `client.uploader.*`, Rust server upload services call the Drive server-side uploader service, and application-owned SDKs accept only Drive references or `MediaResource`.
 - [ ] The selected UI architecture uses the matching generated SDK language and surface.
 - [ ] Runtime/bootstrap declares or derives an SDK inventory and classifies each SDK credential mode before services are constructed.
+- [ ] `resolve-composition.mjs` materializes `generated/composition.resolved.json#architecture` for component contracts, frontend packages, Rust crates, route manifests, and runtime dependency surfaces; generated output is not hand-edited.
 - [ ] Runtime/bootstrap supports one common SDK base URL as the default and supports per-surface or per-SDK overrides for split and external dependency services.
 - [ ] Application servers consume shared platform foundation APIs through the SDKWork API gateway
   common SDK root or gateway runtime embedding, instead of directly composing foundation runtime
@@ -514,6 +526,7 @@ Authority: `SDK_SPEC.md` package naming table, `SDK_WORKSPACE_GENERATION_SPEC.md
 - [ ] Runtime/bootstrap uses the approved high-level IAM auth runtime/factory for the architecture and does not locally wire low-level IAM SDK adapters in application code.
 - [ ] IAM application bootstrap uses `@sdkwork/iam-application-bootstrap` and passes `check-iam-application-bootstrap-standard.mjs`.
 - [ ] Runtime/bootstrap creates exactly one global `TokenManager` per authenticated session context.
+- [ ] Runtime/bootstrap creates or receives one i18n provider/locale provider and passes it to generated SDK clients and UI providers through approved runtime ports.
 - [ ] Appbase app SDK, every application/dependency app SDK, explicit `backend-admin` appbase backend/application backend/dependency backend SDKs, and every approved composed wrapper backed by those SDKs share that same `TokenManager`.
 - [ ] Protected open-api SDKs use a separate open-api credential provider matching their declared auth mode and are not placed in app/backend TokenManager client lists.
 - [ ] Login, registration, session, refresh, logout, QR/OAuth, password reset, runtime metadata, and current-user self-service use appbase app SDK resources, while verification-code delivery uses the generated messaging app SDK surface.
@@ -522,6 +535,6 @@ Authority: `SDK_SPEC.md` package naming table, `SDK_WORKSPACE_GENERATION_SPEC.md
 - [ ] Embedded Rust runtimes mount dependency-owned executable router/controller/service exports for
   every same-origin dependency surface; split/server runtimes configure one common SDK root that
   serves the dependency surface or explicit dependency SDK base URLs.
-- [ ] Frontend services use injected SDK clients and no raw HTTP/manual auth header fallback.
+- [ ] Frontend services use injected SDK clients and no raw HTTP/manual auth or locale header fallback.
 - [ ] Application consumers import scoped composed SDK packages (`@sdkwork/<application-code>-app-sdk`, `@sdkwork/<application-code>-backend-sdk`) and never generator transport names such as `sdkwork-*-generated-typescript`.
 - [ ] Logout, refresh failure, token persistence failure, context rollback, stale context clearing, and refresh-token continuation behavior are tested.

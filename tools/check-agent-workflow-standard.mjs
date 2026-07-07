@@ -94,6 +94,15 @@ function readJson(file) {
   return JSON.parse(readText(file));
 }
 
+function repositoryKind(root) {
+  const readmePath = path.join(root, 'README.md');
+  if (!fs.existsSync(readmePath)) {
+    return 'application';
+  }
+  const match = readText(readmePath).match(/^repository-kind:\s*([a-z0-9-]+)\s*$/imu);
+  return match?.[1] || 'application';
+}
+
 function fail(message, details = []) {
   console.error(`agent/workflow standard failed: ${message}`);
   for (const detail of details) {
@@ -431,7 +440,8 @@ if (parsed.values.help) {
 const root = path.resolve(parsed.values.root || process.cwd());
 
 const agentResult = validateAgents(root);
-const workflowResult = validatePackageWorkflow(root);
+const kind = repositoryKind(root);
+const workflowResult = kind === 'standards' ? { workflowCount: getWorkflowFiles(root).length } : validatePackageWorkflow(root);
 
 console.log(
   `agent and workflow standard ok: ${root} (${agentResult.agentRootCount} AGENTS roots, ${agentResult.shimCount} shims, ${workflowResult.workflowCount} workflow files scanned)`,

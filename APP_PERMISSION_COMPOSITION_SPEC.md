@@ -54,7 +54,7 @@ Rules:
 
 ## 4. `permissionComposition` Manifest Section
 
-Every client application root with modular admin/console/app surfaces should declare `contracts.permissionComposition` inside app-surface `specs/component.spec.json`.
+Every client application root with modular admin/console/app surfaces and HTTP `contracts.sdkDependencies` `MUST` declare `contracts.permissionComposition` inside the app-surface or core-package `specs/component.spec.json`.
 
 ```json
 {
@@ -108,6 +108,14 @@ Field rules:
 | `bootstrapAccessTokenScope.supplement` | optional | Additional bootstrap-only codes; must use standard `{domain}.{resource}.{action}` format |
 | `routePermissionHints.overrides[]` | optional | Explicit `{ routeId, requiredPermission }` replacements for UX hints only |
 | `consumerPolicy.forbidLocalPermissionCatalogForDependencyDomains` | yes | Must be `true` for standard apps |
+
+Dependency binding rules:
+
+- Each HTTP `contracts.sdkDependencies[]` entry that participates in protected app-api, backend-api, or SDKWork-owned open-api routes `MUST` have a matching `moduleCatalogRefs[]` entry with `inheritPermissions = true`.
+- The dependency match is by explicit `moduleId`/`permissionModuleId` when present, otherwise by SDK family domain such as `sdkwork-shop-app-sdk` -> `shop`.
+- `applicationModule.manifestRef` is required when the consumer owns protected application routes or roles; it must not be used to copy dependency-owned permissions.
+- `consumerPolicy.forbidLocalPermissionCatalogForDependencyDomains` and `consumerPolicy.allowExplicitOverridesOnly` `MUST` be `true` for standard applications.
+- `bootstrapAccessTokenScope.supplement` is allowed only for dev/test bootstrap or documented pre-login transport gates. It must not replace user-session RBAC or grant full module catalogs.
 
 Override entry shape:
 
@@ -183,6 +191,7 @@ Application roots **must** verify:
 
 ```bash
 node tools/verify-repo.mjs --root <repo-root>
+node tools/check-permission-composition.mjs --root <repo-root>
 pnpm run iam:modules:validate   # when IMF enabled
 ```
 
@@ -192,12 +201,15 @@ Additional checks:
 - No duplicate permission catalog files in feature packages for referenced dependency domains
 - OpenAPI `x-sdkwork-permission` codes exist in referenced module catalog or application catalog
 - Legacy non-standard permission codes have documented override replacements
+- `sdkDependencies` with protected HTTP surfaces imply inherited module catalog refs
+- `verify-repo.mjs` must fail when `permissionComposition` is missing for HTTP SDK dependencies
 
 ## 9. Acceptance Checklist
 
 - [ ] Dependency module permissions are inherited by reference, not copied into consumer packages.
-- [ ] Consumer declares `contracts.permissionComposition` in app-surface `component.spec.json`.
+- [ ] Consumer declares `contracts.permissionComposition` in app-surface or core-package `component.spec.json` whenever HTTP SDK dependencies are present.
 - [ ] Application-owned permissions live in consumer `specs/iam.module.manifest.json`.
 - [ ] Explicit overrides are listed in `permissionComposition`; no hidden local catalogs.
 - [ ] Frontend route/menu hints reference inherited codes; server enforcement unchanged.
 - [ ] Bootstrap access token scope remains minimal and standard-formatted.
+- [ ] `check-permission-composition.mjs` and `verify-repo.mjs` pass.

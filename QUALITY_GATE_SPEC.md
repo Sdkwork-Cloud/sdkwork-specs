@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: definition of ready, definition of done, merge gates, release gates, evidence bundles, exceptions
-- Related: `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `CODE_REVIEW_SPEC.md`, `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `PERFORMANCE_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
+- Related: `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `CODE_REVIEW_SPEC.md`, `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `PERFORMANCE_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
 This standard defines when SDKWork work is allowed to start, merge, and release.
 
@@ -62,6 +62,8 @@ Rules:
 
 - Public API/RPC/SDK/database/config changes require contract verification.
 - UI architecture changes require package placement and SDK boundary verification.
+- Composable module, dependency SDK, route, permission, frontend package, or Rust backend composition changes `MUST` include applicable `COMPOSABLE_ARCHITECTURE_SPEC.md` closure evidence: `check-component-port-bindings.mjs`, `check-frontend-composition.mjs`, `check-rust-backend-composition.mjs`, `check-permission-composition.mjs`, `check-route-path-collisions.mjs`, `resolve-composition.mjs --write`, `check-composition-resolver.mjs`, and `verify-repo.mjs`.
+- Merge evidence `MUST` name every closure-matrix row that is not applicable. Silence is not evidence for skipping login/session, permissions, route ownership, API input/output, frontend package, Rust crate, or resolved composition checks.
 - Security-sensitive changes require negative tests or static scans.
 - Root standard changes require README/index and `TEST_SPEC.md` updates when executable behavior changes.
 
@@ -87,6 +89,11 @@ Rules:
 
 - Release gate follows `RELEASE_SPEC.md`.
 - Supply-chain evidence follows `SUPPLY_CHAIN_SECURITY_SPEC.md`.
+- Pre-launch release gates `MUST` block pagination and HTTP operation-pattern technical debt. The evidence bundle must show `node <sdkwork-specs>/tools/check-pagination.mjs --workspace <workspace-root>`, `node <sdkwork-specs>/tools/check-api-operation-patterns.mjs --workspace <workspace-root>`, and `node <sdkwork-specs>/tools/check-api-response-envelope.mjs --workspace <workspace-root>` passing without `--allow-known-debt`, and any pagination or operation-pattern debt register must be empty.
+- Pre-launch and commercial release gates for composable applications `MUST` block unresolved building-block architecture debt. The evidence bundle must show all applicable composition validators passing without known-debt allowance: `check-component-port-bindings.mjs`, `check-frontend-composition.mjs`, `check-rust-backend-composition.mjs`, `check-permission-composition.mjs`, `check-route-path-collisions.mjs`, `resolve-composition.mjs --write`, `check-composition-resolver.mjs`, and `verify-repo.mjs`.
+- Release evidence for SDKWork-owned list/search APIs `MUST NOT` contain HTTP query aliases (`pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`), numeric cursor offsets, in-process pagination, client-side `slice` pagination, or missing `PageInfo.mode`.
+- Release evidence for SDKWork-owned create/update/delete/search/command/bulk APIs `MUST NOT` contain create `200` success, delete JSON success bodies, command `accepted: false` success bodies, `batch_*` URL aliases, or frontend/local SDK aliases that bypass generated SDK operation methods.
+- Release evidence for route and URL composition `MUST NOT` contain duplicate normalized `(surface, method, path)` ownership, generic capability paths such as `/status`, `/health`, `/ready`, `/system/health`, or `/system/ready`, or dependency-owned paths copied into application-owned route authorities.
 - Workflow automation follows `GITHUB_WORKFLOW_SPEC.md`.
 
 ## 6. Risk Levels
@@ -114,5 +121,6 @@ Additional RPC SDK risk mapping:
 - [ ] Ready gate was satisfied before implementation.
 - [ ] Merge gate has evidence, not assumptions.
 - [ ] Release gate is satisfied when artifacts or deployments are produced.
+- [ ] Composable architecture closure evidence is present for every touched login/session, permission, frontend, Rust backend, route, API, and resolved composition concern.
 - [ ] Exceptions have owner, expiry, risk, and removal plan.
 - [ ] Completion evidence records commands and outcomes.

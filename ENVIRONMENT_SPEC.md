@@ -149,8 +149,11 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_AUTH_TOKEN_HEADER` | private | MAY | Must be `Authorization` for SDKWork v3 bearer auth. Present only for compatibility validation, not customization. |
 | `SDKWORK_<APPLICATION_CODE>_DEFAULT_LOCALE` | private/public | MAY | Default BCP 47 locale such as `en-US` or `zh-CN`. This configures selection only; translated messages stay in i18n catalog fragments. |
 | `SDKWORK_<APPLICATION_CODE>_SUPPORTED_LOCALES` | private/public | MAY | Comma-separated supported locale list. It must not contain translated message content. |
+| `SDKWORK_<APPLICATION_CODE>_ACTIVE_LOCALES` | private/public | MAY | Comma-separated deployment-enabled locale list. It must be a subset of supported locales and must not contain translated message content. |
 | `SDKWORK_<APPLICATION_CODE>_FALLBACK_LOCALE` | private/public | MAY | Explicit fallback locale, normally `en-US` for first-party SDKWork apps unless a product spec narrows it. |
 | `SDKWORK_<APPLICATION_CODE>_I18N_CATALOG_MANIFEST_URL` | private/public | MAY | URL or path to a generated **message-catalog** manifest. The manifest points to package-local fragments or generated bundles and must not be an authored monolithic locale file. |
+| `SDKWORK_<APPLICATION_CODE>_I18N_CATALOG_VERSION` | private/public | MAY | Version or content hash for the active frontend message catalog manifest. It must not contain translated message content. |
+| `SDKWORK_<APPLICATION_CODE>_BACKEND_MESSAGE_BUNDLE_VERSION` | private | MAY | Version or content hash for backend message bundles used by framework problem/message resolution. It must not contain translated message content. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` | private | MAY | Database engine, normally `postgresql` for standalone server/container and cloud targets, and `sqlite` for desktop user data. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_HOST` | private | MAY | PostgreSQL host. Prefer this structured field over a URL for release deployments. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_PORT` | private | MAY | PostgreSQL port, normally `5432`. |
@@ -168,6 +171,7 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_SEED_ON_BOOT` | private | MAY | When `true`, service bootstrap applies required seed sets if not yet recorded. Production SHOULD default to `false`. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_SEED_LOCALE` | private | MAY | Seed locale directory name. Default `zh-CN`. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_SEED_PROFILE` | private | MAY | Seed profile name from `seeds/seed.manifest.json`. Default `standard`. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_SEED_I18N_VERSION` | private | MAY | Database seed localization data version from `seeds/seed.manifest.json`. This configures database initialization only, not runtime locale. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_DRIFT_INTERVAL_SEC` | private | MAY | Background drift refresh interval in seconds. Default `60`. |
 | `SDKWORK_<APPLICATION_CODE>_REDIS_ENABLED` | private | MAY | Enables the Redis adapter. Cloud deployments and standalone server/container targets that require shared state default to `true`; desktop user-data targets default to `false` unless shared infrastructure is explicitly enabled. |
 | `SDKWORK_<APPLICATION_CODE>_REDIS_HOST` | private | MAY | Redis host used when Redis is enabled. Prefer this structured field over a URL. |
@@ -1280,7 +1284,8 @@ PORTAL_PUBLIC_TOOL_API_ENABLED=false
 - CSP `connect-src` must include only validated absolute API origins and the application origin.
 - Env parsing must fail closed on malformed URLs, invalid booleans, invalid numbers, and missing required release secrets.
 - Local development default secrets must be clearly marked as development-only.
-- Env and public runtime config may expose locale strategy values such as default locale, supported locales, fallback locale, and message-catalog manifest URL, but must not embed translated message catalogs, L1 brand/store copy overrides, or generated locale bundle contents.
+- Env and public runtime config may expose locale strategy values such as default locale, supported locales, active locales, fallback locale, message-catalog manifest URL, and catalog version, but must not embed translated message catalogs, L1 brand/store copy overrides, or generated locale bundle contents.
+- Database seed locale env keys such as `DATABASE_SEED_LOCALE` and `DATABASE_SEED_I18N_VERSION` configure database lifecycle initialization only. They `MUST NOT` be used as frontend runtime locale, SDK locale provider input, or API request locale.
 
 ## 14. Validation And Tests
 
@@ -1293,7 +1298,8 @@ Every application that adopts this standard should provide:
 - Release preflight validation for required production variables.
 - Browser runtime env tests that verify public values load before SDK clients are constructed.
 - Browser public runtime tests that verify no secret, database URL, Redis URL, token, signing key, or private endpoint is emitted through `/runtime-env.js`, `PORTAL_PUBLIC_*`, or `VITE_*`.
-- I18n runtime config tests that verify env/public config contains only locale strategy and message-catalog manifest references, not translated message content or app/root/package locale monoliths.
+- I18n runtime config tests that verify env/public config contains only locale strategy, active locale list, message-catalog manifest references, and version identifiers, not translated message content or app/root/package locale monoliths.
+- Database seed i18n env tests that verify seed locale/version values map only to database lifecycle config and do not override runtime locale negotiation.
 - Database selection tests for desktop SQLite and server PostgreSQL behavior.
 - Test-profile isolation tests for database/schema names, Redis key prefix, logs, cache, runtime, and temp directories.
 - Tauri/native config tests that verify platform config contains packaging metadata, permissions, capabilities, and signing references only, not API secrets or business SDK contracts.
@@ -1307,7 +1313,8 @@ Acceptance checklist:
 - [ ] Dev/test/staging/prod example files exist where applicable and local overrides are ignored.
 - [ ] Public values are separated from private and secret values.
 - [ ] Generated SDK base URLs resolve from one common SDK root plus optional per-surface or per-SDK overrides; effective open-api, app-api, and backend-api URLs are explicit after resolution.
-- [ ] Locale env/public runtime values contain only default/supported/fallback locale strategy and message-catalog manifest references; translated messages remain in `I18N_SPEC.md` message-catalog fragments.
+- [ ] Locale env/public runtime values contain only default/supported/active/fallback locale strategy, message-catalog manifest references, and version identifiers; translated messages remain in `I18N_SPEC.md` message-catalog fragments.
+- [ ] Database seed locale/version env values are private lifecycle settings and are not reused as frontend runtime locale or API request locale.
 - [ ] Server release defaults require PostgreSQL.
 - [ ] PostgreSQL development templates use `.env.postgres.example` with unified `SDKWORK_CLAW_DATABASE_*` fields from `ENVIRONMENT_SPEC.md` §7.1 and `sdkwork-specs/templates/env.postgres.example`.
 - [ ] Checked-in topology profiles and release env files do not define per-app PostgreSQL database names, usernames, passwords, or schemas that differ from the unified claw-router profile.

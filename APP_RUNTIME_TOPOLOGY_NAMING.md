@@ -251,9 +251,9 @@ Gateway crate names `MUST` encode scope and deployment profile. Naming authority
 
 Rules:
 
-- Bare `sdkwork-<application-code>-gateway` and bare `sdkwork-api-cloud-gateway` are retired. Say
-  `standalone-gateway`, `cloud-gateway`, or `api-cloud-gateway` explicitly in reviews, scripts,
-  manifests, and topology docs.
+- Bare `sdkwork-<application-code>-gateway` is retired. The platform gateway canonical crate is
+  `sdkwork-api-cloud-gateway`; say `standalone-gateway`, `cloud-gateway`, or
+  `api-cloud-gateway` explicitly in reviews, scripts, manifests, and topology docs.
 - `gateway:run:standalone` and related `gateway:*:standalone` commands target the standalone
   gateway crate; `gateway:run:cloud` and related `gateway:*:cloud` commands target the cloud
   gateway crate.
@@ -267,14 +267,10 @@ Retired crate naming:
 
 | Retired | Replacement |
 | --- | --- |
-| `sdkwork-api-cloud-gateway` | `sdkwork-api-cloud-gateway` |
-| `sdkwork-api-cloud-gateway` repository | `sdkwork-api-cloud-gateway` |
-| `SDKWORK_API_CLOUD_GATEWAY_BIND` | `SDKWORK_API_CLOUD_GATEWAY_BIND` |
-| `SDKWORK_API_CLOUD_GATEWAY_CONFIG` | `SDKWORK_API_CLOUD_GATEWAY_CONFIG` |
+| `sdkwork-api-cloud-gateway-api-server` | `sdkwork-api-cloud-gateway` |
 | `sdkwork-<application-code>-gateway` | `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` |
-| `sdkwork-im-cloud-gateway` | `sdkwork-im-cloud-gateway` |
-| `sdkwork-clawrouter-cloud-gateway` | `sdkwork-clawrouter-cloud-gateway` |
-| `sdkwork-aiot-cloud-gateway` | `sdkwork-aiot-cloud-gateway` |
+| `gateway:bundle:*` | `gateway:package:*` |
+| `gateway:bundle:validate:*` | `gateway:validate:*` |
 
 ## 11. Version History
 
@@ -283,6 +279,6 @@ Retired crate naming:
 | 1.0 | Initial topology / distribution / product-foundation planes |
 | 2.0 | Renamed to hosting / serviceLayout / connectivityPlane; surface and env key registry |
 | 2.1 | SaaS public host registry |
-| 3.2 | Platform gateway crate renamed to `sdkwork-api-cloud-gateway`; retired bare `sdkwork-api-cloud-gateway` |
+| 3.2 | Platform gateway crate standardized as `sdkwork-api-cloud-gateway`; retired `sdkwork-api-cloud-gateway-api-server` listener crate |
 | 3.1 | Gateway crates must use scope plus `standalone` or `cloud` deployment qualifiers |
 | 3.0 | Promoted `deploymentProfile = standalone | cloud` as the application deployment architecture and retired hosting/self-hosted/cloud-hosted as topology axes |

@@ -2,7 +2,7 @@
 
 <!-- SDKWORK-SPEC-ADDENDUM: process-shared-pool v2 -->
 
-This addendum extends `DATABASE_SPEC.md` section 33 for **every IM deployment profile**
+This addendum extends `DATABASE_SPEC.md` section 32 and section 33.4 for **every IM deployment profile**
 (`standalone`, `cloud`, `unified-process`, `split-services`).
 
 ## Scope

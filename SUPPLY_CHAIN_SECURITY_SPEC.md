@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: dependency integrity, build integrity, artifact signing, SBOM, provenance, attestations, release supply-chain evidence
-- Related: `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `APP_MANIFEST_SPEC.md`, `RELEASE_SPEC.md`, `QUALITY_GATE_SPEC.md`, `CODE_REVIEW_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
+- Related: `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `APP_MANIFEST_SPEC.md`, `RELEASE_SPEC.md`, `QUALITY_GATE_SPEC.md`, `CODE_REVIEW_SPEC.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `SDK_PACKAGE_NAMING_SPEC.md`, `SDK_MANIFEST_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
 This standard defines how SDKWork proves that source, dependencies, build steps, generated artifacts, and release artifacts are traceable and tamper-resistant. It aligns with NIST SSDF, SLSA, CycloneDX, SPDX, and in-toto concepts without requiring every repository to reach the same maturity level on day one.
 
@@ -20,6 +20,7 @@ Rules:
 - Dependency versions and generator versions must be traceable.
 - Build artifacts must trace to source revision, workflow run, toolchain, package target, and dependency refs.
 - Generated SDK artifacts must trace to OpenAPI/proto/generator inputs.
+- Generated or derived composition artifacts, including `generated/composition.resolved.json` and SDK family `sdk-manifest.json`, must trace to native dependency manifests, component specs, route manifests, OpenAPI/proto authorities, and approved resolver or generator commands.
 - Release artifacts must include checksums and signing/SBOM/provenance evidence when required by release policy.
 
 ## 2. Dependency Integrity
@@ -93,6 +94,8 @@ Rules:
 Rules:
 
 - Generated SDK output must be produced from approved generator inputs and recorded generator versions.
+- Generated composition output must be produced by `resolve-composition.mjs`; hand-edited composition output is not valid supply-chain evidence.
+- SDK family manifests must be source-controlled family-root metadata and must not be regenerated from unreviewed generated transport output.
 - Generated output must not be hand-edited outside approved custom extension points.
 - Generated artifact provenance should identify the source OpenAPI/proto, generator command, generator version/ref, and output package.
 - Consumers must not regenerate dependency-owned APIs into application-owned SDK families.

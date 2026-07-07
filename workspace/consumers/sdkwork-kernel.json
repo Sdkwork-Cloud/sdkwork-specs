@@ -1,6 +1,7 @@
 {
   "pnpm": {
     "packages": [
+      "../sdkwork-app-topology",
       "../sdkwork-utils/packages/sdkwork-utils-typescript"
     ]
   },
@@ -10,9 +11,11 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.4",
     "lucide-react": "^0.546.0",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vite-plugin-dts": "^4.5.4"
   }
 }

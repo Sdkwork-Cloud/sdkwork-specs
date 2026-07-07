@@ -118,7 +118,7 @@ Rules:
 - `controllers/` or `blocs/` owns presentation logic. New packages should choose one pattern and stay consistent.
 - `services/` owns use-case orchestration.
 - `repositories/` owns thin generated app SDK calls where repository naming is used.
-- `i18n/` owns package-local Flutter locale fragments and thin aggregation exports. It must not contain an authored whole-app or whole-package locale monolith; follow `I18N_SPEC.md`.
+- `i18n/` owns package-local Flutter locale fragments and thin aggregation exports. Flutter/Dart packages `MUST` use the `lib/src/i18n/<locale>/<domain>/<capability>/<fragment>.arb|json` layout from `I18N_SPEC.md` section 6.1. Framework files such as `lib/l10n/app_*.arb` are generated or thin projections only; this folder must not contain an authored whole-app or whole-package locale monolith.
 - `models/` owns view models only. API DTOs come from the generated Dart app SDK.
 - `platform/` owns adapter interfaces for platform capabilities.
 
@@ -166,6 +166,7 @@ Required coverage for new Flutter capabilities:
 - widget test for representative loading, success, empty, validation-error, and failure states;
 - platform adapter contract test for camera, QR, secure storage, deep link, or push behavior when used;
 - route/deep-link test when adding navigation;
+- i18n directory/static scan proving authored fragments stay under `lib/src/i18n/<locale>/<domain>/<capability>/` and generated `lib/l10n/**` files are not hand-authored feature copy;
 - `flutter analyze` or package-equivalent static check.
 
 Acceptance checklist:

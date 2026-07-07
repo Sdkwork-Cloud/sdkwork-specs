@@ -154,7 +154,7 @@ Directory meanings:
 | --- | --- | --- |
 | `apis/` | Author-owned API contracts and API source inputs for all API kinds, including HTTP OpenAPI surfaces, RPC/proto contracts, async/event API manifests, API examples, API changelogs, and API validation inputs | The repository or application defines, owns, reviews, or materializes any API contract |
 | `apps/` | Collection of independently runnable application roots, application surfaces, app shells, demos promoted to runnable apps, or deployable application compositions; each direct child is a selected language/architecture application root; `apps/README.md` is the human directory index for every child application root | Every independent SDKWork application git repository; also when the repository contains more than one app root, an app surface below a larger workspace, or runnable app examples |
-| `crates/` | Rust crates, including route crates, service crates, repository crates, API server/service-host/native-host/Tauri-host/gateway/worker crates, and reusable Rust libraries | Rust source is authored in the repository or application |
+| `crates/` | Rust crates, including route crates, service crates, repository crates, service-host/native-host/Tauri-host/gateway/worker crates, migration-only API server crates, and reusable Rust libraries | Rust source is authored in the repository or application |
 | `sdks/` | SDK family workspaces, SDK generation manifests, authority OpenAPI materialization outputs, derived `sdkgen` inputs, generated SDK language workspaces, and SDK component specs | The repository or application owns or generates SDK families |
 | `jobs/` | Job definitions, schedules, queue bindings, batch descriptors, maintenance runbooks, and non-Rust job packages | Non-request/response jobs are scheduled, configured, operated, or packaged |
 | `tools/` | Developer, validation, generation, migration, and operator tools that are not shipped as app runtime code | Repository-local reusable tooling is authored |
@@ -212,7 +212,6 @@ Recommended initial skeleton:
     sdkwork-routes-<capability>-<surface>/
     sdkwork-<domain>-<capability>-service/
     sdkwork-<domain>-<capability>-repository-sqlx/
-    sdkwork-<application-code>-api-server/
     sdkwork-<application-code>-service-host/
     sdkwork-<application-code>-native-host/
     sdkwork-<application-code>-tauri-host/
@@ -545,7 +544,7 @@ Rules for `<domain-multi-surface-repository>`:
   crates/sdkwork-routes-<capability>-app-api/
   crates/sdkwork-<domain>-<capability>-service/
   crates/sdkwork-<domain>-<capability>-repository-sqlx/
-  crates/sdkwork-<application-code>-api-server/
+  crates/sdkwork-<application-code>-standalone-gateway/
   crates/sdkwork-<application-code>-service-host/
   crates/sdkwork-<domain>-<capability>-worker/
   sdks/sdkwork-<domain>-app-sdk/

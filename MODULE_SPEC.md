@@ -2,9 +2,9 @@
 
 - Version: 1.0
 - Scope: reusable frontend/backend modules, appbase packages, service facades, extension points, module composition
-- Related: `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `RUST_CODE_SPEC.md`, `JAVA_CODE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, `FRONTEND_CODE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`
+- Related: `COMPOSABLE_ARCHITECTURE_SPEC.md`, `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `RUST_CODE_SPEC.md`, `JAVA_CODE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, `FRONTEND_CODE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines the building-block model for SDKWork applications. A reusable module must be installable, understandable, replaceable, and testable without copying app-specific code.
+This standard defines the building-block model for SDKWork applications. A reusable module must be installable, understandable, replaceable, and testable without copying app-specific code. Cross-stack composition follows `COMPOSABLE_ARCHITECTURE_SPEC.md`.
 
 ## 1. Module Contract
 
@@ -27,6 +27,9 @@ Rules:
 
 - A module `MUST` declare one primary domain and one capability.
 - A module `MUST` expose one package root export from `src/index.ts` or the language-equivalent public export file defined by its architecture standard.
+- A new composable module `MUST` declare `contracts.layerRole`, `contracts.publicExports`,
+  `contracts.providedPorts`, and `contracts.requiredPorts` in `specs/component.spec.json` so
+  consumers can integrate it without reading private implementation files.
 - A module `MUST NOT` require app-local globals, hidden singleton SDK clients, hard-coded URLs, hard-coded tenant IDs, or manually assembled auth headers.
 - A module `MUST` be usable with standalone/cloud SDK clients and Java/Rust
   runtime implementations when its domain is shared.
@@ -114,6 +117,9 @@ Rules:
 
 - Module entrypoints expose public contracts and composition helpers only.
 - Reusable modules consumed by an application must be registered and bound through the architecture core package `composition/module-registry.*` per `APP_COMPOSITION_SPEC.md`.
+- Reusable modules expose provided/required ports through `COMPONENT_SPEC.md` and
+  `COMPOSABLE_ARCHITECTURE_SPEC.md`; README examples may explain those ports but must not become
+  the authority.
 - Business logic belongs in service/use-case modules.
 - Persistence belongs in repository modules.
 - Provider calls and host/runtime integration belong in adapters.
@@ -178,7 +184,7 @@ Communication modules follow the same rule. IM and RTC consumers use the public 
 
 Deprecated `openchat` sources `MUST NOT` be used for new appbase modules.
 
-## 3.1 UI Architecture Module Families
+## 5.1 UI Architecture Module Families
 
 | Architecture | Canonical package family | Required spec |
 | --- | --- | --- |
@@ -240,6 +246,7 @@ Each reusable module `MUST` include:
 
 - [ ] Module has one domain and one capability.
 - [ ] Public contract is exported from `src/index.ts`.
+- [ ] New composable modules declare layer role and port contracts in `component.spec.json`.
 - [ ] Implementation follows `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, and only the language specs used by the module.
 - [ ] Entry files do not contain unrelated business logic, persistence, provider adapters, and tests.
 - [ ] Dependencies flow in the allowed direction.

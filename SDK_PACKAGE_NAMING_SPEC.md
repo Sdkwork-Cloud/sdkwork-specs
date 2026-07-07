@@ -8,6 +8,7 @@ Related specs:
 
 - `SDK_SPEC.md` — SDK generation and multi-language naming
 - `SDK_WORKSPACE_GENERATION_SPEC.md` — generation layout and ownership boundaries
+- `SDK_MANIFEST_SPEC.md` - family-root SDK metadata SSOT
 - `APP_SDK_INTEGRATION_SPEC.md` section 9 — application consumer import rules
 
 ## 1. Three Naming Roles

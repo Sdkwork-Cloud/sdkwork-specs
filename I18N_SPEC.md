@@ -1,35 +1,114 @@
 # Internationalization Standard
 
-- Version: 1.2
-- Scope: user-facing UI text, validation messages, login/register/session flows, generated app copy, locale resources, accessibility text, and componentized reusable UI packages
-- Related: `FRONTEND_SPEC.md`, `MODULE_SPEC.md`, `IAM_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `NAMING_SPEC.md`, `DOMAIN_SPEC.md`
+- Version: 2.0
+- Scope: cross-stack locale negotiation, frontend and backend user-facing messages, API problem localization metadata, SDK locale propagation, database seed localization, runtime config, deployment defaults, generated locale resources, accessibility text, and reusable SDKWork packages across browser, mobile, native, server, and gateway runtimes
+- Related: `WEB_FRAMEWORK_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `FRONTEND_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `DATABASE_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `MODULE_SPEC.md`, `IAM_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `NAMING_SPEC.md`, `DOMAIN_SPEC.md`
 
-This standard defines how SDKWork components handle language, locale, and user-facing copy. It exists so reusable appbase modules can be integrated by consuming applications without rewriting login, registration, validation, and account UI text.
+This standard defines how SDKWork systems handle language, locale, translated user-facing copy, backend messages, localized API error metadata, SDK locale propagation, and database initialization data. It is the cross-stack authority for internationalization. Framework, API, SDK, frontend, database, config, and environment standards own their runtime-specific enforcement details and must link back to this standard instead of restating it.
 
-## 0. Catalog Terminology
-
-Rules:
-
-- **Message catalog** means translated UI strings owned by a package fragment. Use this phrase in normative text instead of bare **catalog** when the topic is i18n.
-- **i18n catalog fragment** is the canonical file/dir unit (`locales/en-US/iam.auth.login.json`, etc.).
-- **Catalog manifest** means the generated or configured index that points to fragments (`catalogManifestUrl`, `I18N_CATALOG_MANIFEST_URL`). It is not commerce domain `catalog` capability.
-- Commerce **catalog** capability (browse/category trees) follows `DOMAIN_SPEC.md` §3.1 and `NAMING_SPEC.md` §0.2. Do not use commerce `catalog` directory names for locale files.
-- **Application-line override** replaces retired **product override**: a consuming application may override fragments for its application line without merging locales into one monolithic file.
-
-## 1. Core Rule
+## 0. Normative Model
 
 Rules:
 
-- User-facing UI text must come from message catalogs, typed translation keys, or injected text providers.
-- Reusable modules must not hard-code application-specific copy.
-- Locale resources must be package-owned and split by domain, capability, route/screen, or component state. A client root or reusable package must not keep all messages for one locale in a single large authored file.
-- Login, registration, password reset, token validation, tenant selection, permission denial, and session-expired states must be internationalized.
-- Localized text must preserve security boundaries: do not expose tokens, stack traces, SQL, provider internals, or raw exception messages.
-- Components should support `zh-CN` and `en-US` at minimum when they are used by SDKWork first-party apps.
+- **LocaleTag** means a normalized BCP 47 language tag such as `zh-CN`, `en-US`, `ja-JP`, `de-DE`, `fr-FR`, `ru-RU`, or `ko-KR`.
+- `defaultLocale` is the application or deployment default display locale.
+- `fallbackLocale` is the explicit final locale used when a requested or effective locale cannot provide a required message.
+- `supportedLocales` is the product-approved locale list.
+- `activeLocales` is the deployment-enabled and verified locale list. `activeLocales` `MUST` be a subset of `supportedLocales`.
+- `seedLocale` is the database initialization locale selected for `DATABASE_FRAMEWORK_SPEC.md` seed execution. It is not the same setting as frontend runtime locale.
+- `i18nVersion` identifies versioned database initialization localization data.
+- `catalogVersion`, `messageBundleVersion`, and `backendMessageBundleVersion` identify generated or deployed message resources.
+- A locale tag on an API request or response describes language negotiation only. It `MUST NOT` be used as authorization, tenant, data residency, or permission evidence.
 
-## 2. Message Keys
+Runtime locale, message catalog locale, and database seed locale are related but distinct:
 
-Message keys should be stable and scoped:
+| Concept | Owner | Purpose | Default rule |
+| --- | --- | --- | --- |
+| Runtime locale | application bootstrap and `sdkwork-web-framework` | choose user-facing language for one runtime/request | explicit config or request context |
+| Message catalog locale | frontend/backend message bundle provider | resolve translated text by key | explicit fallback chain |
+| Database seed locale | database lifecycle framework | initialize persisted display/reference text | `zh-CN` by default unless configured |
+
+## 1. Core Rules
+
+Rules:
+
+- User-facing text `MUST` come from message catalogs, backend message bundles, typed translation keys, or injected text providers.
+- Reusable modules `MUST NOT` hard-code application-specific copy.
+- Locale resources `MUST` be package-owned and split by domain, capability, route/screen, workflow, or component state.
+- A client root, backend root, admin root, reusable package, or native platform project `MUST NOT` keep all authored messages for one locale in a single large file.
+- Login, registration, password reset, token validation, tenant selection, permission denial, session-expired states, admin/operator errors, validation messages, and accessibility names `MUST` be internationalized.
+- Localized text `MUST` preserve security boundaries: do not expose tokens, stack traces, SQL, provider internals, account enumeration hints, permission internals, raw exception messages, hostnames, or secret paths.
+- SDKWork first-party reusable packages `SHOULD` support at least `zh-CN` and `en-US` unless a product or platform spec narrows the supported locale set.
+
+## 2. Locale Selection And Fallback
+
+Locale selection belongs in runtime/bootstrap or the web framework request boundary, not in feature components or business handlers.
+
+Standard fallback order:
+
+1. Authenticated user preference.
+2. Tenant, organization, or application preference.
+3. SDK runtime locale provider or trusted host runtime locale.
+4. Standard `Accept-Language`.
+5. Application `defaultLocale`.
+6. Explicit `fallbackLocale`.
+
+Rules:
+
+- Locale tags `MUST` be normalized before comparison.
+- Unsupported requested locales `MUST` resolve to the configured fallback chain; they must not produce handler-local ad hoc behavior.
+- `fallbackLocale` `MUST` be explicit in runtime config for production and production-like deployments.
+- Individual catalog fragments `MUST NOT` import another locale just to implement fallback. Fallback is owned by the provider or runtime registry.
+- Components and handlers `MUST` react to locale changes or request locale context without reconstructing unrelated auth, tenant, or SDK state.
+- Date, time, number, currency, relative time, collation, pluralization, and list formatting `SHOULD` use locale-aware APIs or approved SDKWork utilities.
+- Layouts and native screens `MUST` tolerate text expansion without overlapping or truncating critical actions.
+
+## 3. Framework Locale Context
+
+Every SDKWork HTTP request served by `sdkwork-web-framework` or an equivalent runtime profile `MUST` receive a framework-resolved locale context before handler/controller logic runs.
+
+Required logical context:
+
+```text
+WebLocaleContext {
+  requestedLocale?: LocaleTag
+  effectiveLocale: LocaleTag
+  fallbackLocale: LocaleTag
+  supportedLocales: LocaleTag[]
+  activeLocales: LocaleTag[]
+  source: user-preference | tenant-preference | app-default | accept-language | sdk-header | system-default
+  catalogVersion?: string
+  messageBundleVersion?: string
+  timezone?: string
+  numberingSystem?: string
+}
+```
+
+Rules:
+
+- `WebRequestContext` `MUST` include `locale: WebLocaleContext` for public and protected SDKWork HTTP operations.
+- Public, login, registration, password reset, OAuth, refresh-token, open-api, app-api, backend-api, gateway, and admin/control-plane routes `MUST` receive locale context.
+- `LocaleResolution` is a framework responsibility. Handlers and controllers `MUST NOT` parse `Accept-Language`, `X-SdkWork-Locale`, cookies, query parameters, or user-agent headers directly.
+- Production requests `MUST NOT` trust arbitrary query parameters for locale selection unless the route is an explicitly documented preview/test route and the route manifest declares that behavior.
+- The framework `MUST` expose centralized extension points for user preference lookup, tenant/application preference lookup, message bundle resolution, localized problem mapping, and validation message resolution.
+- Rust is the reference runtime. Java/Spring and other server runtimes `MUST` preserve equivalent context vocabulary, request-stage semantics, headers, and problem-detail behavior.
+
+## 4. HTTP Locale Headers
+
+Rules:
+
+- Clients and SDK transports `SHOULD` send standard `Accept-Language` for locale negotiation.
+- SDKWork SDK transports `MAY` send `X-SdkWork-Locale` only when it is produced by an approved runtime locale provider. Feature packages and UI components `MUST NOT` assemble this header manually.
+- Responses whose body or problem detail is locale-sensitive `MUST` include `Content-Language: <effectiveLocale>`.
+- Responses whose representation varies by language `MUST` include `Vary: Accept-Language`.
+- Responses `MAY` include diagnostic version headers such as `X-SdkWork-I18n-Version`, `X-SdkWork-Message-Bundle-Version`, or `X-SdkWork-Backend-Message-Bundle-Version`.
+- Headers `MUST NOT` contain translated message content.
+
+## 5. Message Keys
+
+Message keys are stable semantic identifiers. They describe meaning, not a visual label.
+
+Examples:
 
 ```text
 iam.auth.login.title
@@ -38,19 +117,23 @@ iam.auth.login.validation.emailRequired
 iam.auth.register.validation.passwordPolicy
 iam.session.expired.message
 iam.permission.denied.message
+errors.result.40101
+validation.iam.user.email.invalid
 ```
 
 Rules:
 
 - Key scope starts with canonical domain and capability, such as `iam.auth`.
-- Keys describe meaning, not the current visual label.
-- Key prefixes should align with the owning package and catalog fragment. A fragment that owns `iam.auth.login.*` keys must not also own unrelated `billing.invoice.*` or `admin.audit.*` keys.
-- Do not use app names such as `birdcoder`, `claw`, or `magic-studio` inside reusable appbase keys.
-- Validation, loading, empty, error, success, tooltip, aria label, and placeholder strings need keys when user-facing.
+- Error result keys `MUST` use `errors.result.<numericCode>` when mapping `ProblemDetail.code`.
+- Field validation keys `SHOULD` use `validation.<domain>.<resourceOrWorkflow>.<field>.<rule>` or a documented narrower package convention.
+- Key prefixes `MUST` align with the owning package and catalog fragment.
+- A fragment that owns `iam.auth.login.*` keys `MUST NOT` also own unrelated `billing.invoice.*` or `admin.audit.*` keys.
+- Reusable appbase keys `MUST NOT` contain application names such as `birdcoder`, `claw`, or `magic-studio`.
+- Validation, loading, empty, error, success, tooltip, aria label, placeholder, confirmation, and operator-facing strings need keys when user-facing.
 
-## 3. Catalog Ownership And Fragmentation
+## 6. Catalog Ownership And Fragmentation
 
-Message catalogs must remain small enough to review, translate, and merge without routine conflicts.
+Message catalogs must remain small enough to review, translate, validate, and merge without routine conflicts.
 
 Recommended package-local shape for React and TypeScript packages:
 
@@ -73,97 +156,208 @@ src/
         expired.ts
 ```
 
-Equivalent native or non-TypeScript packages may use platform resource formats, but the same logical split applies: locale -> domain -> capability -> route/screen/state fragment.
+Equivalent native or non-TypeScript packages may use platform resource formats, but the logical split is the same: locale -> domain -> capability -> route/screen/workflow/state fragment.
 
 Rules:
 
-- Authored locale files `MUST` be split by owning package and by feature fragment. Do not create or grow files such as `en-US.ts`, `zh-CN.ts`, `messages.json`, or `strings.xml` that contain the whole application or whole client root copy.
-- `src/i18n/index.*`, `manifest.*`, app bootstrap locale registries, and platform resource aggregators `MUST` remain thin. They may export, register, or import fragments; they must not become the place where feature copy is authored.
-- A reusable package owns its own default fragments. Consuming applications may override those fragments during bootstrap or provider composition, but application-line overrides must keep the same fragment boundaries.
-- A fragment should normally map to one route/screen, dialog, form, table, or reusable component family. When a fragment starts mixing unrelated workflows, split it before adding more keys.
-- Catalog file size is a signal, not a hard limit. Follow the cohesion principle: if all messages in a catalog serve one feature/screen/workflow and change together, keep them together. If they represent unrelated concerns, split by responsibility.
-- Cross-client implementations of the same workflow should reuse stable key names, but each architecture keeps resources in its own package-local i18n boundary unless an approved non-UI i18n contract package is used.
-- Generated or build-time merged locale bundles must identify their source fragments and must not be hand-edited.
-- If a platform requires monolithic runtime resources, the monolith must be generated from package-local fragments and excluded from hand-authored review except for generated-artifact integrity checks.
+- Authored locale files `MUST` be split by owning package and feature fragment. Do not create or grow files such as `en-US.ts`, `zh-CN.ts`, `messages.json`, `strings.xml`, `Localizable.strings`, or `arb/app_en.arb` that contain the whole application or whole client root copy.
+- `src/i18n/index.*`, `manifest.*`, app bootstrap locale registries, native resource aggregators, and platform resource indexes `MUST` remain thin. They may export, register, or import fragments; they must not become the place where feature copy is authored.
+- A reusable package owns its own default fragments. Consuming applications may override those fragments during bootstrap or provider composition, but application-line overrides `MUST` keep the same fragment boundaries.
+- A fragment should normally map to one route/screen, dialog, form, table, workflow, command result, or reusable component family.
+- If a fragment starts mixing unrelated workflows, split it before adding more keys.
+- Cross-client implementations of the same workflow `SHOULD` reuse stable logical key names, while each architecture keeps authored locale resources in its own package-local i18n boundary unless an approved non-UI i18n contract package exists.
+- Generated or build-time merged locale bundles `MUST` identify their source fragments and `MUST NOT` be hand-edited.
+- If a platform requires monolithic runtime resources, the monolith `MUST` be generated from package-local fragments and excluded from authored-message review except for generated-artifact integrity checks.
 
-## 4. Resource Shape
+### 6.1 Language And Framework Directory Standards
 
-React packages should expose resources or adapters in a predictable shape:
+The following layouts define the authored source-of-truth directory shape for SDKWork i18n resources. Platform-native resource files and framework-specific aggregate bundles are projections unless this section explicitly marks them as authored fragments.
 
-```ts
-export type I18nLocale = "en-US" | "zh-CN" | string;
+General rules:
 
-export interface I18nMessages {
-  [key: string]: string;
+- Authored source fragments `MUST` live in the package, crate, module, or app-surface component that owns the workflow.
+- Locale directory names in authored sources `MUST` use normalized BCP 47 tags such as `zh-CN` and `en-US`. Platform suffixes such as Android `values-zh-rCN`, iOS `zh-Hans.lproj`, or generated Flutter `app_zh.arb` are projections, not the logical SDKWork source layout.
+- Fragment paths `MUST` follow `locale -> domain -> capability -> route/screen/workflow/state fragment`.
+- Root application shells `MAY` keep bootstrap registries, generated bundle manifests, or provider setup, but they `MUST NOT` author business-domain copy there.
+- Generated aggregate directories `MUST` keep a source-fragment manifest or deterministic source map so reviews can trace every runtime key back to an owning package fragment.
+- Repository-root `i18n/` directories are forbidden for application or backend message copy unless the repository is a dedicated i18n contract/package repository with its own `specs/component.spec.json`.
+
+Canonical authored layouts:
+
+| Language or framework | Authored source-of-truth layout | Generated or thin-only projection |
+| --- | --- | --- |
+| React TypeScript, Vite, Next-style frontend, backend/admin React | `src/i18n/<locale>/<domain>/<capability>/<fragment>.ts` or `.json`; optional thin `src/i18n/index.ts` and `src/i18n/manifest.ts` | Generated runtime bundles under build output or `src/i18n/generated/**`; no hand-authored `en-US.ts`, `zh-CN.ts`, `messages.json`, or app-wide locale file |
+| Mini program TypeScript source packages | `src/i18n/<locale>/<domain>/<capability>/<page-or-component>.ts` or `.json` | Platform page/subpackage resources under `platform/generated/i18n/**`, `miniprogram/generated/i18n/**`, or equivalent generated output only |
+| Flutter/Dart packages | `lib/src/i18n/<locale>/<domain>/<capability>/<screen-or-widget>.arb` or `.json`; optional thin `lib/src/i18n/manifest.dart` | `lib/l10n/generated/**`, root `lib/l10n/app_*.arb`, or framework localization delegates only when generated from fragments |
+| Android Kotlin/Java packages | `src/main/i18n/<locale>/<domain>/<capability>/<screen-or-component>.json`, `.xml`, or `.properties`; optional thin Kotlin registry under `src/main/kotlin/**/i18n/` | `src/main/res/values*/strings.xml`, plurals, and resource ids only as generated or thin platform projections |
+| iOS Swift packages | `Sources/<Module>/I18n/<locale>/<domain>/<capability>/<screen-or-view>.json` or `.strings.json` | `Sources/<Module>/Resources/*.lproj/Localizable.strings`, `.stringsdict`, or Xcode localized resources only as generated or thin projections |
+| Harmony ArkTS packages | `src/main/ets/i18n/<locale>/<domain>/<capability>/<page-or-component>.json` or `.ts` | `src/main/resources/**/element/string.json` and platform resource indexes only as generated or thin projections |
+| Rust backend, route, gateway, worker, or native-host crates | `resources/i18n/<locale>/<domain>/<capability>/<bundle>.ftl`, `.json`, or `.toml`; optional thin `src/i18n.rs` or `src/i18n/mod.rs` registry | Embedded/generated bundle tables under `OUT_DIR`, `generated/i18n/**`, or framework message registries only |
+| Java/Spring backend modules | `src/main/resources/i18n/<locale>/<domain>/<capability>/<bundle>.properties`, `.yaml`, or `.json` | Spring `MessageSource`, validation bundles, or generated classpath aggregate files only as thin framework adapters |
+| Shared key or contract packages | `i18n/keys/<domain>/<capability>.json` or `src/i18n/keys/<domain>/<capability>.ts` for key/type declarations | Generated TypeScript/Dart/Kotlin/Swift/ArkTS key constants; translated copy only when the package itself owns reusable default messages |
+| Database lifecycle assets | `database/seeds/locales/<locale>/<domain>/<capability>/<seed>.sql` or `.json` | Generated seed reports, checksums, and seed history records; database seed locale data is not a runtime message catalog |
+
+Additional rules:
+
+- Native platform resource files such as `strings.xml`, `Localizable.strings`, `string.json`, or `app_*.arb` `MAY` contain platform-required app names, accessibility metadata, or generated projections, but they `MUST NOT` become the hand-authored source for feature copy.
+- When a platform tool requires a single file per locale, the single file `MUST` be generated during build or release from package-local fragments.
+- A fragment file named `common`, `shared`, `global`, or `messages` is allowed only for a domain-neutral package and `MUST NOT` mix unrelated business workflows.
+- Cross-language implementations of the same route or screen `SHOULD` use the same logical key names even when file formats differ.
+- Build, translation, and release tooling `SHOULD` validate active locales against the same logical fragment manifest before producing platform projections.
+
+## 7. Frontend Runtime Rules
+
+Rules:
+
+- App/bootstrap code `MUST` create one runtime i18n provider or language-equivalent registry for the application shell.
+- Feature packages `MUST` consume the injected provider, typed key helpers, or message catalog ports. They `MUST NOT` parse browser language, native platform locale, cookies, or SDK headers independently.
+- UI error presentation `SHOULD` use `ProblemDetail.i18nKey` when present, otherwise map numeric `ProblemDetail.code` to `errors.result.<code>`.
+- Backend-provided localized `ProblemDetail.title` or `detail` `MAY` be displayed as a fallback, but UI state and branching `MUST` use stable numeric code, operation result, or field error metadata.
+- Application-line overrides `MUST` be colocated by application package, locale, domain, capability, and fragment. Do not maintain one application-wide override file per locale.
+- Duplicate keys across fragments are allowed only when they intentionally override through declared precedence. Accidental duplicate keys in the same precedence layer `MUST` fail static validation.
+- Missing required keys for active locales `MUST` fail release preflight for first-party critical flows.
+
+## 8. Backend Message Rules
+
+Backend messages are for safe presentation and diagnostics. They do not replace stable machine fields.
+
+Rules:
+
+- Backend handlers, services, repositories, validators, and framework adapters `MUST NOT` branch on localized strings.
+- Backend code `MUST` use stable codes, enums, permission strings, domain states, or translation keys as machine state.
+- `ProblemDetail.code`, `traceId`, `status`, `type`, `operationId`, permission codes, audit action codes, and metric names `MUST NOT` be localized.
+- Backend `ProblemDetail.title` and `detail` `MAY` be localized only through framework-managed message resolution and safe templates.
+- Backend validation errors `SHOULD` include stable field paths, numeric subcodes when applicable, `i18nKey`, and sanitized interpolation params.
+- Logs, metrics, traces, audit records, and support tooling `SHOULD` record `locale` as diagnostic context when useful, but their primary machine fields remain non-localized.
+- Hard-coded Chinese, English, or other human display strings in backend business logic are forbidden for user-facing or operator-facing responses.
+
+## 9. API Problem Detail Localization
+
+SDKWork-owned custom HTTP APIs continue to use `SdkWorkApiResponse` for success and RFC 9457 `ProblemDetail` for failure per `API_SPEC.md`. Internationalization adds optional localization metadata; it does not change the wire success/error model.
+
+Problem detail extensions:
+
+```json
+{
+  "code": 40101,
+  "traceId": "0195f2a0-7c44-7b2e-9f3a-2a6f5d8e91ab",
+  "i18nKey": "errors.result.40101",
+  "locale": "zh-CN"
 }
+```
 
-export interface I18nProvider {
-  locale: I18nLocale;
-  t(key: string, params?: Record<string, string | number>): string;
+Validation error extension example:
+
+```json
+{
+  "field": "email",
+  "code": 40011,
+  "i18nKey": "validation.iam.user.email.invalid",
+  "params": { "maxLength": 128 }
 }
 ```
 
 Rules:
 
-- Shared modules may ship default catalogs.
-- Consuming applications may override catalogs through module initialization or provider composition.
-- Components must use fallback text only as a last line of defense; fallback text must be neutral and product-agnostic.
-- Interpolation values must be escaped or rendered safely by the framework.
-- Catalog fragment exports should use typed objects or generated key unions when the package toolchain supports them.
+- `i18nKey` `SHOULD` be present on SDKWork-owned problem details when a safe user-facing message exists.
+- `locale` `SHOULD` match `WebRequestContext.locale.effectiveLocale` when the framework resolves locale context.
+- `errors[].i18nKey` `SHOULD` be present for field-level validation errors intended for UI display.
+- `errors[].params` `MUST` contain sanitized values only. It must not include secrets, tokens, raw SQL, stack traces, or unescaped user HTML.
+- SDKWork-owned APIs `MUST NOT` use HTTP 2xx with non-zero `code`, `success`, or localized `message` to represent business failure.
+- Vendor compatibility operations declared with `x-sdkwork-wire-protocol: external` follow the upstream wire protocol and are exempt only to the extent allowed by `API_SPEC.md`.
 
-## 5. Locale Behavior
-
-Rules:
-
-- Locale selection belongs in app runtime/bootstrap, not in reusable components.
-- Components must react to locale changes without remounting the whole app shell.
-- Locale fallback order should be explicit, for example user preference, tenant preference, app default, `en-US`.
-- Locale fallback is resolved by the provider or runtime registry. Individual catalog fragments should not import another locale just to implement fallback.
-- Date, time, number, currency, and relative time formatting should use locale-aware APIs or approved utilities.
-- Layout must tolerate text expansion without overlapping or truncating critical actions.
-
-## 6. Auth And Security Copy
+## 10. SDK Locale Propagation
 
 Rules:
 
-- Auth and API errors should map numeric `ProblemDetail.code` values to safe translation keys such as `errors.result.<code>` (for example `errors.result.40101`). Do not key i18n off string wire tokens such as `validation_error`.
-- Invalid password, invalid token, expired session, and insufficient permission messages must not reveal account enumeration hints.
-- MFA, QR login, passkey, OAuth, and verification-code flows must internationalize labels, help text, status, retry, and error states.
-- Sensitive action confirmation copy must be explicit about tenant, organization, or account scope when applicable.
+- Generated SDK runtimes `SHOULD` support a `localeProvider`, `i18nProvider`, or language-equivalent request option supplied at client construction or bootstrap.
+- SDK transports `SHOULD` serialize the current locale through `Accept-Language`; they `MAY` also send an approved SDKWork locale header when required by the runtime profile.
+- SDK transports `MUST NOT` expose feature-level manual locale header construction as the normal integration path.
+- Generated SDK error types `MUST` expose numeric `ProblemDetail.code` and `traceId`, and `SHOULD` expose `i18nKey`, `locale`, and field validation entries when the API returns them.
+- SDK examples `SHOULD` show locale provider wiring in bootstrap, not per-call header mutation.
+- App SDKs, backend SDKs, and business open/domain SDKs `SHOULD` follow the same locale propagation model. External wire-protocol SDK operations preserve upstream behavior.
 
-## 7. Catalog Loading And Overrides
+## 11. Database Initialization Internationalization
 
-Catalog loading must support modular ownership without forcing every app to eagerly ship every message.
-
-Rules:
-
-- App bootstrap may compose message fragments from packages, but composition must preserve package/domain/capability ownership in the registry or manifest.
-- Lazy route or feature loading may lazy-load the matching i18n fragments. Missing fragments must fail with a stable missing-key behavior in development and safe fallback behavior in production.
-- Application-line override files must be colocated by application package, locale, domain, capability, and fragment. Do not maintain one application-wide override file per locale.
-- Override precedence must be explicit, for example product override, tenant override when supported, package default, app default fallback.
-- Duplicate keys across fragments are allowed only when they intentionally override through declared precedence. Accidental duplicate keys in the same precedence layer must fail static validation.
-- Missing required keys for supported locales should fail tests or release preflight for first-party critical flows.
-
-## 8. Testing
+Database lifecycle i18n is governed by `DATABASE_FRAMEWORK_SPEC.md`. This section defines cross-stack semantics.
 
 Rules:
 
-- Reusable UI modules should test at least one non-default locale for critical flows.
-- Auth forms should verify required labels, validation messages, and submit actions use translation keys or providers.
-- Static scans should reject hard-coded product names in shared appbase modules.
-- Accessibility names must be localized for icon-only or visually hidden controls.
-- Static scans should reject authored app-wide locale monoliths and catalog files that mix unrelated concerns (low cohesion).
-- Fragment manifest or aggregation tests should verify every registered fragment has the same required keys for supported locales, unless the missing key is explicitly optional.
+- Language-neutral reference data `MUST` live under `seeds/common/`.
+- Locale-specific persisted initialization data `MUST` live under `seeds/locales/{locale}/`.
+- A seed file `MUST NOT` mix multiple locales.
+- Default database deployment `MUST` initialize `common` plus `zh-CN` unless runtime/database lifecycle config explicitly selects another active seed locale.
+- Reserved locale directories `SHOULD` exist for `zh-CN`, `en-US`, `ja-JP`, `de-DE`, `fr-FR`, `ru-RU`, and `ko-KR` when the module declares them as supported seed locales.
+- Seed manifests `MUST` record `i18nVersion`, `defaultLocale`, `fallbackLocale`, `supportedLocales`, `activeLocales`, locale set versions, and checksums when locale-specific seed content exists.
+- Seed execution `MUST` be idempotent, versioned, and auditable through seed history including locale, profile, `i18nVersion`, checksum, and applied timestamp.
+- Adding or activating a locale `SHOULD NOT` require a schema migration when the base schema already supports localized records.
+- Persisted localized data `SHOULD` use a base table for stable machine fields plus a translation table keyed by stable resource identity, locale, message key or field name, and version.
+- Tenant/application default locale rows may be initialized by seeds, but tenant/user preferences remain runtime configuration or user data, not hard-coded application copy.
 
-## 9. Acceptance Checklist
+## 12. Config And Environment Rules
 
+Rules:
+
+- Runtime config may contain locale strategy and resource pointers only: `defaultLocale`, `supportedLocales`, `activeLocales`, `fallbackLocale`, loading strategy, catalog manifest URL, and bundle versions.
+- Environment variables may expose locale strategy values and manifest URLs when classified public, but they `MUST NOT` embed translated messages, generated bundles, L1 brand/store copy, validation copy, or override content.
+- `defaultLocale`, `fallbackLocale`, and `activeLocales` `MUST` be resolved before SDK clients, i18n providers, and framework bootstrap are constructed.
+- Seed locale env keys configure database initialization only. They `MUST NOT` be treated as frontend runtime locale or API request locale.
+- Production startup `SHOULD` fail closed when configured `defaultLocale`, `fallbackLocale`, or `activeLocales` are not subsets of `supportedLocales`.
+
+## 13. Multi-Platform Resource Rules
+
+SDKWork supports React/TypeScript, Flutter/Dart, mini program TypeScript, Android/Kotlin or Java, iOS/Swift, Harmony/ArkTS, Rust, Java/Spring, server/container runtimes, and desktop/native hosts.
+
+Rules:
+
+- Platforms may use native resource formats, but authored source directories `MUST` follow section 6.1 and logical ownership remains package -> locale -> domain -> capability -> route/screen/workflow/state fragment.
+- Generated platform bundles `MUST` retain source fragment traceability.
+- Cross-client implementations of the same workflow `SHOULD` share route id, title key, permission hint key, validation key, error key, SDK surface, and service contract.
+- Platform host adapters may provide system locale, timezone, numbering system, and calendar preferences, but feature packages consume them through the runtime i18n provider.
+- Server-side rendering, backend/admin UI, and desktop/native shells `MUST` use the same logical key and fallback model as browser/mobile clients.
+
+## 14. Security And Privacy
+
+Rules:
+
+- Localized messages `MUST NOT` leak account existence, credential validity, permission internals, tenant identifiers, API keys, tokens, file paths, database names, provider error bodies, stack traces, or raw exception details.
+- Interpolation values `MUST` be escaped or rendered safely by the target framework.
+- Rich text or HTML translations `MUST` declare an allowlist of permitted tags and attributes and `MUST` default to escaping unknown content.
+- Translator-facing source files `SHOULD` avoid secrets, production identifiers, and private customer data.
+- Audit logs, metrics, and alert routing `MUST` remain machine-stable and non-localized.
+
+## 15. Testing
+
+Rules:
+
+- Static scans `MUST` reject authored app-wide, backend-root-wide, admin-root-wide, or package-wide locale monoliths.
+- Static scans `MUST` verify authored i18n directories match the language and framework layouts in section 6.1 and that generated platform resources are not treated as source-of-truth copy.
+- `tools/check-i18n-standard.mjs` is the canonical static check for repository/workspace i18n source layout, locale monolith rejection, generated/thin platform projection boundaries, Rust/Java backend message bundle placement, and database locale seed path shape.
+- Fragment manifest or aggregation tests `MUST` verify every registered fragment has required keys for active locales unless the missing key is explicitly optional.
+- Duplicate keys in the same precedence layer `MUST` fail validation.
+- Reusable UI modules `SHOULD` test at least one non-default locale for critical flows.
+- Auth forms `MUST` verify labels, validation messages, and submit actions use translation keys or providers.
+- Backend and framework tests `MUST` prove locale context is injected, `Content-Language` is emitted for localized responses, `Vary: Accept-Language` is emitted when needed, and handlers do not parse locale headers directly.
+- API contract tests `SHOULD` prove SDKWork-owned problem details expose stable numeric `code`, `traceId`, and optional `i18nKey`/`locale` without legacy localized `message` failure envelopes.
+- SDK tests `SHOULD` prove locale provider values propagate through generated transports and generated error types expose localization metadata.
+- Database seed smoke tests `MUST` prove `seeds/common` plus default seed locale `zh-CN` are idempotent and that locale seed history records version/checksum evidence.
+- Config/env tests `MUST` prove locale config contains strategy and manifest/version references only, not translated content.
+
+## 16. Acceptance Checklist
+
+- [ ] Runtime, message catalog, and database seed locale responsibilities are documented separately.
+- [ ] `defaultLocale`, `fallbackLocale`, `supportedLocales`, and `activeLocales` are explicit for production-like deployments.
 - [ ] User-facing strings in reusable modules are keyed or injected.
-- [ ] Locale resources are split by package, locale, domain, capability, and route/screen/state fragment.
-- [ ] App-level and package-level i18n index files are thin exports, registries, or generated aggregators, not authored monolithic catalogs.
-- [ ] Login, registration, session, validation, and permission-denied states are localized.
-- [ ] No application-specific copy appears in appbase shared modules.
-- [ ] Locale fallback behavior is documented.
+- [ ] Locale resources are split by package, locale, domain, capability, and route/screen/workflow/state fragment.
+- [ ] Language and framework i18n directories follow section 6.1, with platform-native aggregate resources generated or thin only.
+- [ ] App-level and package-level i18n indexes are thin exports, registries, or generated aggregators, not authored monolithic catalogs.
+- [ ] `WebRequestContext` includes framework-resolved locale context for SDKWork HTTP APIs.
+- [ ] Handlers/controllers do not parse locale headers or query parameters directly.
+- [ ] Login, registration, session, validation, permission-denied, backend/admin, and operator-facing states are localized safely.
+- [ ] API errors preserve numeric `ProblemDetail.code` and `traceId`; localized metadata uses `i18nKey` and `locale`.
+- [ ] Generated SDKs support bootstrap-level locale propagation and expose problem localization metadata where returned.
+- [ ] Database seeds split `common` and locale data, record `i18nVersion`, and remain idempotent.
+- [ ] Runtime config and env values contain only locale strategy, manifest URLs, and versions, not message content.
 - [ ] Application-line overrides preserve package-local fragment boundaries.
-- [ ] Duplicate keys and missing keys are covered by static validation or tests.
-- [ ] Text expansion does not break responsive layouts.
-- [ ] Tests cover translation behavior for critical flows.
+- [ ] Duplicate keys, missing required keys, monolithic locale files, and unsafe interpolation are covered by validation or tests.
+- [ ] Text expansion does not break responsive or native layouts.

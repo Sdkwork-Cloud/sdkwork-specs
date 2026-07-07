@@ -32,7 +32,9 @@ iam/registry/iam-registry.config.json
   "roles": {
     "domainStandardRoles": [],
     "roleGrantExtensions": [],
-    "roleExclusions": []
+    "roleExclusions": [],
+    "assignability": [],
+    "bootstrapDefaults": []
   },
   "directory": {
     "organizationTemplates": [],
@@ -91,7 +93,9 @@ Declared only in `iam-kernel`. Other modules must not redefine platform role cod
   "standard": true,
   "assignable": true,
   "bindingPrincipalKind": "organization_membership",
-  "permissionPatterns": ["iot.devices.read", "iot.commands.create"]
+  "permissionPatterns": ["iot.devices.read", "iot.commands.create"],
+  "grantableBy": ["org_admin"],
+  "sensitive": false
 }
 ```
 
@@ -99,6 +103,10 @@ Rules:
 
 - Domain role codes must be namespaced by the owning domain.
 - `permissionPatterns` must expand only to permissions owned by the same module unless an approved cross-domain exception exists.
+- `assignable` must be false for roles that are system-only, seed-only, or platform break-glass.
+- `bindingPrincipalKind` must match the role scope: `tenant_member`, `organization_membership`, `service_account`, or `platform_staff`.
+- `grantableBy` must reference roles or permission codes from the merged catalog; omitted `grantableBy` means no runtime grant API may assign the role.
+- `sensitive = true` requires MFA or recent reauthentication for grant, revoke, and update operations.
 
 ### 3.3 Role grant extensions
 
@@ -113,6 +121,42 @@ Rules:
 
 - `roleCode` must reference a platform standard role or a domain standard role already discovered in the merged catalog.
 - Patterns use the permission wildcard grammar from `PERMISSION_STANDARD_SPEC.md`.
+- Extensions must not grant permissions outside the declaring module's owned domain unless `dependencies.requiresModules` names the owner and governance approves the cross-domain extension.
+
+### 3.4 Assignability And Bootstrap Defaults
+
+Modules may declare role relationship metadata separately when the role entry is owned by another module:
+
+```json
+{
+  "roleCode": "org_operations",
+  "scope": "organization",
+  "assignable": true,
+  "grantableBy": ["org_admin"],
+  "bindingPrincipalKind": "organization_membership",
+  "sensitive": false,
+  "excludes": []
+}
+```
+
+Bootstrap defaults are seed-time bindings, not permanent bypasses:
+
+```json
+{
+  "profile": "dev",
+  "principalRef": "seed:organization.owner",
+  "roleCode": "org_admin",
+  "scopeRef": "seed:organization.root",
+  "allowInProduction": false
+}
+```
+
+Rules:
+
+- `bootstrapDefaults[]` must be idempotent and keyed by stable `principalRef`, `roleCode`, and `scopeRef`.
+- Production bootstrap defaults must be least-privilege and must not create live `platform_super_admin` accounts or static super-admin passwords.
+- Seed profiles must distinguish dev/test demo users from production owner or operator subjects.
+- Bootstrap defaults must not replace runtime role binding authorization; they only initialize known subjects for an environment profile.
 
 ## 4. Component Registration
 
@@ -134,3 +178,6 @@ Rules:
 | R6 | `requiresModules` order must be satisfiable |
 | R7 | Disabled modules are excluded from seed materialization |
 | R8 | OpenAPI permissions must be subset of manifest permissions |
+| R9 | Role assignability metadata must resolve target roles, grantable roles/permissions, binding principal kind, and scope |
+| R10 | Sensitive role operations require MFA/reauth policy and audit event mapping |
+| R11 | Bootstrap defaults must be idempotent, profile-scoped, and must not seed production super-admin credentials |

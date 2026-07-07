@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: release trains, versioning, release candidates, artifacts, signing, SBOM, provenance, changelog, staged rollout, rollback, release evidence
-- Related: `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `QUALITY_GATE_SPEC.md`, `MIGRATION_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
+- Related: `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `QUALITY_GATE_SPEC.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `MIGRATION_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
 This standard defines how SDKWork applications, services, SDKs, and reusable packages become releasable artifacts.
 
@@ -58,6 +58,7 @@ Production release evidence should include:
 - signing evidence where required.
 - SBOM and provenance where required.
 - migration plan and status when relevant.
+- composable architecture closure evidence when the release contains module, dependency SDK, route, permission, frontend package, Rust backend, or resolved composition changes.
 - rollout and rollback plan for each deployment profile and runtime target.
 - release notes and user/operator impact.
 - post-release smoke checks and monitoring signals.
@@ -65,6 +66,8 @@ Production release evidence should include:
 Rules:
 
 - Release notes must not be stale or copied from a mismatched version.
+- Releases for composable applications `MUST` include the applicable `COMPOSABLE_ARCHITECTURE_SPEC.md` closure-matrix evidence required by `QUALITY_GATE_SPEC.md`; skipped rows must be named as not applicable with reason.
+- Required composition evidence includes the applicable outputs from `check-component-port-bindings.mjs`, `check-frontend-composition.mjs`, `check-rust-backend-composition.mjs`, `check-permission-composition.mjs`, `check-route-path-collisions.mjs`, `resolve-composition.mjs --write`, `check-composition-resolver.mjs`, and `verify-repo.mjs`.
 - Release artifacts must not contain secrets, private keys, local env overrides, or user-private runtime state.
 - Release artifacts must not encode retired deployment profile values such as
   `saas`, `private`, `local`, `server`, `container`, or `desktop`; `server`,
@@ -128,6 +131,7 @@ Rules:
 - [ ] Release scope, version, tag, deployment profile, runtime target, and artifacts are known.
 - [ ] Manifest, workflow, config, deployment profiles, runtime targets, and deployment targets are validated.
 - [ ] Tests and quality gate evidence are recorded.
+- [ ] Composable architecture closure evidence is recorded when module, SDK dependency, route, permission, frontend, Rust backend, or resolved composition behavior changed.
 - [ ] Signing, SBOM, and provenance are present when required.
 - [ ] Migration, rollout, rollback, and monitoring plans are present when relevant.
 - [ ] Release notes match the version and artifact set.

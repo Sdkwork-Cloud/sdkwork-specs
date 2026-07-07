@@ -2,9 +2,9 @@
 
 - Version: 1.0
 - Scope: Java Spring HTTP backends, Rust HTTP route crates, standalone/cloud web backend implementations, and backend API implementation boundaries
-- Related: `API_SPEC.md`, `PAGINATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `DOMAIN_SPEC.md`, `RUST_CODE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `COMPONENT_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md`
+- Related: `COMPOSABLE_ARCHITECTURE_SPEC.md`, `API_SPEC.md`, `PAGINATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `I18N_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `DOMAIN_SPEC.md`, `RUST_CODE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `COMPONENT_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork web backends are implemented after the HTTP contract has been designed. `API_SPEC.md` remains the contract source of truth. This file owns implementation layering, naming, handler/service/repository boundaries, route path placement, request context usage, and backend verification expectations.
+This standard defines how SDKWork web backends are implemented after the HTTP contract has been designed. `API_SPEC.md` remains the contract source of truth. `I18N_SPEC.md` owns backend message and locale semantics. This file owns implementation layering, naming, handler/service/repository boundaries, route path placement, request context usage, and backend verification expectations. Cross-stack layer roles and composition closure follow `COMPOSABLE_ARCHITECTURE_SPEC.md`.
 
 Use this file when adding or changing Java controllers, Rust route crates, HTTP handlers, backend services, repositories, transactions, context extraction, or runtime API composition.
 
@@ -40,19 +40,23 @@ Rules:
 | Layer | Responsibility | Must not do |
 | --- | --- | --- |
 | Router/controller registration | Mount HTTP method, path, middleware/interceptor chain, and handler binding | Own business logic, build SDK responses ad hoc, bypass standard context |
-| Handler/controller method | Decode request, consume typed context, call service, map result/error to API contract | Reparse credentials, run SQL directly, assemble raw auth/API key headers, own transactions by habit |
-| Service/use-case | Business rules, authorization decisions, transaction orchestration, idempotency, event/cache coordination | Depend on HTTP framework types, parse raw headers, return framework response objects |
+| Handler/controller method | Decode request, consume typed context, call service, map result/error to API contract | Reparse credentials or locale headers, run SQL directly, assemble raw auth/API key/locale headers, own transactions by habit |
+| Service/use-case | Business rules, authorization decisions, transaction orchestration, idempotency, event/cache coordination, translation-key selection when needed | Depend on HTTP framework types, parse raw headers, return framework response objects, branch on localized strings |
 | Repository | Persistence query/command implementation, schema mapping, optimistic concurrency support | Own business policy, tenant inference, permission checks, HTTP concerns |
 | Provider/client adapter | External provider or internal SDK/RPC integration through approved SDK/client boundary | Hide raw HTTP fallbacks, leak provider DTOs into API schemas |
 | Materialization/generation tooling | Convert route/controller manifests to authority OpenAPI and derived SDK input | Invent operations, change semantics, or include dependency-owned routes |
 
 Rules:
 
+- SDKWork backend layers map to the composable architecture profile:
+  L0 API authority, L1 route/controller adapter, L2 service/use-case, L3 domain/ports,
+  L4 infrastructure adapter, L5 runtime composition, and L6 runtime operations.
 - HTTP handlers and controller methods should be thin adapters. They may validate transport shape, call the service, and map service results to the response contract.
 - Business decisions `MUST` live in service/use-case code that can be tested without an HTTP server.
 - Repositories `MUST` receive tenant, organization, user, and data-scope decisions from service/context inputs. They must not infer authorization by reparsing headers or global request state.
 - External calls `MUST` use generated SDKs, generated RPC clients, or approved provider adapters. Raw HTTP is allowed only inside an explicitly owned low-level provider adapter with tests and security review.
 - A backend implementation `MUST NOT` copy appbase-owned IAM/session/workspace/bootstrap routes. It must consume appbase Rust crates and generated appbase SDKs where those capabilities are dependency-owned.
+- User-facing and operator-facing backend messages `MUST` use stable translation keys or framework message resolution per `I18N_SPEC.md`. Authored backend message resources `MUST` follow the Rust or Java/Spring layouts in `I18N_SPEC.md` section 6.1. Handlers, services, and repositories `MUST NOT` branch on localized strings.
 
 ## 3. Route Path Ownership
 
@@ -87,6 +91,12 @@ Rules:
 - A route path `MUST NOT` be duplicated across Java and Rust implementations
   unless the duplicate is an intentional standalone/cloud parity implementation
   for the same operationId and authority.
+- Implementations `MUST` pass route registry collision validation before release. The normalized collision key is `(surface, method, path)` with `{id}`, `:id`, and `<id>` treated as the same parameter segment.
+- Standard health/readiness paths such as `/app/v3/api/system/health`,
+  `/app/v3/api/system/ready`, `/backend/v3/api/system/health`, and
+  `/backend/v3/api/system/ready` are reserved for the standard health route owner. Business route
+  crates and controllers must use capability-specific paths.
+- Consumer backends `MUST NOT` copy dependency-owned route paths into local controllers or route crates; they must mount the dependency route crate through gateway assembly or use an external dependency SDK/upstream declared by composition.
 
 ## 4. Naming Standard
 
@@ -144,6 +154,7 @@ Rules:
 - Transaction boundaries `MUST` live in service/use-case methods, not controller methods, unless the method is an infrastructure-only health or diagnostics endpoint with no business write.
 - Spring validation annotations may be used only when they match or tighten the OpenAPI schema in documented ways. They must not silently narrow an SDK contract.
 - Problem-detail mapping `MUST` be centralized through framework exception handling or a shared response mapper. Controllers must not hand-build incompatible error envelopes or legacy success envelopes such as `PlusApiResult`, `AppbaseApiResult`, or `StoreApiResult`.
+- Locale and message resolution `MUST` be centralized through `WEB_FRAMEWORK_SPEC.md` locale context and message mapping. Controllers must not parse locale headers, cookies, query parameters, or user-agent language values.
 - Success responses `MUST` map service results to `SdkWorkApiResponse` per `API_SPEC.md` section 15 for SDKWork-owned business operations on `app-api`, `backend-api`, and business `open-api`. Vendor compatibility `open-api` adapter handlers declared with `x-sdkwork-wire-protocol: external` per section 4.5.2 `MAY` return upstream wire instead. Route handlers and controllers `MUST NOT` return bare domain DTOs at the HTTP JSON root or wire field `requestId` for business operations.
 - Protected open-api handlers `MUST` consume framework-resolved API key, OAuth bearer, or flexible open-api context according to the route manifest. They `MUST NOT` parse credential headers directly unless the route is a vendor compatibility API declared under `API_SPEC.md` section 4.5.2.
 - `ResponseEntity<Map<String, Object>>`, raw maps, and untyped JSON nodes are forbidden for SDK-generated operations unless the OpenAPI schema explicitly declares a flexible object.
@@ -163,7 +174,7 @@ Required crate families for Rust HTTP backends:
 | HTTP route/API adapter | `sdkwork-routes-<capability>-<surface>` | paths, routes, handlers, manifest, request/response mapping |
 | Business service/use case | `sdkwork-<domain>-<capability>-service` | business rules, authorization, transactions, idempotency, repository/provider ports |
 | SQL repository implementation | `sdkwork-<domain>-<capability>-repository-sqlx` | SQLx row mapping, SQL queries, tenant/data-scope-safe repository implementation |
-| HTTP API server process | `sdkwork-<application-code>-api-server` | config, state, dependency wiring, route mounting, listener, preflight |
+| Migration-only HTTP API server process | `sdkwork-<application-code>-api-server` | retired listener role; allowed only while migrating to standalone/cloud gateway |
 | In-process service host | `sdkwork-<application-code>-service-host` | service container for standalone/native usage, no HTTP route mounting |
 | Standalone gateway/proxy | `sdkwork-<application-code>-standalone-gateway` | standalone application ingress, upstream routing, route precedence, dependency API surface proxying |
 | Cloud gateway/proxy | `sdkwork-<application-code>-cloud-gateway` | cloud application ingress, upstream routing, route precedence, dependency API surface proxying |
@@ -207,7 +218,7 @@ crates/sdkwork-<domain>-<capability>-repository-sqlx/
   src/error.rs
 ```
 
-Required API server process crate shape:
+Migration-only API server process crate shape:
 
 ```text
 crates/sdkwork-<application-code>-api-server/
@@ -226,24 +237,23 @@ Rules:
 - Route crates own `paths.rs`, `routes.rs`, `handlers.rs`, and `manifest.rs` for one capability and one surface.
 - Route crates `MUST` emit or feed `kind: sdkwork.route.manifest` and must be materialized through `SDK_WORKSPACE_GENERATION_SPEC.md`.
 - Handler functions `MUST` use snake_case names and consume typed extractors/extensions for request context, request body, path parameters, query parameters, and app state.
-- Handler functions `MUST NOT` parse raw headers for credentials, tenant context, user context, organization context, permission scopes, or request identity.
+- Handler functions `MUST NOT` parse raw headers for credentials, tenant context, user context, organization context, permission scopes, request identity, locale, or language.
 - Handler functions `MUST` call service traits or service structs. They must not run SQL directly except in explicitly infrastructure-only diagnostics routes.
 - Service crates define and depend on repository/provider/cache/event ports. They `MUST NOT`
   depend on concrete SQLx repository crates or generated SDKs for the same authority they
   implement.
 - SQL repository implementation crates implement service-defined repository ports and own SQLx
   mapping. They `MUST NOT` own business policy or HTTP context parsing.
-- API server process crates construct DB pools, repositories, services, adapters, and route crates.
-  They `MUST NOT` own business rules, SQL query bodies, or OpenAPI authority.
+- Migration-only API server process crates construct DB pools, repositories, services, adapters, and route crates only until default public ingress moves to a standalone/cloud gateway. They `MUST NOT` own business rules, SQL query bodies, or OpenAPI authority.
 - Rust errors should map through a shared problem-detail conversion boundary. Handlers must not leak `Debug` output from database, provider, or framework errors.
 - Route crates `SHOULD` expose only package-root modules needed for router composition and manifest extraction. Generated SDK consumers and UI packages must not import them.
 - Local/private Rust implementations of appbase-owned behavior `MUST` reuse appbase Rust runtime
   crates. They must not fork appbase IAM/session/context behavior into application route crates.
 - Rust crates `MUST NOT` use generic `product`, `runtime`, `backend`, `core`, `common`, or
   `manager` suffixes for application entrypoints, service aggregation, or backend implementation.
-  Use `api-server`, `service-host`, `native-host`, `worker`, `standalone-gateway`,
+  Use `service-host`, `native-host`, `tauri-host`, `worker`, `standalone-gateway`,
   `cloud-gateway`, or platform `sdkwork-api-cloud-gateway` according to
-  `RUST_CODE_SPEC.md`.
+  `RUST_CODE_SPEC.md`; `api-server` is migration-only.
 
 ### 4.2.1 Gateway Mount Exports (Normative)
 
@@ -252,7 +262,7 @@ Every Rust HTTP route crate that participates in application gateway assembly `M
 | Export | Shape | Responsibility |
 | --- | --- | --- |
 | `gateway_mount_business` | `fn gateway_mount_business(...) -> Router` or `async fn gateway_mount_business(...) -> Router` | Return the surface **business** router with web-framework wrapping; `MUST NOT` mount `/healthz`, `/livez`, `/readyz`, or `/metrics` |
-| `gateway_mount` | `fn gateway_mount(...) -> Router` or `async fn gateway_mount(...) -> Router` | Construct and return the surface router for single-surface listeners (`*-api-server`, tests); `MAY` include infrastructure routes when the surface runs as the sole HTTP plane in the process |
+| `gateway_mount` | `fn gateway_mount(...) -> Router` or `async fn gateway_mount(...) -> Router` | Construct and return the surface router for single-surface tests or migration-only listeners; `MAY` include infrastructure routes when the surface runs as the sole HTTP plane in the process |
 | `gateway_route_manifest` | `fn gateway_route_manifest() -> ...` or `const GATEWAY_ROUTE_MANIFEST: ...` | Expose `kind: sdkwork.route.manifest` metadata for mount ordering and validation |
 
 Rules:
@@ -270,7 +280,7 @@ Rules:
 The following patterns are standards failures:
 
 - A controller or handler owns business rules that cannot be tested without an HTTP server.
-- A handler reparses `Authorization`, `Access-Token`, `X-API-Key`, tenant, organization, user, permission, or request id headers after framework context resolution.
+- A handler reparses `Authorization`, `Access-Token`, `X-API-Key`, tenant, organization, user, permission, request id, locale, or language headers after framework context resolution.
 - A route crate, controller, or backend service depends on the generated SDK for the same API authority it implements.
 - An application backend copies appbase IAM/session/workspace/bootstrap routes into its own authority.
 - A repository applies tenant isolation by reading global HTTP request state.
@@ -280,16 +290,16 @@ The following patterns are standards failures:
 
 ## 4.4 Framework Integration
 
-Any SDKWork web backend, application repository, application module, route crate, API server, gateway, or controller package that owns, serves, develops, proxies, or composes an HTTP `*-api` surface `MUST` follow `WEB_FRAMEWORK_SPEC.md`. Rust HTTP backends `MUST` integrate `sdkwork-web-framework`. Java Spring backends `MUST` preserve equivalent `WebRequestContext` vocabulary, interceptor semantics, route metadata, and problem-detail behavior.
+Any SDKWork web backend, application repository, application module, route crate, migration-only API server, gateway, or controller package that owns, serves, develops, proxies, or composes an HTTP `*-api` surface `MUST` follow `WEB_FRAMEWORK_SPEC.md`. Rust HTTP backends `MUST` integrate `sdkwork-web-framework`. Java Spring backends `MUST` preserve equivalent `WebRequestContext` vocabulary, interceptor semantics, route metadata, and problem-detail behavior.
 
 Rules:
 
 - Route crates `MUST` mount routers through framework helpers such as `with_web_request_context` and `MUST` declare `WebRequestContext` on every handler.
-- API server crates `MUST` assemble the standard 18-stage chain through `sdkwork-web-bootstrap` or an equivalent documented framework bootstrap API.
+- Gateway and migration-only API server crates `MUST` assemble the standard 18-stage chain through `sdkwork-web-bootstrap` or an equivalent documented framework bootstrap API.
 - Infrastructure liveness, readiness, and metrics probes `MUST` follow `HEALTH_CHECK_SPEC.md` and `MUST` be mounted through `sdkwork-web-bootstrap::service_router` or `WebFrameworkBuilder`.
-- Route crates, API servers, gateways, and controller packages `MUST NOT` assemble ad hoc Axum/Tower security stacks, custom credential parsers, local Spring filter frameworks, or parallel request-context types that bypass the framework profile.
-- Business adapters such as appbase IAM `MUST` implement framework extension traits (`WebRequestContextResolver`, `ApiKeyLookupService`, `OAuthTokenLookupService`, `OpenApiCredentialSchemeDetector`, `AuthorizationPolicy`, `TenantIsolationPolicy`, `DomainContextInjector`) instead of exposing a separate HTTP context framework.
-- Handlers `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission scopes, or request IDs from raw headers after framework context resolution.
+- Route crates, migration-only API servers, gateways, and controller packages `MUST NOT` assemble ad hoc Axum/Tower security stacks, custom credential parsers, local Spring filter frameworks, or parallel request-context types that bypass the framework profile.
+- Business adapters such as appbase IAM `MUST` implement framework extension traits (`WebRequestContextResolver`, `ApiKeyLookupService`, `OAuthTokenLookupService`, `OpenApiCredentialSchemeDetector`, `LocaleResolver`, `MessageBundleProvider`, `AuthorizationPolicy`, `TenantIsolationPolicy`, `DomainContextInjector`) instead of exposing a separate HTTP context framework.
+- Handlers `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission scopes, request IDs, locale, or language from raw headers after framework context resolution.
 - Services `MUST` accept `&WebRequestContext` or `TenantAppContext`. Repositories `MUST` receive tenant and data-scope decisions from service/context inputs.
 - Route manifests `MUST` declare `requestContext: WebRequestContext` and `apiSurface` on every route entry. They `SHOULD` use framework contract types such as `HttpRoute` and `RouteAuth` when projecting OpenAPI materialization input.
 - L1 crate APIs, pipeline stage names, extension trait signatures, and capability matrix: `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`.
@@ -301,9 +311,10 @@ Protected backends consume a typed request context produced by the standard fram
 Rules:
 
 - Surface classification, request identity, credential parsing, context resolution, authentication, context injection, and secure response headers `MUST` run before protected handlers.
+- Locale resolution `MUST` run through the framework request context path before handlers use user-facing or operator-facing messages.
 - Protected app-api and backend-api handlers `MUST` consume the standard dual-token context.
 - Protected open-api handlers `MUST` consume framework-resolved API key, OAuth bearer, or flexible open-api context according to the route manifest. They `MUST NOT` parse credential headers directly unless the route is a vendor compatibility API declared under `API_SPEC.md` section 4.5.2.
-- Handlers and services `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission scopes, or request IDs from raw headers.
+- Handlers and services `MUST NOT` parse `Authorization`, `Access-Token`, `X-API-Key`, tenant IDs, organization IDs, user IDs, permission scopes, request IDs, locale, or language from raw headers.
 - The typed request context for authenticated user flows `MUST` carry tenant
   id, organization id, login scope, user id, session id, app id, environment,
   deployment profile, runtime target, auth level, data scope, and permission
@@ -336,6 +347,30 @@ Rules:
 - Idempotent command state, event publication, cache invalidation, and audit writes should be coordinated in the same use-case boundary.
 - Domain events follow `EVENT_SPEC.md`; outbox or equivalent durable publication is required for cross-service effects that must survive process failure.
 - Cache usage follows `CACHE_SPEC.md`; cache keys must include tenant/scope where required and must not replace authorization checks.
+
+### 7.1 Operation Implementation Semantics
+
+Backend implementation `MUST` preserve the API operation pattern declared in `API_SPEC.md` section 15.4.
+
+| Operation | Handler responsibility | Service/use-case responsibility | Repository/adapter responsibility |
+| --- | --- | --- | --- |
+| Retrieve | Decode path id and context | Authorize resource visibility and choose 403/404 hiding behavior | Query by id with tenant/data-scope predicates |
+| List/search | Decode standard query/body before service call | Validate filters, sort, page bounds, and scope | Execute SQL/keyset or maintained-index window per `PAGINATION_SPEC.md` |
+| Create | Decode typed body and idempotency key | Validate invariants, enforce dedupe/idempotency, create audit/event records | Insert with unique constraints and tenant scope |
+| Update | Decode path id, body, and precondition | Enforce optimistic concurrency and business rules in one transaction | Update by id + version/etag predicate; return affected-row conflict signals |
+| Delete | Decode path id only | Decide soft delete, hard delete, archive, cascade, audit, and event semantics | Delete/update tombstone with scoped predicates |
+| Command | Decode action body and idempotency key | Own state transition, idempotency, transaction, audit, events, cache invalidation | Persist transition and side-effect records through explicit ports |
+| Async command | Decode command body and return accept result | Enqueue durable operation and expose status resource | Persist operation record, outbox/job row, or queue cursor |
+| Bulk command | Decode bounded item array | Enforce all-or-nothing or item-partial semantics and item-level results | Use bounded batch SQL/ports; never unbounded collect or per-item hidden HTTP loops |
+
+Rules:
+
+- Controllers and handlers `MUST NOT` implement create/update/delete/command business rules inline. They call a service/use-case and map its typed result through framework response helpers.
+- Create/update/delete/command services `MUST` define transaction boundaries explicitly. Side effects that must survive process failure use outbox, durable jobs, or provider-adapter records, not best-effort after-response callbacks.
+- Idempotency lookup and write `MUST` happen before irreversible side effects and in the same use-case boundary as the business mutation when the operation declares `Idempotency-Key`.
+- Optimistic concurrency failures from affected-row count, ETag mismatch, or version mismatch `MUST` map to `41201 PRECONDITION_FAILED` or `40901 CONFLICT` according to `API_SPEC.md` section 17.
+- Delete handlers `MUST NOT` accept JSON bodies. If user-provided reason or policy is required, expose a command route instead of overloading `DELETE`.
+- Bulk implementations `MUST` bound item count before repository access and `MUST` return typed item results when partial success is allowed.
 
 ## 8. SDK And Dependency Boundaries
 
@@ -375,7 +410,7 @@ Rules:
   `sdkwork-iam-app-api` is valid only when it resolves before the proxy/router starts.
 - Embedded or same-process runtimes `MUST` import the dependency-owned executable router,
   controller, handler adapter, or service builder through a public component export. Starting the
-  application API server, Tauri dev command, or local workspace command does not prove dependency API
+  application gateway, migration-only API server, Tauri dev command, or local workspace command does not prove dependency API
   availability unless that executable dependency export is mounted and covered.
 - Backend startup or preflight checks `MUST` fail before serving traffic when a configured
   dependency API export requires a same-origin dependency surface but the executable mount or
@@ -407,13 +442,17 @@ Every web backend change should verify the relevant subset:
 
 - Route/controller paths match `API_SPEC.md` prefixes and surface rules.
 - Rust route manifests pass `API_SPEC.md` and `SDK_WORKSPACE_GENERATION_SPEC.md` validation when Rust routes are touched.
+- `node ../sdkwork-specs/tools/check-rust-backend-composition.mjs --root .` passes when Rust service, repository, route, runtime, or gateway Cargo dependencies are touched.
+- `node ../sdkwork-specs/tools/check-component-port-bindings.mjs --root .` passes when backend components expose runtime entrypoints or dependency API surfaces.
+- `node ../sdkwork-specs/tools/check-route-path-collisions.mjs --root .` passes when route manifests or OpenAPI authorities are present.
 - Authority OpenAPI materializes deterministically and contains only owner operations before SDK generation.
 - Generated SDKs compile and expose the expected resource-style methods.
 - Handler/controller tests cover request decoding, typed context consumption, problem-detail mapping, and forbidden raw header parsing.
 - Service tests cover business rules, authorization decisions, tenant/data-scope behavior, idempotency, and transaction behavior without starting an HTTP server.
 - Repository tests cover tenant predicates, indexes/query shape where relevant, optimistic concurrency, and migration compatibility.
 - Security tests cover missing/invalid credentials, insufficient permission, wrong tenant, and absence of app login token fallback for protected open-api across `api-key`, `oauth`, and `open-api-flexible` modes.
-- Static scans fail on UI/service imports of route crates, generated SDK output edits, raw HTTP fallback, manual auth/API key headers, and handler-level credential reparsing.
+- Static scans fail on UI/service imports of route crates, generated SDK output edits, raw HTTP fallback, manual auth/API key/locale headers, and handler-level credential or locale reparsing.
+- Static i18n scans fail when Rust backend message resources are authored outside `resources/i18n/<locale>/<domain>/<capability>/`, Java/Spring backend message resources are authored outside `src/main/resources/i18n/<locale>/<domain>/<capability>/`, or framework message bundles become backend-wide monoliths.
 - Dependency API surface tests compare `sdkDependencies` with `dependencyApiSurfaces`, fail when a
   same-origin dependency has no verified executable router/controller coverage, and fail when an
   external dependency SDK can silently fall back to application-owned app/backend base URLs.
@@ -437,7 +476,8 @@ Every web backend change should verify the relevant subset:
 - [ ] SDK generation uses the canonical SDKWork generator and generated output remains untouched.
 - [ ] Every HTTP `*-api` runtime or module follows `WEB_FRAMEWORK_SPEC.md`; Rust HTTP runtimes integrate `sdkwork-web-framework`.
 - [ ] Route manifests declare `requestContext: WebRequestContext` and `apiSurface` for every operation, and materialized OpenAPI preserves the corresponding extensions.
-- [ ] Handlers consume typed `WebRequestContext` and do not parse raw credentials, request IDs, tenant IDs, or user IDs.
+- [ ] Handlers consume typed `WebRequestContext` and do not parse raw credentials, request IDs, tenant IDs, user IDs, locale, or language.
+- [ ] User-facing and operator-facing backend messages use `I18N_SPEC.md` translation keys or framework message resolution, not handler-local hard-coded display text.
 - [ ] Authenticated typed context includes tenant, organization, login scope,
   user, session, app, environment, deployment profile, runtime target, auth
   level, data scope, and permission scope from verified token/session context,
@@ -461,6 +501,8 @@ List/search handlers, services, and repositories `MUST` follow `PAGINATION_SPEC.
 Rules:
 
 - handlers `MUST` translate `page`/`page_size` or `cursor`/`page_size` into repository or maintained-index window parameters before any unbounded read;
+- handlers and shared query parsers `MUST NOT` accept `pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`, or equivalent compatibility aliases for SDKWork-owned list/search APIs. New and pre-launch applications `MUST` reject those aliases with `40003 INVALID_PARAMETER`;
+- handlers `MUST` reject requests that combine `page` and `cursor` before service or repository code runs;
 - repositories `MUST` use SQL `LIMIT`/keyset predicates or incrementally maintained sorted indexes for projection stores;
 - services `MUST NOT` call unbounded `find_all`/`list_all` helpers and then `skip`/`take`/`slice` results in process memory;
 - Rust services `SHOULD` reuse `sdkwork-utils-rust::http_api` offset/cursor helpers only on already index-backed iterators, not as a substitute for SQL pagination on persisted tables;

@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: project-level HTTP/OpenAPI `sdks/` workspace layout, SDK family directory placement, OpenAPI 3.x authority documents, derived generator inputs, generated output boundaries, backend API SDK generation workflow
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `COMPONENT_SPEC.md`, `DOMAIN_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `BACKEND_UI_SPEC.md`, `FRONTEND_SPEC.md`, `CONFIG_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_SPEC.md`, `SDK_PACKAGE_NAMING_SPEC.md`, `SDK_MANIFEST_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `COMPONENT_SPEC.md`, `DOMAIN_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `BACKEND_UI_SPEC.md`, `FRONTEND_SPEC.md`, `CONFIG_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
 This detail standard implements the HTTP/OpenAPI SDK workspace and OpenAPI generation parts of `SDK_SPEC.md`. It defines how an application keeps HTTP SDK generation work in the `sdks/` directory under its application root while preserving one common SDKWork architecture. RPC SDK family layout, proto inputs, RPC manifests, and generated RPC output placement are governed by `RPC_SDK_WORKSPACE_SPEC.md`. The application root may live in any repository or product directory; this standard does not assume any fixed parent directory structure. It is intentionally independent of Craw Chat, IM, Java, Rust, React, Flutter, Tauri, standalone/cloud deployment profiles, deployment ownership, or runtime targets.
 
@@ -31,7 +31,7 @@ Rules:
 - Generated SDK output `MUST NOT` be hand-edited. Fix the runtime API, OpenAPI authority, generator profile, or composed facade, then regenerate.
 - Generated HTTP SDK output `MUST` retain the `sdkgen` control plane: `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and the regeneration-safe `custom/` root.
 - Generated output `.sdkwork/` directories are generator-owned. They `MUST NOT` contain repository/application skills, plugins, root workspace manifests, local caches, runtime databases, logs, or secrets.
-- Generated HTTP SDK files under `generated/server-openapi` `MUST` remain canonical `sdkgen` output. SDK ownership and dependency standard fields such as `sdkOwner`, `apiAuthority`, `sdkFamily`, `generationInputSpec`, `sdkDependencies`, `dependencyApiExports`, `dependencyApiSurfaces`, `ownerOnlyOperationCount`, `standardProfile`, and `standardVersion` belong in `.sdkwork-assembly.json`, optional SDK-family `sdk-manifest.json`, `specs/component.spec.json`, or approved wrapper/composed package metadata outside `generated/server-openapi`; they `MUST NOT` be synced into generated `sdkwork-sdk.json`, generated `package.json`, generated `sdk-manifest.json`, generator `.sdkwork/*` reports, or generated source `sdkMetadata`.
+- Generated HTTP SDK files under `generated/server-openapi` `MUST` remain canonical `sdkgen` output. SDK ownership and dependency standard fields such as `sdkOwner`, `apiAuthority`, `sdkFamily`, `generationInputSpec`, `sdkDependencies`, `dependencyApiExports`, `dependencyApiSurfaces`, `ownerOnlyOperationCount`, `standardProfile`, and `standardVersion` belong in family-root `sdk-manifest.json`, `specs/component.spec.json`, a repo-level `sdks/.sdkwork-assembly.json` generation registry that does not duplicate per-family fields, or approved wrapper/composed package metadata outside `generated/server-openapi`; they `MUST NOT` be synced into generated `sdkwork-sdk.json`, generated `package.json`, generated `sdk-manifest.json`, generator `.sdkwork/*` reports, or generated source `sdkMetadata`.
 - Handwritten extensions belong only in generated `custom/` roots or approved `composed/` facades outside generated ownership.
 - SDK family wrapper scripts `MUST` fail fast when the canonical generator is missing. Stub generators are allowed only as isolated tooling fixtures, not as official SDK family output producers.
 - SDK family wrapper scripts, READMEs, manifests, and CI jobs `MUST` identify the generator as `@sdkwork/sdk-generator` / `sdkgen` and record the canonical path or resolved package location plus the generator version or commit.
@@ -43,8 +43,8 @@ Rules:
   dependencies, reusable appbase modules, provider repos, or other applications are declared as
   `sdkDependencies` and consumed as dependency SDKs, not copied into the consuming SDK authority.
 - Any SDK family directory containing `openapi/*.sdkgen.json`, `openapi/*.sdkgen.yaml`, or
-  `openapi/*.sdkgen.yml` `MUST` declare `.sdkwork-assembly.json` in the same family root. A
-  generated SDK family without assembly metadata is not a valid SDKWork family and must fail global
+  `openapi/*.sdkgen.yml` `MUST` declare `sdk-manifest.json` in the same family root. A
+  generated SDK family without family manifest metadata is not a valid SDKWork family and must fail global
   ownership checks.
 - `apis/` `MUST NOT` contain SDK family directories, generated language workspaces, `generated/server-openapi`, or generated SDK control-plane `.sdkwork/` files.
 
@@ -154,9 +154,11 @@ Rules:
 - Support directories such as `_shared/` and `test/` may exist under `sdks/` when they serve multiple SDK families.
 - Generated language output belongs below the owning SDK family. Do not place generated SDK packages at random application roots.
 - The family root is the ownership boundary. `openapi/`, generated language workspaces,
-  `specs/component.spec.json`, optional family-root `sdk-manifest.json`, and `.sdkwork-assembly.json`
+  family-root `sdk-manifest.json`, and `specs/component.spec.json`
   belong under that same family root. Ownership and dependency metadata must not be moved into
-  generated transport output to make discovery work.
+  generated transport output to make discovery work. A repo-level `sdks/.sdkwork-assembly.json`
+  generation registry may orchestrate multiple families, but it must not duplicate per-family
+  manifest fields.
 - Rust route crates are source inputs to authority materialization. They `MUST NOT` be placed inside
   generated SDK family directories, and generated SDK code `MUST NOT` import route crate internals.
 - Normalized route manifest artifacts, when produced for materialization or CI, belong under
@@ -328,17 +330,20 @@ Rules:
 - Derived generator inputs `MUST` be reproducible from the authority document and materialization script.
 - Derived generator inputs `MUST NOT` introduce operations, schemas, security, or paths that are absent from the authority document.
 - Generator-specific normalization, language quirks, and Flutter-specific adjustments belong in derived inputs, not runtime API code.
-- Authority and derived inputs `MUST` preserve operationId, tag, path, schema, security, problem-detail semantics, `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and `x-sdkwork-rate-limit-tier`.
+- Authority and derived inputs `MUST` preserve operationId, tag, path, schema, security, problem-detail semantics, `x-sdkwork-request-context`, `x-sdkwork-api-surface`, `x-sdkwork-rate-limit-tier`, `x-sdkwork-wire-protocol`, and `x-sdkwork-external-protocol-id`.
 - OpenAPI documents for app-api and backend-api `MUST` use dual-token security where required by `API_SPEC.md` and `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - Public SDK-generated operations `MUST` preserve `security: []` and the declared `x-sdkwork-auth-mode` into every derived `*.sdkgen.*` input so SDK credential injection can apply the correct transport mode (`anonymous`, `refresh-token`, or `credential-entry-bootstrap`).
 - Login-like credential-entry operations backed by `HttpRoute::credential_entry_public` `MUST` preserve `x-sdkwork-auth-mode: credential-entry-bootstrap` and `x-sdkwork-forbid-credential-headers: true` into every derived `*.sdkgen.*` input, and runtime verification must prove the corresponding route rejects inbound session credential/context headers while still requiring bootstrap `Access-Token` JWT.
 - OpenAPI documents `MUST NOT` expose `X-Request-Id`, wire field `requestId`, generated `xRequestId` parameters, or other client-supplied correlation IDs for app/backend SDKs. Correlation uses server-owned `traceId` only per `API_SPEC.md` §15–§17.
 - Authority OpenAPI `MUST` declare shared `SdkWorkApiResponse`, `SdkWorkPlatformErrorCode`, `SdkWorkListQuery`, `ProblemDetail`, `PageInfo`, and helper payloads through `$ref` to `../sdkwork-specs/templates/openapi/components/` or an equivalent inlined copy that preserves required fields.
 - Success operation responses for L2+ `app-api`, `backend-api`, and SDKWork-owned `open-api` `MUST` use `SdkWorkApiResponse` with required `code`, `data`, and `traceId`. Legacy envelopes such as `PlusApiResult`, `AppbaseApiResult`, bare domain DTO roots, and top-level `{ items, pageInfo, traceId }` without `data` are forbidden.
-- SDKWork-owned business open-api request bodies, list/search input, and command input `MUST` follow `API_SPEC.md` section 14 and section 14.1 the same way as app-api and backend-api. Vendor compatibility open-api operations declared with `x-sdkwork-wire-protocol: external` per section 4.5.2 are exempt from section 14 and section 15 wire rules.
+- Authority OpenAPI and derived `*.sdkgen.*` inputs `MUST` preserve `API_SPEC.md` section 15.4 operation patterns: create `201`, update `200`, delete `204` without JSON body, async `202`, and `bulk<Action>` typed results.
+- SDKWork-owned custom API is the default: omitted `x-sdkwork-wire-protocol` means `sdkwork-v3` and `MUST` follow SDKWork v3 request, response, error, and pagination rules.
+- SDKWork-owned business open-api request bodies, list/search input, and command input `MUST` follow `API_SPEC.md` section 14 and section 14.1 the same way as app-api and backend-api. Vendor compatibility open-api operations declared with operation-level `x-sdkwork-wire-protocol: external` plus `x-sdkwork-external-protocol-id` per section 4.5.2 are exempt from section 14 and section 15 wire rules.
 - Error responses `MUST` use RFC 9457 `application/problem+json` with `ProblemDetail` including required machine-readable `code` and `traceId`.
 - SDK generation for L2+ surfaces `MUST` use `--standard-profile sdkwork-v3` so generated clients unwrap `SdkWorkApiResponse.data` by default and expose `.raw` for full envelope access per `SDK_SPEC.md` §4.2.
 - Authority OpenAPI and derived `*.sdkgen.*` inputs `MUST NOT` expose current-tenant selectors named `tenant_id`, `tenantId`, `tenant`, `tenant-id`, `X-Tenant-Id`, or equivalent in path, query, header, cookie, or client-writable request bodies. Tenant context is resolved by dual-token, API-key, or typed request-context infrastructure.
+- List/search operations in authority OpenAPI and derived `*.sdkgen.*` inputs `MUST` follow `PAGINATION_SPEC.md`: HTTP GET page-size wire name is `page_size`, forbidden query aliases (`pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`) are absent, `page_size.maximum` is `200` or lower, list outputs include `PageInfo.mode`, and generated transport serializes language-level `pageSize` options as `page_size`.
 
 ## 4.1 Dependency Authority Exclusion
 
@@ -354,10 +359,10 @@ Rules:
   `*.sdkgen.*` input before generation. Normalization must compare path templates with parameter
   names canonicalized, for example `{userId}` and `{id}` both compare as `{}`. If ownership differs
   per method, the comparison must include HTTP method.
-- The consuming authority `info.description`, README, `.sdkwork-assembly.json`, and component spec
+- The consuming authority `info.description`, README, family-root `sdk-manifest.json`, and component spec
   should state that the authority is owner-only and that dependency capabilities are consumed
   through `sdkDependencies`.
-- Dependency SDKs are declared in the consuming SDK family's generation config, `.sdkwork-assembly.json`,
+- Dependency SDKs are declared in the consuming SDK family's generation config, family-root `sdk-manifest.json`,
   and family-root `specs/component.spec.json` with matching `sdkDependencies` arrays.
 - Independent application roots under `apps/` that include Rust services, Tauri hosts,
   native/Tauri host crates, route crates, repository crates, service crates, or worker crates `MUST`
@@ -371,21 +376,21 @@ Rules:
   bootstrap, token/session validation, and standalone route behavior.
 - Every authored SDK family `MUST` have `specs/component.spec.json` at the family root. Its
   `contracts.sdkDependencies` field `MUST` be present as an explicit array and `MUST` mirror the
-  union of top-level `.sdkwork-assembly.json sdkDependencies` plus per-surface `sdkDependencies`.
+  union of family-root `sdk-manifest.json` `sdkDependencies` plus generation-config SDK dependencies.
   SDK families with no dependencies `MUST` declare `contracts.sdkDependencies: []`.
 - Dependency SDK families themselves `MUST` be discoverable by the same standards checker as
   consuming SDK families. For example, `sdkwork-iam/sdks/sdkwork-iam-app-sdk` and
-  `sdkwork-iam/sdks/sdkwork-iam-backend-sdk` declare their own assembly metadata and
+  `sdkwork-iam/sdks/sdkwork-iam-backend-sdk` declare their own family manifest metadata and
   operation ownership; applications only reference them through `sdkDependencies`.
 - Any committed or materialized `generated/server-openapi` output `MUST` belong to a discoverable
-  SDK family with `.sdkwork-assembly.json`. Existing generated output without assembly metadata is
-  not grandfathered; add the family assembly or remove the stale generated output before it can pass
+  SDK family with family-root `sdk-manifest.json`. Existing generated output without family manifest metadata is
+  not grandfathered; add the family manifest or remove the stale generated output before it can pass
   the global SDK ownership check.
 - Each dependency declaration `MUST` include `workspace`, `role`, `required: true`,
   `dependencyMode: "consumer-sdk"`, exact `apiPrefix` or `null` for non-HTTP SDKs,
   `generatedTransportImportPolicy: "forbidden"`, and supported language package names.
 - `sdkDependencies[].workspace` `MUST` be unique within each dependency list in generation config,
-  `.sdkwork-assembly.json`, per-surface declarations, family-root `sdk-manifest.json`, and
+  family-root `sdk-manifest.json`, per-surface declarations, and
   `specs/component.spec.json`. Duplicate references to the same dependency SDK family are a standards
   failure; merge the package-language metadata into one dependency entry instead.
 - Each dependency declaration's `workspace` `MUST` resolve to exactly one SDK family discovered by
@@ -433,8 +438,8 @@ Rules:
 
 - Every authored SDK family, authored composed facade, and application core package that depends on
   dependency SDK families `MUST` declare `dependencyApiExports` explicitly in the same ownership
-  metadata layer that declares `sdkDependencies`: `.sdkwork-assembly.json`, family-root
-  `sdk-manifest.json` when present, and `specs/component.spec.json` under `contracts`.
+  metadata layer that declares `sdkDependencies`: family-root `sdk-manifest.json` and
+  `specs/component.spec.json` under `contracts`.
 - `dependencyApiExports` defaults to an empty array. `dependencyApiExports: []` means dependency
   API capabilities are not re-exported by the current SDK family, component, or facade.
 - `dependencyApiExports` entries `MUST NOT` be written into authority OpenAPI documents, derived
@@ -575,8 +580,8 @@ Rules:
 - Composed code must import generated transport through package root entrypoints, not private generated source paths.
 - Generator package, canonical path or resolved package location, generator version or commit, commands, input spec paths, output paths, package names, SDK type, language targets, profile, and wrapper name when present `MUST` be captured in a manifest or README.
 - SDK family ownership/dependency manifests `MUST` be generated or checked outside `generated/server-openapi`. Do not make generation idempotency depend on post-processing generated `sdkwork-sdk.json`, generated `package.json`, generated `sdk-manifest.json`, `.sdkwork/sdkwork-generator-manifest.json`, or generated source files with ownership standard fields. Runtime operation maps or composed metadata belong in `composed/` outside generated output.
-- If a family-root `sdk-manifest.json` is present, generation or materialization tooling `MUST`
-  keep it synchronized with `.sdkwork-assembly.json` and family-root `specs/component.spec.json`.
+- Family-root `sdk-manifest.json` is required for SDK family ownership metadata. Generation or materialization tooling `MUST`
+  keep it synchronized with generation config and family-root `specs/component.spec.json`.
   It must mirror `sdkOwner`, `apiAuthority`, `sdkFamily`/`sdkName`, `generationInputSpec`, and an
   explicit `sdkDependencies` array. Empty dependencies are represented as `sdkDependencies: []`.
   Authored composed facades or application core packages that use the family manifest `MUST` also
@@ -637,7 +642,7 @@ Rules:
 
 Every SDK family change should verify the relevant subset:
 
-- OpenAPI validates under `API_SPEC.md`, including section 4.5 business open-api input/output parity, `SdkWorkApiResponse` success envelopes, and `ProblemDetail` errors for L2+ surfaces (`node ../sdkwork-specs/tools/check-api-response-envelope.mjs --root .` or `--workspace ..`).
+- OpenAPI validates under `API_SPEC.md`, including section 4.5 business open-api input/output parity, section 15.4 operation patterns, `SdkWorkApiResponse` success envelopes, and `ProblemDetail` errors for L2+ surfaces (`node ../sdkwork-specs/tools/check-api-operation-patterns.mjs --root .` or `--workspace ..`; `node ../sdkwork-specs/tools/check-api-response-envelope.mjs --root .` or `--workspace ..`).
 - When `apis/` is present, authored API contract sources trace to the materialized authority OpenAPI
   under the owning SDK family in `sdks/`.
 - `apis/` contains no generated SDK transport output, SDK family directories, or generated SDK
@@ -668,17 +673,21 @@ Every SDK family change should verify the relevant subset:
   present.
 - Derived `*.sdkgen.*` inputs preserve `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and
   `x-sdkwork-rate-limit-tier` from the authority OpenAPI.
+- Route manifest to authority materialization and authority to `*.sdkgen.*` derivation `MUST`
+  preserve operation-level `x-sdkwork-wire-protocol` and `x-sdkwork-external-protocol-id`.
+  Missing wire protocol remains `sdkwork-v3`; materializers `MUST NOT` infer third-party
+  compatibility from path prefixes alone.
 - Materialization script excludes dependency-owned authority routes from consuming SDK inputs.
 - Materialization script rejects authority or derived inputs that would generate `tenant_id` or `tenantId` current-tenant SDK inputs.
-- `sdkDependencies` in generation config, `.sdkwork-assembly.json`, and family-root
+- `sdkDependencies` in generation config, family-root `sdk-manifest.json`, and family-root
   `specs/component.spec.json` match exactly. Families with no dependencies still declare
   `contracts.sdkDependencies: []`.
-- `dependencyApiExports` in generation config, `.sdkwork-assembly.json`, family-root
-  `sdk-manifest.json` when present, and `specs/component.spec.json` match where authored facades or
+- `dependencyApiExports` in generation config, family-root
+  `sdk-manifest.json`, and `specs/component.spec.json` match where authored facades or
   application core packages re-export dependency capability. Families and facades with no
   dependency API exports still declare `dependencyApiExports: []`.
-- Family-root `sdk-manifest.json`, when present, mirrors `.sdkwork-assembly.json` for owner,
-  authority, SDK family/name, generation input, and `sdkDependencies`.
+- Family-root `sdk-manifest.json` declares owner, authority, SDK family/name, generation input,
+  and `sdkDependencies`, and matches generation config plus family-root `specs/component.spec.json`.
 - Generated transport contains no dependency-owned routes, operationIds, DTOs, API classes,
   language package names, stale docs, stale dist bundles, or generated model indexes.
 - Enabling `dependencyApiExports` does not change generated application-owned SDK methods, schemas,
@@ -711,8 +720,10 @@ node .\sdks\sdkwork-<domain>-backend-sdk\bin\verify-sdk.mjs
   trace to the materialized SDK family authority OpenAPI when SDK generation is required.
 - [ ] `<application-root>/.sdkwork/skills/` and `<application-root>/.sdkwork/plugins/` exist and follow `SDKWORK_WORKSPACE_SPEC.md`.
 - [ ] HTTP SDK generation uses the canonical `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`.
-- [ ] Authority OpenAPI declares `SdkWorkApiResponse` success schemas, section 14 list/search input for business open-api operations, and `ProblemDetail` errors; wire field `requestId` is absent.
-- [ ] Vendor compatibility open-api operations, when present, declare `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id`; they do not mix upstream wire with `SdkWorkApiResponse` on the same operation.
+- [ ] Authority OpenAPI declares section 15.4 operation patterns, `SdkWorkApiResponse` success schemas, section 14 list/search input for business open-api operations, and `ProblemDetail` errors; wire field `requestId` is absent.
+- [ ] Authority OpenAPI, derived `sdkgen` inputs, and generated transport pass `node <sdkwork-specs>/tools/check-pagination.mjs --workspace <workspace-root>` for canonical `page_size`, `PageInfo.mode`, and forbidden alias checks.
+- [ ] Omitted `x-sdkwork-wire-protocol` is treated as SDKWork-owned custom API (`sdkwork-v3`) in authority OpenAPI, derived `sdkgen` inputs, generated SDKs, and runtime mapping.
+- [ ] Vendor compatibility open-api operations, when present, declare operation-level `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id`; they do not mix upstream wire with `SdkWorkApiResponse` on the same operation.
 - [ ] L2+ SDK generation uses `--standard-profile sdkwork-v3` and frontend/backend consumers use generated unwrap behavior instead of local envelope parsers.
 - [ ] Generated HTTP/OpenAPI output retains `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and `custom/`.
 - [ ] Generated control-plane and source metadata stays canonical: `sdkwork-sdk.json`, generated package manifests, generated `sdk-manifest.json` when present, and generated source files do not contain owner/dependency overlay fields.
@@ -726,13 +737,13 @@ node .\sdks\sdkwork-<domain>-backend-sdk\bin\verify-sdk.mjs
 - [ ] No `sdks/sdkwork-<domain>-open-api`, `sdks/sdkwork-<domain>-app-api`, `sdks/sdkwork-<domain>-backend-api`, `sdks/<domain>-open-sdk`, `sdks/<domain>-app-sdk`, or `sdks/<domain>-backend-sdk` directory exists.
 - [ ] Generated SDK metadata, manifests, package names, language workspace names, and generator arguments use the SDK family name and do not use API authority names as SDK names.
 - [ ] Family README declares SDK family, API authority name, API prefix, audience, generated languages, and verification commands.
-- [ ] Every SDK family root containing `openapi/*.sdkgen.{json,yaml,yml}` declares `.sdkwork-assembly.json`; no SDK family is invisible to global ownership checks.
-- [ ] Every SDK family root containing `generated/server-openapi` output declares `.sdkwork-assembly.json`; stale or legacy generated output is not invisible to global ownership checks.
+- [ ] Every SDK family root containing `openapi/*.sdkgen.{json,yaml,yml}` declares family-root `sdk-manifest.json`; no SDK family is invisible to global ownership checks.
+- [ ] Every SDK family root containing `generated/server-openapi` output declares family-root `sdk-manifest.json`; stale or legacy generated output is not invisible to global ownership checks.
 - [ ] `specs/component.spec.json` exists for every authored SDK family.
 - [ ] Every SDK family `specs/component.spec.json` declares `contracts.sdkDependencies` explicitly,
   including `[]` for no dependencies.
-- [ ] Every family-root `sdk-manifest.json`, when present, declares explicit `sdkDependencies` and
-  matches `.sdkwork-assembly.json` for owner, authority, SDK family/name, and generation input.
+- [ ] Every family-root `sdk-manifest.json` declares explicit `sdkDependencies` and
+  matches generation config plus `specs/component.spec.json` for owner, authority, SDK family/name, and generation input.
 - [ ] Authority OpenAPI and derived `sdkgen` inputs are separated.
 - [ ] Route crate manifests, when present, aggregate into authority OpenAPI by matching owner,
   domain, surface, API authority, SDK family, and prefix.
@@ -743,9 +754,9 @@ node .\sdks\sdkwork-<domain>-backend-sdk\bin\verify-sdk.mjs
 - [ ] Authority OpenAPI and derived `sdkgen` inputs contain only owner application/repository API
   routes; dependency authorities are subtracted before generation.
 - [ ] Dependency SDKs are recorded in matching `sdkDependencies` entries across generation config,
-  `.sdkwork-assembly.json`, and family-root `specs/component.spec.json`.
+  family-root `sdk-manifest.json`, and family-root `specs/component.spec.json`.
 - [ ] Dependency API export policy is recorded in matching `dependencyApiExports` entries across
-  generation config, `.sdkwork-assembly.json`, family-root `sdk-manifest.json` when present, and
+  generation config, family-root `sdk-manifest.json`, and
   family-root `specs/component.spec.json`; use `[]` when no dependency capability is re-exported.
 - [ ] Every `dependencyApiExports` entry references a declared dependency SDK family, uses an
   approved export mode, and points only to authored composed/application/service-port/documentation

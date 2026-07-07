@@ -8,10 +8,10 @@ This standard is the normative entrypoint for SDKWork gateway naming and structu
 
 ## 1. Design Principles
 
-1. **One role, one name.** A gateway process must be identifiable from its crate name alone. Bare `sdkwork-<application-code>-gateway` and bare `sdkwork-api-cloud-gateway` (without the explicit `api-cloud-gateway` role) are retired because they hide the deployment profile and confuse application ingress with platform ingress.
+1. **One role, one name.** A gateway process must be identifiable from its crate name alone. Bare `sdkwork-<application-code>-gateway` is retired because it hides the deployment profile. The platform gateway name `sdkwork-api-cloud-gateway` is canonical only for the explicit `platform.api-gateway` / `api-cloud-gateway` role.
 2. **Deployment profile is part of identity.** `standalone` and `cloud` are not feature flags, binary aliases, or runtime toggles inside one gateway crate. They are separate crate families when distinct ingress processes exist for that profile.
 3. **One symmetric formula.** Every gateway crate uses `sdkwork-<scope>-<deploymentProfile>-gateway`. Application scope is `<application-code>`; platform scope is `api`.
-4. **Plane before product.** Platform connectivity uses `sdkwork-api-cloud-gateway` on `platform.api-gateway`. Application connectivity uses `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` on `application.public-ingress`.
+4. **Plane before application.** Platform connectivity uses `sdkwork-api-cloud-gateway` on `platform.api-gateway`. Application connectivity uses `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` on `application.public-ingress`.
 5. **High cohesion, low coupling.** Each gateway crate owns ingress composition for one scope and one deployment profile. Route crates, domain services, repository crates, and internal capability processes remain separate crates and must not be folded into a catch-all gateway crate.
 6. **Speak in full words.** Reviews, scripts, topology docs, and component manifests must say `standalone-gateway`, `cloud-gateway`, or `api-cloud-gateway`; never "the gateway" without naming scope, plane, and deployment profile.
 
@@ -30,7 +30,7 @@ Rules:
 
 - Application gateway crates `MUST` use `<application-code>` as the scope token.
 - Platform gateway crates `MUST` use scope token `api` and deployment qualifier `cloud`.
-- Bare `sdkwork-api-cloud-gateway` and bare `sdkwork-<application-code>-gateway` are retired.
+- Bare `sdkwork-<application-code>-gateway` is retired. Platform gateway crates use the canonical `sdkwork-api-cloud-gateway` name.
 - Standalone platform gateway crates `MUST NOT` be introduced. Standalone deployments embed an approved platform adapter inside `sdkwork-<application-code>-standalone-gateway` or consume documented standalone topology adapters instead of inventing `sdkwork-api-standalone-gateway`.
 
 ## 3. Gateway Role Taxonomy
@@ -83,15 +83,13 @@ Binary `sdkwork-api-cloud-gateway` ships from the `sdkwork-api-cloud-gateway` cr
 
 Binary names, systemd units, container entrypoints, and release artifact process ids `MUST` match the canonical crate name unless a documented platform packaging exception exists in `RELEASE_SPEC.md`.
 
-Retired repository directory name: `sdkwork-api-cloud-gateway`. New work and migrations `SHOULD` use `sdkwork-api-cloud-gateway` as the repository root name.
+Repository directory name: `sdkwork-api-cloud-gateway`. New work and migrations `SHOULD` use `sdkwork-api-cloud-gateway` as the repository root name.
 
 ### 4.3 Retired Names
 
 | Retired | Replacement | Notes |
 | --- | --- | --- |
-| bare `sdkwork-api-cloud-gateway` crate name | `sdkwork-api-cloud-gateway` as the platform `api-cloud-gateway` role | forbid using the crate name without the `api-cloud-gateway` role and topology context |
-| `sdkwork-api-cloud-gateway-*` support crates | `sdkwork-api-cloud-gateway-*` | config, registry, observability |
-| `sdkwork-api-cloud-gateway` repository directory | `sdkwork-api-cloud-gateway` | platform gateway product repository |
+| `sdkwork-api-cloud-gateway-api-server` | `sdkwork-api-cloud-gateway` | retired listener crate folds into the platform gateway crate |
 | `sdkwork-<application-code>-gateway` | `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` | bare application gateway |
 | `sdkwork-im-cloud-gateway` | `sdkwork-im-cloud-gateway` | IM cloud split ingress |
 | `sdkwork-clawrouter-cloud-gateway` | `sdkwork-clawrouter-cloud-gateway` | claw-router cloud ingress |
@@ -129,7 +127,7 @@ Use `sdkwork-api-cloud-gateway` when the repository owns the shared SDKWork plat
 - serves IAM, Drive, Notary, and other approved platform HTTP surfaces;
 - is consumed by cloud application gateways and cloud client bootstrap through `SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL` or equivalent topology env keys.
 
-Platform gateway crates `MUST NOT` be renamed back to bare `sdkwork-api-cloud-gateway` for brevity.
+Platform gateway crates `MUST` keep the canonical `sdkwork-api-cloud-gateway` identity and `MUST` document the `platform.api-gateway` topology context where the role could otherwise be ambiguous.
 
 ### 5.4 Retired: `*-api-server` Listener Crates
 
@@ -251,6 +249,7 @@ Infrastructure paths and business API paths `MUST NOT` collide across merged rou
 | Path class | Canonical examples | Collision rule |
 | --- | --- | --- |
 | Infrastructure | `/healthz`, `/livez`, `/readyz`, `/metrics` | At most one handler per listener |
+| Business system health | `/app/v3/api/system/health`, `/app/v3/api/system/ready`, `/backend/v3/api/system/health`, `/backend/v3/api/system/ready` | Reserved for the standard system health route owner |
 | App API | `/app/v3/api/<domain>/*` | Unique per domain authority |
 | Backend API | `/backend/v3/api/<domain>/*` | Unique per domain authority |
 | Open API | `/open/v3/api/<domain>/*` or domain-specific open prefix | Unique per domain authority |
@@ -260,10 +259,15 @@ Rules:
 
 - Route crates `MUST` declare canonical prefixes through route manifests (`gateway_route_manifest`, `APP_API_PREFIX`, `BACKEND_API_PREFIX`, `OPEN_API_PREFIX`).
 - Gateway assembly `MUST` order merges using `mountOrder` when manifests overlap in prefix specificity.
-- Validation `MUST` fail when two route crates in the same assembly register the same `(method, path)` unless an ADR documents intentional override.
+- Validation `MUST` fail when two route crates or API authorities in the same assembly/listener register the same normalized `(surface, method, path)` unless an ADR documents intentional override.
+- Route path normalization `MUST` treat `{id}`, `:id`, and `<id>` path-template dialects as the same `{param}` segment and must ignore trailing slashes except for `/`.
+- Route manifests and OpenAPI authorities `MUST` feed a repository route registry before gateway merge. Generated OpenAPI and route manifest entries for the same operation may reconcile as one declaration; distinct owners or operationIds on the same normalized path are collisions.
+- Common infrastructure and business paths such as `/healthz`, `/readyz`, `/app/v3/api/*`, `/backend/v3/api/*`, `/admin/v3/api/*`, and approved open-api prefixes `MUST` be checked together per listener before release.
+- Business capability modules `MUST NOT` claim generic health, readiness, status, info, or diagnostics paths that would be indistinguishable from infrastructure or system health routes. Capability diagnostics must live under a capability-specific resource path owned by that API authority.
+- The reserved business system health paths are not aliases of `/healthz` or `/readyz`. They are normal API operations with a single standard owner, OpenAPI metadata, permission/public status, response envelope rules, and route-registry checks.
 - Platform ingress `MUST NOT` register catch-all proxy routes ahead of embedded dependency routers when both could match the same business prefix.
 
-Verification: `pnpm gateway:route-composition:audit` (workspace) and `pnpm gateway:assembly:validate` (per repository).
+Verification: `pnpm gateway:route-composition:audit` (workspace), `pnpm gateway:assembly:validate` (per repository), and `node ../sdkwork-specs/tools/check-route-path-collisions.mjs --root .`.
 
 
 Application gateway crates `MUST` live under `crates/`:
@@ -286,11 +290,10 @@ Platform gateway repository layout:
 ```text
 sdkwork-api-cloud-gateway/
   crates/
-    sdkwork-api-cloud-gateway/
+    sdkwork-api-cloud-gateway/          # crate and listener bin: src/listener_main.rs
     sdkwork-api-cloud-gateway-config/
     sdkwork-api-cloud-gateway-registry/
     sdkwork-api-cloud-gateway-observability/
-    sdkwork-api-cloud-gateway/          # listener bin: src/listener_main.rs
   specs/
   configs/
   deployments/
@@ -315,7 +318,7 @@ Gateway-related env keys `MUST` follow `APP_RUNTIME_TOPOLOGY_NAMING.md`.
 | Application ingress bind | `SDKWORK_IM_APPLICATION_PUBLIC_INGRESS_BIND` |
 | Standalone gateway config path | `SDKWORK_IM_STANDALONE_GATEWAY_CONFIG` |
 
-Retired platform bind/config keys `SDKWORK_API_CLOUD_GATEWAY_BIND` and `SDKWORK_API_CLOUD_GATEWAY_CONFIG` `MUST` be normalized to `SDKWORK_API_CLOUD_GATEWAY_*` in new topology profiles and examples. Migration mapping lives in `MIGRATION_SPEC.md` §8.
+Platform gateway bind/config keys are already canonical as `SDKWORK_API_CLOUD_GATEWAY_BIND` and `SDKWORK_API_CLOUD_GATEWAY_CONFIG`. New topology profiles and examples `MUST NOT` introduce alternate platform bind/config aliases. Migration mapping for retired aliases lives in `MIGRATION_SPEC.md` §8.
 
 Orchestration entries `MUST` reference canonical crate names:
 
@@ -351,7 +354,7 @@ Application repositories:
 | `gateway:package:standalone` | standalone gateway artifact |
 | `gateway:package:cloud` | cloud gateway artifact or approved platform config bundle |
 | `gateway:assembly:materialize` | regenerate `sdkwork-<application-code>-gateway-assembly` from workspace discovery |
-| `gateway:assembly:validate` | verify assembly manifest parity and forbid thin-gateway route merges |
+| `gateway:assembly:validate` | verify assembly manifest parity, route registry uniqueness, and forbid thin-gateway route merges |
 
 Platform gateway repository (`sdkwork-api-cloud-gateway`):
 
@@ -363,12 +366,12 @@ Platform gateway repository (`sdkwork-api-cloud-gateway`):
 
 Rules:
 
-- Platform gateway repository scripts `MUST NOT` target bare `sdkwork-api-cloud-gateway`.
+- Platform gateway repository scripts `MUST` target the canonical `sdkwork-api-cloud-gateway` package or an explicitly named support crate such as `sdkwork-api-cloud-gateway-config`.
 - Config-bundle-only application repositories `MAY` expose `gateway:package:cloud` without a local application gateway binary.
 
 ## 10. Reference Matrix
 
-| Application / product | Standalone gateway | Cloud gateway | Platform dependency |
+| Application | Standalone gateway | Cloud gateway | Platform dependency |
 | --- | --- | --- | --- |
 | `drive` | `sdkwork-drive-standalone-gateway` | optional | `sdkwork-api-cloud-gateway` |
 | `im` | `sdkwork-im-standalone-gateway` | `sdkwork-im-cloud-gateway` | `sdkwork-api-cloud-gateway` |
@@ -380,9 +383,9 @@ Rules:
 
 Rules:
 
-- Unreleased applications and the platform gateway repository `MUST` delete bare `sdkwork-api-cloud-gateway` crate and repository aliases rather than preserve them in application code.
+- Unreleased applications `MUST` delete bare `sdkwork-<application-code>-gateway` aliases rather than preserve them in application code. The platform gateway repository keeps the canonical `sdkwork-api-cloud-gateway` identity.
 - Rename migrations `MUST` update Cargo workspace members, topology orchestration, env keys, pnpm scripts, component specs, release manifests, dependency paths, and docs in one change set when possible.
-- Dependency paths such as `../sdkwork-api-cloud-gateway/crates/sdkwork-api-cloud-gateway` `MUST` migrate to `../sdkwork-api-cloud-gateway/crates/sdkwork-api-cloud-gateway`.
+- Dependency paths that reference retired listener crates such as `../sdkwork-api-cloud-gateway/crates/sdkwork-api-cloud-gateway-api-server` `MUST` migrate to `../sdkwork-api-cloud-gateway/crates/sdkwork-api-cloud-gateway`.
 - Mapping authority: `MIGRATION_SPEC.md` §8 and `APP_RUNTIME_TOPOLOGY_NAMING.md` §10.
 - Repositories with hand-edited gateway route merges `MUST` introduce `sdkwork-<application-code>-gateway-assembly`, move bootstrap logic there, and delete direct `sdkwork_routes_*` merges from gateway mains in the same migration when feasible.
 - Route crates `MUST` gain `gateway_mount` and `gateway_route_manifest` exports per `WEB_BACKEND_SPEC.md` §4.2.1 as they are touched; assembly materialize `MUST` prefer `gateway_mount` when present.
@@ -391,7 +394,7 @@ Rules:
 
 Repositories with gateway crates `MUST`:
 
-- pass `node tools/check-identity-naming.mjs --mode consumer --root .` without bare `sdkwork-api-cloud-gateway` or bare application gateway crate hits;
+- pass `node tools/check-identity-naming.mjs --mode consumer --root .` without retired bare application gateway crate hits;
 - declare gateway crates under `crates/` in workspace manifests;
 - expose profile-qualified `gateway:*` scripts when gateway release or run workflows exist;
 - include bootstrap smoke proving framework-mounted routes or proxy/composition routes on the declared gateway crate.
@@ -402,6 +405,7 @@ Standards verification:
 node tools/check-identity-naming.mjs --root .
 node tools/check-single-http-ingress.mjs --root .
 node tools/validate-gateway-assembly.mjs --root .
+node tools/check-route-path-collisions.mjs --root .
 ```
 
 Workspace verification:
@@ -413,13 +417,14 @@ node tools/audit-single-http-ingress-workspace.mjs --workspace ..
 ## 13. Acceptance Checklist
 
 - [ ] All gateway crates follow `sdkwork-<scope>-<deploymentProfile>-gateway`.
-- [ ] Platform gateway uses `sdkwork-api-cloud-gateway`, not bare `sdkwork-api-cloud-gateway`.
+- [ ] Platform gateway uses `sdkwork-api-cloud-gateway` for the `platform.api-gateway` role.
 - [ ] Application gateway crates use `standalone` or `cloud` deployment qualifiers.
 - [ ] Gateway crates live under `crates/` with local `specs/component.spec.json`.
-- [ ] Retired `*-api-server` listener crates are migrated to `*-standalone-gateway`.
+- [ ] Retired `*-api-server` listener crates are migrated to `*-standalone-gateway` or `*-cloud-gateway` according to deployment profile.
 - [ ] Topology, env keys, orchestration, and dependency paths reference canonical crate and repository names.
 - [ ] Retired bare gateway names and `gateway:bundle:*` scripts are removed or migration-documented.
 - [ ] Standalone and cloud dev orchestration expose one HTTP bind per plane through gateway crates, not multiple `*-api` / `*-service-bin` listeners.
 - [ ] `node tools/check-single-http-ingress.mjs --root .` passes for repositories with topology specs or dev orchestration scripts.
 - [ ] `sdkwork-<application-code>-gateway-assembly` exists when the repository owns `sdkwork-routes-<application-code>-*` workspace members.
 - [ ] `pnpm gateway:assembly:validate` passes; gateway mains do not hand-merge route crates.
+- [ ] `check-route-path-collisions.mjs` passes for route manifests and OpenAPI authorities before release.

@@ -5,6 +5,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateAppComposition, listClientAppRoots } from './lib/app-composition.mjs';
 import { resolveComposition, validateCompositionResolution } from './lib/composition-resolver.mjs';
+import { classifyPermissionComposition } from './lib/permission-composition.mjs';
+import { classifyRouteRegistry } from './lib/route-registry.mjs';
+import { validateComponentPortBindings } from './lib/component-port-bindings.mjs';
+import { validateFrontendComposition } from './lib/frontend-composition.mjs';
+import { validateRustBackendComposition } from './lib/rust-backend-composition.mjs';
+import { validateI18nStandard } from './check-i18n-standard.mjs';
 import { specsRoot } from './lib/workspace-registry.mjs';
 import { validateWorkspaceMemberProtocol } from './lib/workspace-member-protocol.mjs';
 
@@ -124,6 +130,12 @@ function main() {
     issues.push(...validateAppComposition(args.root, {
       strictImportClosure: args.strictImportClosure,
     }));
+    issues.push(...classifyPermissionComposition(args.root));
+    issues.push(...classifyRouteRegistry(args.root).map((issue) => `${issue.kind}: ${issue.detail}`));
+    issues.push(...validateComponentPortBindings(args.root));
+    issues.push(...validateFrontendComposition(args.root));
+    issues.push(...validateRustBackendComposition(args.root));
+    issues.push(...validateI18nStandard(args.root));
     issues.push(...validateWorkspaceMemberProtocol(args.root, {
       repoName: path.basename(args.root),
     }));

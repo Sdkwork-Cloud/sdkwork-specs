@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: backend/admin React console, backend UI workspace packages, domain pages, backend SDK integration, menu and route composition
-- Related: `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MODULE_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DOMAIN_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`, `MODULE_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork backend/admin UI is packaged and integrated. Backend UI is the UI implementation of the `backend-admin` surface. `backend-admin` means admin-only backend UI/API/SDK use for internal company staff, operators, support, auditors, platform administrators, and trusted backend services acting for those admin workflows. It must be independent from app/user-facing UI packages, must use backend API and backend SDK contracts, and must be split by business domain instead of being placed into one large package.
 
@@ -31,10 +31,10 @@ Backend UI packages are not app UI packages.
 
 | Surface | Package family | API surface | SDK source | Typical users |
 | --- | --- | --- | --- | --- |
-| App UI | `sdkwork-*-pc-react`, `sdkwork-*-mobile-react`, appbase packages | `/app/v3/api` | `legacy-java-plus-app-api` generated SDK | end users, customer apps, desktop/mobile clients |
+| App UI | `sdkwork-*-pc-react`, `sdkwork-*-mobile-react`, appbase packages | `/app/v3/api` | generated app SDK or approved appbase wrapper | end users, customer apps, desktop/mobile clients |
 | User console UI | architecture-specific `*-console-*` or Dart `_console_` packages | `/app/v3/api` or approved console-facing app SDK surface | generated app SDK or approved appbase wrapper | customers, tenants, app owners, business users managing their own resources |
 | Client internal admin UI | architecture-specific `*-admin-*` or Dart `_admin_` packages | `/backend/v3/api` | generated backend SDK or approved backend wrapper | `backend-admin`: company-internal staff, support, auditors, operators |
-| Standalone backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | `legacy-java-plus-backend-api` generated SDK | `backend-admin`: company-internal platform admins, support staff, auditors, operators |
+| Standalone backend UI | `@sdkwork/react-backend-*` | `/backend/v3/api` | generated backend SDK or approved backend wrapper | `backend-admin`: company-internal platform admins, support staff, auditors, operators |
 
 Rules:
 
@@ -168,7 +168,7 @@ Rules:
 - `repository/` or `repositories/` owns thin SDK resource calls when the package uses repository naming. Do not use both names in new packages.
 - `hooks/` owns React integration around services and state.
 - `routes/` owns exported route records and menu metadata when the host shell composes package routes.
-- `i18n/` owns package-local operator-facing locale fragments and thin aggregation exports. It must not contain an authored whole-backend, whole-domain, or whole-package locale monolith; follow `I18N_SPEC.md`.
+- `i18n/` owns package-local operator-facing locale fragments and thin aggregation exports. Backend/admin React packages `MUST` use the `src/i18n/<locale>/<domain>/<capability>/<fragment>.ts|json` layout from `I18N_SPEC.md` section 6.1. It must not contain an authored whole-backend, whole-domain, or whole-package locale monolith.
 - `types/` owns view models only. API DTOs come from the generated backend SDK.
 - `permissions.ts` owns permission constants that match backend permission codes such as `iam.users.read`.
 
@@ -239,7 +239,7 @@ Rules:
 - Backend domain packages `MUST NOT` read `.env` files, `process.env`, local storage, or global runtime config directly.
 - Runtime config belongs to the host shell and backend core provider.
 - Feature flags that hide or reveal backend pages `MUST` be passed through typed config or route metadata.
-- Operator-facing text `SHOULD` live in the domain package `i18n/` folder as domain/capability/route fragments, not in a shared backend-wide locale file.
+- Operator-facing text `SHOULD` live in the domain package `i18n/` folder as domain/capability/route fragments following `I18N_SPEC.md` section 6.1, not in a shared backend-wide locale file.
 - App/user-facing login copy `MUST NOT` be reused as backend operator copy unless the text is truly surface-neutral.
 
 ## 10. Testing And Governance
@@ -251,6 +251,7 @@ Required coverage for new backend UI capabilities:
 - service/repository test using a fake backend SDK client;
 - page or hook test for loading, empty, permission-denied, validation-error, and failure states where relevant;
 - route/menu registration test when adding a new package route;
+- i18n directory/static scan proving operator-facing fragments stay under `src/i18n/<locale>/<domain>/<capability>/` and no backend-wide locale monolith is authored;
 - SDK compliance scan proving no raw HTTP fallback was introduced;
 - typecheck for the changed package.
 

@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: Java 21, Spring services, Maven modules, Java SDKs, Java backend implementation, and Java tests
-- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `DATABASE_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `API_SPEC.md`, `WEB_BACKEND_SPEC.md`, `DATABASE_SPEC.md`, `I18N_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard applies only when Java source, Maven configuration, Spring backend code, or Java SDK code is touched.
 
@@ -30,6 +30,8 @@ src/main/java/com/sdkwork/<domain>/<capability>/
   config/       # Spring configuration
   error/        # domain errors and exception mapping
   dto/          # internal DTOs when distinct from OpenAPI schemas
+src/main/resources/i18n/<locale>/<domain>/<capability>/
+  <bundle>.properties
 ```
 
 Rules:
@@ -39,6 +41,7 @@ Rules:
 - Repositories own persistence queries and schema mapping.
 - Provider clients and raw HTTP, when approved, stay inside adapters.
 - DTOs used by SDK-generated operations must match OpenAPI schemas.
+- Modules that own user-facing or operator-facing backend message resources `MUST` keep authored bundles under `src/main/resources/i18n/<locale>/<domain>/<capability>/` per `I18N_SPEC.md` section 6.1. Spring `MessageSource` configuration and generated validation bundles are thin framework adapters, not authored app-wide message catalogs.
 
 ## 3. Spring Boundaries
 
@@ -78,7 +81,7 @@ Rules:
 
 - [ ] Java 21 and UTF-8 expectations are preserved.
 - [ ] Controller, service, repository, adapter, and config responsibilities are separated.
+- [ ] Authored Java/Spring backend message resources, when present, live under `src/main/resources/i18n/<locale>/<domain>/<capability>/` and not in backend-wide `MessageSource` monoliths.
 - [ ] OpenAPI DTOs and validation stay aligned.
 - [ ] Generated Java SDK output was not hand-edited.
 - [ ] Maven verification commands are documented.
-

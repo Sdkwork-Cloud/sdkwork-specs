@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: product requirements, engineering requirements, acceptance criteria, non-functional requirements, traceability, change control
-- Related: `SOUL.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `QUALITY_GATE_SPEC.md`, `CODE_REVIEW_SPEC.md`, `TEST_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`
+- Related: `SOUL.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `QUALITY_GATE_SPEC.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `CODE_REVIEW_SPEC.md`, `TEST_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`
 
 This standard defines how SDKWork work enters the engineering system. Requirements are not marketing text and not implementation notes. They are the smallest reviewed source of truth that explains why a change exists, what behavior it must deliver, what must not change, and what evidence proves completion.
 
@@ -53,6 +53,7 @@ affected_surfaces:
   - api
   - sdk
   - backend
+  - composition
   - pc
   - h5
   - flutter-mobile
@@ -83,6 +84,7 @@ A requirement is ready for implementation only when:
 
 - The affected app/repository/component identity is known.
 - The relevant root specs are known.
+- Affected component layer roles, dependency SDKs, route ownership, permission inheritance, frontend packages, Rust crates, and composition resolver facts are known when the requirement touches composable architecture.
 - The behavior, non-goals, acceptance criteria, and verification evidence are clear.
 - Required architecture decisions are identified under `ARCHITECTURE_DECISION_SPEC.md`.
 - Required migrations are identified under `MIGRATION_SPEC.md`.
@@ -91,7 +93,7 @@ A requirement is ready for implementation only when:
 
 Rules:
 
-- Agents and engineers `MUST` stop on ambiguous app identity, SDK family, API authority, component ownership, route identity, data ownership, or release target.
+- Agents and engineers `MUST` stop on ambiguous app identity, SDK family, API authority, component ownership, component layer role, dependency composition, permission inheritance, route identity, data ownership, or release target.
 - A ready requirement `MUST NOT` depend on undocumented tribal knowledge.
 - Requirements that touch multiple independent systems should be split into separate requirement records unless one end-to-end workflow is the actual deliverable.
 
@@ -119,6 +121,7 @@ Requirements verification should prove:
 
 - Every acceptance criterion is covered by a test, static check, review checklist, or explicit owner acceptance.
 - Relevant non-functional requirements have evidence or an approved deferral.
+- Applicable `COMPOSABLE_ARCHITECTURE_SPEC.md` closure-matrix rows are covered by validator output or explicit owner acceptance when the requirement changes modular composition.
 - Requirement ids referenced by code comments, docs, ADRs, tests, or release notes resolve to a real requirement record.
 - No implementation-only behavior was introduced outside the stated goals or accepted scope.
 
@@ -130,4 +133,5 @@ Requirements verification should prove:
 - [ ] Acceptance criteria are testable or reviewable.
 - [ ] Non-functional requirements are explicit.
 - [ ] Architecture, migration, release, security, privacy, and test implications are identified.
+- [ ] Component composition, dependency SDK, permission inheritance, route ownership, frontend package, Rust crate, and resolver implications are identified when applicable.
 - [ ] Trace links exist for design, implementation, verification, and release when applicable.

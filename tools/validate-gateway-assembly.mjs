@@ -20,6 +20,7 @@ import {
   assemblyMountRouteCrates,
   usesKernelBridgeAssembly,
 } from './gateway-assembly-lib.mjs';
+import { classifyRouteRegistry } from './lib/route-registry.mjs';
 
 const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_ROOT = path.resolve(SPECS_ROOT, '..');
@@ -102,6 +103,8 @@ export function validateGatewayAssembly(root, { strict = false } = {}) {
   if (bootstrapSource.trim()) {
     errors.push(...scanAssemblyInfraMergeViolations(bootstrapSource, routeCrates));
   }
+
+  errors.push(...classifyRouteRegistry(root).map((issue) => `${issue.kind}: ${issue.detail}`));
 
   if (strict && warnings.length > 0) {
     errors.push(...warnings.map((warning) => `strict: ${warning}`));

@@ -10,8 +10,8 @@ import { parseArgs } from 'node:util';
 import {
   classifyOpenApiEnvelope,
   classifyOpenApiWireProtocolMarkers,
-  dedupeAuthorities,
   isExternalProtocolOpenApi,
+  openApiAuthorityEntries,
   walkOpenApiFiles,
 } from './lib/http-response-envelope-patterns.mjs';
 
@@ -64,14 +64,14 @@ function scanSpecsNormative(root) {
 
 function scanOpenApiAuthorities(root) {
   const issues = [];
-  const files = dedupeAuthorities(walkOpenApiFiles(root));
+  const files = openApiAuthorityEntries(walkOpenApiFiles(root));
   for (const { file, repo, surface } of files) {
     const text = fs.readFileSync(file, 'utf8');
+    const rel = path.relative(root, file).replace(/\\/g, '/');
     for (const issue of classifyOpenApiWireProtocolMarkers(text)) {
       issues.push(`${repo}/${surface} (${rel}): ${issue.kind} — ${issue.detail}`);
     }
     if (surface === 'open-api' && isExternalProtocolOpenApi(text)) continue;
-    const rel = path.relative(root, file).replace(/\\/g, '/');
     for (const issue of classifyOpenApiEnvelope(text)) {
       issues.push(`${repo}/${surface} (${rel}): ${issue.kind} — ${issue.detail}`);
     }
@@ -102,11 +102,12 @@ function main() {
     process.exit(0);
   }
 
-  const issues = [...scanSpecsNormative(path.resolve(values.root))];
+  const root = path.resolve(values.root);
+  const issues = [...scanSpecsNormative(SPECS_ROOT)];
   if (values.workspace) {
     issues.push(...scanWorkspace(path.resolve(values.workspace)));
-  } else if (values.root !== SPECS_ROOT) {
-    issues.push(...scanOpenApiAuthorities(path.resolve(values.root)));
+  } else if (root !== SPECS_ROOT) {
+    issues.push(...scanOpenApiAuthorities(root));
   }
 
   if (issues.length > 0) {
