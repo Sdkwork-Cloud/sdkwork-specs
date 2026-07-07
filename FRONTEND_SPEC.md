@@ -364,6 +364,7 @@ Rules:
 - [ ] Appbase IAM runtime and one global token manager are wired in runtime/bootstrap when authenticated app-api SDK clients or explicit `backend-admin` backend-api SDK clients are used.
 - [ ] Architecture-specific SDK language and dependency SDK composition follow `APP_SDK_INTEGRATION_SPEC.md`.
 - [ ] No raw HTTP, manual auth headers, or manual API key headers exist in shared business modules.
+- [ ] `node ../sdkwork-specs/tools/check-application-layering.mjs --root .` passes for UI raw HTTP and service SDK injection boundaries.
 - [ ] `node ../sdkwork-specs/tools/check-frontend-composition.mjs --root .` passes for frontend
       package role, dependency direction, core export, and SDK import boundaries.
 - [ ] Upload services use injected Drive app SDK `client.uploader.*`, supply required attribution/profile/retention metadata, and persist only Drive references or `MediaResource`.

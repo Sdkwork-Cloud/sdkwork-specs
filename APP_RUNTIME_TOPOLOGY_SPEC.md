@@ -135,7 +135,7 @@ cloud.split-services.production
 specs/topology.spec.json
 configs/topology/<profile-id>.env
 docs/topology-standard.md
-scripts/lib/<app>-topology.mjs
+scripts/lib/<application-code>-topology.mjs
 ```
 
 Implementation: `@sdkwork/app-topology` (`../sdkwork-app-topology`).

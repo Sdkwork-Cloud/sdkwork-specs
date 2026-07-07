@@ -601,7 +601,7 @@ Observability follows `OBSERVABILITY_SPEC.md`:
 
 New SDKWork code `MUST NOT` introduce:
 
-- App-owned object blob tables such as `<app>_object_blob`, `<domain>_media_asset`, or `<domain>_upload_session` when the purpose is file storage lifecycle.
+- App-owned object blob tables such as `<application_code>_object_blob`, `<domain>_media_asset`, or `<domain>_upload_session` when the purpose is file storage lifecycle.
 - App-owned storage provider registries or provider credential tables.
 - App-owned presign services, direct S3/OSS/MinIO browser SDK flows, or hidden raw HTTP upload endpoints.
 - Long-term `url`, `file_url`, `image_url`, `thumbnail_url`, `asset_url`, or `download_url` columns for SDKWork-owned files/media.

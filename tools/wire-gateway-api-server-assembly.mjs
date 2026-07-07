@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Wire standalone/cloud gateway crates to sdkwork-<app>-gateway-assembly.
+ * Wire standalone/cloud gateway crates to sdkwork-<application-code>-gateway-assembly.
  * Authority: APPLICATION_GATEWAY_SPEC.md §5.7
  */
 import fs from 'node:fs';

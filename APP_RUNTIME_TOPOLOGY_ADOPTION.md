@@ -13,8 +13,8 @@ parallel deployment vocabulary or duplicate profile loaders.
 | --- | --- | --- |
 | Platform specs | `sdkwork-specs/APP_RUNTIME_TOPOLOGY_*` | Declare deployment profile, archetype, surfaces, and profile ids |
 | Framework library | `@sdkwork/app-topology` | Load profiles, resolve surface URLs, IAM DB helpers, health waits |
-| Thin adapter | `scripts/lib/<app>-topology.mjs` | Pin spec path, export app defaults |
-| Dev orchestrator | `scripts/<app>-dev.mjs` | Spawn processes, health-gate clients |
+| Thin adapter | `scripts/lib/<application-code>-topology.mjs` | Pin spec path, export app defaults |
+| Dev orchestrator | `scripts/<application-code>-dev.mjs` | Spawn processes, health-gate clients |
 | Profile env | `configs/topology/*.env` | Authoritative binds and public URLs |
 
 Forbidden:
@@ -30,8 +30,8 @@ Forbidden:
 ```text
 specs/topology.spec.json              # schemaVersion 3
 configs/topology/<profile-id>.env     # one file per active profile
-scripts/lib/<app>-topology.mjs        # adapter over @sdkwork/app-topology
-scripts/<app>-dev.mjs                 # topology-aware dev entry
+scripts/lib/<application-code>-topology.mjs        # adapter over @sdkwork/app-topology
+scripts/<application-code>-dev.mjs                 # topology-aware dev entry
 docs/topology-standard.md             # human summary for the team
 package.json                          # "@sdkwork/app-topology": "file:../sdkwork-app-topology"
 ```

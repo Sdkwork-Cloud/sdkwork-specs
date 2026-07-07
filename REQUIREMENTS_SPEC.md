@@ -65,7 +65,7 @@ trace:
   specs:
     - REQUIREMENTS_SPEC.md
   components:
-    - apps/<app>/packages/<package>
+    - apps/sdkwork-<application-code>-<client-arch>/packages/<package>
 verification:
   - command or checklist evidence
 ```

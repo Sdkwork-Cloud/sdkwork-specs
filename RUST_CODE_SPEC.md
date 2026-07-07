@@ -534,6 +534,7 @@ Rules:
 - Run `cargo fmt` or the repository wrapper before completion.
 - Run `cargo clippy` when the repository requires it or when shared Rust code changes.
 - Run the narrowest `cargo test -p <crate>` first, then `cargo test --workspace` when shared contracts are touched.
+- Run `node ../sdkwork-specs/tools/check-application-layering.mjs --root .` when Rust route/service/repository/runtime boundaries are touched in an application repository.
 - Run `node ../sdkwork-specs/tools/check-rust-backend-composition.mjs --root .` when Rust service,
   repository, route, migration-only API server, service host, native host, worker, or gateway crates are added or
   their Cargo dependencies change.

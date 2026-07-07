@@ -526,11 +526,11 @@ Recommended checked-in templates:
 .env.staging.example
 .env.production.example
 .env.postgres.example
-config/<app>.toml.example
-config/<app>.development.toml.example
-config/<app>.test.toml.example
-config/<app>.staging.toml.example
-config/<app>.production.toml.example
+config/<application-code>.toml.example
+config/<application-code>.development.toml.example
+config/<application-code>.test.toml.example
+config/<application-code>.staging.toml.example
+config/<application-code>.production.toml.example
 ```
 
 Recommended host-local ignored overrides:
@@ -556,20 +556,20 @@ config/
     runtime-env.staging.example.json
     runtime-env.production.example.json
   desktop/
-    <app>.development.toml.example
-    <app>.test.toml.example
-    <app>.staging.toml.example
-    <app>.production.toml.example
+    <application-code>.development.toml.example
+    <application-code>.test.toml.example
+    <application-code>.staging.toml.example
+    <application-code>.production.toml.example
   server/
-    <app>.development.toml.example
-    <app>.test.toml.example
-    <app>.staging.toml.example
-    <app>.production.toml.example
+    <application-code>.development.toml.example
+    <application-code>.test.toml.example
+    <application-code>.staging.toml.example
+    <application-code>.production.toml.example
   container/
-    <app>.development.toml.example
-    <app>.test.toml.example
-    <app>.staging.toml.example
-    <app>.production.toml.example
+    <application-code>.development.toml.example
+    <application-code>.test.toml.example
+    <application-code>.staging.toml.example
+    <application-code>.production.toml.example
   tauri/
     tauri.conf.json
     tauri.windows.conf.json

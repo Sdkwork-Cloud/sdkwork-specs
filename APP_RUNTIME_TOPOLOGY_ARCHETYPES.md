@@ -190,7 +190,7 @@ Rules:
    `APP_RUNTIME_TOPOLOGY_NAMING.md`.
 3. Extend `sdkwork-app-topology` JSON Schema v3 enum when archetype validation
    is enforced.
-4. Add a reference `examples/<app>/topology.spec.json` in
+4. Add a reference `examples/<application-code>/topology.spec.json` in
    `sdkwork-app-topology`.
 
 Do not create `APP_<PRODUCT>_TOPOLOGY_SPEC.md` platform files.

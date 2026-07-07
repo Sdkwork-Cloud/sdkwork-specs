@@ -40,7 +40,7 @@ Rules:
 
 | Mode | Bootstrap CSS entry | `@import "tailwindcss"` | `@source` owner |
 | --- | --- | --- | --- |
-| Standalone PC/H5 app | `apps/<app>/src/index.css` | allowed only here | app shell |
+| Standalone PC/H5 app | `apps/sdkwork-<application-code>-<client-arch>/src/index.css` | allowed only here | app shell |
 | Host composition app | host `src/index.css` | allowed only in host shell | host shell registers all integrated sibling `src` trees |
 | UI library build | `sdkwork-ui-*/src/styles/*.css` | allowed only for library build output | library package |
 | Standalone renderer shell package | `packages/*-shell/src/styles/index.css` | allowed only when the shell is the runnable app entry | shell package |

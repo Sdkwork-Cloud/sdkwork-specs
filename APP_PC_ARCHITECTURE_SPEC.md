@@ -170,7 +170,7 @@ Standard config ownership:
 | Config family | Example files | Owns | Must not own |
 | --- | --- | --- | --- |
 | Browser public runtime | `config/browser/runtime-env.<profile>.example.json`, `/runtime-env.js` | public SDK base URLs, public feature flags, public app metadata | secrets, database URLs, Redis URLs, tokens, private service endpoints |
-| Desktop user runtime | `config/desktop/<application-code>.<profile>.toml.example`, user `~/.sdkwork/<application-code>/config/<app>.toml` | installed desktop mode, local service toggle, user-private SQLite path, secure storage provider | server PostgreSQL defaults for dev services, API route constants, signing secrets |
+| Desktop user runtime | `config/desktop/<application-code>.<profile>.toml.example`, user `~/.sdkwork/<application-code>/config/<application-code>.toml` | installed desktop mode, local service toggle, user-private SQLite path, secure storage provider | server PostgreSQL defaults for dev services, API route constants, signing secrets |
 | Server runtime | `config/server/<application-code>.<profile>.toml.example`, `/etc/sdkwork/<application-code>/<process>.toml` | bind address, PostgreSQL, Redis, reverse proxy trust, service paths | browser-only `VITE_*`, Tauri packaging metadata |
 | Container runtime | `config/container/<application-code>.<profile>.toml.example`, mounted `/etc/sdkwork/...` | container service config, mounted secrets, external services, volumes | image-baked secrets or mutable database state |
 | Tauri platform | `src-tauri/tauri.*.conf.json`, optional `config/tauri/` templates | bundle id, package id, icons, permissions, capabilities, window metadata, signing references | business API contracts, SDK ownership, auth tokens, private keys |

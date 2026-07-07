@@ -361,6 +361,7 @@ Rules:
 - Run `node ../sdkwork-specs/tools/check-component-port-bindings.mjs --root .` before declaring
   composable architecture component contracts complete. Use `--strict` when onboarding new modules
   or finishing migration of existing modules.
+- Run `node ../sdkwork-specs/tools/check-application-layering.mjs --root .` when component specs or source changes affect API/service/domain/repository/adapter/runtime/frontend boundaries.
 - Run `node ../sdkwork-specs/tools/check-permission-composition.mjs --root .` when component specs declare HTTP `sdkDependencies`.
 - Run `node ../sdkwork-specs/tools/check-route-path-collisions.mjs --root .` when component specs declare route manifests or materialize OpenAPI authorities.
 - Standard changes require tests for the discovery and validation tooling.
