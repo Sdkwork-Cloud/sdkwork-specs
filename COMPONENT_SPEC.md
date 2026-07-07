@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: local `specs/` directories for apps, reusable packages, language modules, SDK families, services, host adapters, and componentized integration units under `apps/`
-- Related: `COMPOSABLE_ARCHITECTURE_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `AGENTS_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `MODULE_SPEC.md`, `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `CONFIG_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
+- Related: `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `AGENTS_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `MODULE_SPEC.md`, `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `CONFIG_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
 This standard defines the local specification boundary for every authored SDKWork module. Global standards live in `sdkwork-specs/*_SPEC.md`; each module owns an independent local spec system under `<module-root>/specs/` that makes the module discoverable, maintainable, and safe to integrate without reading its internals first.
 
@@ -106,11 +106,12 @@ Rules:
 - `canonicalSpecs` must include `CODE_STYLE_SPEC.md` and `NAMING_SPEC.md` when the component owns authored source code.
 - `canonicalSpecs` must include language-specific specs only for languages declared in `component.languages`.
 - `contracts.publicExports` lists supported integration entrypoints, not internal source paths.
-- `contracts.layerRole` classifies the component in the composable architecture profile from
+- `contracts.layerRole` classifies the component in the L0-L6 application layering profile from
+  `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md` and the composable architecture profile from
   `COMPOSABLE_ARCHITECTURE_SPEC.md`: for example `frontend-core`, `frontend-feature`,
-  `backend-route`, `backend-service`, `backend-repository`, `runtime-gateway`, `sdk-facade`, or
-  `tooling`. New composable modules `MUST` declare it; legacy manifests should add it during the
-  next module touch.
+  `backend-route`, `backend-service`, `backend-domain`, `backend-repository`, `runtime-gateway`,
+  `runtime-service-host`, `sdk-facade`, or `tooling`. New composable modules `MUST` declare it;
+  legacy manifests should add it during the next module touch.
 - `contracts.providedPorts` lists named public integration ports offered by the component. Each
   object `MUST` include `name` and `export`, and `export` must reference `contracts.publicExports`.
 - `contracts.requiredPorts` lists named SDK, service, host, runtime, or provider ports the component

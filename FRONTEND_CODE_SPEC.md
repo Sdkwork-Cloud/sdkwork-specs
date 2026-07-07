@@ -2,9 +2,9 @@
 
 - Version: 1.0
 - Scope: React, PC browser UI, PC desktop renderer UI, H5 mobile React, Flutter UI, mini program UI, native Android UI, native iOS UI, native HarmonyOS UI, backend/admin UI, frontend services, state, i18n, and UI tests
-- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `TAILWIND_CSS_INTEGRATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
+- Related: `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `TAILWIND_CSS_INTEGRATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
 
-This standard applies only when frontend, renderer, UI, React, Flutter, mini program UI, native Android/iOS/Harmony UI, or backend/admin UI code is touched.
+This standard applies only when frontend, renderer, UI, React, Flutter, mini program UI, native Android/iOS/Harmony UI, or backend/admin UI code is touched. Application-wide UI-service-SDK dependency direction follows `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`.
 
 ## 1. Architecture Selection
 
@@ -97,6 +97,7 @@ Rules:
 - Service tests use fake generated SDK clients or generated SDK clients.
 - UI tests cover key loading, empty, error, permission-denied, and success states.
 - Architecture scans must prove the package family uses the correct SDK surface and does not import forbidden UI/runtime packages.
+- Application layering scans `MUST` prove UI components do not call raw HTTP and services do not construct SDK clients locally.
 - Visual or browser verification is required for substantial UI changes when a runnable app exists.
 - Tailwind integration changes `MUST` run `check-tailwind-integration.mjs`.
 
@@ -105,5 +106,6 @@ Rules:
 - [ ] Correct UI architecture spec was loaded.
 - [ ] UI -> service -> SDK flow is preserved.
 - [ ] Components do not construct SDK clients or raw HTTP requests.
+- [ ] `check-application-layering.mjs` passes when package services, UI, or SDK injection code is touched.
 - [ ] Text, errors, and permissions are surfaced intentionally.
 - [ ] Package family naming and SDK surface checks pass.

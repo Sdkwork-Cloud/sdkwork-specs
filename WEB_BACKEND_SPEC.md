@@ -2,9 +2,9 @@
 
 - Version: 1.0
 - Scope: Java Spring HTTP backends, Rust HTTP route crates, standalone/cloud web backend implementations, and backend API implementation boundaries
-- Related: `COMPOSABLE_ARCHITECTURE_SPEC.md`, `API_SPEC.md`, `PAGINATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `I18N_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `DOMAIN_SPEC.md`, `RUST_CODE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `COMPONENT_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md`
+- Related: `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, `API_SPEC.md`, `PAGINATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `I18N_SPEC.md`, `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `DOMAIN_SPEC.md`, `RUST_CODE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `COMPONENT_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `EVENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `PERFORMANCE_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines how SDKWork web backends are implemented after the HTTP contract has been designed. `API_SPEC.md` remains the contract source of truth. `I18N_SPEC.md` owns backend message and locale semantics. This file owns implementation layering, naming, handler/service/repository boundaries, route path placement, request context usage, and backend verification expectations. Cross-stack layer roles and composition closure follow `COMPOSABLE_ARCHITECTURE_SPEC.md`.
+This standard defines how SDKWork web backends are implemented after the HTTP contract has been designed. `API_SPEC.md` remains the contract source of truth. `I18N_SPEC.md` owns backend message and locale semantics. `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md` owns the application-wide L0-L6 layer profile. This file owns web-backend naming, handler/service/repository boundaries, route path placement, request context usage, and backend verification expectations. Cross-stack layer roles and composition closure follow `COMPOSABLE_ARCHITECTURE_SPEC.md`.
 
 Use this file when adding or changing Java controllers, Rust route crates, HTTP handlers, backend services, repositories, transactions, context extraction, or runtime API composition.
 
@@ -51,6 +51,9 @@ Rules:
 - SDKWork backend layers map to the composable architecture profile:
   L0 API authority, L1 route/controller adapter, L2 service/use-case, L3 domain/ports,
   L4 infrastructure adapter, L5 runtime composition, and L6 runtime operations.
+- The L0-L6 dependency direction and cross-language static scan are defined by
+  `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`; web-backend implementations `MUST` run
+  `check-application-layering.mjs` when controller/service/repository boundaries are touched.
 - HTTP handlers and controller methods should be thin adapters. They may validate transport shape, call the service, and map service results to the response contract.
 - Business decisions `MUST` live in service/use-case code that can be tested without an HTTP server.
 - Repositories `MUST` receive tenant, organization, user, and data-scope decisions from service/context inputs. They must not infer authorization by reparsing headers or global request state.
