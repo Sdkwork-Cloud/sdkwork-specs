@@ -2,9 +2,9 @@
 
 - Version: 1.0
 - Scope: cross-stack frontend/backend module composition, component port contracts, Rust crate dependency boundaries, route ownership, permission inheritance, and resolved architecture graphs
-- Related: `APPLICATION_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `FRONTEND_SPEC.md`, `RUST_CODE_SPEC.md`, `WEB_BACKEND_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `TEST_SPEC.md`
+- Related: `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`, `APPLICATION_SPEC.md`, `MODULE_SPEC.md`, `COMPONENT_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `FRONTEND_SPEC.md`, `RUST_CODE_SPEC.md`, `WEB_BACKEND_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `TEST_SPEC.md`
 
-This standard is the thin cross-stack profile for SDKWork building-block architecture. It does not replace the existing frontend, backend, SDK, route, permission, or dependency standards. It defines how those standards close into one composable system.
+This standard is the thin cross-stack profile for SDKWork building-block architecture. It does not replace the existing application layering, frontend, backend, SDK, route, permission, or dependency standards. It defines how those standards close into one composable system. `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md` owns the application-wide L0-L6 layer model and dependency direction; this file owns cross-stack composition closure.
 
 ## 1. Core Principles
 
@@ -23,6 +23,7 @@ Composable architecture is complete only when the normative spec, machine contra
 
 | Concern | Primary standards | Machine contract | Required evidence and checks |
 | --- | --- | --- | --- |
+| Application L0-L6 layering | `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`, `APPLICATION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `FRONTEND_SPEC.md` | `contracts.layerRole`, route manifest/OpenAPI authority, package/crate manifests, runtime/core bootstrap | `check-application-layering.mjs`, `check-component-port-bindings.mjs`, handler/service/repository tests, frontend service tests |
 | Login, session, and auth context | `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `SECURITY_SPEC.md` | OpenAPI `security`, `x-sdkwork-auth-mode`, `x-sdkwork-forbid-credential-headers`; route manifest `auth.mode`; runtime session/token wiring | Login/session tests, credential-header rejection tests, `check-api-operation-patterns.mjs`, `check-api-response-envelope.mjs` |
 | Actor, role, and permission inheritance | `PERMISSION_STANDARD_SPEC.md`, `IAM_RBAC_FEDERATION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md` | `contracts.permissionComposition`, `moduleCatalogRefs[]`, OpenAPI `x-sdkwork-permission`, IMF module manifests | `check-permission-composition.mjs`, IMF manifest validation, route/menu permission hint tests |
 | Frontend module composition | `FRONTEND_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md` | `contracts.layerRole`, `publicExports`, `providedPorts`, `requiredPorts`, `sdkDependencies`, package `exports` | `check-frontend-composition.mjs`, `check-component-port-bindings.mjs`, `check-app-sdk-consumer-imports.mjs`, package typecheck |
@@ -136,7 +137,7 @@ node sdkwork-specs/tools/check-rust-backend-composition.mjs --root <repo>
 
 ## 6. Backend Layer Contract
 
-SDKWork web backends use these layers:
+SDKWork web backends use the L0-L6 profile from `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`:
 
 | Layer | Owns | Must not own |
 | --- | --- | --- |
@@ -219,6 +220,7 @@ Before claiming composable architecture alignment:
 
 ```bash
 node sdkwork-specs/tools/check-component-port-bindings.mjs --root <repo>
+node sdkwork-specs/tools/check-application-layering.mjs --root <repo>
 node sdkwork-specs/tools/check-frontend-composition.mjs --root <repo>
 node sdkwork-specs/tools/check-rust-backend-composition.mjs --root <repo>
 node sdkwork-specs/tools/resolve-composition.mjs --root <repo> --write
