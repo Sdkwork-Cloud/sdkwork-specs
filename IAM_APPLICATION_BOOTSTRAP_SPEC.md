@@ -146,13 +146,13 @@ The same framework `MUST` work across these environments by swapping only the tr
 | SaaS/private backend SDK runtime | `createIamApplicationBootstrapClientFromBackend` | Uses generated `@sdkwork/iam-backend-sdk` or approved backend SDK |
 | Existing IAM service runtime | `createIamApplicationBootstrapClientFromIamService` | Uses `@sdkwork/iam-service` without raw HTTP |
 | Server/container service bootstrap | fetch or backend SDK adapter | May write `.sdkwork.local.env` or inject env through approved secret store |
-| Embedded unified-process / installer runtime | `sdkwork-iam-embedded-application-bootstrap` (Rust) | Reads `sdkwork.app.config.json`, calls `ensure_tenant_application_runtime` directly on the IAM Postgres profile |
+| Embedded standalone / installer runtime | `sdkwork-iam-embedded-application-bootstrap` (Rust) | Reads `sdkwork.app.config.json`, calls `ensure_tenant_application_runtime` directly on the IAM Postgres profile |
 
 ### 5.1 Embedded Rust Runtime Bootstrap
 
 Naming follows `NAMING_SPEC.md`: the retired `product-*` bootstrap prefix is forbidden. Use `tenant application` for IAM registry rows and `embedded application bootstrap` for the shared Rust crate.
 
-When IAM runs inside an application process or installer (`unified-process`, standalone gateway, database ensure), applications `MUST` use the shared Rust crate:
+When IAM runs inside an application process or installer (standalone gateway, database ensure, or another approved embedded startup path), applications `MUST` use the shared Rust crate:
 
 ```text
 sdkwork-iam/crates/sdkwork-iam-embedded-application-bootstrap
@@ -176,12 +176,12 @@ Forbidden in application-owned embedded bootstrap code:
 Embedded IAM integration checklist for application repositories that call `build_sdkwork_iam_app_api_router()`:
 
 1. Bootstrap IAM schema with `sdkwork_iam_database_host::bootstrap_iam_database_from_env()` before tenant application provisioning when the process owns IAM lifecycle.
-2. Call `ensure_tenant_application_from_app_root_with_env_and_fallback(...)` (or an approved thin adapter) before building the IAM router on every startup path (standalone gateway, unified-process, installer, direct API server).
+2. Call `ensure_tenant_application_from_app_root_with_env_and_fallback(...)` (or an approved thin adapter) before building the IAM router on every startup path (standalone gateway, installer, direct API server, or approved cloud gateway startup).
 3. Inject `SDKWORK_APP_ROOT` and the approved app-root alias (such as `SDKWORK_DRIVE_APP_ROOT` or `SDKWORK_IM_APP_ROOT`) at the **consumer application manifest root** for tenant application provisioning. Inject `SDKWORK_IAM_APP_ROOT` at the sibling `sdkwork-iam` repository root so IAM database-host post-bootstrap hooks can materialize IMF catalog and IAM database assets from the canonical IAM ownership boundary.
 4. Keep manifest mapping, Postgres `search_path`, reconcile/upsert, and `instance_key` derivation in `sdkwork-iam-embedded-application-bootstrap` / `sdkwork-iam-web-adapter`; application adapters only supply repo-root fallback and optional runtime bindings.
 5. Add a repository governance test under `scripts/dev/*-iam-application-bootstrap-standard.test.mjs` that asserts the adapter, startup ordering, dependencies, and dev env injection.
 
-Cloud split-services repositories `MUST` inject `SDKWORK_APP_ROOT` on every dev and gateway startup path (directly or through `@sdkwork/app-topology` `resolveIamDevEnv()`). Repository topology contract tests `SHOULD` assert `IAM_APPLICATION_BOOTSTRAP_ENV`, `resolveIamDevEnv`, and the app-specific `SDKWORK_<APPLICATION_CODE>_APP_ROOT` alias in dev orchestrators.
+Cloud repositories `MUST` inject `SDKWORK_APP_ROOT` on every dev and gateway startup path (directly or through `@sdkwork/app-topology` `resolveIamDevEnv()`). Repository topology contract tests `SHOULD` assert `IAM_APPLICATION_BOOTSTRAP_ENV`, `resolveIamDevEnv`, and the app-specific `SDKWORK_<APPLICATION_CODE>_APP_ROOT` alias in dev orchestrators.
 
 Rules:
 
@@ -243,7 +243,7 @@ Embedded IAM application repositories under `sdkwork-space` `MUST` run the works
 node ../sdkwork-specs/tools/audit-iam-embedded-bootstrap-workspace.mjs
 ```
 
-Each embedded IAM repository `MUST` provide `scripts/dev/*-iam-application-bootstrap-standard.test.mjs` and keep startup ordering aligned with section 5.1. Cloud split-services repositories `MUST` inject `SDKWORK_APP_ROOT` on every dev and gateway startup path (directly or through `@sdkwork/app-topology` `resolveIamDevEnv()`).
+Each embedded IAM repository `MUST` provide `scripts/dev/*-iam-application-bootstrap-standard.test.mjs` and keep startup ordering aligned with section 5.1. Cloud repositories `MUST` inject `SDKWORK_APP_ROOT` on every dev and gateway startup path (directly or through `@sdkwork/app-topology` `resolveIamDevEnv()`).
 
 ## 8. New Application Checklist
 
@@ -251,7 +251,7 @@ Each embedded IAM repository `MUST` provide `scripts/dev/*-iam-application-boots
 - [ ] Use `@sdkwork/iam-application-bootstrap` for bootstrap orchestration.
 - [ ] Keep CLI/bootstrap scripts thin; no raw bootstrap HTTP in app code.
 - [ ] Wire backend SDK or IAM service adapter for non-CLI environments.
-- [ ] For embedded unified-process/installer runtimes, delegate to `sdkwork-iam-embedded-application-bootstrap` instead of local SQL/bootstrap copies.
+- [ ] For embedded standalone/installer runtimes, delegate to `sdkwork-iam-embedded-application-bootstrap` instead of local SQL/bootstrap copies.
 - [ ] Document `admin:bootstrap:app` or approved equivalent in the app runbook.
 - [ ] Run `check-iam-application-bootstrap-standard.mjs` before merge.
 - [ ] For embedded IAM runtimes, run `audit-iam-embedded-bootstrap-workspace.mjs` and the repository `*-iam-application-bootstrap-standard.test.mjs` governance test before merge.

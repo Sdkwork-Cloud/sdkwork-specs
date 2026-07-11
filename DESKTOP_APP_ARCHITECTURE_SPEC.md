@@ -295,10 +295,10 @@ pnpm build:tablet-android:prod
 Command rules:
 
 - `dev:desktop` uses the default desktop development orchestration profile and
-  must resolve to PostgreSQL, `unified-process`, and standalone by default. It
-  may remain client-only when the application standard assigns default API
-  serving to a shared gateway, but the selected dev topology/database profile
-  is still `postgres:unified-process:standalone`.
+  must resolve to PostgreSQL, standalone, and development by default. It may
+  remain client-only when the application standard assigns default API serving
+  to a shared gateway, but the selected dev topology/database profile is still
+  `postgres:standalone`.
 - `dev:desktop:server` or an equivalent explicit server command makes the backend
   service profile explicit when contributors need to debug the desktop plus
   service integration path.

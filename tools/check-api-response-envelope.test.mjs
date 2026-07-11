@@ -130,6 +130,37 @@ test('upsertAgentsEnvelopeSection inserts before Human Review Rules', () => {
   assert.match(output, /wire field `requestId`/);
 });
 
+test('upsertAgentsEnvelopeSection replaces duplicate legacy envelope sections', () => {
+  const input = `# Repository Guidelines
+
+## SDKWORK Soul
+
+Read SOUL.md.
+
+## HTTP API Response Envelope
+
+All L2+ contracts use the current section.
+
+## HTTP API Response Envelope
+
+All L2+ \`app-api\` success JSON bodies \`MUST\` use \`SdkWorkResponse\`.
+
+- Envelope: \`{ "data": <payload>, "requestId": "<server-uuid>" }\`
+
+## List And Search Pagination
+
+Follow PAGINATION_SPEC.md.
+`;
+
+  const output = upsertAgentsEnvelopeSection(input);
+  const sectionMatches = output.match(/^## HTTP API Response Envelope\b/gm) ?? [];
+
+  assert.equal(sectionMatches.length, 1);
+  assert.doesNotMatch(output, /success JSON bodies `MUST` use `SdkWorkResponse`/);
+  assert.doesNotMatch(output, /Envelope: `\{ "data": <payload>, "requestId"/);
+  assert.match(output, /## List And Search Pagination/);
+});
+
 test('AGENTS section references API_SPEC authority', () => {
   assert.match(AGENTS_SECTION_BODY, /API_SPEC\.md/);
   assert.match(AGENTS_SECTION_BODY, /SdkWorkApiResponse/);
@@ -280,6 +311,26 @@ test('walkOpenApiFiles ignores generated nested SDK OpenAPI snapshots', () => {
 
   const files = walkOpenApiFiles(root).map((file) => file.replace(/\\/g, '/'));
   assert.ok(!files.some((file) => file.endsWith('/generated/sdks/file-app-sdk/openapi/file-app-sdk.openapi.json')));
+});
+
+test('walkOpenApiFiles ignores runtime and cargo target directory variants', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-envelope-runtime-walk-'));
+  for (const ignoredDir of ['.runtime', 'target-codex-verify']) {
+    const authority = path.join(
+      root,
+      ignoredDir,
+      'sdks',
+      'sdkwork-demo-app-sdk',
+      'openapi',
+      'demo-app-api.openapi.json',
+    );
+    fs.mkdirSync(path.dirname(authority), { recursive: true });
+    fs.writeFileSync(authority, '{}\n', 'utf8');
+  }
+
+  const files = walkOpenApiFiles(root);
+
+  assert.deepEqual(files, []);
 });
 
 test('checker does not exempt SDKWork-owned operations in mixed external OpenAPI documents', () => {

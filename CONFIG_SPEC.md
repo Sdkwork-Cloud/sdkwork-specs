@@ -268,7 +268,7 @@ Rules:
 - `openApiBaseUrl` is optional because not every application consumes an open-api SDK. When present for a SDKWork-owned business open-api, it `MUST` use that domain's approved non-app/non-backend prefix from `API_SPEC.md` section 4.5.1, for example `/im/v3/api`. It does not require a literal `/open` path segment. Vendor compatibility prefixes such as `/v1` are valid only for operations declared with `x-sdkwork-wire-protocol: external` per section 4.5.2.
 - `sdkBaseUrls` is the canonical SDK base URL map for bootstrap. It `SHOULD` start from one common `sdkBaseUrl` when one public SDK gateway, reverse proxy, or app edge serves all consumed SDK surfaces. `openApiBaseUrl`, `appApiBaseUrl`, `backendApiBaseUrl`, and dependency-specific entries are overrides, not a requirement to configure every SDK separately.
 - A common `sdkBaseUrl` is a root, origin, or deployment path prefix. Bootstrap derives surface URLs by appending the standard API prefixes, for example `/v1`, `/app/v3/api`, and `/backend/v3/api`. It `MUST NOT` treat a surface URL such as `/v1` as the common SDK root for other surfaces.
-- Per-surface and per-SDK overrides win over the common `sdkBaseUrl`. This keeps the simple one-base-url deployment path while still allowing split services, private dependency hosts, and tenant-specific SDK routing.
+- Per-surface and per-SDK overrides win over the common `sdkBaseUrl`. This keeps the simple one-base-url deployment path while still allowing external upstream services, private dependency hosts, and tenant-specific SDK routing.
 - `sdkBaseUrls.dependencySdkBaseUrls` owns override base URLs for dependency SDK families such as appbase, Drive, IM, or another application. It must be keyed by stable SDK family id, not by ad hoc host names.
 - `dependencyApiSurfaces` records which dependency-owned HTTP API surfaces are available through
   the current runtime, which are external services, and which are intentionally not mounted. It
@@ -277,8 +277,8 @@ Rules:
   entries. These values are pointers into native Cargo metadata, not a replacement catalog; tooling
   must verify them with `cargo metadata`, `[workspace.dependencies]`, and the runtime crate's
   feature table.
-- Rust gateway dependency surfaces that are split upstream proxies `MUST` use `runtimeMode:
-  "external-service"` or the gateway's equivalent split runtime mode plus `requiredBaseUrlKey` or
+- Rust gateway dependency surfaces that proxy to external upstreams `MUST` use `runtimeMode:
+  "external-service"` or the gateway's equivalent external-upstream runtime mode plus `requiredBaseUrlKey` or
   dependency SDK base URL config. They `MUST NOT` set `cargoFeature` or `cargoDependency` unless an
   embedded executable dependency is actually compiled into the gateway.
 - `dependencyApiExports` records which dependency-owned API capabilities this application or
@@ -308,9 +308,9 @@ Rules:
 - Desktop runtime config should resolve `database.engine` to `sqlite` and
   `database.file` to the user private data directory by default.
 - Application root `dev:browser` and `dev:desktop` commands are development
-  orchestration defaults. They should resolve `database.engine = "postgresql"`
-  `serviceLayout = "unified-process"`, and `deploymentProfile = "standalone"`
-  unless an explicit suffixed command selects SQLite, split-services, or cloud.
+  orchestration defaults. They should resolve `database.engine = "postgresql"`,
+  `deploymentProfile = "standalone"`, and `environment = "development"`
+  unless an explicit suffixed command selects SQLite or cloud.
   This development service config is separate from the desktop-local SQLite
   config and must not change the installed desktop package default.
 - Environment parsing for `database` must map
@@ -426,11 +426,11 @@ Rules:
   `dependencyApiSurfaces` `SHOULD` also name the Cargo feature and Cargo dependency that activate
   that executable integration. The feature/dependency evidence must resolve through Cargo metadata;
   a separate gateway catalog file is not accepted as the source of these facts.
-- When a shared Rust gateway only proxies a split upstream dependency service, the dependency
+- When a shared Rust gateway only proxies an external upstream dependency service, the dependency
   surface names the upstream/base-url config instead of Cargo feature/dependency evidence. Split
   proxy coverage proves gateway routing and upstream configuration; it does not prove same-process
   embedded router availability.
-- A shared gateway split proxy surface `MUST NOT` be created from SDK family name alone. The
+- A shared gateway external-upstream proxy surface `MUST NOT` be created from SDK family name alone. The
   existing SDK assembly, component spec, or runtime manifest must also prove a materialized route
   path set with a stable route prefix. Acceptable materialized evidence includes authority OpenAPI
   `paths`, derived `*.sdkgen.*` OpenAPI inputs, or normalized route manifests under
@@ -444,14 +444,14 @@ Rules:
   (`APP_RUNTIME_TOPOLOGY_NAMING.md` plane `platform`, surface `platform.api-gateway`) `SHOULD` use one
   common gateway root as the default dependency base URL source. Application-local server env such as a
   web gateway upstream must default to that common gateway root for platform foundation dependency
-  surfaces; direct dependency module URLs are per-surface overrides for explicit split deployments and must not be
+  surfaces; direct dependency module URLs are per-surface overrides for explicit multi-host deployments and must not be
   hidden as the default.
 - A common dependency gateway root does not collapse application-owned SDK roots. Application-owned
   `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` may remain same-origin or otherwise
   application-owned while dependency SDK base URLs derive from the shared gateway root.
 - Application-local runtime env `MUST NOT` materialize per-module foundation upstream defaults beside a
   configured shared gateway root. Appbase, Drive, commerce, search, voice, image, comments, course,
-  messaging, or other foundation module URLs are explicit split overrides only.
+  messaging, or other foundation module URLs are explicit upstream overrides only.
 - Launch/config tests for applications that consume a shared platform connectivity-plane gateway `MUST` prove dependency
   SDK defaults derive from the gateway root while application-owned app/backend/open SDK base URLs remain
   application-owned.
@@ -460,7 +460,7 @@ Rules:
   IAM/provider routes resolve before broad fallback prefixes. Foundation prefixes such as Drive,
   Notary, RTC, Agent/Kernel, AIoT, Memory, Knowledgebase, News, Notes, Music, Generations,
   Community, Search, Voice, Image, Comments, Course, and Messaging must resolve before broad
-  app/backend fallback surfaces. Broad split upstream surfaces
+  app/backend fallback surfaces. Broad external upstream surfaces
   may inherit a common SDK root only when tests prove they do not shadow more specific dependency
   surfaces.
 - Same-origin dependency surface config `MUST` name only production-capable routers, controllers,
@@ -601,9 +601,9 @@ Rules:
 - Tauri platform config files may own bundle identifiers, icons, permissions, capabilities, window metadata, mobile/tablet target metadata, and signing references. They must not contain secrets, business API route contracts, or SDK ownership decisions.
 - Native Android, iOS, and Harmony host config files may own application ids, bundle ids, module ids, icons, permissions, capabilities, app links/universal links/wants, push profiles, store profiles, signing reference names, and OS version requirements. They must not contain signing private keys, tokens, business API route contracts, or SDK ownership decisions.
 - `.env.postgres.example` is the checked-in local PostgreSQL template for apps
-  that support PostgreSQL development. It must use split fields such as
+  that support PostgreSQL development. It must use structured fields such as
   `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE=postgresql` and
-  `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE=disable`, plus `DATABASE_ADMIN_*` split
+  `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE=disable`, plus structured `DATABASE_ADMIN_*`
   fields when database initialization needs an admin connection.
 - `.env.postgres` is a host-local developer override and must be excluded from
   source control.

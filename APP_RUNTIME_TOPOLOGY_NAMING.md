@@ -1,6 +1,6 @@
 # Application Runtime Topology Naming Registry
 
-- Version: 3.1
+- Version: 4.0
 - Scope: canonical names for deployment profile, runtime topology vocabulary, profiles, surfaces, environment keys, CLI flags, and documentation
 - Related: `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `NAMING_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`
 
@@ -10,17 +10,20 @@ document uses a retired synonym, that document is wrong.
 ## 1. Design Principles
 
 1. Speak in full words. Profile ids and CLI values must be readable in standups
-   without decoding: `standalone.unified-process.production`, not `std.unified.prod`.
+   without decoding: `standalone.production`, not `std.prod`.
 2. One concept, one term. Do not create parallel public synonyms such as
    `gateway-mode`, `local-minimal`, `web-gateway`, `private`, or `saas`.
-3. Deployment profile before process layout. `standalone` and `cloud` describe
-   the application deployment architecture; `serviceLayout` describes how many
-   backend processes participate.
-4. Plane before application line. Connectivity names describe route ownership, not
-   marketing names.
-5. Env keys are scannable. Fixed segment order is
+3. Deployment profile before runtime target. `standalone` and `cloud` describe
+   the application deployment architecture; runtime target describes the package
+   or host surface that starts or consumes that deployment.
+4. Internal process layout stays internal. Process count, upstream fan-out, and
+   binary decomposition do not appear in profile ids, env key axes, public
+   scripts, SDK package names, or application integration manifests.
+5. Plane before application line. Connectivity names describe route ownership,
+   not marketing names.
+6. Env keys are scannable. Fixed segment order is
    `SDKWORK_<APPLICATION_CODE>_<PLANE>_<SURFACE>_<PROPERTY>`.
-6. Retire, do not alias. Unreleased applications delete old keys; bridging is
+7. Retire, do not alias. Unreleased applications delete old keys; bridging is
    forbidden outside approved migration tools.
 
 ## 2. Axis Registry
@@ -28,7 +31,6 @@ document uses a retired synonym, that document is wrong.
 | Canonical key | Spoken name | Allowed values | Meaning |
 | --- | --- | --- | --- |
 | `deploymentProfile` | deployment profile | `standalone`, `cloud` | Application deployment architecture |
-| `serviceLayout` | service layout | `unified-process`, `split-services` | Whether product backends run in one process or decomposed services |
 | `environment` | environment tier | `development`, `test`, `staging`, `production` | Lifecycle stage from `ENVIRONMENT_SPEC.md` |
 | `connectivityPlane` | connectivity plane | `application`, `platform`, `operations`, `edge` | Who owns the route and protocol termination |
 
@@ -50,63 +52,60 @@ Rules:
 - `server`, `container`, `desktop`, browser, mobile, mini-program, and
   `test-runner` are runtime targets in `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`.
 
-### Service Layout
+### Retired Public Topology Vocabulary
 
-| Value | When to say it | Typical processes |
-| --- | --- | --- |
-| `unified-process` | Standalone, smoke, resource-constrained demo | One application ingress process embeds application route/runtime modules |
-| `split-services` | Cloud, realtime, scale-out, private cloud | Application ingress plus internal upstream services and external platform surfaces |
+| Retired concept | Replacement |
+| --- | --- |
+| hosting axis | `deploymentProfile` |
+| self-hosted/cloud-hosted labels | `standalone` or `cloud` plus deployment ownership metadata |
+| topology/distribution as profile axes | `deploymentProfile` plus internal implementation documentation |
+| ambiguous `profile` shorthand | `environment` or full two-segment profile id |
+| deployment mode as SaaS/private/local/test | `deploymentProfile` plus environment/release metadata |
+| deployment mode as server/container/desktop/web/mobile/mini-program/docker | `runtimeTarget` plus package metadata; Docker-compatible artifacts map to `container` |
+| plane names product/foundation/admin/device | `connectivityPlane`: `application`, `platform`, `operations`, `edge` |
+| local/split/gateway mode labels | exact `deploymentProfile` plus declared surfaces |
 
 Rules:
 
-- `standalone.unified-process.*` is the default standalone topology.
-- `cloud.split-services.*` is the default cloud topology.
-- `standalone.split-services.*` and `cloud.unified-process.*` require an
-  architecture decision.
-
-### Retired Axis Terms
-
-| Retired | Replacement |
-| --- | --- |
-| `hosting` | `deploymentProfile` |
-| `self-hosted` | `standalone` or `cloud` plus deployment ownership metadata |
-| `cloud-hosted` | `cloud` plus deployment ownership metadata |
-| `topology` as standalone/cloud | `deploymentProfile` |
-| `distribution` as embedded/distributed | `serviceLayout` |
-| `profile` as ambiguous shorthand | `environment` or full profile id |
-| `deploymentMode` as `saas/private/local/test` | `deploymentProfile` plus environment/release metadata |
-| `deploymentMode` as `server/container/desktop/web/mobile/mini-program/docker` | `runtimeTarget` plus package metadata; Docker-compatible artifacts map to `container` |
-| `plane`: product, foundation, admin, device | `connectivityPlane`: application, platform, operations, edge |
-| `gateway-mode`, `local-minimal`, `split-mode` | profile id plus `serviceLayout` |
+- New application standards, repository specs, env files, and scripts `MUST NOT`
+  introduce a public process-layout axis.
+- Migration tooling may recognize retired values as input only, then normalize
+  to `deploymentProfile`, `environment`, runtime target, and declared surfaces
+  before application code sees them.
 
 ## 3. Profile Id Formula
 
 ```text
-<deploymentProfile>.<serviceLayout>.<environment>
+<deploymentProfile>.<environment>
 ```
 
 Examples:
 
 | Profile id | Short spoken form |
 | --- | --- |
-| `standalone.unified-process.development` | standalone unified dev |
-| `standalone.unified-process.production` | standalone unified prod |
-| `standalone.split-services.development` | standalone split dev |
-| `cloud.split-services.staging` | cloud split staging |
-| `cloud.split-services.production` | cloud split prod |
+| `standalone.development` | standalone dev |
+| `standalone.production` | standalone prod |
+| `cloud.staging` | cloud staging |
+| `cloud.production` | cloud prod |
 
 Profile env file path:
 
 ```text
-configs/topology/<deploymentProfile>.<serviceLayout>.<environment>.env
+configs/topology/<deploymentProfile>.<environment>.env
 ```
 
 CLI:
 
 ```bash
---deployment-profile standalone --service-layout unified-process
---deployment-profile cloud --service-layout split-services
+--deployment-profile standalone --environment development
+--deployment-profile cloud --environment production
 ```
+
+Rules:
+
+- Profile ids `MUST` have exactly two segments.
+- Profile ids `MUST NOT` contain runtime target, database engine, process
+  layout, provider name, hosting owner, or package format.
 
 ## 4. Connectivity Planes
 
@@ -166,13 +165,17 @@ Surface segment uses uppercase with underscores: `PUBLIC_INGRESS`,
 
 ### Internal Upstream
 
-Split-services profiles may define internal upstream keys:
+Cloud profiles and advanced standalone profiles may define internal upstream
+keys for gateway-to-service communication:
 
 ```text
 SDKWORK_<APPLICATION_CODE>_INTERNAL_<SERVICE>_BIND
 ```
 
 Example: `SDKWORK_IM_INTERNAL_SESSION_GATEWAY_BIND`.
+
+These keys are server-side only. They `MUST NOT` become client bootstrap keys or
+additional required public HTTP surfaces.
 
 ### Client-Side Mirror
 
@@ -191,6 +194,8 @@ Rules:
   application startup, checked-in examples, workflow config, and runtime config.
   New applications use `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE` plus
   `SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET`.
+- Public process-layout env keys are forbidden. Implementation-specific
+  upstream config must use internal surface/upstream keys.
 
 ## 7. Archetype Registry
 
@@ -209,8 +214,8 @@ Use these exact phrases in reviews and runbooks:
 
 - "This change affects `application.public-ingress` only."
 - "Foundation SDKs must use `platform.api-gateway` URLs unless standalone embeds an approved platform adapter."
-- "Default standalone profile is `standalone.unified-process.development`."
-- "Default cloud release profile is `cloud.split-services.production`."
+- "Default standalone profile is `standalone.development`."
+- "Default cloud release profile is `cloud.production`."
 - "WebSocket terminates on `application.public-ingress`, not `platform.api-gateway`."
 
 Avoid:
@@ -220,6 +225,7 @@ Avoid:
 - "local mode"; say `standalone` plus the exact profile id.
 - "SaaS mode" as a deployment profile; say `cloud` plus release environment metadata.
 - "chat host" for IM. IM is `im.sdkwork.com`; `chat.sdkwork.com` is reserved for LLM dialogue apps.
+- public process-layout mode names in docs, scripts, env files, or SDK bootstrap.
 
 ## 9. SDKWork Public Host Registry
 
@@ -241,7 +247,7 @@ Rules:
 ## 10. Gateway Crate Registry
 
 Gateway crate names `MUST` encode scope and deployment profile. Naming authority lives in
-`APPLICATION_GATEWAY_SPEC.md` and `NAMING_SPEC.md` §4.3.1.
+`APPLICATION_GATEWAY_SPEC.md` and `NAMING_SPEC.md` section 4.3.1.
 
 | Scope | Deployment profile | Canonical crate | Primary surface | Platform dependency |
 | --- | --- | --- | --- | --- |
@@ -276,9 +282,7 @@ Retired crate naming:
 
 | Version | Change |
 | --- | --- |
-| 1.0 | Initial topology / distribution / product-foundation planes |
-| 2.0 | Renamed to hosting / serviceLayout / connectivityPlane; surface and env key registry |
-| 2.1 | SaaS public host registry |
-| 3.2 | Platform gateway crate standardized as `sdkwork-api-cloud-gateway`; retired `sdkwork-api-cloud-gateway-api-server` listener crate |
+| 4.0 | Collapsed topology profiles to `deploymentProfile.environment`; public process-layout axis removed from application integration |
+| 3.2 | Platform gateway crate standardized as `sdkwork-api-cloud-gateway`; retired listener crate |
 | 3.1 | Gateway crates must use scope plus `standalone` or `cloud` deployment qualifiers |
 | 3.0 | Promoted `deploymentProfile = standalone | cloud` as the application deployment architecture and retired hosting/self-hosted/cloud-hosted as topology axes |

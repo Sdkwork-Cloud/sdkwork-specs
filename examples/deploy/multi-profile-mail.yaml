@@ -1,8 +1,8 @@
 version: 1
-defaultProfile: cloud-hosted.split-services.production
+defaultProfile: cloud.production
 
 profiles:
-  cloud-hosted.split-services.production:
+  cloud.production:
     install:
       layout: source-tree
     expose:
@@ -13,7 +13,7 @@ profiles:
     packages:
       - mini-program-weixin
 
-  self-hosted.split-services.development:
+  standalone.development:
     expose:
       - domain: localhost
         tls: off

@@ -310,11 +310,11 @@ Rules:
   such as `gateway:cloud:bundle` or `gateway:standalone:pack`. Use
   `gateway:package:cloud` and `gateway:package:standalone`.
 - Tests `MUST` fail when root `dev:browser` or `dev:desktop` defaults resolve
-  to SQLite, cloud, split hidden topology, or retired `--hosting` flags. These
+  to SQLite, cloud, hidden topology modes, or retired `--hosting` flags. These
   defaults must resolve through their direct command value or root-script
-  delegation chain to PostgreSQL, `unified-process`, and `standalone`; explicit
+  delegation chain to PostgreSQL, `standalone`, and `development`; explicit
   alternatives use suffixed scripts such as `dev:desktop:sqlite` or
-  `dev:browser:postgres:split-services:cloud`.
+  `dev:browser:postgres:cloud`.
 - Tests `MUST` verify new root API/SDK command families use `api:*` and
   `sdk:*` public namespaces for cross-application automation.
 - Tests `MUST` scan app surface and package-local `package.json#scripts` for
@@ -907,11 +907,11 @@ Rules:
   `[runtime].deployment_mode`, `deploymentMode`, or CLI flags such as
   `--hosting` as active deployment architecture. Migration tools may cover
   those aliases only when tests prove they normalize to `deploymentProfile`,
-  `runtimeTarget`, and v3 topology profile ids before application code sees the
+  `runtimeTarget`, and v4 topology profile ids before application code sees the
   config.
 - Topology tests `MUST` fail when profile ids begin with `self-hosted.` or
   `cloud-hosted.`, or when they do not follow
-  `<deploymentProfile>.<serviceLayout>.<environment>`.
+  `<deploymentProfile>.<environment>`.
 - Workspace topology parity checks `MUST` run
   `node tools/check-topology-deployment-profiles.mjs --workspace ..` and pass
   for every application repository with `specs/topology.spec.json`.
@@ -976,7 +976,7 @@ Rules:
   creating new deployment profile values.
 - Deployment smoke tests `MUST` prove standalone profiles can run as one
   application deployment unit with one public application ingress for HTTP
-  `*-api` surfaces, while cloud profiles use explicit split-service URLs,
+  `*-api` surfaces, while cloud profiles use explicit upstream URLs,
   secrets, probes, rollout, and rollback metadata.
 
 ## 3. Security Tests

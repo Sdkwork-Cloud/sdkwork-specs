@@ -1,7 +1,8 @@
 {
   "pnpm": {
     "packages": [
-      "../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript"
+      "../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript",
+      "../sdkwork-clawrouter/sdks/clawrouter-app-sdk/clawrouter-app-sdk-typescript"
     ]
   },
   "catalog": {}

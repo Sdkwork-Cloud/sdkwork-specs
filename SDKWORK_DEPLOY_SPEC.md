@@ -108,7 +108,7 @@ Format: YAML. Schema: `schemas/sdkwork.deploy.schema.v1.json`. Version field: `v
 
 ```yaml
 version: 1
-profile: cloud.split-services.production
+profile: cloud.production
 
 install:
   layout: binary-package
@@ -124,10 +124,10 @@ When `profiles` exists, root-level `profile`, `install`, `expose`, `packages`, a
 
 ```yaml
 version: 1
-defaultProfile: cloud.split-services.production
+defaultProfile: cloud.production
 
 profiles:
-  cloud.split-services.production:
+  cloud.production:
     install:
       layout: binary-package
     expose: []
@@ -358,7 +358,7 @@ Deploy API Server publishes nginx through site `runtimeConfig.sdkworkDeploy` bin
   "sdkworkDeploy": {
     "appRoot": "/usr/share/sdkwork-space/sdkwork-im",
     "domain": "im.sdkwork.com",
-    "profileId": "cloud.split-services.production",
+    "profileId": "cloud.production",
     "siteFile": "/etc/nginx/sites-enabled/sdkwork/im.sdkwork.com.conf"
   }
 }

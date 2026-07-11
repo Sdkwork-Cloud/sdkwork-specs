@@ -15,7 +15,7 @@ Rules:
 - SDKWork automation `MUST` be able to run common application tasks without knowing the product name.
 - Repository root commands `MUST` use one public vocabulary across applications.
 - Application-code tokens `MUST NOT` be the first segment of public root scripts.
-- Application differences `MUST` be expressed through `runtimeTarget`, `database`, `serviceLayout`, `deploymentProfile`, `environment`, manifests, and topology profiles, not through application-code-prefixed script names.
+- Application differences `MUST` be expressed through `runtimeTarget`, `database`, `deploymentProfile`, `environment`, manifests, and topology profiles, not through application-code-prefixed script names.
 - Command examples in standards, README files, agent instructions, and runbooks `MUST` use this standard vocabulary.
 
 ## 2. Command Layers
@@ -81,7 +81,7 @@ When the capability exists, the repository root `MUST` expose the matching comma
 Repository root script names `MUST` follow:
 
 ```text
-<command>[:runtimeTarget][:database][:serviceLayout][:deploymentProfile][:tier]
+<command>[:runtimeTarget][:database][:deploymentProfile][:tier]
 ```
 
 The first segment `MUST` be a standard command or standard tool namespace.
@@ -131,13 +131,13 @@ Rules:
   `build:ios-native`, `dev:flutter-android`, and `release:package:mini-program`.
 - Root `dev:browser` and `dev:desktop` are normalized development defaults.
   When present, each `MUST` resolve to `database = postgres`,
-  `serviceLayout = unified-process`, and `deploymentProfile = standalone`,
-  either by delegating to `dev:<target>:postgres:unified-process:standalone`
+  `deploymentProfile = standalone`, and `environment = development`,
+  either by delegating to `dev:<target>:postgres:standalone`
   or by passing equivalent explicit flags such as `--database postgres`,
-  `--service-layout unified-process`, and `--deployment-profile standalone`.
-  SQLite, split-services, or cloud development variants must use explicit
+  `--deployment-profile standalone`, and `--environment development`.
+  SQLite or cloud development variants must use explicit
   suffixed scripts such as `dev:browser:sqlite`,
-  `dev:desktop:sqlite`, or `dev:browser:postgres:split-services:cloud`.
+  `dev:desktop:sqlite`, or `dev:browser:postgres:cloud`.
 - Tool or platform names such as `browser:*`, `desktop:*`, `tauri:*`, `docker:*`,
   `android:*`, `ios:*`, `harmony:*`, `flutter:*`, and `mini-program:*` `MUST NOT`
   be public root, app surface, or package-local script names when they represent
@@ -180,13 +180,6 @@ sqlite
 
 `postgres` is the command alias for the PostgreSQL runtime engine. Runtime config may normalize it to `postgresql`.
 
-Service layouts:
-
-```text
-unified-process
-split-services
-```
-
 Deployment profiles:
 
 ```text
@@ -215,7 +208,10 @@ Rules:
 - Root default dev scripts `dev:browser` and `dev:desktop` `MUST NOT` pass
   retired topology flags such as `--hosting self-hosted` or
   `--hosting cloud-hosted`; use `--deployment-profile standalone|cloud` plus
-  `--service-layout unified-process|split-services`.
+  `--environment <tier>`.
+- Public script names and command values `MUST NOT` include internal process
+  layout values. Process decomposition is selected by the active topology
+  profile and deployment manifests behind `standalone` or `cloud`.
 - `web`, `mobile`, `native`, and `docker` `MUST NOT` be used as deployment profile or runtime-target aliases.
 - `dev`, `test`, `staging`, and `prod` may appear only as script/file profile aliases. Runtime config must normalize them to `development`, `test`, `staging`, and `production`.
 
@@ -247,7 +243,7 @@ Migration examples:
 | `drive:build:self-hosted` | `build:standalone` |
 | `clawrouter:dev` | `dev` |
 | `clawrouter:dev:postgres` | `dev:server:postgres` or `dev:browser:postgres` based on the orchestrated target |
-| `clawrouter:dev:cloud:split` | `dev:browser:postgres:split-services:cloud` |
+| `clawrouter:dev:cloud:split` | `dev:browser:postgres:cloud` |
 | `browser:dev` | `dev:browser` |
 | `desktop:dev` | `dev:desktop` |
 | `desktop:build` | `build:desktop` |
@@ -372,7 +368,7 @@ scripts/sdkwork-command.mjs
 Rules:
 
 - The dispatcher `MUST` parse standard command names or explicit flags and map them to product implementation scripts.
-- The dispatcher `MUST` print or pass normalized `deploymentProfile`, `runtimeTarget`, `serviceLayout`, and lifecycle environment when they affect runtime behavior.
+- The dispatcher `MUST` print or pass normalized `deploymentProfile`, `runtimeTarget`, database profile, and lifecycle environment when they affect runtime behavior.
 - The dispatcher `MUST` fail fast on unknown standard commands.
 - The dispatcher `MUST NOT` accept retired public axis values such as `self-hosted` or `cloud-hosted`.
 - Existing product runners such as `scripts/<application-code>-dev.mjs` may remain as internal implementation details.
@@ -407,9 +403,9 @@ pnpm script validation `MUST` check:
   native tools such as Vite, Tauri, Cargo, Docker, Flutter, Gradle, Xcode, or
   hvigor behind the standard action-first `pnpm` surface.
 - Root `dev:browser` and `dev:desktop` resolve through their direct command
-  value or root-script delegation chain to PostgreSQL, `unified-process`, and
-  standalone defaults, and fail when they resolve to SQLite, split-services,
-  cloud, or retired `--hosting` flags.
+  value or root-script delegation chain to PostgreSQL, standalone, and
+  `development` defaults, and fail when they resolve to SQLite, cloud, retired
+  process-layout flags, or retired `--hosting` flags.
 
 Validation SHOULD provide a migration suggestion for every rejected script name.
 
@@ -442,9 +438,9 @@ Rules:
 - [ ] No repository root public script starts with a application-code prefix such as `drive`, `im`, or `clawrouter`.
 - [ ] Runtime-target commands are action-first, for example `dev:browser`, `dev:desktop`, `build:desktop`, `build:container`, `build:android-native`, `build:ios-native`, and `build:mini-program`; no public script uses platform/tool-first aliases such as `browser:*`, `desktop:*`, `tauri:*`, `docker:*`, `android:*`, `ios:*`, `harmony:*`, `flutter:*`, `mini-program:*`, or `*:tauri`.
 - [ ] Root `dev:browser` and `dev:desktop` default to
-      `postgres:unified-process:standalone`; SQLite, split-services, and cloud
+      `postgres:standalone` with `environment = development`; SQLite and cloud
       variants are explicit suffixed commands.
-- [ ] Script suffixes use canonical runtime target, database, service layout, deployment profile, and tier values.
+- [ ] Script suffixes use canonical runtime target, database, deployment profile, and tier values.
 - [ ] Gateway commands use `gateway:<action>[:deploymentProfile]`.
 - [ ] Root public scripts call a standard dispatcher or thin wrapper.
 - [ ] App surface/package scripts remain package-local and do not become a second root automation standard.

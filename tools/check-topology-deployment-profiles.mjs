@@ -9,26 +9,29 @@ import { parseArgs } from 'node:util';
 
 const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_WORKSPACE = path.resolve(SPECS_ROOT, '..');
+const RETIRED_PROFILE_TOKENS = new Set(['unified-process', 'split-services']);
 
 function requiredProfiles(spec) {
-  const layouts = spec.vocabulary?.serviceLayout?.allowed ?? ['unified-process', 'split-services'];
   const profiles = spec.vocabulary?.deploymentProfile?.allowed ?? ['standalone', 'cloud'];
   const environments = spec.vocabulary?.environment?.allowed ?? ['development', 'production'];
-  const standaloneLayout = layouts.includes('unified-process') ? 'unified-process' : layouts[0];
-  const cloudLayout = layouts.includes('split-services') ? 'split-services' : layouts[layouts.length - 1];
-  const required = [`standalone.${standaloneLayout}.development`];
-  if (profiles.includes('cloud')) {
-    required.push(`cloud.${cloudLayout}.production`);
+  const required = [];
+  if (profiles.includes('standalone') && environments.includes('development')) {
+    required.push('standalone.development');
   }
-  if (environments.includes('development') && profiles.includes('cloud')) {
-    required.push(`cloud.${cloudLayout}.development`);
+  if (profiles.includes('cloud')) {
+    if (environments.includes('production')) {
+      required.push('cloud.production');
+    }
+    if (environments.includes('development')) {
+      required.push('cloud.development');
+    }
   }
   return required;
 }
 
 function fail(message, details = []) {
   console.error(`topology deployment profile check failed: ${message}`);
-  for (const detail of details) details.forEach((line) => console.error(`- ${line}`));
+  for (const detail of details) console.error(`- ${detail}`);
   process.exit(1);
 }
 
@@ -36,10 +39,56 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
+function hasRetiredProfileToken(value) {
+  return String(value)
+    .split('.')
+    .some((part) => RETIRED_PROFILE_TOKENS.has(part));
+}
+
+function pushProfileIdIssues(profileId, rel, issues) {
+  if (hasRetiredProfileToken(profileId)) {
+    issues.push(`${rel}: retired profile id ${profileId}; use <deploymentProfile>.<environment>`);
+    return;
+  }
+  const parts = profileId.split('.');
+  if (parts.length !== 2) {
+    issues.push(`${rel}: profile id ${profileId} must use <deploymentProfile>.<environment>`);
+    return;
+  }
+  const [deploymentProfile, environment] = parts;
+  if (!['standalone', 'cloud'].includes(deploymentProfile)) {
+    issues.push(`${rel}: profile id ${profileId} uses invalid deployment profile ${deploymentProfile}`);
+  }
+  if (!environment) {
+    issues.push(`${rel}: profile id ${profileId} is missing environment segment`);
+  }
+}
+
+function pushRetiredTopologyIssues(spec, rel, issues) {
+  if (spec.vocabulary?.serviceLayout) {
+    issues.push(`${rel}: retired vocabulary.serviceLayout is not allowed`);
+  }
+  if (String(spec.profilePattern ?? '').includes('serviceLayout')) {
+    issues.push(`${rel}: profilePattern must not contain retired serviceLayout`);
+  }
+  if (spec.envKeys?.serviceLayout) {
+    issues.push(`${rel}: envKeys.serviceLayout is retired and must be removed`);
+  }
+  for (const [key, value] of Object.entries(spec.defaults ?? {})) {
+    if (typeof value === 'string' && hasRetiredProfileToken(value)) {
+      issues.push(`${rel}: defaults.${key} uses retired profile id ${value}`);
+    }
+  }
+}
+
 function checkSpec(repoRoot, specPath) {
   const issues = [];
   const rel = path.relative(repoRoot, specPath);
   const spec = readJson(specPath);
+  if (spec.schemaVersion !== 4) {
+    issues.push(`${rel}: schemaVersion must be 4 for standalone/cloud two-segment topology profiles`);
+  }
+  pushRetiredTopologyIssues(spec, rel, issues);
 
   const profiles =
     spec.vocabulary?.deploymentProfile?.allowed ?? spec.vocabulary?.hosting?.allowed ?? [];
@@ -51,6 +100,16 @@ function checkSpec(repoRoot, specPath) {
   }
   if (spec.vocabulary?.hosting && !spec.vocabulary?.deploymentProfile) {
     issues.push(`${rel}: retired vocabulary.hosting still active; run align-app-topology-deployment-profiles.mjs`);
+  }
+  if (profiles.includes('self-hosted') || profiles.includes('cloud-hosted')) {
+    issues.push(`${rel}: retired hosting deployment values remain in vocabulary`);
+  }
+
+  for (const profileId of Object.keys(spec.profileFiles ?? {})) {
+    pushProfileIdIssues(profileId, rel, issues);
+  }
+  for (const profileId of Object.keys(spec.orchestration?.profiles ?? {})) {
+    pushProfileIdIssues(profileId, rel, issues);
   }
 
   for (const profileId of requiredProfiles(spec)) {

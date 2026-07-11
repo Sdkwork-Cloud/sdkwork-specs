@@ -46,6 +46,10 @@ function extractPreservedDependencies(cargoToml, applicationCode) {
     'u',
   );
   const routeKeyPattern = new RegExp(`^\\s*sdkwork_routes_${applicationCode.replace(/-/gu, '_')}`, 'u');
+  const routeWorkspaceKeyPattern = new RegExp(
+    `^\\s*sdkwork-routes-${applicationCode}-`,
+    'u',
+  );
 
   return depsSection[1]
     .split('\n')
@@ -57,13 +61,13 @@ function extractPreservedDependencies(cargoToml, applicationCode) {
       if (/^\s*axum\.workspace\s*=/u.test(line)) {
         return false;
       }
-      if (/^\s*tokio\s*=/u.test(line)) {
+      if (/^\s*tokio(?:\.workspace)?\s*=/u.test(line)) {
         return false;
       }
       if (/^\s*sqlx\.workspace\s*=/u.test(line)) {
         return false;
       }
-      if (routeKeyPattern.test(line) || routePackagePattern.test(line)) {
+      if (routeKeyPattern.test(line) || routeWorkspaceKeyPattern.test(line) || routePackagePattern.test(line)) {
         return false;
       }
       return true;
@@ -132,18 +136,25 @@ function renderCargoToml(
   preservedDeps = '',
   workspaceFields = {},
   bootstrapDeps = [],
+  workspaceDepNames = new Set(),
 ) {
   const packageName = assemblyPackageName(applicationCode);
   const licenseLine = workspaceFields.license ? 'license.workspace = true\n' : '';
   const depLines = routeCrates
     .map((crate) => {
       const relPath = path.posix.relative(assemblyCrateDir(applicationCode), crate.memberDir);
-      return `${crate.libName} = { package = "${crate.packageName}", path = "${relPath}" }`;
+      if (workspaceDepNames.has(crate.packageName)) {
+        return `${crate.packageName}.workspace = true`;
+      }
+      return `${crate.packageName} = { path = "${relPath}" }`;
     })
     .join('\n');
   const preservedBlock = preservedDeps.trim() ? `${preservedDeps.trim()}\n` : '';
   const bootstrapDepBlock =
     bootstrapDeps.length > 0 ? `${[...new Set(bootstrapDeps)].join('\n')}\n` : '';
+  const tokioLine = workspaceDepNames.has('tokio')
+    ? 'tokio.workspace = true'
+    : 'tokio = { version = "1.48", features = ["macros", "rt-multi-thread"] }';
 
   return `[package]
 name = "${packageName}"
@@ -157,7 +168,7 @@ path = "src/lib.rs"
 
 [dependencies]
 axum.workspace = true
-tokio = { version = "1.48", features = ["macros", "rt-multi-thread"] }
+${tokioLine}
 ${bootstrapDepBlock}${preservedBlock}${depLines ? `${depLines}\n` : ''}`;
 }
 
@@ -448,6 +459,7 @@ export function materializeGatewayAssembly(root) {
       preservedDeps,
       readWorkspacePackageFields(root),
       bootstrapDeps,
+      workspaceDeps,
     ),
   );
   writeFileEnsuringDir(path.join(crateDir, 'src', 'generated.rs'), renderGeneratedRs(routeCrates));

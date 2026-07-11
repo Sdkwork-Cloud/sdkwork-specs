@@ -1,6 +1,18 @@
 {
   "pnpm": {
-    "packages": []
+    "packages": [
+      "../sdkwork-account/apps/sdkwork-account-common/packages/*",
+      "../sdkwork-account/apps/sdkwork-account-pc/packages/sdkwork-account-pc-wallet",
+      "../sdkwork-account/sdks/sdkwork-account-app-sdk/sdkwork-account-app-sdk-typescript",
+      "../sdkwork-account/sdks/sdkwork-account-backend-sdk/sdkwork-account-backend-sdk-typescript",
+      "../sdkwork-membership/apps/sdkwork-membership-common/packages/*",
+      "../sdkwork-membership/apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-membership",
+      "../sdkwork-membership/apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-subscription",
+      "../sdkwork-membership/sdks/sdkwork-membership-app-sdk/sdkwork-membership-app-sdk-typescript",
+      "../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript",
+      "../sdkwork-payment/apps/sdkwork-payment-common/packages/*",
+      "../sdkwork-payment/apps/sdkwork-payment-pc/packages/sdkwork-payment-pc-payment"
+    ]
   },
   "catalog": {
     "@types/react": "^19.2.14",

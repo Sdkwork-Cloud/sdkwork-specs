@@ -134,6 +134,36 @@ test('aligns stale tsconfig include globs', () => {
   assert.equal(updated.include[0], 'apps/sdkwork-portal-common/packages/**/*.ts');
 });
 
+test('resolves tsconfig paths entries relative to compilerOptions.baseUrl', () => {
+  const repoRoot = makeApplicationRepo('sdkwork-fed-tsconfig-baseurl', 'im');
+  const siblingRoot = path.join(path.dirname(repoRoot), 'sdkwork-appbase');
+  fs.mkdirSync(
+    path.join(siblingRoot, 'packages/pc-react/foundation/sdkwork-appbase-pc-react/src'),
+    { recursive: true },
+  );
+  fs.writeFileSync(
+    path.join(siblingRoot, 'packages/pc-react/foundation/sdkwork-appbase-pc-react/src/index.ts'),
+    'export {};\n',
+  );
+  fs.mkdirSync(path.join(repoRoot, 'apps/sdkwork-im-pc/.runtime/tsx'), { recursive: true });
+  fs.writeFileSync(
+    path.join(repoRoot, 'apps/sdkwork-im-pc/.runtime/tsx/tsconfig.runtime.json'),
+    JSON.stringify({
+      compilerOptions: {
+        baseUrl: '../..',
+        paths: {
+          '@sdkwork/appbase-pc-react': [
+            '../../../sdkwork-appbase/packages/pc-react/foundation/sdkwork-appbase-pc-react/src/index.ts',
+          ],
+        },
+      },
+    }, null, 2),
+  );
+
+  const issues = scanWorkspaceFederationPaths(repoRoot).issues;
+  assert.deepEqual(issues, []);
+});
+
 test('aligns stale pnpm workspace federation entries', () => {
   const repoRoot = makeTempDir('sdkwork-fed-align-');
   const siblingRoot = path.join(path.dirname(repoRoot), 'sdkwork-search');

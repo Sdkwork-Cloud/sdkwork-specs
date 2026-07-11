@@ -184,6 +184,17 @@ function renderStubGatewayExports(manifest) {
   return lines.join('\n');
 }
 
+function normalizeRouterReturnType(returnType) {
+  const trimmed = returnType.trim();
+  if (trimmed.includes('Result<')) {
+    return 'axum::Router';
+  }
+  if (/^axum::Router\b/u.test(trimmed)) {
+    return trimmed;
+  }
+  return trimmed.replace(/\bRouter\b/u, 'axum::Router');
+}
+
 function renderGatewayExports(manifest, buildFn) {
   const lines = [];
   if (manifest) {
@@ -195,9 +206,7 @@ function renderGatewayExports(manifest, buildFn) {
 
   const fnKeyword = buildFn.async ? 'pub async fn' : 'pub fn';
   const params = buildFn.params ? buildFn.params : '';
-  const returnType = buildFn.returnType.includes('Result<')
-    ? 'axum::Router'
-    : buildFn.returnType.replace(/\bRouter\b/u, 'axum::Router');
+  const returnType = normalizeRouterReturnType(buildFn.returnType);
   lines.push(`${fnKeyword} gateway_mount(${params}) -> ${returnType} {`);
   const callArgs = buildFn.params
     ? buildFn.params
@@ -229,9 +238,25 @@ function serviceHostImport(typeName) {
   return `use sdkwork_${snake}_service_host::${typeName};`;
 }
 
+function hasBareRouterReference(source) {
+  return /(^|[^\w:])Router(?:<|\b)/u.test(source);
+}
+
+function removeUnusedAxumRouterImport(source) {
+  const withoutImport = source.replace(/^\s*use axum::Router;\r?\n\r?\n?/mu, '');
+  if (withoutImport !== source && !hasBareRouterReference(withoutImport)) {
+    return withoutImport;
+  }
+  return source;
+}
+
+function normalizeGatewayMountSource(source) {
+  return removeUnusedAxumRouterImport(source.replace(/axum::axum::Router/gu, 'axum::Router'));
+}
+
 function gatewayMountImportLines(libRs, gatewayExports) {
   const imports = [];
-  if (!/\buse axum::Router\b/u.test(libRs) && /\bRouter\b/u.test(gatewayExports)) {
+  if (!/\buse axum::Router\b/u.test(libRs) && hasBareRouterReference(gatewayExports)) {
     imports.push('use axum::Router;');
   }
   if (/\bArc</u.test(gatewayExports) && !/\buse std::sync::Arc\b/u.test(libRs)) {
@@ -264,14 +289,27 @@ export function alignGatewayMountExports(root, { dryRun = false } = {}) {
   const results = [];
 
   for (const crate of routeCrates) {
+    const crateRoot = path.join(root, crate.memberDir);
+    const libPath = path.join(crateRoot, 'src', 'lib.rs');
+    const libRs = readText(libPath);
+    const normalizedLibRs = normalizeGatewayMountSource(libRs);
+
     if (crate.hasGatewayMount) {
+      if (normalizedLibRs !== libRs) {
+        if (!dryRun) {
+          fs.writeFileSync(libPath, normalizedLibRs, 'utf8');
+        }
+        results.push({
+          packageName: crate.packageName,
+          status: dryRun ? 'would-update-existing' : 'updated-existing',
+          reason: 'normalized gateway_mount signature',
+        });
+        continue;
+      }
       results.push({ packageName: crate.packageName, status: 'skipped', reason: 'already has gateway_mount' });
       continue;
     }
 
-    const crateRoot = path.join(root, crate.memberDir);
-    const libPath = path.join(crateRoot, 'src', 'lib.rs');
-    const libRs = readText(libPath);
     const manifest = findManifestExport(crateRoot);
     const buildFn = findPreferredBuildFn(crateRoot);
 
@@ -328,12 +366,17 @@ function main() {
   let failed = 0;
 
   for (const item of report.results) {
-    if (item.status === 'updated' || item.status === 'would-update') {
+    if (
+      item.status === 'updated'
+      || item.status === 'would-update'
+      || item.status === 'updated-existing'
+      || item.status === 'would-update-existing'
+    ) {
       updated += 1;
       console.log(
-        `${item.status === 'would-update' ? 'plan' : 'ok'}   ${item.packageName} (${item.buildFn}${
-          item.manifestFn ? `, ${item.manifestFn}` : ''
-        })`,
+        `${item.status.startsWith('would-update') ? 'plan' : 'ok'}   ${item.packageName} (${
+          item.buildFn ?? item.reason
+        }${item.manifestFn ? `, ${item.manifestFn}` : ''})`,
       );
       continue;
     }

@@ -1,13 +1,19 @@
 # Application Runtime Topology Standard
 
-- Version: 3.0
+- Version: 4.0
 - Scope: cross-application deployment entrypoints, multi-plane routing, multi-protocol surfaces, dev orchestration contracts, and client bootstrap URL authority
 - Related: `APPLICATION_GATEWAY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `CONFIG_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `../sdkwork-app-topology/README.md`
 
 This standard defines where clients, operators, devices, and SDKs connect for
 each SDKWork application. `DEPLOYMENT_SPEC.md` owns the application deployment
-architecture: every deployable application uses `deploymentProfile =
-standalone` or `deploymentProfile = cloud`.
+architecture: every deployable application uses exactly one active
+`deploymentProfile`: `standalone` or `cloud`.
+
+`deploymentProfile` is the only deployment-mode axis exposed to application
+integration, SDK bootstrap, dev scripts, profile ids, and release automation.
+Process decomposition, upstream scaling, and platform adapter placement are
+implementation details inside the selected profile; they are not additional
+profile segments.
 
 **Naming authority:** `APP_RUNTIME_TOPOLOGY_NAMING.md`. All labels, env keys,
 profile ids, CLI flags, and examples must match that registry.
@@ -17,6 +23,7 @@ profile ids, CLI flags, and examples must match that registry.
 - OpenAPI/SDK ownership. Use `API_SPEC.md`, `SDK_SPEC.md`, and app integration specs.
 - nginx, K8s, systemd, or provider-specific manifest details.
 - Backward compatibility with retired deployment vocabulary.
+- Exposing internal process decomposition as an SDKWork application integration mode.
 
 ## 2. Vocabulary
 
@@ -25,32 +32,34 @@ Applications `MUST` use these axes.
 | Axis | Key | Values | Question it answers |
 | --- | --- | --- | --- |
 | Deployment profile | `deploymentProfile` | `standalone`, `cloud` | What deployment architecture is this application using? |
-| Service layout | `serviceLayout` | `unified-process`, `split-services` | One process or decomposed services? |
 | Environment tier | `environment` | `development`, `test`, `staging`, `production` | Which lifecycle stage is active? |
 | Connectivity plane | `connectivityPlane` | `application`, `platform`, `operations`, `edge` | Who owns this route? |
 
 Examples in conversation:
 
-- "Drive production uses `standalone.unified-process.production`."
-- "IM production uses `cloud.split-services.production`."
+- "Drive production uses `standalone.production`."
+- "IM production uses `cloud.production`."
 - "Realtime WebSocket terminates on `application.public-ingress`, not `platform.api-gateway`."
 
 Rules:
 
 - `deploymentProfile` values are only `standalone` and `cloud`.
+- `standalone` means the application is shipped and operated as a
+  self-contained deployment unit. It may embed application routes, dependency
+  adapters, and an approved platform adapter behind one application ingress.
+- `cloud` means the application is operated through cloud release automation,
+  managed secrets, probes, rollout/rollback, and an application cloud gateway.
+  It may proxy to internal upstream services, but clients still see one
+  application ingress surface.
 - Retired terms such as `self-hosted`, `cloud-hosted`, `saas`, `private`,
-  `local`, `test`, `hosting`, `topology`, and `distribution` `MUST NOT` be
-  used as active deployment profile or profile-id segments.
-- `standalone` deployments normally use `unified-process`.
-- `standalone.split-services.*` is allowed only when the release remains one
-  application deployment unit and an architecture decision explains the process
-  boundary.
-- `cloud` deployments normally use `split-services`.
-- `cloud.unified-process.*` requires an architecture decision and must still
-  use cloud ingress, managed secrets, probes, release orchestration, and
-  rollback policy.
+  `local`, `hosting`, `topology`, and `distribution` `MUST NOT` be used as
+  active deployment profile or profile-id segments.
 - `deploymentProfile` must not be inferred from `runtimeTarget`. A container
-  can be `standalone` single-container or a `cloud` orchestrated image.
+  can be a `standalone` single-container artifact or a `cloud` orchestrated
+  image.
+- Internal process count, binary count, and upstream fan-out `MUST NOT` appear
+  in profile ids, SDK package names, public scripts, browser env keys, or
+  application integration contracts.
 
 ## 3. Connectivity Planes
 
@@ -117,17 +126,26 @@ live in `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`.
 ### Profile Id
 
 ```text
-<deploymentProfile>.<serviceLayout>.<environment>
+<deploymentProfile>.<environment>
 ```
 
 Examples:
 
 ```text
-standalone.unified-process.development
-standalone.unified-process.production
-cloud.split-services.staging
-cloud.split-services.production
+standalone.development
+standalone.production
+cloud.staging
+cloud.production
 ```
+
+Rules:
+
+- Profile ids `MUST` contain exactly two segments.
+- The first segment `MUST` be `standalone` or `cloud`.
+- The second segment `MUST` be a normalized environment tier from
+  `ENVIRONMENT_SPEC.md`.
+- A profile id `MUST NOT` encode runtime target, database engine, process
+  count, upstream count, hosting ownership, or package format.
 
 ### Repository Files
 
@@ -163,19 +181,18 @@ Dev scripts `MUST`:
 1. Load profile env from `configs/topology/` through `@sdkwork/app-topology`.
 2. Start processes from `topology.spec.json` `orchestration.profiles[<profile-id>]`.
 3. Health-check required surfaces before starting clients.
-4. Accept `--deployment-profile` and `--service-layout`.
-5. Print the resolved `deploymentProfile`, `serviceLayout`, `environment`, and
-   profile id at startup.
+4. Accept `--deployment-profile` and `--environment`.
+5. Print the resolved `deploymentProfile`, `environment`, runtime target,
+   database profile when applicable, and profile id at startup.
 
 Root `dev:browser` and `dev:desktop` are default dev orchestration commands.
-They `MUST` resolve to `standalone.unified-process.development` and the
-PostgreSQL dev database profile unless the command name explicitly selects
-SQLite, split-services, or cloud. New dev scripts `MUST NOT` accept or emit
-retired deployment flags such as `--hosting self-hosted` or
-`--hosting cloud-hosted`.
+They `MUST` resolve to `standalone.development` and the PostgreSQL dev database
+profile unless the command name explicitly selects another database or `cloud`.
+New dev scripts `MUST NOT` accept or emit retired deployment flags such as
+`--hosting self-hosted` or `--hosting cloud-hosted`.
 
-For `standalone.unified-process.*` profiles, orchestration `MUST` start only
-the application ingress process for application-plane HTTP APIs. Internal route
+For `deploymentProfile=standalone`, orchestration `MUST` start only the
+application ingress process for application-plane HTTP APIs. Internal route
 crates may be embedded in that ingress process, and dev/runtime contracts `MUST
 NOT` require extra loopback API ports to make application-plane APIs reachable.
 
@@ -187,27 +204,26 @@ per plane**:
 - `platform.api-gateway` is the only platform-plane HTTP listener that dev
   scripts and client bootstrap may require when platform APIs are in scope.
 - Additional HTTP surface ids such as `application.backend-http`,
-  `application.open-http`, or per-service `*-service-bin` listeners `MUST NOT`
-  appear as separately started orchestration processes in
-  `standalone.unified-process.*` profiles, and `MUST NOT` be required in
-  `cloud.split-services.*` dev orchestration when a gateway already terminates
-  the same plane. Those decomposed binaries remain valid as internal upstream or
-  packaging targets only.
+  `application.open-http`, or per-service listener binaries `MUST NOT` appear
+  as separately required orchestration processes when a gateway already
+  terminates the same plane. Those binaries remain valid as internal upstream
+  or packaging targets only.
 - Dev orchestration scripts `MUST NOT` spawn HTTP sidecar loops, multi-port
-  `cargo run -p *-service-bin` matrices, or reserved loopback port tables whose
-  only purpose is to keep extra application HTTP listeners alive locally.
+  service matrices, or reserved loopback port tables whose only purpose is to
+  keep extra application HTTP listeners alive locally.
 
-Normative gateway integration rules live in `APPLICATION_GATEWAY_SPEC.md` §5.6.
-Workspace verification: `node tools/audit-single-http-ingress-workspace.mjs`.
+Normative gateway integration rules live in `APPLICATION_GATEWAY_SPEC.md`
+section 5.6. Workspace verification:
+`node tools/audit-single-http-ingress-workspace.mjs`.
 
 Adoption steps: `APP_RUNTIME_TOPOLOGY_ADOPTION.md`.
 
 ## 9. Deployment Standard Mapping
 
-| Deployment profile | Typical service layout | Runtime target coverage |
-| --- | --- | --- |
-| `standalone` | `unified-process` | `server`, `container`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program` when packaged as a private/platform-local app, and `test-runner` |
-| `cloud` | `split-services` | `container`, `server`, `browser`, `mini-program`, H5 browser surfaces, cloud-served public runtime config, and `test-runner` |
+| Deployment profile | Runtime target coverage |
+| --- | --- |
+| `standalone` | `server`, `container`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program` when packaged as a private/platform-local app, and `test-runner` |
+| `cloud` | `container`, `server`, `browser`, `mini-program`, H5 browser surfaces, cloud-served public runtime config, and `test-runner` |
 
 Rules:
 
@@ -215,8 +231,8 @@ Rules:
   native mobile, mini-program, and `test-runner` values from `CONFIG_SPEC.md`
   are runtime targets, not deployment profiles.
 - Client runtime targets may be standalone release artifacts while their SDK
-  base URLs point at cloud-hosted services. This does not create a third
-  deployment profile.
+  base URLs point at cloud services. This does not create a third deployment
+  profile.
 - `browser` and H5 cloud surfaces normally connect to `application.public-ingress`
   and `platform.api-gateway` through public runtime config. Native, desktop,
   tablet, Flutter, Capacitor, and mini program packages connect through the
@@ -247,7 +263,7 @@ Rules:
 - Surface roles may be appended for deployable config bundles.
 - Ambiguous application-code-prefixed gateway names are forbidden. Application gateway crates must
   use `sdkwork-<application-code>-standalone-gateway` or
-  `sdkwork-<application-code>-cloud-gateway` per `NAMING_SPEC.md` §4.3.1.
+  `sdkwork-<application-code>-cloud-gateway` per `NAMING_SPEC.md` section 4.3.1.
 - Matrix planners must pass `SDKWORK_DEPLOYMENT_PROFILE` to lifecycle steps.
 
 ## 11. Verification
@@ -255,14 +271,16 @@ Rules:
 - Validate spec: `node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs validate --root .`
 - Contract tests load profile fixtures; no inline port literals in source.
 - Naming audit must reject retired terms from `APP_RUNTIME_TOPOLOGY_NAMING.md`.
-- Validation must fail when a topology profile id starts with `self-hosted.` or
-  `cloud-hosted.`.
+- Validation must fail when a topology profile id starts with retired hosting aliases.
 - Validation must fail when a deployment profile is any value other than
   `standalone` or `cloud`.
+- Validation must fail when a topology profile id contains more or fewer than
+  two segments.
 - Standalone smoke tests must prove one public application ingress can serve all
   declared application-plane HTTP APIs without extra loopback route servers.
-- Cloud smoke tests must prove split service URLs, platform surfaces, secrets,
-  probes, and SDK base URL resolution are explicit.
+- Cloud smoke tests must prove internal upstream URLs, platform surfaces,
+  secrets, probes, and SDK base URL resolution are explicit while client
+  bootstrap still receives one application ingress URL.
 - Single HTTP ingress checks must pass:
   `node tools/check-single-http-ingress.mjs --root .` per repository and
   `node tools/audit-single-http-ingress-workspace.mjs --workspace ..` across
@@ -273,4 +291,5 @@ Rules:
 Unreleased applications delete retired keys, binaries, and docs. No aliases or
 bridges are allowed in application code. Compatibility aliases are allowed only
 inside an approved migration tool and must normalize to `deploymentProfile`,
-`runtimeTarget`, and the v3 profile id before application code sees them.
+`runtimeTarget`, `environment`, and the v4 profile id before application code
+sees them.

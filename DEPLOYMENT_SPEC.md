@@ -17,7 +17,7 @@ runtime and in release/package metadata.
 | Profile | Architecture | Use case |
 | --- | --- | --- |
 | `standalone` | Self-contained application unit with one public application ingress and application-owned runtime config | Desktop, local development, demos, private appliance/server install, single-node service, single-container package |
-| `cloud` | Cloud/service deployment with split services, managed dependencies, explicit ingress, environment-scoped secrets, release orchestration, and independent scaling | SDKWork hosted SaaS, customer VPC/private cloud, Kubernetes or equivalent orchestration |
+| `cloud` | Cloud/service deployment with managed dependencies, explicit ingress, environment-scoped secrets, release orchestration, and independent scaling | SDKWork hosted SaaS, customer VPC/private cloud, Kubernetes or equivalent orchestration |
 
 Rules:
 
@@ -67,19 +67,20 @@ Rules:
 
 Rules:
 
-- `cloud` deployments `MUST` use split services for production unless an
-  approved architecture decision documents why the app remains a single service
-  behind cloud ingress.
 - `cloud` deployments `MUST` declare public ingress, service discovery or
   upstreams, managed secrets, persistent data stores, readiness/liveness checks,
   observability, rollback, and release environment binding.
+- `cloud` deployments `MAY` decompose internal services for independent
+  scaling, but that decomposition remains gateway/upstream implementation
+  detail and `MUST NOT` create another deployment profile or profile-id segment.
 - Platform capabilities such as IAM, appbase, Drive, shared agent services, and
   cross-application SDKs `MUST` be reached through declared platform/application
   surfaces or dependency SDK base URLs. They must not be hidden behind ad hoc
   localhost defaults.
 - Cloud browser/runtime config `SHOULD` start from one public SDK root when a
   gateway serves all SDK surfaces, and `MUST` support explicit per-surface or
-  per-dependency base URL overrides for split deployments.
+  per-dependency base URL overrides when selected surfaces route to different
+  hosts.
 - Cloud release artifacts are container images, charts/manifests, deployment
   bundles, or provider-specific deployment packages with SBOM, provenance,
   checksums, signing, rollout, and rollback evidence.
@@ -219,11 +220,10 @@ PostgreSQL. Desktop runtime targets default to SQLite.
 
 Desktop packages must keep local user data on SQLite by default. Development
 orchestration is stricter: SDKWork application root `pnpm dev:browser` and
-`pnpm dev:desktop` default to PostgreSQL, `serviceLayout = unified-process`,
-and `deploymentProfile = standalone`. Explicit SQLite, split-services, or
-cloud development paths must use suffixed commands such as
-`pnpm dev:desktop:sqlite` or
-`pnpm dev:browser:postgres:split-services:cloud`. The PostgreSQL development
+`pnpm dev:desktop` default to PostgreSQL, `deploymentProfile = standalone`,
+and `environment = development`. Explicit SQLite or cloud development paths
+must use suffixed commands such as `pnpm dev:desktop:sqlite` or
+`pnpm dev:browser:postgres:cloud`. The PostgreSQL development
 profile belongs to dev orchestration and any launched backend service runtime;
 it must not change the installed desktop package default or the desktop user
 data location.
@@ -311,7 +311,7 @@ Rules:
   handling before first startup. Use `[redis].url` only as an advanced
   managed-endpoint override; use separate `tls`, pool, timeout, and
   `key_prefix` fields for standard deployments.
-- `PORTAL_PUBLIC_APP_API_BASE_URL` and `PORTAL_PUBLIC_BACKEND_API_BASE_URL` must remain independently configurable because split deployments may route them to different hosts.
+- `PORTAL_PUBLIC_APP_API_BASE_URL` and `PORTAL_PUBLIC_BACKEND_API_BASE_URL` must remain independently configurable because selected deployments may route them to different hosts.
 - SDKWork business open-api and vendor compatibility open-api configuration should use `PORTAL_PUBLIC_OPEN_API_BASE_URL` or `PORTAL_PUBLIC_API_BASE_URL`, not an ambiguous gateway env name. A `/v1` value is valid only for vendor compatibility open-api declared with `x-sdkwork-wire-protocol: external` per `API_SPEC.md` section 4.5.2; SDKWork-owned business open-api domains must use their approved non-app/non-backend prefix from section 4.5.1, for example `/im/v3/api`.
 
 ### 5.3 Runtime Directory Paths

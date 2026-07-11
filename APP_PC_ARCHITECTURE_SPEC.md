@@ -184,9 +184,9 @@ Rules:
 - `pnpm dev:server` starts the backend service with `config/server/<application-code>.development.toml.example` copied or materialized into a host-local dev config.
 - `pnpm test` uses an isolated test profile and must not share development or production database/schema, Redis prefix, logs, cache, runtime, or temp directories.
 - `pnpm dev:desktop` starts the desktop host through the standard development
-  orchestration profile. It defaults to PostgreSQL, `unified-process`, and
-  standalone, even when the desktop process itself remains client-only behind a
-  shared gateway. Installed desktop config remains the desktop profile with
+  orchestration profile. It defaults to PostgreSQL, standalone, and
+  development, even when the desktop process itself remains client-only behind
+  a shared gateway. Installed desktop config remains the desktop profile with
   user-private SQLite by default. Tauri remains an internal runner detail;
   public pnpm commands follow `PNPM_SCRIPT_SPEC.md` action-first runtime target
   names.

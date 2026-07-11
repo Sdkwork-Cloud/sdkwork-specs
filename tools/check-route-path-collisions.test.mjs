@@ -115,6 +115,35 @@ test('classifyRoutePathCollisions reconciles duplicate SDK OpenAPI projections f
   assert.equal(issues.length, 0);
 });
 
+test('classifyRoutePathCollisions reconciles duplicate route manifest projections for the same operation and route crate', () => {
+  const routes = [
+    {
+      sourceKind: 'route-manifest',
+      projectionKind: 'route-manifest',
+      source: 'sdks/_route-manifests/app-api/sdkwork-router-comments-app-api.route-manifest.json',
+      surface: 'app-api',
+      method: 'GET',
+      path: '/app/v3/api/comments/comments/{commentId}',
+      operationId: 'comments.comments.retrieve',
+      routeCrate: 'sdkwork-routes-comments-app-api',
+    },
+    {
+      sourceKind: 'route-manifest',
+      projectionKind: 'route-manifest',
+      source: 'sdks/_route-manifests/app-api/sdkwork-routes-comments-app-api.route-manifest.json',
+      surface: 'app-api',
+      method: 'GET',
+      path: '/app/v3/api/comments/comments/:id',
+      operationId: 'comments.comments.retrieve',
+      routeCrate: 'sdkwork-routes-comments-app-api',
+    },
+  ];
+
+  const issues = classifyRoutePathCollisions(routes);
+
+  assert.equal(issues.length, 0);
+});
+
 test('classifyRoutePathCollisions reports non-health owners on reserved health and ready paths', () => {
   const routes = [
     {
@@ -143,6 +172,52 @@ test('classifyRoutePathCollisions reports non-health owners on reserved health a
 
   assert.equal(issues.length, 2);
   assert.ok(issues.every((issue) => issue.kind === 'reserved-route-path-owner'));
+});
+
+test('classifyRoutePathCollisions accepts OpenAPI projections of standard health route manifests', () => {
+  const routes = [
+    {
+      sourceKind: 'openapi',
+      projectionKind: 'api-authority',
+      source: 'apis/app-api/game/dezhou-app-api.openapi.json',
+      surface: 'app-api',
+      method: 'GET',
+      path: '/app/v3/api/system/health',
+      operationId: 'dezhou.health.check',
+    },
+    {
+      sourceKind: 'route-manifest',
+      projectionKind: 'route-manifest',
+      source: 'sdks/_route-manifests/app-api/sdkwork-router-health-app-api.route-manifest.json',
+      surface: 'app-api',
+      method: 'GET',
+      path: '/app/v3/api/system/health',
+      operationId: 'dezhou.health.check',
+      routeCrate: 'sdkwork-router-health-app-api',
+    },
+  ];
+
+  const issues = classifyRoutePathCollisions(routes);
+
+  assert.equal(issues.length, 0);
+});
+
+test('classifyRoutePathCollisions accepts canonical system health operation ids', () => {
+  const routes = [
+    {
+      sourceKind: 'openapi',
+      projectionKind: 'sdk-authority',
+      source: 'sdks/sdkwork-birdcoder-app-sdk/openapi/sdkwork-birdcoder-app-api.openapi.json',
+      surface: 'app-api',
+      method: 'GET',
+      path: '/app/v3/api/system/health',
+      operationId: 'health.retrieve',
+    },
+  ];
+
+  const issues = classifyRoutePathCollisions(routes);
+
+  assert.equal(issues.length, 0);
 });
 
 test('checker reconciles source and SDK OpenAPI authority projections for the same operation', () => {
@@ -261,6 +336,203 @@ test('checker reports route manifest collisions with OpenAPI routes', () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /duplicate-route-path/u);
   assert.match(result.stderr, /route-manifest/u);
+});
+
+test('checker reconciles aggregate route manifests using route-level source route crate', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-route-source-route-crate-'));
+  writeJson(
+    path.join(root, 'apis/backend-api/models/openapi.json'),
+    openApi({
+      '/backend/v3/api/ai/model_mappings/resolve': {
+        post: {
+          operationId: 'modelMappings.resolve',
+          'x-sdkwork-source-route-crate': 'sdkwork-routes-models-catalog-backend-api',
+          responses: { 200: { description: 'ok' } },
+        },
+      },
+    }),
+  );
+  writeJson(
+    path.join(root, 'sdks/_route-manifests/backend-api/sdkwork-router-backend-api.route-manifest.json'),
+    {
+      schemaVersion: 1,
+      kind: 'sdkwork.route.manifest',
+      packageName: 'sdkwork-router-backend-api',
+      surface: 'backend-api',
+      routes: [
+        {
+          method: 'POST',
+          path: '/backend/v3/api/ai/model_mappings/resolve',
+          operationId: 'modelMappings.resolve',
+          source: {
+            routeCrate: 'sdkwork-routes-models-catalog-backend-api',
+            openApiAuthority: 'apis/backend-api/models/openapi.json',
+          },
+        },
+      ],
+    },
+  );
+
+  const result = spawnSync(process.execPath, [CHECKER, '--root', root], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('checker still reports route-level source route crate projections with operationId drift', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-route-source-route-crate-drift-'));
+  writeJson(
+    path.join(root, 'apis/backend-api/models/openapi.json'),
+    openApi({
+      '/backend/v3/api/ai/model_mappings/resolve': {
+        post: {
+          operationId: 'modelMappings.resolve',
+          'x-sdkwork-source-route-crate': 'sdkwork-routes-models-catalog-backend-api',
+          responses: { 200: { description: 'ok' } },
+        },
+      },
+    }),
+  );
+  writeJson(
+    path.join(root, 'sdks/_route-manifests/backend-api/sdkwork-router-backend-api.route-manifest.json'),
+    {
+      schemaVersion: 1,
+      kind: 'sdkwork.route.manifest',
+      packageName: 'sdkwork-router-backend-api',
+      surface: 'backend-api',
+      routes: [
+        {
+          method: 'POST',
+          path: '/backend/v3/api/ai/model_mappings/resolve',
+          operationId: 'modelMappings.resolve.create',
+          source: {
+            routeCrate: 'sdkwork-routes-models-catalog-backend-api',
+            openApiAuthority: 'apis/backend-api/models/openapi.json',
+          },
+        },
+      ],
+    },
+  );
+
+  const result = spawnSync(process.execPath, [CHECKER, '--root', root], {
+    encoding: 'utf8',
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /duplicate-route-path/u);
+  assert.match(result.stderr, /modelMappings\.resolve\.create/u);
+});
+
+test('checker ignores runtime and cargo target route manifest directory variants', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-route-runtime-ignore-'));
+  for (const ignoredDir of ['.runtime', 'target-codex-verify']) {
+    writeJson(
+      path.join(
+        root,
+        ignoredDir,
+        'sdks/_route-manifests/app-api/sdkwork-routes-demo-app-api.route-manifest.json',
+      ),
+      {
+        schemaVersion: 1,
+        kind: 'sdkwork.route.manifest',
+        packageName: 'sdkwork-routes-demo-app-api',
+        surface: 'app-api',
+        routes: [
+          {
+            method: 'GET',
+            path: '/app/v3/api/demo/items/{itemId}',
+            operationId: `${ignoredDir}.items.retrieve`,
+          },
+        ],
+      },
+    );
+  }
+
+  const result = spawnSync(process.execPath, [CHECKER, '--root', root], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('checker reconciles dependency-owned operations declared by dependency-api-surfaces', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-route-dependency-owned-'));
+  writeJson(
+    path.join(root, 'specs/dependency-api-surfaces.json'),
+    {
+      schemaVersion: 1,
+      kind: 'sdkwork.dependency-api-surfaces',
+      dependencies: [
+        {
+          workspace: 'sdkwork-models-app-sdk',
+          surface: 'app-api',
+          dependencyMode: 'consumer-sdk',
+          runtimeIntegration: {
+            mode: 'same-origin-mounted',
+            rustRouteContractCrate: {
+              crate: 'sdkwork-routes-models-catalog-app-api',
+              executableRouterExport: 'model_catalog_router',
+            },
+          },
+          dependencyOwnedOperations: [
+            {
+              method: 'GET',
+              path: '/app/v3/api/ai/model_rankings',
+              operationId: 'modelRankings.list',
+              owner: 'sdkwork-models',
+            },
+          ],
+        },
+      ],
+    },
+  );
+  writeJson(
+    path.join(root, 'apis/app-api/clawrouter/openapi.json'),
+    openApi({
+      '/app/v3/api/ai/model_rankings': {
+        get: {
+          operationId: 'modelRankings.list',
+          'x-sdkwork-source-route-crate': 'sdkwork-routes-clawrouter-app-api',
+          responses: { 200: { description: 'ok' } },
+        },
+      },
+    }),
+  );
+  writeJson(
+    path.join(root, 'data/sdkwork-models/apis/app-api/intelligence/openapi.json'),
+    openApi({
+      '/app/v3/api/ai/model_rankings': {
+        get: {
+          operationId: 'modelRankings.list',
+          'x-sdkwork-source-route-crate': 'sdkwork-routes-models-catalog-app-api',
+          responses: { 200: { description: 'ok' } },
+        },
+      },
+    }),
+  );
+  writeJson(
+    path.join(root, 'sdks/_route-manifests/app-api/sdkwork-routes-clawrouter-app-api.route-manifest.json'),
+    {
+      schemaVersion: 1,
+      kind: 'sdkwork.route.manifest',
+      packageName: 'sdkwork-routes-clawrouter-app-api',
+      surface: 'app-api',
+      routes: [
+        {
+          method: 'GET',
+          path: '/app/v3/api/ai/model_rankings',
+          operationId: 'modelRankings.list',
+        },
+      ],
+    },
+  );
+
+  const result = spawnSync(process.execPath, [CHECKER, '--root', root], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
 });
 
 test('validateGatewayAssembly includes route path collision validation', () => {

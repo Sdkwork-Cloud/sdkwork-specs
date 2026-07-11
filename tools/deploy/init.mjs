@@ -10,7 +10,7 @@ export function initDeployManifest(repoRoot) {
   const profile =
     topology.defaults?.productionProfileId ??
     topology.defaults?.developmentProfileId ??
-    'cloud.split-services.production';
+    'cloud.production';
 
   const hasPc = surfaceExists(repoRoot, appId, 'pc');
   const hasH5 = surfaceExists(repoRoot, appId, 'h5');

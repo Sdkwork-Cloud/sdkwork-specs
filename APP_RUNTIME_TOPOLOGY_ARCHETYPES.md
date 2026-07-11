@@ -1,16 +1,15 @@
 # Application Runtime Topology Archetypes
 
-- Version: 3.0
+- Version: 4.0
 - Scope: reusable runtime topology patterns referenced by `specs/topology.spec.json` `archetype`
-- Related: `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`
+- Related: `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`
 
 Archetypes are normative templates. Application specs instantiate them with
 concrete deployment profiles, surfaces, binds, dependencies, and orchestration.
-They describe connectivity and service layout, not UI/application mode. Browser,
-desktop, tablet, mobile, mini program, server, container, and test targets are
-runtime targets governed by `CONFIG_SPEC.md` and `DEPLOYMENT_SPEC.md`; they do
-not require separate topology archetypes merely because the package runs on a
-different client host.
+They describe connectivity, ingress ownership, and runtime integration shape.
+Browser, desktop, tablet, mobile, mini program, server, container, and test
+targets are runtime targets governed by `CONFIG_SPEC.md` and
+`DEPLOYMENT_SPEC.md`; they do not create separate topology archetypes.
 
 **Naming:** all profile ids, surface ids, env keys, and plane names must match
 `APP_RUNTIME_TOPOLOGY_NAMING.md`.
@@ -23,8 +22,8 @@ different client host.
 | `realtime-application-platform` | realtime application plus platform gateway | `sdkwork-im`, future collaboration/RTC apps |
 | `application-rest-edge-device` | application REST plus edge device | `sdkwork-aiot`, future IoT/edge apps |
 
-Retired archetype ids: `http-product-gateway`, `multi-plane-realtime`, and
-`dual-plane-connected`.
+Retired archetype ids: `http-product-gateway`,
+`multi-plane-realtime`, and `dual-plane-connected`.
 
 ## 2. `application-http-gateway`
 
@@ -47,19 +46,20 @@ adapter for IAM and cross-application SDKs.
 
 ### Allowed Profiles
 
-| Profile id | deploymentProfile | serviceLayout | environment | Default |
-| --- | --- | --- | --- | --- |
-| `standalone.unified-process.development` | standalone | unified-process | development | Yes |
-| `standalone.unified-process.production` | standalone | unified-process | production | Yes for standalone release |
-| `cloud.split-services.development` | cloud | split-services | development | Optional integration profile |
-| `cloud.split-services.staging` | cloud | split-services | staging | Optional cloud pre-prod |
-| `cloud.split-services.production` | cloud | split-services | production | Yes for cloud release |
+| Profile id | deploymentProfile | environment | Default |
+| --- | --- | --- | --- |
+| `standalone.development` | standalone | development | Yes |
+| `standalone.production` | standalone | production | Yes for standalone release |
+| `cloud.development` | cloud | development | Optional cloud integration profile |
+| `cloud.staging` | cloud | staging | Optional cloud pre-prod |
+| `cloud.production` | cloud | production | Yes for cloud release |
 
 Rules:
 
-- Drive-class standalone deployments embed application app/backend/open/admin
-  routes behind one application ingress and may embed an approved IAM adapter.
-- Cloud deployments use managed platform URLs and split service orchestration.
+- Standalone deployments embed application app/backend/open/admin routes behind
+  one application ingress and may embed an approved IAM adapter.
+- Cloud deployments use managed platform URLs and may proxy to internal
+  upstream services declared in topology and deployment manifests.
 - All HTTP `*-api` surfaces must integrate `sdkwork-web-framework` or the
   language-equivalent profile required by `WEB_FRAMEWORK_SPEC.md`.
 
@@ -85,40 +85,35 @@ Agent, and other shared APIs; optional operations control ingress.
 
 ### Allowed Profiles
 
-| Profile id | deploymentProfile | serviceLayout | Default |
-| --- | --- | --- | --- |
-| `standalone.unified-process.development` | standalone | unified-process | Smoke/dev only unless ADR approves production |
-| `standalone.split-services.development` | standalone | split-services | Local integration for realtime dependencies |
-| `cloud.split-services.development` | cloud | split-services | Cloud integration |
-| `cloud.split-services.staging` | cloud | split-services | Cloud pre-prod |
-| `cloud.split-services.production` | cloud | split-services | Default production |
-
-### Service Layout Semantics
-
-| serviceLayout | Processes | When |
+| Profile id | deploymentProfile | Default |
 | --- | --- | --- |
-| `unified-process` | Application routes and simplified realtime runtime in one ingress binary | Smoke, demo, or approved standalone runtime |
-| `split-services` | Application ingress, internal upstream services, platform gateway, and managed dependencies | Realtime development and cloud production |
+| `standalone.development` | standalone | Local dev and smoke |
+| `standalone.production` | standalone | Requires ADR for realtime operational limits |
+| `cloud.development` | cloud | Cloud integration |
+| `cloud.staging` | cloud | Cloud pre-prod |
+| `cloud.production` | cloud | Default production |
 
 Rules:
 
-- Cloud production for realtime apps defaults to `cloud.split-services.production`.
-- `standalone.unified-process.production` for realtime apps requires an
-  architecture decision that proves embedded or external platform dependency
-  coverage, message delivery semantics, persistence, Redis/cache behavior, and
-  operational limits.
+- Cloud production for realtime apps defaults to `cloud.production`.
+- `standalone.production` for realtime apps requires an architecture decision
+  that proves embedded or external platform dependency coverage, message
+  delivery semantics, persistence, Redis/cache behavior, and operational limits.
 - IAM-capable clients still use the platform surface contract even when a
   standalone profile embeds an adapter.
+- Internal realtime workers, projection services, and upstream service binaries
+  may exist, but they must remain internal implementation details behind
+  `application.public-ingress` and declared platform surfaces.
 
 ### Capability Matrix
 
-| Capability | `standalone.unified-process` | `cloud.split-services` |
+| Capability | `standalone` | `cloud` |
 | --- | --- | --- |
 | Application HTTP/WebSocket | yes | yes |
 | IAM login | embedded adapter or platform surface | platform gateway |
 | Drive media upload | embedded adapter or dependency SDK base URL | platform/dependency SDK base URL |
-| Per-service scaling | no | yes |
-| Full upstream matrix | simplified | full |
+| Per-service scaling | implementation-specific | yes |
+| Upstream service matrix | optional internal detail | explicit internal topology/deployment detail |
 
 ### Client Env Model
 
@@ -131,8 +126,9 @@ VITE_SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_WEBSOCKET_URL
 VITE_SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL
 ```
 
-Forbidden: `SDKWORK_<APPLICATION_CODE>_SERVER_API_BASE_URL`, `commonSdkRootEnv` pointing at
-application URLs for platform SDKs, and undocumented WebSocket URL shapes.
+Forbidden: `SDKWORK_<APPLICATION_CODE>_SERVER_API_BASE_URL`, `commonSdkRootEnv`
+pointing at application URLs for platform SDKs, and undocumented WebSocket URL
+shapes.
 
 ### Cloud Public URL Policy
 
@@ -141,15 +137,15 @@ Choose one canonical pattern per deployment and declare it in the app topology s
 - Pattern A: HTTP and WSS share one public application host. WebSocket path is
   fixed, for example `/im/v3/api/realtime/ws` on `im.sdkwork.com`.
 - Pattern B: Dedicated realtime host. Both hosts must appear explicitly in the
-  `cloud.split-services.production` profile.
+  `cloud.production` profile.
 
 ## 4. `application-rest-edge-device`
 
 Human/admin application REST planes plus separate edge device ingress; platform
 gateway when consoles use IAM. Application REST `MUST` terminate on a single
 `application.public-ingress` bind that embeds app-api and admin/backend routes
-in-process (`sdkwork-<application-code>-standalone-gateway` or approved cloud
-application gateway).
+in-process (`sdkwork-<application-code>-standalone-gateway`) or through the
+approved cloud application gateway.
 
 ### Connectivity Planes
 
@@ -168,12 +164,12 @@ application gateway).
 
 ### Allowed Profiles
 
-| Profile id | deploymentProfile | serviceLayout |
-| --- | --- | --- |
-| `standalone.split-services.development` | standalone | split-services |
-| `standalone.split-services.production` | standalone | split-services |
-| `cloud.split-services.staging` | cloud | split-services |
-| `cloud.split-services.production` | cloud | split-services |
+| Profile id | deploymentProfile |
+| --- | --- |
+| `standalone.development` | standalone |
+| `standalone.production` | standalone |
+| `cloud.staging` | cloud |
+| `cloud.production` | cloud |
 
 Rules:
 
@@ -181,6 +177,8 @@ Rules:
 - OTA/device activation responses `MUST` use public URLs from the active profile.
 - Standalone edge deployments must still use explicit edge/device surfaces
   instead of hiding device protocols behind application HTTP URLs.
+- Internal edge bridges and worker processes may scale independently, but the
+  public application profile remains either `standalone.*` or `cloud.*`.
 
 ## 5. Adding A New Archetype
 
@@ -188,7 +186,7 @@ Rules:
    an architecture decision.
 2. Add a section to this file and register names in
    `APP_RUNTIME_TOPOLOGY_NAMING.md`.
-3. Extend `sdkwork-app-topology` JSON Schema v3 enum when archetype validation
+3. Extend `sdkwork-app-topology` JSON Schema v4 enum when archetype validation
    is enforced.
 4. Add a reference `examples/<application-code>/topology.spec.json` in
    `sdkwork-app-topology`.

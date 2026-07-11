@@ -197,7 +197,7 @@ Definitions:
 - A common SDK base URL is a configured root, origin, or deployment path prefix from which bootstrap
   derives open-api, app-api, backend-api, and dependency SDK surface URLs by appending each surface's
   standard prefix. It is the recommended default for simple deployments, while per-surface and
-  per-SDK base URL overrides remain available for split services and dependency services.
+  per-SDK base URL overrides remain available for multi-host deployments and dependency services.
 - A gateway-backed common SDK base URL is valid only when the gateway runtime contract proves that
   it serves the dependency surface. For Rust gateways, executable integration evidence starts from
   Cargo workspace dependencies, Cargo features, and public router/controller/service exports; SDKWork

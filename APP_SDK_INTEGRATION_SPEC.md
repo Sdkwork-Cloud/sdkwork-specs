@@ -114,7 +114,7 @@ Rules:
   call backend SDK getters through that boundary.
 - The default SDK base-url model is one common SDK root when a gateway serves all required SDK
   surfaces. Runtime bootstrap derives open-api, app-api, backend-api, and dependency SDK surface URLs
-  from that root, while per-surface or per-SDK overrides remain available for split services.
+  from that root, while per-surface or per-SDK overrides remain available for multi-host deployments.
 
 ### 2.2 Drive Uploader Composition
 
@@ -155,9 +155,9 @@ Rules:
   A separate gateway catalog file must not be introduced just to repeat those facts.
 - Application frontends and SDK bootstrap should prefer one gateway-backed common SDK root for
   dependency SDKs. Per-surface or per-SDK base URL overrides remain available for migration,
-  private dependency hosts, split services, and tenant-specific routing. Application launchers must not
+  private dependency hosts, multi-host deployments, and tenant-specific routing. Application launchers must not
   materialize per-module foundation upstream defaults beside the gateway root; those variables are
-  explicit split overrides only.
+  explicit upstream overrides only.
 - Application-owned APIs remain independent SDKWork API systems. They keep their own API authority, SDK
   family, generated SDKs, component specs, and owner-only SDK generation. When an application-owned API
   becomes reusable by other applications, it can be integrated into the shared gateway as another
@@ -253,7 +253,7 @@ Rules:
 - Application bootstrap `MUST NOT` call `createIamRuntime(...)` directly except inside an approved appbase-owned wrapper package that exposes the same high-level inputs.
 - Runtime/bootstrap `MUST` resolve SDK base URLs from `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md` before creating generated SDK clients.
 - Runtime/bootstrap `MUST` resolve i18n runtime config from `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, and `I18N_SPEC.md` before constructing SDK clients, app auth runtime, frontend i18n providers, or host adapters that expose locale.
-- Application-owned app SDK, application-owned backend SDK, appbase app SDK, appbase backend SDK, Drive SDK, IM SDK, and other dependency SDK base URLs `SHOULD` be derived from one common SDK root when a single public gateway serves those SDK surfaces. Per-surface and per-SDK base URL overrides `MUST` remain available for split services, external dependency services, private dependency hosts, or tenant-specific routing.
+- Application-owned app SDK, application-owned backend SDK, appbase app SDK, appbase backend SDK, Drive SDK, IM SDK, and other dependency SDK base URLs `SHOULD` be derived from one common SDK root when a single public gateway serves those SDK surfaces. Per-surface and per-SDK base URL overrides `MUST` remain available for multi-host deployments, external dependency services, private dependency hosts, or tenant-specific routing.
 - A common SDK root is not the same as an arbitrary application `API_BASE_URL`. It must be a root/origin/path prefix that can safely derive standard SDK surface URLs by appending prefixes such as `/v1`, `/app/v3/api`, and `/backend/v3/api`; a surface URL such as `/v1` must not be reused as the root for app/backend SDKs.
 - Base URL config may come from private process env, public browser runtime env, or runtime TOML depending on target, but token values must never come from these config sources.
 - Runtime/bootstrap `MUST` build an SDK inventory before constructing feature services. The inventory classifies each SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake.

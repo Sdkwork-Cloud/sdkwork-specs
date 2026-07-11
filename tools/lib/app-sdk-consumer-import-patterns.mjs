@@ -344,27 +344,43 @@ export function walkFiles(rootDir, predicate = () => true) {
 
 export function listWorkspaceRepos(workspaceRoot) {
 
-  return fs.readdirSync(workspaceRoot, { withFileTypes: true })
+  const isRepoRoot = (repoRoot) => {
+
+    const base = path.basename(repoRoot);
+
+    if (base === 'node_modules' || base === '.git') return false;
+
+    return fs.existsSync(path.join(repoRoot, 'AGENTS.md'))
+
+      || fs.existsSync(path.join(repoRoot, 'package.json'))
+
+      || fs.existsSync(path.join(repoRoot, 'Cargo.toml'))
+
+      || fs.existsSync(path.join(repoRoot, 'pnpm-workspace.yaml'));
+
+  };
+
+  const repos = [];
+
+  if (isRepoRoot(workspaceRoot)) {
+
+    repos.push(workspaceRoot);
+
+  }
+
+  for (const repoRoot of fs.readdirSync(workspaceRoot, { withFileTypes: true })
 
     .filter((entry) => entry.isDirectory())
 
     .map((entry) => path.join(workspaceRoot, entry.name))
 
-    .filter((repoRoot) => {
+    .filter(isRepoRoot)) {
 
-      const base = path.basename(repoRoot);
+    repos.push(repoRoot);
 
-      if (base === 'node_modules' || base === '.git') return false;
+  }
 
-      return fs.existsSync(path.join(repoRoot, 'AGENTS.md'))
-
-        || fs.existsSync(path.join(repoRoot, 'package.json'))
-
-        || fs.existsSync(path.join(repoRoot, 'Cargo.toml'))
-
-        || fs.existsSync(path.join(repoRoot, 'pnpm-workspace.yaml'));
-
-    });
+  return [...new Set(repos)].sort();
 
 }
 

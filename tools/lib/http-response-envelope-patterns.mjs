@@ -69,7 +69,23 @@ node <sdkwork-specs>/tools/check-api-response-envelope.mjs --workspace <workspac
 Authority: \`sdkwork-specs/API_SPEC.md\` section 4.5 and sections 14–16, \`SDK_SPEC.md\` section 4.2, \`FRONTEND_SPEC.md\`, \`MIGRATION_SPEC.md\` section 4.2.
 `;
 
-const IGNORE_DIRS = new Set(['node_modules', '.git', 'artifacts', 'target', 'dist', 'build', '.pnpm-store', '.tmp']);
+const IGNORE_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'artifacts',
+  'target',
+  '.runtime',
+  'dist',
+  'build',
+  '.pnpm-store',
+  '.tmp',
+  '.turbo',
+  'coverage',
+]);
+
+export function isIgnoredGeneratedOrRuntimeDir(name) {
+  return IGNORE_DIRS.has(name) || /^target[-_].+/u.test(name);
+}
 
 export function repoNameFromPath(filePath) {
   const parts = filePath.replace(/\\/g, '/').split('/');
@@ -109,7 +125,7 @@ export function walkOpenApiFiles(root, acc = []) {
     return acc;
   }
   for (const ent of entries) {
-    if (IGNORE_DIRS.has(ent.name)) continue;
+    if (isIgnoredGeneratedOrRuntimeDir(ent.name)) continue;
     const full = path.join(root, ent.name);
     let stat;
     try {
@@ -366,7 +382,7 @@ export function walkAgentsFiles(root, acc = []) {
     return acc;
   }
   for (const ent of entries) {
-    if (IGNORE_DIRS.has(ent.name)) continue;
+    if (isIgnoredGeneratedOrRuntimeDir(ent.name)) continue;
     const full = path.join(root, ent.name);
     let stat;
     try {
@@ -385,8 +401,7 @@ export function upsertAgentsEnvelopeSection(content) {
   if (headingRegex.test(content)) {
     const idx = content.search(headingRegex);
     const before = content.slice(0, idx).trimEnd();
-    const rest = content.slice(idx);
-    const tail = rest.replace(/^## HTTP API Response Envelope[\s\S]*?(?=^## )/m, '');
+    const tail = removeAgentsEnvelopeSections(content.slice(idx));
     return `${before}\n\n${AGENTS_SECTION_BODY.trim()}\n\n${tail.replace(/^\n+/, '')}`;
   }
   const humanReview = '\n## Human Review Rules';
@@ -394,4 +409,21 @@ export function upsertAgentsEnvelopeSection(content) {
     return content.replace(humanReview, `\n${AGENTS_SECTION_BODY.trim()}\n${humanReview}`);
   }
   return `${content.trimEnd()}\n\n${AGENTS_SECTION_BODY.trim()}\n`;
+}
+
+function removeAgentsEnvelopeSections(content) {
+  const headings = Array.from(content.matchAll(/^## [^\r\n]*$/gm));
+  let result = '';
+  let cursor = 0;
+  for (let i = 0; i < headings.length; i += 1) {
+    const heading = headings[i];
+    const sectionStart = heading.index ?? 0;
+    const sectionEnd = headings[i + 1]?.index ?? content.length;
+    if (/^## HTTP API Response Envelope\b/u.test(heading[0])) {
+      result += content.slice(cursor, sectionStart);
+      cursor = sectionEnd;
+    }
+  }
+  result += content.slice(cursor);
+  return result;
 }

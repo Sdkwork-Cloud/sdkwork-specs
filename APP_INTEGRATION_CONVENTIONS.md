@@ -61,7 +61,7 @@ Resolver rules:
 
 | Evidence | Default runtime mode |
 | --- | --- |
-| Consumer gateway assembly links dependency route crate with public `gateway_mount` and topology `serviceLayout=unified-process` | `same-origin-embedded` |
+| Consumer gateway assembly links dependency route crate with public `gateway_mount` under the active `standalone` profile | `same-origin-embedded` |
 | Dependency `integration.defaultRuntimeMode=platform-gateway` | `external-via-platform-gateway` |
 | Migration-only `dependency-api-surfaces.json` entry with `runtimeIntegration.mode=external-service` and `mountCoverage.status=not-mounted` | `external-via-platform-gateway` |
 | No mount export and no platform gateway serving the surface | unresolved; resolver must fail |
@@ -97,7 +97,7 @@ Rules:
 - Product-owned SDK base URLs come from `application.public-ingress`.
 - Platform dependency SDK base URLs come from `platform.api-gateway`.
 - In browser dev, product-owned SDKs may use same-origin relative prefixes when Vite proxies to application ingress.
-- Platform dependency SDKs must use absolute platform gateway origins when `runtimeMode=external-via-platform-gateway`, even in `standalone.unified-process` profiles.
+- Platform dependency SDKs must use absolute platform gateway origins when `runtimeMode=external-via-platform-gateway`, even in `standalone` profiles.
 - `composition.overrides.integrations.<sdkWorkspace>.baseUrl` is the only consumer JSON override for dependency SDK base URLs.
 
 Forbidden:

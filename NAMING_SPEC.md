@@ -420,11 +420,11 @@ Normative gateway structure, topology binding, component contracts, and verifica
 `<application-code>`; platform scope uses `api`, and the canonical platform gateway
 is `sdkwork-api-cloud-gateway`.
 
-| Crate family | `deploymentProfile` | Typical `serviceLayout` | Primary surface | When to use |
-| --- | --- | --- | --- | --- |
-| `sdkwork-<application-code>-standalone-gateway` | `standalone` | `unified-process` (default) or approved `split-services` | `application.public-ingress` | Local dev, desktop/private appliance, single-container, or other self-contained application ingress that may embed an approved platform adapter |
-| `sdkwork-<application-code>-cloud-gateway` | `cloud` | `split-services` (default) or approved `unified-process` | `application.public-ingress` | Cloud release, scale-out, or private-cloud application ingress that proxies to decomposed internal services |
-| `sdkwork-api-cloud-gateway` | platform | n/a | `platform.api-gateway` | Shared SDKWork platform APIs such as IAM, Drive, and Notary |
+| Crate family | `deploymentProfile` | Primary surface | When to use |
+| --- | --- | --- | --- |
+| `sdkwork-<application-code>-standalone-gateway` | `standalone` | `application.public-ingress` | Local dev, desktop/private appliance, single-container, or other self-contained application ingress that may embed an approved platform adapter |
+| `sdkwork-<application-code>-cloud-gateway` | `cloud` | `application.public-ingress` | Cloud release, scale-out, or private-cloud application ingress that may proxy to internal upstream services |
+| `sdkwork-api-cloud-gateway` | platform | `platform.api-gateway` | Shared SDKWork platform APIs such as IAM, Drive, and Notary |
 
 Rules:
 

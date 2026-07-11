@@ -89,7 +89,7 @@ sdkFamily = "sdkwork-iam-app-sdk"
 apiAuthority = "sdkwork-iam-app-api"
 surface = "app"
 apiPrefix = "/app/v3/api"
-runtimeMode = "split-or-embedded"
+runtimeMode = "gateway-or-embedded"
 sameOriginAllowed = true
 executableExport = "sdkwork_routes_iam_app_api::build_sdkwork_iam_app_api_router"
 cargoFeature = "foundation-appbase"
@@ -197,7 +197,7 @@ function deriveApiSurfaces(spec, manifest) {
 }
 
 function buildCloudGatewayToml(spec, manifest, environment, upstreamBaseUrl) {
-  const mode = spec.archetype === 'realtime-application-platform' ? 'split' : 'embedded';
+  const mode = spec.archetype === 'realtime-application-platform' ? 'gateway' : 'embedded';
   const surfaces = deriveApiSurfaces(spec, manifest);
   const blocks = surfaces.map(
     (s) => `[[dependencySurfaces]]
@@ -207,7 +207,7 @@ sdkFamily = "${s.sdkFamily}"
 apiAuthority = "${s.apiAuthority}"
 surface = "${s.surface}"
 apiPrefix = "${s.apiPrefix}"
-runtimeMode = "split"
+runtimeMode = "gateway"
 sameOriginAllowed = true
 requiredBaseUrlKey = "${s.requiredBaseUrlKey}"
 coverage = "${s.coverage}"
@@ -221,7 +221,7 @@ baseUrl = "http://${upstreamBaseUrl.replace(/^https?:\/\//, '')}"
 `,
   );
 
-  const includeAppbase = spec.surfaces?.['platform.api-gateway'] && mode === 'split';
+  const includeAppbase = spec.surfaces?.['platform.api-gateway'] && mode === 'gateway';
   return [
     `mode = "${mode}"`,
     '',
@@ -255,8 +255,8 @@ function ensureCloudConfigs(repoRoot, spec, manifest, dryRun, actions) {
   const bindEnv = spec.surfaces['application.public-ingress']?.bindEnv ?? `${prefix}_APPLICATION_PUBLIC_INGRESS_BIND`;
   const standaloneEnvPath = path.join(
     repoRoot,
-    spec.profileFiles?.['standalone.unified-process.development']
-      ?? 'configs/topology/standalone.unified-process.development.env',
+    spec.profileFiles?.['standalone.development']
+      ?? 'configs/topology/standalone.development.env',
   );
   const standaloneEnv = fs.existsSync(standaloneEnvPath)
     ? fs.readFileSync(standaloneEnvPath, 'utf8')

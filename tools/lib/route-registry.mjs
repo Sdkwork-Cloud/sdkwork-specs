@@ -1,14 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  isIgnoredGeneratedOrRuntimeDir,
   openApiAuthorityEntries,
   walkOpenApiFiles,
 } from './http-response-envelope-patterns.mjs';
 import {
   openApiOperationEntriesFromText,
 } from './openapi-operation-utils.mjs';
-
-const IGNORE_DIRS = new Set(['node_modules', '.git', 'artifacts', 'target', 'dist', 'build', '.pnpm-store', '.tmp']);
 
 export function normalizeRoutePath(routePath) {
   const raw = String(routePath ?? '').trim();
@@ -39,9 +38,9 @@ export function classifyRoutePathCollisions(routes) {
     groups.set(key, entries);
   }
 
-  issues.push(...classifyReservedRoutePathOwners([...groups.values()].flat()));
   for (const entries of groups.values()) {
     const declarations = collapseEquivalentRepresentations(entries);
+    issues.push(...classifyReservedRoutePathOwners(declarations));
     if (declarations.length <= 1) continue;
     if (declarations.every((entry) => hasOverrideAdr(entry))) continue;
     const first = declarations[0];
@@ -61,6 +60,7 @@ export function collectRouteRegistry(root) {
   const routes = [];
   routes.push(...collectOpenApiRoutes(root));
   routes.push(...collectRouteManifestRoutes(root));
+  annotateDependencyOwnedOperations(root, routes);
   return routes.sort((left, right) => routeSortKey(left).localeCompare(routeSortKey(right)));
 }
 
@@ -100,9 +100,11 @@ function collectRouteManifestRoutes(root) {
     if (!manifest || !isRouteManifest(manifest)) continue;
     const rel = toPosix(path.relative(root, file));
     const manifestSurface = manifest.surface ?? manifest.apiSurface ?? surfaceFromPath(file);
-    const routeCrate = manifest.packageName ?? manifest.crate ?? manifest.crateName ?? manifest.name;
+    const manifestRouteCrate = manifest.packageName ?? manifest.crate ?? manifest.crateName ?? manifest.name;
+    const manifestOpenApiAuthority = manifest.source?.openApiAuthority ?? manifest.openApiAuthority;
     const entries = Array.isArray(manifest.routes) ? manifest.routes : [];
     for (const route of entries) {
+      const routeSource = route.source && typeof route.source === 'object' ? route.source : {};
       routes.push({
         sourceKind: 'route-manifest',
         projectionKind: 'route-manifest',
@@ -111,7 +113,13 @@ function collectRouteManifestRoutes(root) {
         method: route.method,
         path: route.path ?? route.fullPath,
         operationId: route.operationId,
-        routeCrate,
+        routeCrate:
+          route.routeCrate
+          ?? routeSource.routeCrate
+          ?? routeSource.crate
+          ?? routeSource.crateName
+          ?? manifestRouteCrate,
+        sourceOpenApiAuthority: routeSource.openApiAuthority ?? manifestOpenApiAuthority,
         overrideAdr: route['x-sdkwork-route-override-adr'] ?? route.overrideAdr,
       });
     }
@@ -136,11 +144,27 @@ function collapseEquivalentRepresentations(entries) {
 
 function representsSameRouteDeclaration(left, right) {
   if (!left.operationId || left.operationId !== right.operationId) return false;
+  if (isEquivalentDependencyOwnedProjection(left, right)) return true;
   if (left.routeCrate && right.routeCrate && left.routeCrate !== right.routeCrate) return false;
   if (left.sourceKind === 'openapi' && right.sourceKind === 'openapi') return true;
+  if (isEquivalentRouteManifestProjection(left, right)) return true;
   if (isEquivalentOpenApiProjection(left, right)) return true;
   if (left.sourceKind === right.sourceKind) return false;
   return true;
+}
+
+function isEquivalentDependencyOwnedProjection(left, right) {
+  if (!left.dependencyOwnedOperationKey || left.dependencyOwnedOperationKey !== right.dependencyOwnedOperationKey) {
+    return false;
+  }
+  const dependencyRouteCrate = left.dependencyRouteCrate ?? right.dependencyRouteCrate;
+  if (!dependencyRouteCrate) return true;
+  return left.routeCrate === dependencyRouteCrate || right.routeCrate === dependencyRouteCrate;
+}
+
+function isEquivalentRouteManifestProjection(left, right) {
+  if (left.sourceKind !== 'route-manifest' || right.sourceKind !== 'route-manifest') return false;
+  return Boolean(left.routeCrate && right.routeCrate && left.routeCrate === right.routeCrate);
 }
 
 function isEquivalentOpenApiProjection(left, right) {
@@ -186,6 +210,19 @@ function isReservedHealthRoutePath(routePath) {
 }
 
 function isApprovedHealthRouteOwner(route) {
+  const operationId = String(route.operationId ?? '').toLowerCase();
+  if (
+    route.normalizedPath.endsWith('/system/health') &&
+    ['health.retrieve', 'system.health.retrieve'].includes(operationId)
+  ) {
+    return true;
+  }
+  if (
+    route.normalizedPath.endsWith('/system/ready') &&
+    ['ready.retrieve', 'system.ready.retrieve'].includes(operationId)
+  ) {
+    return true;
+  }
   const ownerText = [
     route.routeCrate,
     route.source,
@@ -204,7 +241,7 @@ function walkRouteManifestFiles(root, acc = []) {
     return acc;
   }
   for (const entry of entries) {
-    if (IGNORE_DIRS.has(entry.name)) continue;
+    if (isIgnoredGeneratedOrRuntimeDir(entry.name)) continue;
     const full = path.join(root, entry.name);
     if (entry.isDirectory()) {
       walkRouteManifestFiles(full, acc);
@@ -254,6 +291,68 @@ function routeSortKey(route) {
     route.source ?? '',
     route.operationId ?? '',
   ].join('\0');
+}
+
+function annotateDependencyOwnedOperations(root, routes) {
+  const index = readDependencyOwnedOperationIndex(root);
+  if (index.size === 0) return;
+  for (const route of routes) {
+    if (!route.operationId || !route.method || !route.path) continue;
+    const listener = route.listener ?? route.surface ?? 'default';
+    const key = dependencyOwnedOperationKey(
+      listener,
+      String(route.method).toUpperCase(),
+      normalizeRoutePath(route.path),
+      route.operationId,
+    );
+    const dependency = index.get(key);
+    if (!dependency) continue;
+    route.dependencyOwnedOperationKey = key;
+    route.dependencyOwner = dependency.owner;
+    route.dependencyWorkspace = dependency.workspace;
+    route.dependencyRouteCrate = dependency.routeCrate;
+  }
+}
+
+function readDependencyOwnedOperationIndex(root) {
+  const manifest = readJson(path.join(root, 'specs', 'dependency-api-surfaces.json'));
+  const index = new Map();
+  if (!manifest) return index;
+  const surfaces = Array.isArray(manifest.surfaces)
+    ? manifest.surfaces
+    : Array.isArray(manifest.dependencyApiSurfaces)
+      ? manifest.dependencyApiSurfaces
+      : Array.isArray(manifest.dependencies)
+        ? manifest.dependencies
+      : [];
+  for (const surface of surfaces) {
+    const surfaceId = surface.surface ?? surface.apiSurface;
+    const dependencyRouteCrate =
+      surface.runtimeIntegration?.rustRouteContractCrate?.crate
+      ?? surface.rustRouteContractCrate?.crate;
+    const operations = Array.isArray(surface.dependencyOwnedOperations)
+      ? surface.dependencyOwnedOperations
+      : [];
+    for (const operation of operations) {
+      if (!surfaceId || !operation.method || !operation.path || !operation.operationId) continue;
+      const key = dependencyOwnedOperationKey(
+        surfaceId,
+        String(operation.method).toUpperCase(),
+        normalizeRoutePath(operation.path),
+        operation.operationId,
+      );
+      index.set(key, {
+        owner: operation.owner,
+        workspace: surface.workspace,
+        routeCrate: dependencyRouteCrate,
+      });
+    }
+  }
+  return index;
+}
+
+function dependencyOwnedOperationKey(surface, method, normalizedPath, operationId) {
+  return [surface, method, normalizedPath, operationId].join('\0');
 }
 
 function toPosix(filePath) {

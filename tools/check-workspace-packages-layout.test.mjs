@@ -12,6 +12,7 @@ import {
   scanRepositoryPackagesLayout,
   summarizeRepositoryPackagesLayout,
 } from './lib/packages-layout-patterns.mjs';
+import { alignRepositoryPackagesLayout } from './lib/align-packages-layout.mjs';
 
 function makeTempDir(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -94,6 +95,42 @@ test('passes canonical single-surface layout', () => {
   const summary = summarizeRepositoryPackagesLayout(root, { mode: 'enforce' });
   assert.equal(summary.repositoryKind, 'application');
   assert.equal(summary.issueCount, 0);
+});
+
+test('aligns flat shared packages into common app root', () => {
+  const root = makeTempDir('sdkwork-packages-layout-');
+  fs.writeFileSync(path.join(root, 'README.md'), '# Appstore\nrepository-kind: application\n');
+  fs.mkdirSync(path.join(root, 'apps', 'sdkwork-appstore-pc'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'apps', 'sdkwork-appstore-h5'), { recursive: true });
+  for (const packageName of [
+    'sdkwork-appstore-publisher-console-core',
+    'sdkwork-appstore-search-core',
+    'sdkwork-clawrouter-app-sdk',
+  ]) {
+    fs.mkdirSync(path.join(root, 'packages', packageName, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'packages', packageName, 'package.json'), '{"private":true}\n');
+  }
+  fs.writeFileSync(
+    path.join(root, 'pnpm-workspace.yaml'),
+    [
+      'packages:',
+      '  - "packages/*"',
+      '  - "apps/sdkwork-appstore-pc/packages/*"',
+      '  - "apps/sdkwork-appstore-h5/packages/*"',
+      '',
+    ].join('\n'),
+  );
+
+  const result = alignRepositoryPackagesLayout(root);
+
+  assert.equal(result.issuesAfter.length, 0);
+  assert.equal(fs.existsSync(path.join(root, 'apps/sdkwork-appstore-common/packages/sdkwork-appstore-publisher-console-core/package.json')), true);
+  assert.equal(fs.existsSync(path.join(root, 'apps/sdkwork-appstore-common/packages/sdkwork-appstore-search-core/package.json')), true);
+  assert.equal(fs.existsSync(path.join(root, 'apps/sdkwork-appstore-common/packages/sdkwork-clawrouter-app-sdk/package.json')), true);
+  assert.equal(fs.existsSync(path.join(root, 'apps/sdkwork-appstore-pc/packages/sdkwork-appstore-search-core')), false);
+  const workspace = fs.readFileSync(path.join(root, 'pnpm-workspace.yaml'), 'utf8');
+  assert.match(workspace, /apps\/sdkwork-appstore-common\/packages\/\*/);
+  assert.doesNotMatch(workspace, /"packages\/\*"/);
 });
 
 test('audit summary counts repository kinds', () => {

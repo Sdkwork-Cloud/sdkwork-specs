@@ -19,15 +19,12 @@ const HOSTING_TO_PROFILE = {
 };
 
 function canonicalProfileIds(spec) {
-  const layouts = spec.vocabulary?.serviceLayout?.allowed ?? ['unified-process', 'split-services'];
   const profiles = spec.vocabulary?.deploymentProfile?.allowed ?? ['standalone', 'cloud'];
   const environments = spec.vocabulary?.environment?.allowed ?? ['development', 'production'];
   const ids = [];
   for (const deploymentProfile of profiles) {
-    for (const serviceLayout of layouts) {
-      for (const environment of environments) {
-        ids.push(`${deploymentProfile}.${serviceLayout}.${environment}`);
-      }
+    for (const environment of environments) {
+      ids.push(`${deploymentProfile}.${environment}`);
     }
   }
   return ids;
@@ -62,9 +59,26 @@ function writeJson(file, value, dryRun) {
 
 function migrateProfileId(profileId) {
   const parts = profileId.split('.');
-  if (parts.length !== 3) return profileId;
-  const mapped = HOSTING_TO_PROFILE[parts[0]] ?? parts[0];
-  return [mapped, parts[1], parts[2]].join('.');
+  if (parts.length === 3) {
+    const mapped = HOSTING_TO_PROFILE[parts[0]] ?? parts[0];
+    return [mapped, parts[2]].join('.');
+  }
+  if (parts.length === 2) {
+    const mapped = HOSTING_TO_PROFILE[parts[0]] ?? parts[0];
+    return [mapped, parts[1]].join('.');
+  }
+  return profileId;
+}
+
+function migrateProfilePath(value, oldProfileId, newProfileId) {
+  return value
+    .replaceAll(oldProfileId, newProfileId)
+    .replace(/self-hosted\.([a-z0-9-]+)\.([a-z0-9-]+)/gu, 'standalone.$2')
+    .replace(/cloud-hosted\.([a-z0-9-]+)\.([a-z0-9-]+)/gu, 'cloud.$2')
+    .replace(/standalone\.(?:unified-process|split-services)\.([a-z0-9-]+)/gu, 'standalone.$1')
+    .replace(/cloud\.(?:unified-process|split-services)\.([a-z0-9-]+)/gu, 'cloud.$1')
+    .replace(/self-hosted/g, 'standalone')
+    .replace(/cloud-hosted/g, 'cloud');
 }
 
 function appPrefixFromSpec(spec) {
@@ -90,6 +104,8 @@ function migrateEnvFileContent(content, spec, oldProfileId, newProfileId) {
   out = out.replaceAll(oldProfileId, newProfileId);
   out = out.replaceAll('self-hosted', 'standalone');
   out = out.replaceAll('cloud-hosted', 'cloud');
+  out = out.replace(/^\s*[A-Z0-9_]*SERVICE_LAYOUT=.*(?:\r?\n)?/gmu, '');
+  out = out.replace(/^#.*(?:serviceLayout|service layout|unified-process|split-services).*(?:\r?\n)?/gimu, '');
   out = out.replace(
     new RegExp(`${appPrefix}_HOSTING=`, 'g'),
     `${appPrefix}_DEPLOYMENT_PROFILE=`,
@@ -114,24 +130,23 @@ function renameKeyObject(obj) {
 }
 
 function ensureDeploymentVocabulary(spec) {
+  spec.schemaVersion = 4;
+  spec.vocabulary ??= {};
+  if (spec.vocabulary.serviceLayout) {
+    delete spec.vocabulary.serviceLayout;
+  }
+
   if (spec.vocabulary?.deploymentProfile?.allowed) {
-    const allowed = new Set(spec.vocabulary.deploymentProfile.allowed);
-    allowed.add('standalone');
-    allowed.add('cloud');
-    spec.vocabulary.deploymentProfile.allowed = [...allowed];
+    spec.vocabulary.deploymentProfile.allowed = ['standalone', 'cloud'];
+    spec.profilePattern = '{deploymentProfile}.{environment}.env';
     return spec;
   }
 
-  const hostingAllowed = spec.vocabulary?.hosting?.allowed ?? [];
-  const migrated = hostingAllowed.map((value) => HOSTING_TO_PROFILE[value] ?? value);
-  spec.retired ??= {};
-  spec.retired.vocabulary ??= {};
-  spec.retired.vocabulary.hosting = hostingAllowed;
   delete spec.vocabulary.hosting;
   spec.vocabulary.deploymentProfile = {
-    allowed: [...new Set([...migrated, 'standalone', 'cloud'])],
+    allowed: ['standalone', 'cloud'],
   };
-  spec.profilePattern = '{deploymentProfile}.{serviceLayout}.{environment}.env';
+  spec.profilePattern = '{deploymentProfile}.{environment}.env';
   return spec;
 }
 
@@ -155,6 +170,9 @@ function migrateEnvKeys(spec) {
     );
     delete spec.envKeys.clientHosting;
   }
+  if (spec.envKeys.serviceLayout) {
+    delete spec.envKeys.serviceLayout;
+  }
   return spec;
 }
 
@@ -164,10 +182,13 @@ function migrateDefaults(spec) {
     if (spec.defaults[key]) spec.defaults[key] = migrateProfileId(spec.defaults[key]);
   }
   if (!spec.defaults.productionProfileId?.startsWith('cloud.')) {
-    spec.defaults.productionProfileId = 'cloud.split-services.production';
+    spec.defaults.productionProfileId = 'cloud.production';
   }
   if (!spec.defaults.developmentProfileId?.startsWith('standalone.')) {
-    spec.defaults.developmentProfileId = 'standalone.unified-process.development';
+    spec.defaults.developmentProfileId = 'standalone.development';
+  }
+  if (!spec.defaults.desktopBuildProfileId?.startsWith('standalone.')) {
+    spec.defaults.desktopBuildProfileId = 'standalone.production';
   }
   return spec;
 }
@@ -259,15 +280,11 @@ function ensureOrchestrationProfiles(spec) {
   spec.orchestration ??= {};
   spec.orchestration.profiles ??= {};
 
-  const layouts = spec.vocabulary?.serviceLayout?.allowed ?? ['unified-process', 'split-services'];
-  const standaloneDev =
-    spec.orchestration.profiles['standalone.unified-process.development'] ??
-    spec.orchestration.profiles['standalone.split-services.development'];
+  const standaloneDev = spec.orchestration.profiles['standalone.development'];
   const api = primaryApiProcess(spec);
 
   if (!standaloneDev && api) {
-    const defaultLayout = layouts.includes('unified-process') ? 'unified-process' : layouts[0];
-    const profileId = `standalone.${defaultLayout}.development`;
+    const profileId = 'standalone.development';
     if (spec.profileFiles?.[profileId] || !spec.profileFiles || Object.keys(spec.profileFiles).length === 0) {
       spec.orchestration.profiles[profileId] = {
         processes: [
@@ -278,25 +295,22 @@ function ensureOrchestrationProfiles(spec) {
     }
   }
 
-  const environments = spec.vocabulary?.environment?.allowed ?? ['development', 'production'];
-  for (const serviceLayout of layouts) {
-    for (const environment of environments) {
-      const cloudProfileId = `cloud.${serviceLayout}.${environment}`;
-      if (!spec.profileFiles?.[cloudProfileId]) continue;
-      if (spec.orchestration.profiles[cloudProfileId]) continue;
-      const standaloneProfileId = `standalone.${serviceLayout}.${environment}`;
-      const sourceStandalone =
-        spec.orchestration.profiles[standaloneProfileId] ??
-        spec.orchestration.profiles['standalone.unified-process.development'] ??
-        spec.orchestration.profiles['standalone.split-services.development'];
-      if (!sourceStandalone) continue;
-      const sourceId = spec.orchestration.profiles[standaloneProfileId]
-        ? standaloneProfileId
-        : (spec.orchestration.profiles['standalone.split-services.development']
-          ? 'standalone.split-services.development'
-          : 'standalone.unified-process.development');
-      const cloned = cloneOrchestrationForCloud(spec, sourceId, cloudProfileId);
-      if (cloned) spec.orchestration.profiles[cloudProfileId] = cloned;
+  for (const profileId of canonicalProfileIds(spec)) {
+    if (!spec.profileFiles?.[profileId]) continue;
+    if (spec.orchestration.profiles[profileId]) continue;
+    const [deploymentProfile, environment] = profileId.split('.');
+    const sourceStandaloneId = spec.orchestration.profiles[`standalone.${environment}`]
+      ? `standalone.${environment}`
+      : 'standalone.development';
+    if (deploymentProfile === 'cloud') {
+      const cloned = cloneOrchestrationForCloud(spec, sourceStandaloneId, profileId);
+      if (cloned) spec.orchestration.profiles[profileId] = cloned;
+      continue;
+    }
+    if (deploymentProfile === 'standalone' && spec.orchestration.profiles['standalone.development']) {
+      spec.orchestration.profiles[profileId] = JSON.parse(
+        JSON.stringify(spec.orchestration.profiles['standalone.development']),
+      );
     }
   }
 
@@ -306,18 +320,16 @@ function ensureOrchestrationProfiles(spec) {
 function ensureProfileFiles(spec, repoRoot) {
   spec.profileFiles ??= {};
   const profileRoot = spec.profileRoot ?? 'configs/topology';
-  const pattern = spec.profilePattern ?? '{deploymentProfile}.{serviceLayout}.{environment}.env';
+  const pattern = spec.profilePattern ?? '{deploymentProfile}.{environment}.env';
 
   for (const profileId of canonicalProfileIds(spec)) {
-    const [deploymentProfile, serviceLayout, environment] = profileId.split('.');
-    const layouts = spec.vocabulary?.serviceLayout?.allowed ?? ['unified-process', 'split-services'];
+    const [deploymentProfile, environment] = profileId.split('.');
     const profiles = spec.vocabulary?.deploymentProfile?.allowed ?? ['standalone', 'cloud'];
-    if (!profiles.includes(deploymentProfile) || !layouts.includes(serviceLayout)) continue;
+    if (!profiles.includes(deploymentProfile)) continue;
 
     const relative = `${profileRoot}/${pattern
       .replaceAll('{deploymentProfile}', deploymentProfile)
       .replaceAll('{hosting}', deploymentProfile)
-      .replaceAll('{serviceLayout}', serviceLayout)
       .replaceAll('{environment}', environment)}`;
 
     if (!spec.profileFiles[profileId]) {
@@ -330,7 +342,7 @@ function ensureProfileFiles(spec, repoRoot) {
 
 function createMissingEnvFiles(spec, repoRoot, dryRun, actions) {
   const appPrefix = appPrefixFromSpec(spec);
-  const templatePath = spec.profileFiles['standalone.unified-process.development'];
+  const templatePath = spec.profileFiles['standalone.development'];
   const templateAbs = templatePath ? path.join(repoRoot, templatePath) : null;
   const template = templateAbs && fs.existsSync(templateAbs) ? fs.readFileSync(templateAbs, 'utf8') : null;
 
@@ -340,13 +352,12 @@ function createMissingEnvFiles(spec, repoRoot, dryRun, actions) {
 
     let content;
     if (template) {
-      content = migrateEnvFileContent(template, spec, 'standalone.unified-process.development', profileId);
+      content = migrateEnvFileContent(template, spec, 'standalone.development', profileId);
     } else {
-      const [deploymentProfile, serviceLayout, environment] = profileId.split('.');
+      const [deploymentProfile, environment] = profileId.split('.');
       content = [
         `# ${profileId}`,
         `${appPrefix}_DEPLOYMENT_PROFILE=${deploymentProfile}`,
-        `${appPrefix}_SERVICE_LAYOUT=${serviceLayout}`,
         `${appPrefix}_ENVIRONMENT=${environment}`,
         `${appPrefix}_PROFILE_ID=${profileId}`,
         '',
@@ -369,9 +380,7 @@ function migrateEnvFilesOnDisk(spec, repoRoot, dryRun, actions) {
   const renames = [];
   for (const [profileId, relativePath] of Object.entries({ ...(spec.profileFiles ?? {}) })) {
     const newProfileId = migrateProfileId(profileId);
-    const newRelative = relativePath
-      .replace(/self-hosted/g, 'standalone')
-      .replace(/cloud-hosted/g, 'cloud');
+    const newRelative = migrateProfilePath(relativePath, profileId, newProfileId);
     const oldAbs = path.join(repoRoot, relativePath);
     const newAbs = path.join(repoRoot, newRelative);
 
@@ -411,9 +420,7 @@ function migrateProfileFilesKeys(spec) {
   if (!spec.profileFiles) return spec;
   spec.profileFiles = renameKeyObject(spec.profileFiles);
   for (const [profileId, relativePath] of Object.entries(spec.profileFiles)) {
-    spec.profileFiles[profileId] = relativePath
-      .replace(/self-hosted/g, 'standalone')
-      .replace(/cloud-hosted/g, 'cloud');
+    spec.profileFiles[profileId] = migrateProfilePath(relativePath, profileId, profileId);
   }
   return spec;
 }
@@ -541,27 +548,25 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
 
   const appSlug = meta.appId.replace(/^sdkwork-/, '');
   const spec = {
-    schemaVersion: 2,
+    schemaVersion: 4,
     kind: 'sdkwork.app.topology',
     appId: meta.appId,
     archetype: 'application-http-gateway',
     profileRoot: 'configs/topology',
-    profilePattern: '{deploymentProfile}.{serviceLayout}.{environment}.env',
+    profilePattern: '{deploymentProfile}.{environment}.env',
     vocabulary: {
       deploymentProfile: { allowed: ['standalone', 'cloud'] },
-      serviceLayout: { allowed: ['unified-process', 'split-services'] },
       environment: { allowed: ['development', 'production'] },
     },
     defaults: {
-      developmentProfileId: 'standalone.unified-process.development',
-      productionProfileId: 'cloud.split-services.production',
-      desktopBuildProfileId: 'standalone.unified-process.production',
+      developmentProfileId: 'standalone.development',
+      productionProfileId: 'cloud.production',
+      desktopBuildProfileId: 'standalone.production',
       gatewayBind: '127.0.0.1:8080',
     },
     profileFiles: {},
     envKeys: {
       deploymentProfile: `${meta.appPrefix}_DEPLOYMENT_PROFILE`,
-      serviceLayout: `${meta.appPrefix}_SERVICE_LAYOUT`,
       environment: `${meta.appPrefix}_ENVIRONMENT`,
       profileId: `${meta.appPrefix}_PROFILE_ID`,
       clientDeploymentProfile: `VITE_${meta.appPrefix}_DEPLOYMENT_PROFILE`,
@@ -623,6 +628,7 @@ function alignRepo(repoRoot, dryRun) {
   spec = ensureDeploymentVocabulary(spec);
   spec = migrateEnvKeys(spec);
   spec = migrateDefaults(spec);
+  migrateEnvFilesOnDisk(spec, repoRoot, dryRun, actions);
   spec = migrateProfileFilesKeys(spec);
   spec = migrateOrchestrationKeys(spec);
   spec = ensurePlatformSurface(spec);
@@ -630,7 +636,6 @@ function alignRepo(repoRoot, dryRun) {
   spec = ensureProfileFiles(spec, repoRoot);
   spec = ensureOrchestrationProfiles(spec);
 
-  migrateEnvFilesOnDisk(spec, repoRoot, dryRun, actions);
   createMissingEnvFiles(spec, repoRoot, dryRun, actions);
   const meta = deriveAppMeta(repoRoot);
   if (meta) ensureRootAppConfig(repoRoot, meta, dryRun, actions);

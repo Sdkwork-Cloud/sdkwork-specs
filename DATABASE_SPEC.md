@@ -5,7 +5,7 @@
 - Related: `API_SPEC.md`, `PAGINATION_SPEC.md`, `SUBJECT_ID_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `DATABASE_SPEC_PROCESS_SHARED_POOL.md`, `SCHEMA_REGISTRY_SPEC.md`, `MIGRATION_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `TEST_SPEC.md`
 - Canonical location: `DATABASE_SPEC.md` in the `sdkwork-specs` standards root
 
-This standard defines portable database contracts for SDKWork. It is intentionally independent of Java, Rust, TypeScript, Python, Go, PHP, C#, ORM choice, migration engine, and database product. Its purpose is to keep table semantics, identity, tenant isolation, query contracts, schema evolution, API/SDK serialization, and lifecycle evidence stable while applications move between standalone, cloud, unified-process, and split-service deployments.
+This standard defines portable database contracts for SDKWork. It is intentionally independent of Java, Rust, TypeScript, Python, Go, PHP, C#, ORM choice, migration engine, and database product. Its purpose is to keep table semantics, identity, tenant isolation, query contracts, schema evolution, API/SDK serialization, and lifecycle evidence stable while applications move between standalone and cloud deployments.
 
 This repository owns global standards only. Repository-specific table inventories, ORM scan results, migration evidence, and rename plans belong in the consuming repository `specs/`, migration plans, or generated audit evidence. They `MUST NOT` be embedded in this global standard.
 
@@ -732,8 +732,8 @@ Rules:
 
 - `standalone` profile: each service owns its configured database or schema and must still follow this table contract.
 - `cloud` profile: database configuration comes from managed deployment configuration and must expose lifecycle/drift health.
-- `unified-process` profile: embedded modules must share the approved process-level lifecycle pools and must not open independent pools against the same DSN.
-- `split-services` profile: each service owns its lifecycle bootstrap and must not assume local process sharing.
+- Embedded modules in the same OS process must share the approved process-level lifecycle pools and must not open independent pools against the same DSN.
+- External upstream services and worker processes own their lifecycle bootstrap and must not assume local process sharing.
 - `test` profile: temporary or in-memory databases may be used only through test helpers or approved lifecycle adapters.
 
 ## 34. Repository Standard

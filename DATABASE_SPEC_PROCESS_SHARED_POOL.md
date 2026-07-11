@@ -2,8 +2,8 @@
 
 <!-- SDKWORK-SPEC-ADDENDUM: process-shared-pool v2 -->
 
-This addendum extends `DATABASE_SPEC.md` section 32 and section 33.4 for **every IM deployment profile**
-(`standalone`, `cloud`, `unified-process`, `split-services`).
+This addendum extends `DATABASE_SPEC.md` section 32 and section 33.4 for every
+IM process that participates in `standalone` or `cloud` deployments.
 
 ## Scope
 
@@ -28,11 +28,11 @@ for the IM DSN, regardless of deployment topology.
 
 ## Applies to
 
-| Profile | Entry processes |
+| Deployment context | Entry processes |
 | --- | --- |
-| `standalone.unified-process.*` | `sdkwork-im-standalone-gateway` |
+| `standalone.*` | `sdkwork-im-standalone-gateway` |
 | `cloud.*` | `sdkwork-im-cloud-gateway` |
-| `split-services.*` | `session-gateway`, `session-gateway-rpc`, `sdkwork-comms-conversation-service`, `sdkwork-comms-conversation-rpc`, `sdkwork-comms-conversation-internal-rpc`, `projection-service`, `ops-service`, `audit-service`, `comms-social-service`, `space-service`, and other IM `*-service-bin` processes |
+| Internal service or worker process | `session-gateway`, `session-gateway-rpc`, `sdkwork-comms-conversation-service`, `sdkwork-comms-conversation-rpc`, `sdkwork-comms-conversation-internal-rpc`, `projection-service`, `ops-service`, `audit-service`, `comms-social-service`, `space-service`, and other IM `*-service-bin` processes |
 
 ## Reference implementation
 

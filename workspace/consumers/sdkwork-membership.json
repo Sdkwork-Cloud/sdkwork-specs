@@ -1,10 +1,10 @@
 {
   "pnpm": {
     "packages": [
-      "../sdkwork-promotion/packages/common/promotion/*",
+      "../sdkwork-promotion/apps/sdkwork-promotion-common/packages/*",
+      "../sdkwork-promotion/apps/sdkwork-promotion-pc/packages/sdkwork-promotion-pc-core",
       "../sdkwork-promotion/apps/sdkwork-promotion-pc/packages/sdkwork-promotion-pc-coupon",
-      "../sdkwork-payment/packages/common/payment/*",
-      "../sdkwork-payment/apps/sdkwork-payment-pc/packages/sdkwork-payment-pc-payment",
+      "../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript",
       "../sdkwork-appbase/packages/common/foundation/sdkwork-runtime-bootstrap",
       "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-appbase-pc-react",
       "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-i18n-pc-react",

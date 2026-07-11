@@ -83,11 +83,6 @@ export function normalizeApplicationCode(raw) {
 }
 
 export function inferApplicationCode(repoRoot) {
-  const identity = resolveRepositoryIdentity(repoRoot);
-  if (identity.applicationCode && identity.applicationCode !== identity.repoName) {
-    return normalizeApplicationCode(identity.applicationCode);
-  }
-
   const manifestPath = path.join(repoRoot, 'sdkwork.app.config.json');
   if (fs.existsSync(manifestPath)) {
     try {
@@ -105,6 +100,11 @@ export function inferApplicationCode(repoRoot) {
     if (match) {
       return normalizeApplicationCode(match[1]);
     }
+  }
+
+  const identity = resolveRepositoryIdentity(repoRoot);
+  if (identity.applicationCode && identity.applicationCode !== identity.repoName) {
+    return normalizeApplicationCode(identity.applicationCode);
   }
 
   const repoName = path.basename(repoRoot);
@@ -251,6 +251,12 @@ function resolveFlatPackageAppRoot(repoRoot, applicationCode, entry) {
     return `apps/sdkwork-${applicationCode}${suffix}`;
   }
   if (/(-contracts|-sdk-ports|-service|-runtime)$/.test(entry)) {
+    return `apps/sdkwork-${applicationCode}-common`;
+  }
+  if (new RegExp(`^sdkwork-${applicationCode}(?:-[a-z0-9]+)*-(?:core|sdk)$`, 'u').test(entry)) {
+    return `apps/sdkwork-${applicationCode}-common`;
+  }
+  if (/^sdkwork-[a-z0-9-]+-(?:app|backend|open)?-?sdk$/u.test(entry)) {
     return `apps/sdkwork-${applicationCode}-common`;
   }
   if (fs.existsSync(path.join(repoRoot, 'sdkwork.app.config.json')) || listApplicationRoots(repoRoot).length > 0) {

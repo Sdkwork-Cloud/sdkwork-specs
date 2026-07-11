@@ -173,3 +173,115 @@ test('checker accepts sdk dependency permission inheritance when OpenAPI codes r
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /permission composition check passed/u);
 });
+
+test('checker matches legacy SDK dependency aliases to module catalog refs', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-permission-aliases-'));
+  createClientAppRoot(root, {
+    sdkDependencies: [
+      {
+        workspace: 'sdkwork-shop-app-sdk-typescript',
+        surface: 'app-api',
+        credentialMode: 'authenticated-app-api',
+      },
+      {
+        workspace: '@sdkwork-internal/notes-app-sdk-generated',
+        surface: 'app-api',
+        credentialMode: 'authenticated-app-api',
+      },
+      {
+        workspace: 'clawrouter-app-catalog-capability',
+        surface: 'app-api',
+        credentialMode: 'authenticated-app-api',
+      },
+    ],
+    permissionComposition: {
+      inheritanceMode: 'module-catalog-with-overrides',
+      moduleCatalogRefs: [
+        {
+          moduleId: 'shop',
+          manifestRef: '../../../../../sdkwork-shop/specs/iam.module.manifest.json',
+          inheritPermissions: true,
+          inheritRoles: true,
+        },
+        {
+          moduleId: 'notes',
+          manifestRef: '../../../../../sdkwork-notes/specs/iam.module.manifest.json',
+          inheritPermissions: true,
+          inheritRoles: true,
+        },
+        {
+          moduleId: 'catalog',
+          manifestRef: '../../../../../sdkwork-catalog/specs/iam.module.manifest.json',
+          inheritPermissions: true,
+          inheritRoles: true,
+        },
+      ],
+      consumerPolicy: {
+        forbidLocalPermissionCatalogForDependencyDomains: true,
+        allowExplicitOverridesOnly: true,
+      },
+    },
+  });
+  for (const moduleId of ['shop', 'notes', 'catalog']) {
+    writeJson(path.join(root, `sdkwork-${moduleId}/specs/iam.module.manifest.json`), {
+      schemaVersion: 1,
+      kind: 'sdkwork.iam.module',
+      moduleId,
+      domain: moduleId,
+      permissions: { catalog: [] },
+    });
+  }
+
+  const result = spawnSync(process.execPath, [CHECKER, '--root', root], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /permission composition check passed/u);
+});
+
+test('checker matches SDK dependency to sibling IMF module identity', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-permission-sibling-identity-'));
+  const appRoot = createClientAppRoot(root, {
+    sdkDependencies: [
+      {
+        workspace: 'sdkwork-models-app-sdk',
+        surface: 'app-api',
+        credentialMode: 'authenticated-app-api',
+      },
+    ],
+    permissionComposition: {
+      inheritanceMode: 'module-catalog-with-overrides',
+      moduleCatalogRefs: [
+        {
+          moduleId: 'intelligence-catalog',
+          manifestRef: '../../../../../sdkwork-models/specs/iam.module.manifest.json',
+          inheritPermissions: true,
+          inheritRoles: true,
+        },
+      ],
+      consumerPolicy: {
+        forbidLocalPermissionCatalogForDependencyDomains: true,
+        allowExplicitOverridesOnly: true,
+      },
+    },
+  });
+  writeJson(path.join(root, 'sdkwork-models/specs/iam.module.manifest.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.iam.module',
+    moduleId: 'intelligence-catalog',
+    domain: 'intelligence',
+    permissions: { catalog: [{ code: 'intelligence.models.read' }] },
+  });
+  writeJson(
+    path.join(appRoot, 'apis/app-api/models/openapi.json'),
+    openApiWithPermission('intelligence.models.read'),
+  );
+
+  const result = spawnSync(process.execPath, [CHECKER, '--root', root], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /permission composition check passed/u);
+});

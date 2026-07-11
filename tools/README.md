@@ -8,7 +8,7 @@ Rules:
 - Application repositories may call these tools through thin `package.json` scripts.
 - `check-pnpm-script-standard.mjs` validates root scripts, package-local
   script names and command values, default `dev:browser`/`dev:desktop`
-  PostgreSQL + `unified-process` + standalone resolution, action-first runtime
+  PostgreSQL + standalone + development resolution, action-first runtime
   target command names, retired deployment flags, and active Markdown/AGENTS
   plus command-bearing JSON examples against `PNPM_SCRIPT_SPEC.md`.
 - `check-agent-workflow-standard.mjs` validates repository/application

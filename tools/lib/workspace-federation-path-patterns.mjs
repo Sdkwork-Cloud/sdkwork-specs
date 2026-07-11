@@ -538,13 +538,27 @@ function collectTsconfigStringFields(json) {
       }
       for (const entry of entries) {
         if (typeof entry === 'string') {
-          fields.push({ fieldName: `paths["${alias}"]`, entry, alias });
+          fields.push({
+            fieldName: `paths["${alias}"]`,
+            entry,
+            alias,
+            isPathMapping: true,
+          });
         }
       }
     }
   }
 
   return fields;
+}
+
+function tsconfigPathMappingContextDir(json, filePath) {
+  const configDir = path.dirname(filePath);
+  const baseUrl = json?.compilerOptions?.baseUrl;
+  if (typeof baseUrl !== 'string' || baseUrl.trim() === '') {
+    return configDir;
+  }
+  return path.resolve(configDir, baseUrl.replace(/\\/g, '/'));
 }
 
 function inspectTsconfigReference(fieldName, entry, contextDir, repoRoot, relPath) {
@@ -612,10 +626,12 @@ export function scanTsconfigFederationPaths(repoRoot) {
     }
 
     const contextDir = path.dirname(filePath);
+    const pathMappingContextDir = tsconfigPathMappingContextDir(json, filePath);
     const relPath = path.relative(repoRoot, filePath).replace(/\\/g, '/');
 
-    for (const { fieldName, entry } of collectTsconfigStringFields(json)) {
-      const issue = inspectTsconfigReference(fieldName, entry, contextDir, repoRoot, relPath);
+    for (const { fieldName, entry, isPathMapping } of collectTsconfigStringFields(json)) {
+      const entryContextDir = isPathMapping ? pathMappingContextDir : contextDir;
+      const issue = inspectTsconfigReference(fieldName, entry, entryContextDir, repoRoot, relPath);
       if (issue) {
         issues.push(issue);
       }
@@ -662,6 +678,7 @@ function alignTsconfigFederationPaths(repoRoot, dryRun) {
     }
 
     const contextDir = path.dirname(filePath);
+    const pathMappingContextDir = tsconfigPathMappingContextDir(json, filePath);
     const relPath = path.relative(repoRoot, filePath).replace(/\\/g, '/');
     let fileChanged = false;
 
@@ -678,11 +695,11 @@ function alignTsconfigFederationPaths(repoRoot, dryRun) {
         }
 
         const updatedEntries = entries.map((entry) => {
-          if (typeof entry !== 'string' || tsconfigEntryExists(contextDir, entry)) {
+          if (typeof entry !== 'string' || tsconfigEntryExists(pathMappingContextDir, entry)) {
             return entry;
           }
 
-          const suggested = rewriteTsconfigReference(entry, contextDir, repoRoot);
+          const suggested = rewriteTsconfigReference(entry, pathMappingContextDir, repoRoot);
           if (!suggested || suggested === entry) {
             return entry;
           }

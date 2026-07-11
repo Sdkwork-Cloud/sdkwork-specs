@@ -1,8 +1,8 @@
 version: 1
-defaultProfile: cloud.split-services.production
+defaultProfile: cloud.production
 
 profiles:
-  cloud.split-services.production:
+  cloud.production:
     install:
       layout: binary-package
     expose:
@@ -15,7 +15,7 @@ profiles:
       - harmony-mobile
       - mini-program-weixin
 
-  standalone.unified-process.development:
+  standalone.development:
     expose:
       - domain: localhost
         tls: off

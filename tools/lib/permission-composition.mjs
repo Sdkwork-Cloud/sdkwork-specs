@@ -38,7 +38,7 @@ export function classifyPermissionComposition(repoRoot) {
 
       const context = loadPermissionCompositionContext(repoRoot, clientRoot.appRoot, core, permissionComposition, relCore);
       issues.push(...context.issues);
-      issues.push(...validateDependencyCatalogRefs(httpDeps, context, relCore));
+      issues.push(...validateDependencyCatalogRefs(httpDeps, context, relCore, repoRoot));
       coreContexts.push(context);
     }
 
@@ -114,11 +114,11 @@ function loadPermissionCompositionContext(repoRoot, appRoot, core, permissionCom
   };
 }
 
-function validateDependencyCatalogRefs(httpDeps, context, relCore) {
+function validateDependencyCatalogRefs(httpDeps, context, relCore, repoRoot) {
   const issues = [];
   const inheritableCatalogs = context.catalogs.filter((catalog) => catalog.inheritPermissions);
   for (const dep of httpDeps) {
-    const candidates = dependencyCatalogCandidates(dep);
+    const candidates = dependencyCatalogCandidates(dep, repoRoot);
     const matched = inheritableCatalogs.some((catalog) => {
       return candidates.has(catalog.moduleId) || candidates.has(catalog.domain);
     });
@@ -166,20 +166,100 @@ function isHttpSdkDependency(dep) {
     || /-sdk$/u.test(dep.workspace);
 }
 
-function dependencyCatalogCandidates(dep) {
+function dependencyCatalogCandidates(dep, repoRoot) {
   const candidates = new Set();
   for (const value of [dep.moduleId, dep.permissionModuleId, dep.domain]) {
     if (typeof value === 'string' && value.trim()) candidates.add(value.trim());
   }
-  const workspace = String(dep.workspace ?? '')
-    .replace(/^@sdkwork\//u, '')
-    .replace(/\/.*$/u, '');
-  const stripped = workspace
-    .replace(/^sdkwork-/u, '')
-    .replace(/-(?:app|backend|open)-sdk$/u, '')
-    .replace(/-sdk$/u, '');
-  if (stripped) candidates.add(stripped);
+  const workspaceCandidates = dependencyModuleCandidatesFromWorkspace(dep.workspace);
+  for (const candidate of workspaceCandidates) {
+    candidates.add(candidate);
+  }
+  for (const identity of siblingManifestIdentities(repoRoot, workspaceCandidates)) {
+    candidates.add(identity);
+  }
   return candidates;
+}
+
+function siblingManifestIdentities(repoRoot, moduleCandidates) {
+  const identities = [];
+  for (const moduleId of moduleCandidates) {
+    for (const repo of siblingRepoCandidates(repoRoot, moduleId)) {
+      for (const manifestPath of permissionManifestCandidates(repo)) {
+        const manifest = readJsonIfPresent(manifestPath);
+        if (!manifest) continue;
+        for (const value of [manifest.moduleId, manifest.domain]) {
+          if (typeof value === 'string' && value.trim()) identities.push(value.trim());
+        }
+      }
+    }
+  }
+  return identities;
+}
+
+function siblingRepoCandidates(repoRoot, moduleId) {
+  const candidates = [
+    path.join(repoRoot, `sdkwork-${moduleId}`),
+    path.join(path.dirname(repoRoot), `sdkwork-${moduleId}`),
+  ];
+  return [...new Set(candidates)].filter((candidate) => fs.existsSync(candidate));
+}
+
+function permissionManifestCandidates(repoRoot) {
+  const candidates = [path.join(repoRoot, 'specs', 'iam.module.manifest.json')];
+  const componentSpec = readJsonIfPresent(path.join(repoRoot, 'specs', 'component.spec.json'));
+  const permissionManifest = componentSpec?.integration?.permissionManifest;
+  if (typeof permissionManifest === 'string' && permissionManifest.trim()) {
+    candidates.push(path.resolve(repoRoot, permissionManifest));
+  }
+  return [...new Set(candidates)];
+}
+
+function readJsonIfPresent(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    return readJson(filePath);
+  } catch {
+    return null;
+  }
+}
+
+function dependencyModuleCandidatesFromWorkspace(workspaceValue) {
+  const candidates = [];
+  let workspace = String(workspaceValue ?? '').replace(/\\/gu, '/').trim();
+  if (!workspace) return candidates;
+
+  if (workspace.startsWith('@sdkwork-internal/')) {
+    workspace = workspace.slice('@sdkwork-internal/'.length);
+  } else if (workspace.startsWith('@sdkwork/')) {
+    workspace = workspace.slice('@sdkwork/'.length);
+  }
+
+  if (workspace.includes('/')) {
+    const segments = workspace.split('/').filter(Boolean);
+    const sdkSegment = segments.find((segment) => /(?:^sdkwork-|^[a-z0-9-]+-)(?:.*-)?sdk/u.test(segment));
+    workspace = sdkSegment ?? segments.at(-1) ?? workspace;
+  }
+
+  const clawrouterCapability = workspace.match(/^clawrouter-(?:app|backend)-([a-z0-9-]+)-capability$/u);
+  if (clawrouterCapability) candidates.push(clawrouterCapability[1]);
+
+  const snakeConsumer = workspace.match(/^sdkwork_([a-z0-9_]+?)_(?:flutter_mobile|android_mobile|ios_mobile|harmony_mobile|h5|mp)?_?app_sdk_consumer$/u);
+  if (snakeConsumer) {
+    candidates.push(snakeConsumer[1].replace(/_/gu, '-'));
+  }
+
+  const stripped = workspace
+    .replace(/^sdkwork-sdkwork-/u, 'sdkwork-')
+    .replace(/^sdkwork-/u, '')
+    .replace(/-(?:app|backend|open)-sdk(?:-generated)?(?:-typescript)?$/u, '')
+    .replace(/-sdk(?:-generated)?(?:-typescript)?$/u, '')
+    .replace(/-app-sdk-generated$/u, '')
+    .replace(/-backend-sdk-generated$/u, '')
+    .replace(/-open-sdk-generated$/u, '');
+  if (stripped) candidates.push(stripped);
+
+  return candidates.filter((candidate) => /^[a-z][a-z0-9-]*$/u.test(candidate));
 }
 
 function loadManifestRef(manifestRef, repoRoot, appRoot, componentSpecPath) {

@@ -78,8 +78,6 @@ export function resolveWebsocketPath(topology) {
 
 const SURFACE_API_KINDS = {
   'application.public-ingress': new Set(['app-api', 'backend-api', 'open-api', 'unknown']),
-  'application.app-http': new Set(['app-api']),
-  'application.backend-http': new Set(['backend-api']),
   'operations.control-ingress': new Set(['backend-api']),
   'platform.api-gateway': new Set(['open-api', 'platform-api', 'unknown']),
 };
@@ -98,8 +96,6 @@ export function resolveUpstreams(topology, overrides = {}, profileEnv = {}) {
 
   for (const [key, surfaceId] of [
     ['application', 'application.public-ingress'],
-    ['appHttp', 'application.app-http'],
-    ['backendHttp', 'application.backend-http'],
     ['platform', 'platform.api-gateway'],
     ['operations', 'operations.control-ingress'],
   ]) {
@@ -127,10 +123,6 @@ export function resolveUpstreams(topology, overrides = {}, profileEnv = {}) {
 
 export function upstreamForSurface(upstreams, surfaceId) {
   switch (surfaceId) {
-    case 'application.app-http':
-      return upstreams.appHttp ?? upstreams.application;
-    case 'application.backend-http':
-      return upstreams.backendHttp ?? upstreams.application;
     case 'platform.api-gateway':
       return upstreams.platform ?? upstreams.application;
     case 'operations.control-ingress':
