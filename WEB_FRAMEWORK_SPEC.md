@@ -323,7 +323,11 @@ Forbidden:
 
 The framework enforces secure defaults without per-route business configuration:
 
-- CORS: deny-by-default
+- CORS: deny-by-default. Development/test profiles `MAY` use the shared framework
+  private-network origin policy, which accepts only HTTP(S) loopback, RFC 1918 IPv4, and IPv6
+  unique-local-address origins on numeric development ports. The policy `MUST` be rejected by
+  production validation; production remains an exact-origin allowlist. Responses that echo a
+  concrete allowed origin `MUST` include `Vary: Origin` and `MUST NOT` emit `*` with credentials.
 - Request ID: server-generated UUID v4; overwrite client `X-Request-Id`
 - Unauthenticated protected paths: `401` problem+json
 - Oversized body: `413`

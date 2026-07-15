@@ -84,7 +84,10 @@ Rules:
 - Frontend modules `MUST NOT` manually assemble auth headers except in SDK/bootstrap infrastructure.
 - Appbase IAM auth UI/runtime and generated app SDK bootstrap own browser login/session token flow; product UI must not duplicate it.
 - Sensitive tokens `SHOULD` be stored in secure host storage where available.
-- CORS `MUST` be explicit and environment-specific.
+- CORS `MUST` be explicit and environment-specific. SDKWork development/test runtimes `MAY`
+  enable the shared Web Framework private-network origin policy for dynamic LAN addresses;
+  application-local subnet matchers and copied CORS middleware are forbidden. Production
+  runtimes `MUST` reject that development policy and use exact origin allowlists.
 - CSRF protection is required for cookie-authenticated browser flows.
 - UI permission checks do not replace backend authorization.
 

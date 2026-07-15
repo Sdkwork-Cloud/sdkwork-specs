@@ -70,6 +70,44 @@ function ensureAssemblyDependency(cargoPath, applicationCode) {
   return true;
 }
 
+function ensureWebBootstrapDependency(cargoPath) {
+  let cargo = readText(cargoPath);
+  if (/^sdkwork-web-bootstrap\s*=/mu.test(cargo)) {
+    return false;
+  }
+  const depLine = 'sdkwork-web-bootstrap = { workspace = true }';
+  if (cargo.includes('[dependencies]')) {
+    cargo = cargo.replace(/\[dependencies\]\s*\n/u, `[dependencies]\n${depLine}\n`);
+  } else {
+    cargo += `\n[dependencies]\n${depLine}\n`;
+  }
+  fs.writeFileSync(cargoPath, cargo, 'utf8');
+  return true;
+}
+
+function ensureWorkspaceWebBootstrapDependency(root) {
+  const cargoPath = path.join(root, 'Cargo.toml');
+  if (!fs.existsSync(cargoPath)) {
+    return false;
+  }
+  let cargo = readText(cargoPath);
+  if (/^sdkwork-web-bootstrap\s*=/mu.test(cargo)) {
+    return false;
+  }
+  const section = '[workspace.dependencies]';
+  if (!cargo.includes(section)) {
+    return false;
+  }
+  const depLine =
+    'sdkwork-web-bootstrap = { path = "../sdkwork-web-framework/crates/sdkwork-web-bootstrap" }';
+  cargo = cargo.replace(
+    /\[workspace\.dependencies\]\s*\r?\n/u,
+    `${section}\n${depLine}\n`,
+  );
+  fs.writeFileSync(cargoPath, cargo, 'utf8');
+  return true;
+}
+
 function wireHostFrameworkMain(mainPath, applicationCode) {
   const source = readText(mainPath);
   if (source.includes('gateway_assembly::assemble_application_router')) {
@@ -86,6 +124,7 @@ function wireHostFrameworkMain(mainPath, applicationCode) {
     /^use sdkwork_routes_[^\n]+\n/gm,
     '',
   );
+  updated = updated.replace(/^use tower_http::cors::CorsLayer;\n/gmu, '');
   updated = updated.replace(
     /^use axum::Router;\n/u,
     'use axum::Router;\n',
@@ -102,7 +141,7 @@ function wireHostFrameworkMain(mainPath, applicationCode) {
   }
   updated = updated.replace(
     businessBlock[0],
-    `let business = assemble_application_router(${hostVar}).await.router\n        .layer(CorsLayer::permissive());`,
+    `let business = assemble_application_router(${hostVar}).await.router.layer(\n        sdkwork_web_bootstrap::application_cors_layer_from_env(\n            &["SDKWORK_${applicationCode.toUpperCase()}_ENVIRONMENT"],\n            &[\n                "SDKWORK_${applicationCode.toUpperCase()}_CORS_ALLOWED_ORIGINS",\n                "SDKWORK_CORS_ALLOWED_ORIGINS",\n            ],\n        ),\n    );`,
   );
   fs.writeFileSync(mainPath, updated, 'utf8');
   return true;
@@ -117,7 +156,13 @@ function wireRepo(root) {
 
   let changed = false;
   const cargoPath = findGatewayCargoPath(root, applicationCode);
+  if (cargoPath && ensureWorkspaceWebBootstrapDependency(root)) {
+    changed = true;
+  }
   if (cargoPath && ensureAssemblyDependency(cargoPath, applicationCode)) {
+    changed = true;
+  }
+  if (cargoPath && ensureWebBootstrapDependency(cargoPath)) {
     changed = true;
   }
 
