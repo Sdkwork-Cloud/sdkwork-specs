@@ -4,5 +4,13 @@ repository: sdkwork-specs
 canon:
   prd: docs/product/prd/PRD.md
   techArchitecture: docs/architecture/tech/TECH_ARCHITECTURE.md
-entries: []
+entries:
+  - id: REQ-2026-0713
+    path: docs/product/requirements/REQ-2026-0713-progressive-agent-entrypoints.md
+    status: in-progress
+    owner: sdkwork-platform
+  - id: PLAN-2026-0713
+    path: docs/engineering/plans/PLAN-2026-0713-progressive-agent-entrypoint-migration.md
+    status: in-progress
+    owner: sdkwork-platform
 domains: []

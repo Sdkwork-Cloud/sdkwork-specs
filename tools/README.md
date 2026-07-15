@@ -18,6 +18,13 @@ Rules:
   package target metadata and thin `.github/workflows/package.yml` reusable
   workflow integration; `repository-kind: standards` roots skip application
   packaging workflow requirements.
+- `audit-agents-progressive-loading.mjs` writes a deterministic, read-only
+  manifest for a workspace root, direct `sdkwork-*` `.gitmodules` repositories,
+  tracked application manifests, and tracked direct `apps/*` roots. It excludes
+  external, generated, and runtime paths and never modifies `AGENTS.md` files.
+  Its `alignment` object contains clean, hash-guarded targets for
+  `align-agents-progressive-loading.mjs`; dirty or unsafe candidates remain in
+  `alignment.deferred` with a reason.
 - `align-agents-pagination-standard.mjs` inserts or refreshes the
   `## List And Search Pagination` section in repository `AGENTS.md` files per
   `PAGINATION_SPEC.md` and `AGENTS_SPEC.md`.

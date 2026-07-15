@@ -2,13 +2,13 @@
 
 ## SDKWORK Soul
 
-Read `SOUL.md` before changing SDKWork standards. Agent behavior, long-running execution, ambiguity handling, and verification expectations must follow that file.
+Read `SOUL.md` before changing SDKWork standards. It governs agent behavior, ambiguity handling, task-scoped checkpoints, and verification. Start with the sections that route the current task; do not treat its related-spec list as a startup bundle.
 
 ## SDKWORK Standards
 
-This repository is the canonical **global standards** home for SDKWork. The standards entrypoint is `README.md`. Consuming repositories and modules must reference these files by relative path; they must not copy global `*_SPEC.md` bodies locally.
+This repository is the canonical **global standards** home for SDKWork. `README.md` is the global standards index and task matrix; the normative authorities are the relevant local `*_SPEC.md` file and `SOUL.md`. Consuming repositories and modules must reference these files by relative path; they must not copy global `*_SPEC.md` bodies locally.
 
-When this repository is checked out inside the parent SDKWork workspace, it is the workspace `sdkwork-specs/` self-root. From inside this repository, use `README.md`, `SOUL.md`, and the local `*_SPEC.md` files directly instead of inventing a synthetic `../sdkwork-specs` path.
+When this repository is checked out inside the parent SDKWork workspace, it is the workspace `sdkwork-specs/` self-root. From this root, use `README.md`, `SOUL.md`, and local `*_SPEC.md` files directly. The parent-workspace aliases below resolve to the same authority for validators and compatibility shims; resolve them once and do not load both paths.
 
 Parent workspace relative aliases resolve to this same self-root for validators and tool shims:
 
@@ -18,22 +18,7 @@ Parent workspace relative aliases resolve to this same self-root for validators 
 
 ## Spec System Hierarchy
 
-SDKWork uses three spec layers. This repository owns layer 1 only.
-
-| Layer | Location | This repository |
-| --- | --- | --- |
-| Global standards | `sdkwork-specs/*_SPEC.md`, `SOUL.md` | Authoritative here |
-| Repository/application contracts | `<repo-or-app-root>/specs/` | Not applicable; this is not an application repository |
-| Module-local specs | `<module-root>/specs/` | Not applicable; authored modules in consumer repositories own these |
-
-Rules for consumer repositories:
-
-- Load global standards from this directory by relative path.
-- Keep repository-wide machine contracts under the repository or application root `specs/` when needed.
-- Give every authored module its own independent `specs/` system per `COMPONENT_SPEC.md`.
-- Do not mirror global spec files into child repositories or module folders.
-
-Authority: `SOUL.md` section 2, `COMPONENT_SPEC.md` section 1, `AGENTS_SPEC.md` section 4.
+This is the layer-1 standards self-root. `SOUL.md` section 2, `COMPONENT_SPEC.md` section 1, and `AGENTS_SPEC.md` section 4 define the complete three-layer hierarchy. Repository/application and module `specs/` belong to consumer roots; do not inspect them from this repository unless the task explicitly targets their standard integration.
 
 ## Application Identity
 
@@ -46,61 +31,34 @@ This repository is a standards repository, not an SDKWork application. If a futu
 - `GEMINI.md`: Gemini CLI compatibility shim that points to `AGENTS.md` and must not duplicate rules.
 - `CODEX.md`: Codex compatibility shim that points to `AGENTS.md` and must not duplicate rules.
 - `SOUL.md`: shared agent execution soul.
-- `README.md`: canonical global standards index and task matrix.
+- `README.md`: global standards index and task matrix; read only the relevant row or navigation heading first.
 - `docs/`: Canon documentation; see [docs/README.md](docs/README.md), [docs/product/prd/PRD.md](docs/product/prd/PRD.md), and [docs/architecture/tech/TECH_ARCHITECTURE.md](docs/architecture/tech/TECH_ARCHITECTURE.md).
 - `*_SPEC.md`: global platform standards owned by this repository.
-- `.sdkwork/`: repository-local skills, plugins, and manifests for standards maintenance.
+- `.sdkwork/`: repository-local skills, plugins, and manifests for standards maintenance. Read `.sdkwork/README.md` and only the skill or plugin that matches the task, such as `.sdkwork/skills/sdkwork-standards-review/` for standards changes.
 
 ## Spec Resolution Order
 
-This repository maintains global standards only. Use dynamic progressive loading before implementation files. Resolution order for standards work here:
+This repository maintains global standards only. Use dynamic progressive loading before implementation files. Resolve a path or task category before reading its contents; read the exact section needed for the current step, then expand only when evidence exposes a new contract boundary.
 
-1. Read this `AGENTS.md`.
-2. Read `SOUL.md`, especially section 2 (Spec System Hierarchy).
-3. Read `README.md`.
-4. Read the specific global spec files affected by the task.
-5. Read implementation or validation files only after the relevant specs are clear.
+1. Read this `AGENTS.md` routing material and confirm that this directory is the standards self-root.
+2. Read the applicable `SOUL.md` sections. For standards or entrypoint work, begin with sections 1, 2, 3, and 7.
+3. Read `.sdkwork/README.md`, then only a local skill or plugin whose declared trigger matches the task.
+4. Locate the relevant row or heading in `README.md`; do not load the whole task matrix or unrelated standards catalog.
+5. Read the relevant sections of the task-specific global specs named by that row and the required-spec mapping below.
+6. Read implementation or validation files only after the applicable authority is clear. Use the narrowest relevant verification, and widen the scope only when the change crosses a contract boundary.
 
-When editing consumer repositories or modules instead of this repository, follow `SOUL.md` section 3: nearest `AGENTS.md`, module `specs/`, repository/application `specs/`, then global `sdkwork-specs`.
+This standards root has no application identity or authored consumer module to load. When editing a consumer repository or module instead, follow `SOUL.md` section 3 and `SDKWORK_WORKSPACE_SPEC.md` section 7: resolve the nearest `AGENTS.md`, task-scoped module or repository contracts, and then the relative global standards path.
 
 ## Required Specs By Task Type
 
-Agent or repository-entry changes:
+The following are task gates, not a startup bundle. Read the relevant sections of the selected set in the order the task reveals them; do not load unrelated language, runtime, UI, SDK, or release standards.
 
-- `SOUL.md`
-- `AGENTS_SPEC.md`
-- `SDKWORK_WORKSPACE_SPEC.md`
-- `DOCUMENTATION_SPEC.md`
-- `TEST_SPEC.md`
-
-Code style or naming changes:
-
-- `CODE_STYLE_SPEC.md`
-- `NAMING_SPEC.md`
-- language-specific specs are on-demand: load only the touched language spec (`RUST_CODE_SPEC.md`, `JAVA_CODE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, or `FRONTEND_CODE_SPEC.md`)
-- `PNPM_SCRIPT_SPEC.md` when package command standardization, package scripts, or root lifecycle commands are touched
-
-Contract or platform changes:
-
-- `README.md`
-- `REQUIREMENTS_SPEC.md`
-- `ARCHITECTURE_DECISION_SPEC.md`
-- `ENGINEERING_WORKFLOW_SPEC.md`
-- `CODE_REVIEW_SPEC.md`
-- `QUALITY_GATE_SPEC.md`
-- the affected domain spec
-- `GOVERNANCE_SPEC.md`
-- `TEST_SPEC.md`
-
-Release, migration, or supply-chain standard changes:
-
-- `RELEASE_SPEC.md`
-- `MIGRATION_SPEC.md`
-- `SUPPLY_CHAIN_SECURITY_SPEC.md`
-- `QUALITY_GATE_SPEC.md`
-- `GITHUB_WORKFLOW_SPEC.md`
-- `GOVERNANCE_SPEC.md`
-- `TEST_SPEC.md`
+| Task | Read before editing | Load when the task reaches the condition |
+| --- | --- | --- |
+| Agent or repository-entry change | `SOUL.md`, `AGENTS_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md` | `GOVERNANCE_SPEC.md` when the change is breaking, cross-root, or needs an exception |
+| Code style or naming change | `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md` | Only the touched language/framework spec: `RUST_CODE_SPEC.md`, `JAVA_CODE_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`, or `FRONTEND_CODE_SPEC.md`; `PNPM_SCRIPT_SPEC.md` for package command standardization, package scripts, or root lifecycle commands |
+| Contract or platform change | `README.md`, `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `CODE_REVIEW_SPEC.md`, `QUALITY_GATE_SPEC.md`, the affected domain spec, `GOVERNANCE_SPEC.md`, and `TEST_SPEC.md` | Read the applicable sections in lifecycle order rather than loading every full file at startup |
+| Release, migration, or supply-chain standard change | `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `QUALITY_GATE_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `GOVERNANCE_SPEC.md`, and `TEST_SPEC.md` | Read the applicable sections in release, migration, and supply-chain sequence rather than loading every full file at startup |
 
 ## Code Style Rules
 
@@ -110,85 +68,27 @@ Build scripts, dev runners, and `pnpm clean` must follow `CODE_STYLE_SPEC.md` §
 
 ## Build, Test, and Verification
 
-This repository currently contains Markdown standards. Before completion, verify that new spec files are listed in `README.md`, linked from related specs, and referenced by `TEST_SPEC.md` when they define executable rules.
+This repository contains Markdown standards. Before completion, verify that a new spec is listed in `README.md`, linked from affected authorities, and referenced by `TEST_SPEC.md` when it defines executable rules.
 
-```bash
-node tools/bootstrap-repository-docs.mjs --root .
-node tools/align-repository-docs.mjs --root .
-node tools/check-repository-docs-standard.mjs --root .
-node tools/check-apps-directory-index.mjs --root .
-node tools/check-workspace-packages-layout.mjs --root . --mode enforce
-node tools/check-workspace-packages-layout.mjs --workspace .. --mode audit
-node tools/align-workspace-packages-layout.mjs --root . [--dry-run]
-node tools/align-workspace-packages-layout.mjs --workspace .. [--dry-run]
-node tools/check-workspace-federation-paths.mjs --workspace ..
-node tools/align-workspace-federation-paths.mjs --workspace .. [--dry-run]
-node tools/check-workspace-lock-package-paths.mjs --workspace ..
-node tools/align-workspace-lock-package-paths.mjs --workspace ..
-node tools/check-api-response-envelope.mjs --workspace ..
-node tools/check-api-operation-patterns.mjs --workspace ..
-node tools/check-route-path-collisions.mjs --workspace ..
-node tools/check-permission-composition.mjs --workspace ..
-node tools/check-component-port-bindings.mjs --workspace ..
-node tools/check-application-layering.mjs --workspace ..
-node tools/check-frontend-composition.mjs --workspace ..
-node tools/check-rust-backend-composition.mjs --workspace ..
-node tools/check-i18n-standard.mjs --workspace ..
-node tools/align-openapi-response-envelope-workspace.mjs --workspace .. [--dry-run]
-node tools/align-apps-directory-index.mjs --root .
-node tools/audit-apps-directory-index-workspace.mjs --workspace ..
-node tools/audit-repository-docs-workspace.mjs --workspace ..
-node tools/check-topology-deployment-profiles.mjs --workspace ..
-node tools/check-app-runtime-hosting-debt.mjs --workspace ..
-node tools/align-app-gateway-integration.mjs --workspace ..
-node tools/verify-repo.mjs --root .
-node tools/resolve-composition.mjs --root <path-to-repo> [--write]
-node tools/check-composition-resolver.mjs --root <path-to-repo>
-node tools/sweep-composition-resolver.mjs --workspace .. [--align] [--write]
-node tools/align-composition-sdk-dependencies.mjs --root <path-to-repo> [--write]
-node tools/sync-workspace.mjs --repo <repo-name> --root <path-to-repo> [--dry-run]
-node tools/align-app-composition.mjs --root <path-to-repo> [--dry-run]
-node tools/extract-consumer-overlay.mjs --repo <repo-name> --root <path-to-repo> [--write]
-node tools/wire-app-composition-check.mjs [--workspace <path>] [--dry-run]
-node --test tools/check-repository-docs-standard.test.mjs
-node --test tools/check-apps-directory-index.test.mjs
-node --test tools/align-apps-directory-index.test.mjs
-node --test tools/verify-composition.test.mjs
-node --test tools/bootstrap-repository-docs.test.mjs
-node --test tools/align-repository-docs.test.mjs
-node --test tools/check-identity-naming.test.mjs
-node tools/audit-route-crate-naming-workspace.mjs --workspace ..
-node tools/align-database-framework-workspace.mjs --workspace ..
-node tools/audit-database-framework-workspace.mjs --workspace ..
-node tools/check-api-response-envelope.mjs --root .
-node tools/check-api-operation-patterns.mjs --root .
-node tools/check-route-path-collisions.mjs --root .
-node tools/check-permission-composition.mjs --root .
-node tools/check-component-port-bindings.mjs --root .
-node tools/check-application-layering.mjs --root .
-node tools/check-frontend-composition.mjs --root .
-node tools/check-rust-backend-composition.mjs --root .
-node tools/check-i18n-standard.mjs --root .
-node tools/align-agents-http-response-standard.mjs --workspace ..
-node --test tools/check-api-response-envelope.test.mjs
-node --test tools/check-api-operation-patterns.test.mjs
-node --test tools/check-route-path-collisions.test.mjs
-node --test tools/check-permission-composition.test.mjs
-node --test tools/check-component-port-bindings.test.mjs
-node --test tools/check-application-layering.test.mjs
-node --test tools/check-frontend-composition.test.mjs
-node --test tools/check-rust-backend-composition.test.mjs
-node --test tools/check-i18n-standard.test.mjs
-node --test tools/check-workspace-packages-layout.test.mjs
-node --test tools/check-workspace-federation-paths.test.mjs
-node --test tools/check-composition-resolver.test.mjs
-```
+Choose only the narrowest commands selected by the changed standard; this is not a default full-suite command list. Run workspace-wide checks only after the task crosses that boundary. `bootstrap-*`, `align-*`, `sync-*`, `--write`, and other mutating repair commands are not verification defaults: use them only for an explicitly scoped bootstrap, alignment, migration, or repair task, then inspect the resulting diff.
+
+| Change scope | Minimum verification |
+| --- | --- |
+| `SOUL.md`, `AGENTS.md`, compatibility shim, or documentation entrypoint | `node tools/check-agent-workflow-standard.mjs --root .`, `node tools/check-repository-docs-standard.mjs --root .`, `node --test tools/check-agent-workflow-standard.test.mjs`, `node --test tools/check-repository-docs-standard.test.mjs` |
+| Documentation debt or Canon layout | `node tools/audit-repository-docs-debt.mjs --root .` and the affected documentation checker or its test |
+| Validator or tool implementation | The matching `node --test tools/<tool>.test.mjs` and the tool's narrow `--root .` check |
+| API, SDK, composition, workspace, runtime, or other domain standard | The validator and test command required by the affected authority and `TEST_SPEC.md`; use `--workspace ..` only when the change actually crosses repository roots |
+| Broad cross-contract change | `node tools/verify-repo.mjs --root .` after the narrow checks pass |
+
+Run `git diff --check` and inspect the relevant terminology and cross-references before completion.
 
 ## Agent Execution Rules
 
-Do not invent standards from memory. Read the current spec files in this repository, edit narrowly, and keep compatibility with existing SDKWork terminology. Language-specific specs are loaded only when the task touches that language or framework.
+Do not invent standards from memory. Follow this file's dynamic progressive resolution order, read only the current task's authoritative files or sections, edit narrowly, and keep compatibility with existing SDKWork terminology. Language-specific specs are loaded only when the task touches that language or framework.
 
-When changing HTTP input/output rules, update `API_SPEC.md` section 4.5 and sections 14–16 first, then `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_SPEC.md`, `FRONTEND_SPEC.md`, `MIGRATION_SPEC.md`, `TEST_SPEC.md`, `AGENTS_SPEC.md`, shared templates under `templates/openapi/`, and run `node tools/align-agents-http-response-standard.mjs --workspace ..`.
+When changing HTTP input/output rules, first update `API_SPEC.md` section 4.5 and sections 14-16. Then load and update the affected downstream authorities: `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `SDK_SPEC.md`, `FRONTEND_SPEC.md`, `MIGRATION_SPEC.md`, `TEST_SPEC.md`, `AGENTS_SPEC.md`, and shared templates under `templates/openapi/`. Run `node tools/align-agents-http-response-standard.mjs --workspace ..` only for that resolved HTTP-standard propagation task.
+
+The task-specific sections below are not startup requirements. Read only the matching section after the task category is known. Their canonical excerpts remain discoverable under `AGENTS_SPEC.md`; do not create independent or divergent copies of the underlying global rules.
 
 ## App SDK Consumer Imports
 
@@ -320,18 +220,14 @@ Authority: `PAGINATION_SPEC.md`, `API_SPEC.md` §14.1/§16, `DATABASE_SPEC.md` �
 
 ## Permission Composition And Route Registry
 
-Client app roots with HTTP `contracts.sdkDependencies` `MUST` declare `contracts.permissionComposition` and inherit dependency IAM module catalogs by reference. OpenAPI `x-sdkwork-permission` codes `MUST` resolve to inherited or application-owned IMF catalogs.
-
-Route manifests and OpenAPI authorities `MUST` pass normalized route path collision validation before gateway assembly, SDK generation, or release. `{id}`, `:id`, and `<id>` path parameters collide as the same `{param}` segment.
-
-Before completing SDK dependency integration, permission catalog changes, route manifests, OpenAPI authority changes, or gateway assembly work, run:
+When a task changes SDK dependency integration, permission catalogs, route manifests, OpenAPI authorities, or gateway assembly, load `APP_PERMISSION_COMPOSITION_SPEC.md`, `PERMISSION_STANDARD_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `API_SPEC.md`, and the relevant `TEST_SPEC.md` sections. Before completion, run:
 
 ```bash
 node <sdkwork-specs>/tools/check-permission-composition.mjs --workspace <workspace-root>
 node <sdkwork-specs>/tools/check-route-path-collisions.mjs --workspace <workspace-root>
 ```
 
-Authority: `APP_PERMISSION_COMPOSITION_SPEC.md`, `PERMISSION_STANDARD_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`.
+Those authorities define the permission-inheritance and normalized route-collision rules; this entrypoint is only the task trigger and verification route.
 
 ## Human Review Rules
 
