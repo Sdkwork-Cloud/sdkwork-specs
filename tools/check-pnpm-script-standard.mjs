@@ -9,6 +9,7 @@ const REQUIRED_ROOT_SCRIPTS = ['dev', 'build', 'test', 'check', 'verify', 'clean
 const ALLOWED_FIRST_SEGMENTS = new Set([
   'dev',
   'start',
+  'stop',
   'preview',
   'build',
   'test',
@@ -415,6 +416,10 @@ function validateRootScripts(root, productPrefixes) {
     if (!scripts[required]) {
       issues.push(`missing required root script "${required}"`);
     }
+  }
+
+  if (scripts.dev && !scripts.stop) {
+    issues.push('stop: repository roots with dev must expose a scoped stop command');
   }
 
   for (const scriptName of scriptNames) {

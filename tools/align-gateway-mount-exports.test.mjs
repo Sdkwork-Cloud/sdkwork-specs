@@ -11,7 +11,10 @@ function writeText(filePath, value) {
 }
 
 function createRouteRepo(libRs) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-gateway-mount-'));
+  const root = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-gateway-mount-')),
+    'sdkwork-agents',
+  );
   writeText(
     path.join(root, 'sdkwork.app.config.json'),
     `${JSON.stringify({ backend: { appId: 'sdkwork-agents' } }, null, 2)}\n`,
@@ -77,4 +80,52 @@ test('aligner repairs existing double-qualified gateway mount signatures', () =>
   );
   assert.match(libRs, /pub fn gateway_mount\(\) -> axum::Router/u);
   assert.doesNotMatch(libRs, /axum::axum::Router/u);
+});
+
+test('aligner emits descriptor-only mounts for manifest-only route crates', () => {
+  const root = createRouteRepo(
+    [
+      'pub mod http_route_manifest;',
+      'pub use http_route_manifest::app_route_manifest;',
+      '',
+    ].join('\n'),
+  );
+  writeText(
+    path.join(
+      root,
+      'crates/sdkwork-routes-agents-app-api/src/http_route_manifest.rs',
+    ),
+    [
+      'pub fn app_route_manifest() -> sdkwork_web_core::HttpRouteManifest {',
+      '    unimplemented!()',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const report = alignGatewayMountExports(root);
+
+  assert.equal(report.results[0].status, 'updated');
+  const libRs = fs.readFileSync(
+    path.join(root, 'crates/sdkwork-routes-agents-app-api/src/lib.rs'),
+    'utf8',
+  );
+  assert.match(
+    libRs,
+    /pub fn gateway_mount\(\) -> sdkwork_web_core::HttpRouteManifest/u,
+  );
+  assert.doesNotMatch(libRs, /Router::new/u);
+});
+
+test('aligner rejects route crates without a router builder or manifest', () => {
+  const root = createRouteRepo('pub fn route_definitions() {}\n');
+
+  const report = alignGatewayMountExports(root);
+
+  assert.equal(report.results[0].status, 'failed');
+  const libRs = fs.readFileSync(
+    path.join(root, 'crates/sdkwork-routes-agents-app-api/src/lib.rs'),
+    'utf8',
+  );
+  assert.doesNotMatch(libRs, /gateway_mount/u);
 });

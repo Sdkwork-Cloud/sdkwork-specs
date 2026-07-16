@@ -152,11 +152,15 @@ function findPreferredBuildFn(crateRoot) {
     }
     let match;
     while ((match = BUILD_FN_PATTERN.exec(text)) !== null) {
+      const returnType = (match[4] || '').trim();
+      if (!/\bRouter\b/u.test(returnType)) {
+        continue;
+      }
       candidates.push({
         async: Boolean(match[1]),
         name: match[2],
         params: match[3].trim(),
-        returnType: (match[4] || 'axum::Router').trim(),
+        returnType,
         source: rel,
       });
     }
@@ -182,6 +186,18 @@ function renderStubGatewayExports(manifest) {
   lines.push('    axum::Router::new()');
   lines.push('}');
   return lines.join('\n');
+}
+
+function renderDescriptorGatewayExports(manifest) {
+  return [
+    `pub fn gateway_route_manifest() -> ${manifest.returnType} {`,
+    `    ${manifest.fn}()`,
+    '}',
+    '',
+    `pub fn gateway_mount() -> ${manifest.returnType} {`,
+    '    gateway_route_manifest()',
+    '}',
+  ].join('\n');
 }
 
 function normalizeRouterReturnType(returnType) {
@@ -256,6 +272,12 @@ function normalizeGatewayMountSource(source) {
 
 function gatewayMountImportLines(libRs, gatewayExports) {
   const imports = [];
+  if (
+    /->\s*HttpRouteManifest\b/u.test(gatewayExports)
+    && !/\buse\s+sdkwork_web_core::HttpRouteManifest\b/u.test(libRs)
+  ) {
+    imports.push('use sdkwork_web_core::HttpRouteManifest;');
+  }
   if (!/\buse axum::Router\b/u.test(libRs) && hasBareRouterReference(gatewayExports)) {
     imports.push('use axum::Router;');
   }
@@ -314,18 +336,23 @@ export function alignGatewayMountExports(root, { dryRun = false } = {}) {
     const buildFn = findPreferredBuildFn(crateRoot);
 
     if (!buildFn) {
-      const gatewayExports = manifest
-        ? renderStubGatewayExports(manifest)
-        : 'pub fn gateway_mount() -> axum::Router {\n    axum::Router::new()\n}';
+      if (!manifest) {
+        results.push({
+          packageName: crate.packageName,
+          status: 'failed',
+          reason: 'no executable Router builder or route manifest',
+        });
+        continue;
+      }
+      const gatewayExports = renderDescriptorGatewayExports(manifest);
       const updated = appendGatewayExports(libRs, gatewayExports);
       if (!dryRun) {
-        ensureAxumDependency(crateRoot);
         fs.writeFileSync(libPath, updated, 'utf8');
       }
       results.push({
         packageName: crate.packageName,
-        status: dryRun ? 'would-update-stub' : 'updated-stub',
-        buildFn: 'Router::new()',
+        status: dryRun ? 'would-update' : 'updated',
+        buildFn: 'descriptor-only',
         manifestFn: manifest?.fn ?? null,
       });
       continue;

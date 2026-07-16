@@ -79,7 +79,7 @@ export function validateGatewayAssembly(root, { strict = false } = {}) {
   const bootstrapSource = readText(bootstrapPath);
 
   const withoutMount = assemblyMountRouteCrates(routeCrates).filter(
-    (crate) => !crate.hasGatewayMount,
+    (crate) => !crate.hasGatewayMount && !bootstrapSource.includes(crate.libName),
   );
   const kernelBridge = usesKernelBridgeAssembly(bootstrapSource);
   if (withoutMount.length > 0 && !kernelBridge) {

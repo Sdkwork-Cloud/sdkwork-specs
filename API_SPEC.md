@@ -2075,7 +2075,7 @@ Rules:
 - TypeScript SDKs for new SDKWork v3 open-api, app-api, and backend-api contracts `MUST` use `--standard-profile sdkwork-v3`.
 - Resource-style operationIds `MUST` produce nested SDK resources.
 - App-specific SDK clients may differ by package and constructor, but method shape `MUST` remain consistent.
-- SDK generation inputs `MUST` contain only operations whose `x-sdkwork-owner` matches the SDK family owner declared in the SDK assembly manifest.
+- SDK generation inputs `MUST` contain only operations whose `x-sdkwork-owner` matches the owner declared in the family-root `sdk-manifest.json`.
 - Dependency-owned operations such as appbase IAM must be consumed through the dependency SDK or approved composed wrapper, not regenerated into the consuming app SDK.
 - SDK generation inputs `MUST NOT` contain current-tenant selector parameters or client-writable request fields named `tenant_id` or `tenantId`. If such a field appears only because the operation is trying to scope the caller's tenant, fix the API contract to use token/API-key context before generation.
 

@@ -159,6 +159,7 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_PORT` | private | MAY | PostgreSQL port, normally `5432`. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_NAME` | private | MAY | PostgreSQL database name. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_SCHEMA` | private | MAY | PostgreSQL schema, normally `public` unless the app standard says otherwise. |
+| `SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC` | private | MAY | PostgreSQL schema search-path compatibility switch. Defaults to `true`; isolated application roots set `false` so unqualified DDL and queries cannot resolve same-named objects from `public`. Extension-owned objects outside the application schema must then be schema-qualified. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_USERNAME` | private | MAY | PostgreSQL username. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD_FILE` | secret | MAY | PostgreSQL password file path. Prefer this over direct password values. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD` | secret | MAY | Direct PostgreSQL password override, allowed only for protected process environments or secret-bearing config files. |

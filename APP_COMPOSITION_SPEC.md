@@ -15,7 +15,7 @@ This standard defines application composition without a parallel dependency mani
 | Permission inheritance/overrides | App-surface `specs/component.spec.json#contracts.permissionComposition` |
 | Backend/release SDK inventory | `sdkwork.app.config.json#sdkDependencies` |
 | Dependency API export/runtime policy | `component.spec.json#contracts.dependencyApiExports`; runtime mount/base-url facts derived by composition resolver |
-| Integration defaults | Dependency `sdk-manifest.json`, dependency `component.spec.json#integration`, and optional repo-level `sdks/.sdkwork-assembly.json` generation registry |
+| Integration defaults | Dependency `sdk-manifest.json`, dependency `component.spec.json#integration`, and application `sdkwork.app.config.json#sdkDependencies` |
 | Cross-stack resolved graph | generated `generated/composition.resolved.json#architecture` from `resolve-composition.mjs` |
 
 Rules:

@@ -160,7 +160,7 @@ Rules:
 | `rust-platform-cloud-gateway` | Rust platform cloud ingress crate named `sdkwork-api-cloud-gateway` | `APPLICATION_GATEWAY_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `TEST_SPEC.md` |
 | `web-backend-service` | Java/Rust HTTP backend service, controller module, handler/service/repository package, or runtime API composition unit | `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `DOMAIN_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md` when persistent, `SDK_SPEC.md`, `TEST_SPEC.md` |
 | `rust-crate`, `tauri-host`, `go-module`, `java-module`, `python-package`, `csharp-project`, `swift-package` | Language-native runtime, service, SDK, or host unit | `MODULE_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md` |
-| `sdk-family` | Multi-language generated SDK family rooted by an SDK assembly manifest | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md` |
+| `sdk-family` | Multi-language generated SDK family rooted by `sdk-manifest.json` | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `API_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md` |
 
 Language-specific root specs are on-demand:
 
@@ -276,9 +276,9 @@ Rules:
   must not declare `cargoFeature`,
   `cargoDependency`, or `embeddedExecutableExport` until a compatible executable integration exists.
 - A shared API gateway component `MUST` add a split-only dependency surface only from existing
-  SDKWork semantic evidence: SDK assembly or component/runtime manifest metadata plus materialized
+  SDKWork semantic evidence: SDK family or component/runtime manifest metadata plus materialized
   OpenAPI paths, derived SDK generation inputs, or normalized route manifests that prove a stable
-  route prefix. Empty SDK assemblies and generic-only API roots are inventory candidates and must
+  route prefix. Empty SDK manifests and generic-only API roots are inventory candidates and must
   not become required gateway startup upstreams.
 - If one dependency SDK family owns multiple stable route prefixes, the gateway component `MUST`
   list each prefix under `apiSurfaces` while keeping the same dependency service id and upstream
@@ -316,7 +316,7 @@ Authored component roots are discovered from standard language manifests:
 - Python: `pyproject.toml`
 - PHP: `composer.json`
 - Ruby: `*.gemspec`
-- SDK families: `.sdkwork-assembly.json`
+- SDK families: `sdk-manifest.json`
 - SDKWork apps: `sdkwork.app.config.json`
 
 The standard tooling excludes archived, generated, and third-party paths such as `backup`, `external`, `vendor`, `generated`, `node_modules`, `dist`, `target`, `tmp`, `.worktrees`, and deprecated removed projects.

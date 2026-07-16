@@ -249,7 +249,7 @@ function classifyStructuredOpenApiEnvelope(text, parsed) {
       ? entry.operation.responses
       : {};
     for (const [status, response] of Object.entries(responses)) {
-      if (!isJsonSuccessStatus(status)) {
+      if (!isJsonSuccessStatus(status) || !responseDeclaresJsonBody(response, parsed.document)) {
         continue;
       }
       if (!responseUsesSdkWorkApiResponse(response, parsed.document)) {
@@ -284,6 +284,17 @@ export function openApiAuthorityEntries(files) {
 
 function isJsonSuccessStatus(status) {
   return /^2[0-9][0-9]$/u.test(String(status)) && String(status) !== '204';
+}
+
+function responseDeclaresJsonBody(response, document) {
+  const resolvedResponse = resolveResponse(response, document);
+  if (!resolvedResponse || typeof resolvedResponse !== 'object') {
+    return false;
+  }
+  const content = resolvedResponse.content && typeof resolvedResponse.content === 'object'
+    ? resolvedResponse.content
+    : {};
+  return Object.keys(content).some((mediaType) => /json/iu.test(mediaType));
 }
 
 function responseUsesSdkWorkApiResponse(response, document) {

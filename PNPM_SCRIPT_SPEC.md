@@ -54,17 +54,23 @@ Meanings:
 | Command | Meaning |
 | --- | --- |
 | `dev` | Start the default local development workflow for the application |
+| `stop` | Stop only the processes attributable to this repository's development workflow |
 | `build` | Build the default production artifact or default app surface |
 | `test` | Run the default stable test subset for the repository |
 | `check` | Run static standards, generated-artifact, dependency, config, or policy checks without packaging a release |
 | `verify` | Run the merge-ready verification aggregate for the repository |
 | `clean` | Remove reproducible local build/test artifacts (`dist/`, `.runtime/dev-sites/`, cache directories) without deleting git-tracked source files, build-critical source contracts (see `CODE_STYLE_SPEC.md` §7), checked-in config, secrets, databases, or user-private runtime files |
 
+When a repository root exposes `dev`, it `MUST` also expose `stop`. A `stop` command
+MUST scope process selection to the owning repository or its explicitly configured
+runtime bindings. It MUST NOT terminate processes merely because they share a generic
+executable name such as `node`, `cargo`, `java`, or `python`.
+
 When the capability exists, the repository root `MUST` expose the matching command family:
 
 | Capability | Required commands |
 | --- | --- |
-| Runtime start or preview | `start`, `preview` |
+| Runtime start, stop, or preview | `start`, `stop`, `preview` |
 | TypeScript/JavaScript package verification | `typecheck`, `lint`, `format`, `format:check` |
 | Release packaging | `release:plan`, `release:build`, `release:stage`, `release:package`, `release:validate`, `release:publish` as applicable |
 | Deployment | `deploy:plan`, `deploy:apply`, `deploy:rollback`, `deploy:validate` as applicable |
@@ -91,6 +97,7 @@ Allowed command or namespace first segments:
 ```text
 dev
 start
+stop
 preview
 build
 test

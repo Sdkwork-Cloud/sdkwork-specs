@@ -7,9 +7,16 @@ import { spawnSync } from 'node:child_process';
 
 const CHECKER = path.resolve('tools/check-pnpm-script-standard.mjs');
 
-function makeRepo(manifest) {
+function makeRepo(manifest, { includeStop = true } = {}) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-pnpm-script-standard-'));
-  writeFileSync(path.join(root, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  const normalizedManifest = {
+    ...manifest,
+    scripts: { ...manifest.scripts },
+  };
+  if (includeStop && normalizedManifest.scripts.dev && !normalizedManifest.scripts.stop) {
+    normalizedManifest.scripts.stop = 'node scripts/sdkwork-stop.mjs';
+  }
+  writeFileSync(path.join(root, 'package.json'), `${JSON.stringify(normalizedManifest, null, 2)}\n`);
   return root;
 }
 
@@ -22,6 +29,25 @@ function runChecker(root, productPrefix = 'demo') {
 }
 
 describe('check-pnpm-script-standard', () => {
+  it('rejects a development root without a scoped stop command', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'node scripts/sdkwork-command.mjs dev',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+      },
+    }, { includeStop: false });
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /roots with dev must expose a scoped stop command/);
+  });
+
   it('accepts a repository root with canonical scripts', () => {
     const root = makeRepo({
       name: 'sdkwork-demo',

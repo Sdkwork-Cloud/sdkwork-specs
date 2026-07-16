@@ -125,6 +125,99 @@ test('classifyOpenApiOperationPatterns accepts singleton retrieve GET operations
   assert.equal(issues.length, 0);
 });
 
+test('classifyOpenApiOperationPatterns requires singleton summary GET operations to use retrieve', () => {
+  const issues = classifyOpenApiOperationPatterns(
+    openApi({
+      '/app/v3/api/comments/threads/{threadId}/summary': {
+        get: {
+          operationId: 'comments.threads.summary',
+          responses: {
+            200: { description: 'thread summary' },
+            default: { description: 'problem' },
+          },
+        },
+      },
+    }),
+  );
+
+  assert.ok(issues.some((issue) => issue.detail.includes('operationId action retrieve')));
+});
+
+test('classifyOpenApiOperationPatterns accepts explicit nested list GET operations ending in a parameter', () => {
+  const issues = classifyOpenApiOperationPatterns(
+    openApi({
+      '/app/v3/api/music/charts/{chartId}': {
+        get: {
+          operationId: 'charts.entries.list',
+          responses: {
+            200: { description: 'chart entries' },
+            default: { description: 'problem' },
+          },
+        },
+      },
+    }),
+  );
+
+  assert.equal(issues.length, 0);
+});
+
+test('classifyOpenApiOperationPatterns accepts redirect-only callback operations', () => {
+  const issues = classifyOpenApiOperationPatterns(
+    openApi({
+      '/app/v3/api/github/integration/oauth/callback': {
+        get: {
+          operationId: 'integration.oauth.callback',
+          responses: {
+            302: { description: 'redirect' },
+            default: { description: 'problem' },
+          },
+        },
+      },
+    }),
+  );
+
+  assert.equal(issues.length, 0);
+});
+
+test('classifyOpenApiOperationPatterns accepts SSE operations with the stream action', () => {
+  const issues = classifyOpenApiOperationPatterns(
+    openApi({
+      '/app/v3/api/device/terminal/sessions/{sessionId}/events': {
+        get: {
+          operationId: 'device.terminal.sessions.events.stream',
+          responses: {
+            200: {
+              description: 'event stream',
+              content: { 'text/event-stream': { schema: { type: 'string' } } },
+            },
+            default: { description: 'problem' },
+          },
+        },
+      },
+    }),
+  );
+
+  assert.equal(issues.length, 0);
+});
+
+test('classifyOpenApiOperationPatterns recognizes snake-case command suffixes', () => {
+  const issues = classifyOpenApiOperationPatterns(
+    openApi({
+      '/backend/v3/api/ai/route_explain': {
+        post: {
+          operationId: 'routeExplain.explain',
+          responses: {
+            200: { description: 'route explanation' },
+            default: { description: 'problem' },
+          },
+        },
+      },
+    }),
+  );
+
+  assert.equal(issues.length, 0);
+});
+
 test('classifyOpenApiOperationPatterns accepts nested collection create operations', () => {
   const issues = classifyOpenApiOperationPatterns(
     openApi({

@@ -28,7 +28,7 @@ Forbidden:
 
 | Layer | Owner | Authority files | Consumer writes |
 | --- | --- | --- | --- |
-| L0 Dependency integration defaults | Dependency repository / SDK family | SDK family `sdk-manifest.json`, dependency `component.spec.json#integration`, `iam.module.manifest.json`, route `gateway_mount` exports, and optional repo-level `sdks/.sdkwork-assembly.json` generation registry | Nothing |
+| L0 Dependency integration defaults | Dependency repository / SDK family | SDK family `sdk-manifest.json`, dependency `component.spec.json#integration`, `iam.module.manifest.json`, route `gateway_mount` exports, and application `sdkwork.app.config.json#sdkDependencies` | Nothing |
 | L1 Consumer composition | Consumer application core package | `*-core/specs/component.spec.json#contracts.sdkDependencies`, `composition.overrides` | Dependency list + optional overrides only |
 | L2 Deployment wiring | Consumer repository | `specs/topology.spec.json`, `configs/topology/*.env` | Profile, bind, public URL only |
 
@@ -172,7 +172,7 @@ Resolver inputs:
 1. consumer core `component.spec.json#contracts.sdkDependencies`
 2. `contracts.composition.overrides`
 3. `specs/topology.spec.json` active profile
-4. dependency SDK family `sdk-manifest.json`, dependency `component.spec.json#integration`, and optional repo-level `sdks/.sdkwork-assembly.json` generation registry when resolvable from workspace siblings
+4. dependency SDK family `sdk-manifest.json`, dependency `component.spec.json#integration`, and application `sdkwork.app.config.json#sdkDependencies` when resolvable from workspace siblings
 5. migration-only legacy `specs/dependency-api-surfaces.json` when present under an approved exception
 
 Resolver outputs:

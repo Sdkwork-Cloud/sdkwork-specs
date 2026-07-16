@@ -213,8 +213,22 @@ test('omitted x-sdkwork-wire-protocol is treated as SDKWork-owned custom API', (
       '/im/v3/api/messages': {
         get: {
           operationId: 'messages.list',
-          responses: { 200: { description: 'Bare SDKWork-owned response' } },
+          responses: {
+            200: {
+              description: 'Bare SDKWork-owned JSON response',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/BareMessage' },
+                },
+              },
+            },
+          },
         },
+      },
+    },
+    components: {
+      schemas: {
+        BareMessage: { type: 'object' },
       },
     },
   });
@@ -224,6 +238,37 @@ test('omitted x-sdkwork-wire-protocol is treated as SDKWork-owned custom API', (
   assert.equal(markerIssues.length, 0);
   const envelopeIssues = classifyOpenApiEnvelope(text);
   assert.ok(envelopeIssues.some((i) => i.kind === 'missing-sdkwork-api-response'));
+});
+
+test('classifyOpenApiEnvelope ignores bodyless and non-JSON 2xx responses', () => {
+  const text = JSON.stringify({
+    openapi: '3.1.2',
+    info: { title: 'stream and bodyless', version: '1.0.0' },
+    paths: {
+      '/app/v3/api/commands/{commandId}': {
+        post: {
+          operationId: 'commands.execute',
+          responses: { 200: { description: 'Command completed without a body' } },
+        },
+      },
+      '/app/v3/api/events': {
+        get: {
+          operationId: 'events.stream',
+          responses: {
+            200: {
+              description: 'Server-sent events',
+              content: {
+                'text/event-stream': { schema: { type: 'string' } },
+              },
+            },
+          },
+        },
+      },
+    },
+    components: standardComponents(),
+  });
+
+  assert.deepEqual(classifyOpenApiEnvelope(text), []);
 });
 
 test('classifyOpenApiWireProtocolMarkers requires operation-level external protocol ids', () => {
@@ -360,8 +405,22 @@ test('checker does not exempt SDKWork-owned operations in mixed external OpenAPI
           '/im/v3/api/messages': {
             get: {
               operationId: 'messages.list',
-              responses: { 200: { description: 'Bare SDKWork-owned response' } },
+              responses: {
+                200: {
+                  description: 'Bare SDKWork-owned JSON response',
+                  content: {
+                    'application/json': {
+                      schema: { $ref: '#/components/schemas/BareMessage' },
+                    },
+                  },
+                },
+              },
             },
+          },
+        },
+        components: {
+          schemas: {
+            BareMessage: { type: 'object' },
           },
         },
       },

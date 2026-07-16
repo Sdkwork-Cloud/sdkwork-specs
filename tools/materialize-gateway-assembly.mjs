@@ -36,7 +36,7 @@ function writeFileEnsuringDir(filePath, content) {
   fs.writeFileSync(filePath, content, 'utf8');
 }
 
-function extractPreservedDependencies(cargoToml, applicationCode) {
+function extractPreservedDependencies(cargoToml, applicationCode, routePackageNames = new Set()) {
   const depsSection = /\[dependencies\]([\s\S]*?)(?:\n\[|$)/u.exec(cargoToml);
   if (!depsSection) {
     return '';
@@ -58,7 +58,7 @@ function extractPreservedDependencies(cargoToml, applicationCode) {
       if (!trimmed) {
         return false;
       }
-      if (/^\s*axum\.workspace\s*=/u.test(line)) {
+      if (/^\s*axum(?:\.workspace)?\s*=/u.test(line)) {
         return false;
       }
       if (/^\s*tokio(?:\.workspace)?\s*=/u.test(line)) {
@@ -67,12 +67,36 @@ function extractPreservedDependencies(cargoToml, applicationCode) {
       if (/^\s*sqlx\.workspace\s*=/u.test(line)) {
         return false;
       }
+      const dependencyKey = /^\s*([^\s#=]+?)(?:\.workspace)?\s*=/u.exec(line)?.[1];
+      if (dependencyKey && routePackageNames.has(dependencyKey)) {
+        return false;
+      }
       if (routeKeyPattern.test(line) || routeWorkspaceKeyPattern.test(line) || routePackagePattern.test(line)) {
         return false;
       }
       return true;
     })
     .join('\n');
+}
+
+function dedupeDependencyLines(lines) {
+  const seen = new Set();
+  const result = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      continue;
+    }
+    const key = /^([^\s#=]+?)(?:\.workspace)?\s*=/u.exec(trimmed)?.[1];
+    if (key && seen.has(key)) {
+      continue;
+    }
+    if (key) {
+      seen.add(key);
+    }
+    result.push(trimmed);
+  }
+  return result;
 }
 
 function readWorkspacePackageFields(repoRoot) {
@@ -140,6 +164,8 @@ function renderCargoToml(
 ) {
   const packageName = assemblyPackageName(applicationCode);
   const licenseLine = workspaceFields.license ? 'license.workspace = true\n' : '';
+  const editionLine = workspaceFields.edition ? 'edition.workspace = true' : 'edition = "2021"';
+  const versionLine = workspaceFields.version ? 'version.workspace = true' : 'version = "0.1.0"';
   const depLines = routeCrates
     .map((crate) => {
       const relPath = path.posix.relative(assemblyCrateDir(applicationCode), crate.memberDir);
@@ -149,17 +175,22 @@ function renderCargoToml(
       return `${crate.packageName} = { path = "${relPath}" }`;
     })
     .join('\n');
-  const preservedBlock = preservedDeps.trim() ? `${preservedDeps.trim()}\n` : '';
-  const bootstrapDepBlock =
-    bootstrapDeps.length > 0 ? `${[...new Set(bootstrapDeps)].join('\n')}\n` : '';
   const tokioLine = workspaceDepNames.has('tokio')
     ? 'tokio.workspace = true'
     : 'tokio = { version = "1.48", features = ["macros", "rt-multi-thread"] }';
+  const axumLine = workspaceDepNames.has('axum') ? 'axum.workspace = true' : 'axum = "0.8"';
+  const dependencyLines = dedupeDependencyLines([
+    axumLine,
+    tokioLine,
+    ...bootstrapDeps,
+    ...preservedDeps.split('\n'),
+    ...depLines.split('\n'),
+  ]).join('\n');
 
   return `[package]
 name = "${packageName}"
-edition.workspace = true
-${licenseLine}version.workspace = true
+${editionLine}
+${licenseLine}${versionLine}
 description = "Generated gateway assembly for sdkwork-${applicationCode} application HTTP plane."
 
 [lib]
@@ -167,20 +198,24 @@ name = "${packageName.replace(/-/gu, '_')}"
 path = "src/lib.rs"
 
 [dependencies]
-axum.workspace = true
-${tokioLine}
-${bootstrapDepBlock}${preservedBlock}${depLines ? `${depLines}\n` : ''}`;
+${dependencyLines}
+`;
 }
 
-function renderLibRs(applicationCode, routeCrates, bootstrapExists) {
+function renderLibRs(applicationCode, routeCrates, bootstrapExists, bootstrapSource = '') {
   if (bootstrapExists) {
+    const exports = /pub\s+(?:async\s+)?fn\s+assemble_application_business_router\b/u.test(
+      bootstrapSource,
+    )
+      ? 'assemble_application_business_router, assemble_application_router, ApplicationAssembly'
+      : 'assemble_application_router, ApplicationAssembly';
     return `//! Gateway assembly for sdkwork-${applicationCode}.
 //! Application bootstrap lives in \`bootstrap.rs\`; route inventory is in \`assembly-manifest.json\`.
 
 mod bootstrap;
 mod generated;
 
-pub use bootstrap::{assemble_application_router, ApplicationAssembly};
+pub use bootstrap::{${exports}};
 
 pub fn assembly_route_count() -> usize {
     generated::ROUTE_CRATE_COUNT
@@ -239,6 +274,76 @@ pub const ROUTE_CRATE_PACKAGES: &[&str] = &[
 ${names}
 ];
 `;
+}
+
+function ensureAssemblyComponentSpecs(root, applicationCode) {
+  const packageName = assemblyPackageName(applicationCode);
+  const crateDir = assemblyCrateDir(applicationCode);
+  const specsDir = path.join(root, crateDir, 'specs');
+  const componentPath = path.join(specsDir, 'component.spec.json');
+  const readmePath = path.join(specsDir, 'README.md');
+
+  if (!fs.existsSync(componentPath)) {
+    const component = {
+      schemaVersion: 1,
+      kind: 'sdkwork.component.spec',
+      component: {
+        name: packageName,
+        displayName: `SDKWork ${applicationCode} Gateway Assembly`,
+        version: '0.1.0',
+        type: 'rust-crate',
+        root: `${path.basename(root)}/${crateDir}`,
+        domain: 'application',
+        capability: `${applicationCode}-gateway-assembly`,
+        surface: 'assembly',
+        languages: ['rust'],
+        generated: false,
+        manifests: ['Cargo.toml', 'assembly-manifest.json'],
+      },
+      canonicalSpecs: [
+        {
+          file: 'APPLICATION_GATEWAY_SPEC.md',
+          path: '../../../sdkwork-specs/APPLICATION_GATEWAY_SPEC.md',
+          purpose: 'Gateway assembly discovery, business-only mounting, and verification rules.',
+        },
+        {
+          file: 'WEB_FRAMEWORK_SPEC.md',
+          path: '../../../sdkwork-specs/WEB_FRAMEWORK_SPEC.md',
+          purpose: 'Typed request context and HTTP framework composition rules.',
+        },
+        {
+          file: 'DATABASE_FRAMEWORK_SPEC.md',
+          path: '../../../sdkwork-specs/DATABASE_FRAMEWORK_SPEC.md',
+          purpose: 'Database lifecycle bootstrap ownership for embedded assemblies.',
+        },
+      ],
+      contracts: {
+        publicExports: ['.'],
+        runtimeEntrypoints: [],
+        routeManifest: 'assembly-manifest.json',
+        sdkClients: [],
+        sdkDependencies: [],
+        dependencyApiExports: [],
+        dependencyApiSurfaces: [],
+        events: [],
+        configKeys: [],
+      },
+      verification: {
+        commands: [
+          'pnpm run gateway:assembly:validate',
+          `cargo check -p ${packageName}`,
+        ],
+      },
+    };
+    writeFileEnsuringDir(componentPath, `${JSON.stringify(component, null, 2)}\n`);
+  }
+
+  if (!fs.existsSync(readmePath)) {
+    writeFileEnsuringDir(
+      readmePath,
+      `# ${packageName} Specs\n\nComponent root: \`${crateDir}\`\n\nGateway assembly manifest, business-router composition, and verification contract.\n`,
+    );
+  }
 }
 
 function bootstrapHasTodoMacro(bootstrapSource) {
@@ -444,7 +549,11 @@ export function materializeGatewayAssembly(root) {
   const bootstrapPath = path.join(crateDir, 'src', 'bootstrap.rs');
   const preserveBootstrap = shouldPreserveBootstrap(bootstrapPath);
   const existingCargoToml = readText(path.join(crateDir, 'Cargo.toml'));
-  const preservedDeps = extractPreservedDependencies(existingCargoToml, applicationCode);
+  const preservedDeps = extractPreservedDependencies(
+    existingCargoToml,
+    applicationCode,
+    new Set(routeCrates.map((crate) => crate.packageName)),
+  );
   const manifest = buildAssemblyManifest(root, applicationCode, routeCrates);
   const mounts = discoverGatewayMounts(root, routeCrates);
   const workspaceDeps = readWorkspaceDependencyNames(root);
@@ -463,11 +572,13 @@ export function materializeGatewayAssembly(root) {
     ),
   );
   writeFileEnsuringDir(path.join(crateDir, 'src', 'generated.rs'), renderGeneratedRs(routeCrates));
+  ensureAssemblyComponentSpecs(root, applicationCode);
+  const bootstrapSource = readText(bootstrapPath);
   const bootstrapReady =
-    fs.existsSync(bootstrapPath) && !bootstrapNeedsRegeneration(readText(bootstrapPath));
+    fs.existsSync(bootstrapPath) && !bootstrapNeedsRegeneration(bootstrapSource);
   writeFileEnsuringDir(
     path.join(crateDir, 'src', 'lib.rs'),
-    renderLibRs(applicationCode, routeCrates, bootstrapReady),
+    renderLibRs(applicationCode, routeCrates, bootstrapReady, bootstrapSource),
   );
 
   if (!preserveBootstrap) {

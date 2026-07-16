@@ -30,7 +30,7 @@ const PLATFORM_EMBED_INFRA_SOURCES = [
   'crates/sdkwork-im-standalone-gateway/src/embedded_dependency_routes.rs',
 ];
 
-function scanStandaloneDoubleInfra(root, applicationCode) {
+export function scanStandaloneDoubleInfra(root, applicationCode) {
   const errors = [];
   const candidates = [
     path.join(root, 'crates', `sdkwork-${applicationCode}-standalone-gateway`, 'src', 'main.rs'),
@@ -43,16 +43,16 @@ function scanStandaloneDoubleInfra(root, applicationCode) {
     const text = readText(filePath);
     const assemblyInfra =
       /assemble_application_router/u.test(text)
-      && /mount_(?:drive_|[a-z0-9_]+_)?infra_routes|assemble_multi_surface_router/u.test(text);
+      && /mount_(?:drive_|[a-z0-9_]+_)?infra_routes\s*\(|assemble_multi_surface_router\s*\(/u.test(text);
     const extraInfra =
-      /mount_(?:drive_|[a-z0-9_]+_)?infra_routes|service_router\s*\(/u.test(text)
+      /mount_(?:drive_|[a-z0-9_]+_)?infra_routes\s*\(|service_router\s*\(/u.test(text)
       && !/assemble_application_router/u.test(text.split('assemble_application_router')[0] ?? '');
     if (assemblyInfra && /mount_drive_infra_routes[\s\S]*assemble_application_router/u.test(text)) {
       errors.push(`${filePath}: merges standalone health_router and drive assembly infra`);
     }
     if (
       /assemble_application_router/u.test(text)
-      && (text.match(/mount_(?:drive_|[a-z0-9_]+_)?infra_routes/gu) ?? []).length > 1
+      && (text.match(/mount_(?:drive_|[a-z0-9_]+_)?infra_routes\s*\(/gu) ?? []).length > 1
     ) {
       errors.push(`${filePath}: mounts infrastructure more than once around assembly`);
     }

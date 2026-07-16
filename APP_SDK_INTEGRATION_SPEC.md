@@ -71,7 +71,7 @@ Rules:
 - Each application or independent git repository that owns APIs owns its local `sdks/` workspace.
 - The application-owned SDK family generates only application-owned operations. Appbase, Drive, provider, and other reusable dependency operations stay in their own SDK families.
 - File upload is a Drive dependency capability. Application-owned app/backend SDKs should accept `driveUri`, `driveSpaceId`, `driveNodeId`, Drive references, or Drive-backed `MediaResource` values after upload; they must not add application-local upload-session, presign, part, or completion methods.
-- `sdkDependencies` `MUST` declare dependency SDK families in SDK assembly metadata and component specs when an application-owned SDK or composed facade depends on them.
+- `sdkDependencies` `MUST` declare dependency SDK families in family-root `sdk-manifest.json` and component specs when an application-owned SDK or composed facade depends on them.
 - A consuming application may compose dependency SDKs in runtime/bootstrap, service facades, or approved composed packages outside generated transport ownership.
 - Generated transport output `MUST NOT` import, vendor, re-export, or rewrite dependency SDK packages.
 - Dependency APIs are not exported by a consuming application or component by default. App/core
@@ -151,7 +151,7 @@ Rules:
   internals into the application server.
 - Gateway executable integration evidence comes from native build-tool metadata, such as Cargo
   workspace dependencies and Cargo features. SDKWork semantic evidence remains in
-  `sdkwork.app.config.json`, `specs/component.spec.json`, SDK assembly metadata, and runtime config.
+  `sdkwork.app.config.json`, `specs/component.spec.json`, family-root `sdk-manifest.json`, and runtime config.
   A separate gateway catalog file must not be introduced just to repeat those facts.
 - Application frontends and SDK bootstrap should prefer one gateway-backed common SDK root for
   dependency SDKs. Per-surface or per-SDK base URL overrides remain available for migration,
@@ -276,6 +276,7 @@ Rules:
 - Application bootstrap `MUST` pass the approved locale provider or i18n provider into generated SDK clients that support locale propagation. Feature packages must receive the provider or translated text through injected runtime ports, not through direct environment reads or manual `Accept-Language` mutation.
 - Application roots `MUST` document private bootstrap `SDKWORK_ACCESS_TOKEN` in env templates when protected app-api or backend-api surfaces are consumed. Service-context runtimes may seed TokenManager from that value before interactive login. Browser/renderer runtimes must obtain session tokens from sdkwork-iam instead of public env. `AUTH_TOKEN`, `REFRESH_TOKEN`, `API_KEY`, `VITE_*_TOKEN`, and `PORTAL_PUBLIC_*_TOKEN` remain forbidden in environment variables outside explicit test fixtures.
 - Logout and refresh failure `MUST` clear local token store, global token manager, context store, sensitive caches, realtime/session bridges, and native secure storage when present, even when remote session deletion fails.
+- Runtime/bootstrap `MUST` compose the single authenticated session recovery coordinator from `IAM_LOGIN_INTEGRATION_SPEC.md` section 5.2 and bind application SDKs, dependency SDKs, approved composed wrappers, uploads, and realtime transports to it. Sharing only the TokenManager without shared refresh and terminal-clearing behavior is insufficient.
 
 ## 5. Rust Backend Composition
 
@@ -407,6 +408,7 @@ Required checks for app SDK composition:
 | Global TokenManager | Tests prove one `TokenManager` is bound to appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend/application backend/dependency backend SDKs, and approved composed wrappers through `setTokenManager`, constructor injection, or the language equivalent. |
 | I18n provider closure | Tests prove runtime/bootstrap derives one locale strategy for UI providers, host adapters, and generated SDK locale providers; feature services do not set `Accept-Language` or `X-SdkWork-Locale` manually. |
 | Session commit order | Tests prove persistence failure does not update token manager, context propagation failure rolls back token/context state, stale context is cleared, and continuation flows preserve refresh token only when allowed. |
+| Session recovery closure | Tests prove authenticated application/dependency SDKs and realtime transports coalesce concurrent `401` responses into one refresh, re-read credentials, replay only eligible operations at most once, preserve problem details, and stop on terminal or deterministic client errors. |
 | Logout clearing | Tests prove local token/context state clears even when remote logout fails. |
 | Architecture SDK boundary | Static scans prove PC React/H5 mobile React/Flutter/mini program/Android/iOS/Harmony/backend-admin packages use the correct generated SDK language and surface. |
 | App SDK export boundary | Static scans prove application/frontend core exports the application-owned app SDK and required dependency app SDK wrappers, including appbase app SDK wrappers, while backend SDK wrappers are exported only from `backend-admin` boundaries. |
@@ -528,6 +530,7 @@ Authority: `SDK_SPEC.md` package naming table, `SDK_WORKSPACE_GENERATION_SPEC.md
 - [ ] Runtime/bootstrap creates exactly one global `TokenManager` per authenticated session context.
 - [ ] Runtime/bootstrap creates or receives one i18n provider/locale provider and passes it to generated SDK clients and UI providers through approved runtime ports.
 - [ ] Appbase app SDK, every application/dependency app SDK, explicit `backend-admin` appbase backend/application backend/dependency backend SDKs, and every approved composed wrapper backed by those SDKs share that same `TokenManager`.
+- [ ] Authenticated SDKs, uploads, SSE, and WebSocket share one session recovery coordinator in addition to the TokenManager; `401` recovery, replay eligibility, terminal clearing, and reconnect stopping follow `IAM_LOGIN_INTEGRATION_SPEC.md` section 5.2.
 - [ ] Protected open-api SDKs use a separate open-api credential provider matching their declared auth mode and are not placed in app/backend TokenManager client lists.
 - [ ] Login, registration, session, refresh, logout, QR/OAuth, password reset, runtime metadata, and current-user self-service use appbase app SDK resources, while verification-code delivery uses the generated messaging app SDK surface.
 - [ ] `backend-admin` IAM management uses appbase backend SDK and does not expose user-facing auth session creation.

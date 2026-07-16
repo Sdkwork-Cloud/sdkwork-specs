@@ -52,7 +52,7 @@ node sdkwork-specs/tools/check-app-sdk-consumer-imports.mjs --workspace .
 | --- | --- | --- |
 | Legacy duplicate `*-typescript` roots under one SDK family | Retired `sdkwork-agent-*-typescript` duplicates in `sdkwork-agents` | Check fails with `legacy-duplicate-typescript-root` until removed |
 | OpenAPI `x-sdkwork-sdk-family` on domain transport authorities | Still records historical `clawrouter-*-domain-transport` stem | Update on next SDK regeneration pass |
-| Repo-level `sdks/.sdkwork-assembly.json` generation registry | BirdCoder multi-surface orchestration only | Not per-family SSOT; per-family metadata lives in `sdk-manifest.json` |
+| Family-root `sdk-manifest.json` discovery | Multi-surface generation | Family metadata lives in one manifest and generation scripts discover manifests directly |
 | Mall repository | Physical `sdkwork-mall/sdks/sdkwork-commerce-*` generator families | Ownership artifacts; guarded by `check-commerce-debt.mjs` |
 
 ## Agent rule

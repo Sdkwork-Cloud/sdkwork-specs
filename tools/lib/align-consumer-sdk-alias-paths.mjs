@@ -15,7 +15,6 @@ const CONSUMER_FILE_PREDICATE = (filePath) => {
   const norm = filePath.replace(/\\/g, '/');
   if (/\/sdk-manifest\.json$/u.test(norm)) return false;
   if (/\/sdkwork-sdk\.json$/u.test(norm)) return false;
-  if (/\/\.sdkwork-assembly\.json$/u.test(norm)) return false;
   if (!/\.(?:tsx?|jsx?|mjs|cjs|json)$/u.test(norm)) return false;
   if (/(^|\/)apps\/[^/]+\//u.test(norm)) return true;
   if (/(^|\/)packages\/[^/]+\//u.test(norm) && /(^|\/)apps\//u.test(norm)) return true;

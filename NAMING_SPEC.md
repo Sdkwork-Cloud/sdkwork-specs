@@ -211,8 +211,8 @@ Rules:
   - contract root `apis/rpc/`
   - SDK family `sdkwork-<sdk-family-stem>-rpc-sdk`
   - generated module paths such as `com.sdkwork.<domain>.rpc` or `sdkwork_<domain>_rpc_proto`
-- The SDK family stem is linked to the proto domain through `.sdkwork-assembly.json`,
-  `sdk-manifest.json` when present, `specs/component.spec.json`, and `apis/rpc/parity-registry.yaml`.
+- The SDK family stem is linked to the proto domain through `sdk-manifest.json`,
+  `specs/component.spec.json`, and `apis/rpc/parity-registry.yaml`.
 
 ### 4.1 RPC Identity And Discovery Service Naming
 

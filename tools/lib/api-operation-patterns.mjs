@@ -22,7 +22,7 @@ export function classifyOpenApiOperationPatterns(text) {
 
 function classifyOperation({ routePath, method, operation }) {
   const issues = [];
-  const pattern = inferPattern(routePath, method, operation);
+  const pattern = inferOpenApiOperationPattern(routePath, method, operation);
   if (!pattern) {
     return issues;
   }
@@ -71,15 +71,35 @@ function classifyOperation({ routePath, method, operation }) {
       detail: `${operationLabel} bulk operations must return HTTP 200 or 202`,
     });
   }
+  if (pattern.kind === 'stream' && !hasStatus(responses, '200')) {
+    issues.push({
+      kind: 'stream-status',
+      detail: `${operationLabel} stream operations must return HTTP 200`,
+    });
+  }
   return issues;
 }
 
-function inferPattern(routePath, method, operation) {
+export function inferOpenApiOperationPattern(routePath, method, operation) {
   const finalAction = finalOperationIdAction(operation);
+  if (isInfrastructureProbePath(routePath) || isRedirectOnlyOperation(operation)) {
+    return null;
+  }
+  if (isEventStreamOperation(operation)) {
+    return { kind: 'stream', expectedAction: 'stream' };
+  }
   if (method === 'get') {
-    return pathEndsWithParameter(routePath) || finalAction === 'retrieve'
-      ? { kind: 'retrieve', expectedAction: 'retrieve' }
-      : { kind: 'list', expectedAction: 'list' };
+    if (finalAction === 'list') {
+      return { kind: 'list', expectedAction: 'list' };
+    }
+    if (
+      finalAction === 'retrieve'
+      || pathEndsWithParameter(routePath)
+      || isSingletonReadSegment(finalPathSegment(routePath))
+    ) {
+      return { kind: 'retrieve', expectedAction: 'retrieve' };
+    }
+    return { kind: 'list', expectedAction: 'list' };
   }
   if (method === 'post') {
     if (isSearchPath(routePath)) {
@@ -119,6 +139,29 @@ function isSearchPath(routePath) {
   return routePath.endsWith('/search') || routePath.endsWith(':search');
 }
 
+function isInfrastructureProbePath(routePath) {
+  return /^\/(?:healthz|livez|readyz|metrics)$/u.test(routePath);
+}
+
+function isRedirectOnlyOperation(operation) {
+  const statuses = Object.keys(operation?.responses ?? {});
+  return statuses.some((status) => /^3\d\d$/u.test(status))
+    && !statuses.some((status) => /^2\d\d$/u.test(status));
+}
+
+function isEventStreamOperation(operation) {
+  const responses = operation?.responses && typeof operation.responses === 'object'
+    ? operation.responses
+    : {};
+  return Object.entries(responses).some(([status, response]) => (
+    /^2\d\d$/u.test(status)
+    && response
+    && typeof response === 'object'
+    && response.content
+    && Object.prototype.hasOwnProperty.call(response.content, 'text/event-stream')
+  ));
+}
+
 function isBulkPath(routePath) {
   return /:bulk[A-Z][A-Za-z0-9]*$/.test(routePath) || /\/bulk_[a-z0-9_]+$/.test(routePath);
 }
@@ -135,6 +178,14 @@ function commandActionFromPath(routePath, finalAction) {
   const pathAction = snakeToCamel(finalSegment);
   if (pathAction === finalAction && finalAction !== 'create') {
     return pathAction;
+  }
+  const suffixAction = snakeToCamel(finalSegment.split('_').at(-1) || '');
+  if (
+    suffixAction === finalAction
+    && finalAction !== 'create'
+    && COMMAND_ACTIONS.has(finalAction)
+  ) {
+    return finalAction;
   }
   if (isLikelyCommandSegment(finalSegment)) {
     return pathAction;
@@ -170,6 +221,11 @@ function isPluralResourceSegment(segment) {
   return typeof segment === 'string' && /s$/u.test(segment) && !isLikelyCommandSegment(segment);
 }
 
+function isSingletonReadSegment(segment) {
+  const normalized = String(segment).replace(/^.*:/u, '');
+  return SINGLETON_READ_SEGMENTS.has(snakeToCamel(normalized));
+}
+
 function isLikelyCommandSegment(segment) {
   const action = snakeToCamel(segment);
   return COMMAND_ACTIONS.has(action);
@@ -201,13 +257,17 @@ const COMMAND_ACTIONS = new Set([
   'changeRole',
   'close',
   'complete',
+  'convert',
   'deactivate',
   'heartbeat',
+  'explain',
   'leave',
   'migrate',
   'preview',
   'publish',
   'refresh',
+  'read',
+  'rebuild',
   'reject',
   'remove',
   'restore',
@@ -219,6 +279,18 @@ const COMMAND_ACTIONS = new Set([
   'unpublish',
   'unpin',
   'verify',
+]);
+
+const SINGLETON_READ_SEGMENTS = new Set([
+  'catalog',
+  'health',
+  'ready',
+  'resolve',
+  'runtimeDefaults',
+  'status',
+  'summary',
+  'sync',
+  'usage',
 ]);
 
 function hasStatus(responses, status) {

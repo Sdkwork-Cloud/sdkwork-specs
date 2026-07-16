@@ -26,11 +26,16 @@ This file is the **only** per-family metadata SSOT for:
 - Cross-SDK dependencies (`sdkDependencies`)
 - Multi-language layout (`languages[]`)
 
-Per-family `.sdkwork-assembly.json` is **retired**. Global ownership checks and composition resolution **MUST** read `sdk-manifest.json` first.
+The legacy parallel SDK registry file is removed at every level. SDK families, application roots, and repository
+SDK roots **MUST NOT** create, read, or retain that file. Global ownership checks and composition
+resolution **MUST** read `sdk-manifest.json`.
 
-## 2. Repo-level assembly registry (exception)
+## 2. Multi-family discovery
 
-Repository roots **MAY** keep `sdks/.sdkwork-assembly.json` when it orchestrates multiple surfaces for generation scripts (for example BirdCoder `surfaces[]`). That file is a **generation registry**, not a per-family SSOT, and **MUST NOT** duplicate fields already present in each family's `sdk-manifest.json`.
+Repository and application generation scripts **MUST** discover authored families from
+`sdks/<sdkFamily>/sdk-manifest.json`. Application dependency composition belongs in the existing
+`sdkwork.app.config.json` and `specs/component.spec.json` contracts. A parallel SDK registry that
+restates family ownership, dependencies, or generation inputs **MUST NOT** be introduced.
 
 ## 3. Required fields
 
@@ -63,13 +68,11 @@ Required for families with `openapi/*.sdkgen.*` or `generated/server-openapi`:
 
 Do not overload `languages[].name` with `@sdkwork/*` when `packagePath` points at `generated/server-openapi`.
 
-## 4. Migration from `.sdkwork-assembly.json`
+## 4. Parallel registry prohibition
 
-```bash
-node sdkwork-specs/tools/check-sdk-standard.mjs --workspace <root> --fix
-```
-
-`--fix` merges per-family assembly into manifest, normalizes TypeScript language naming, and deletes redundant per-family `.sdkwork-assembly.json` when ownership fields are present in the manifest.
+SDK family, application, and repository roots **MUST NOT** add a parallel registry beside the
+family manifests. Standard tooling treats a removed registry file as a hard violation and does not
+merge, recreate, or silently delete it.
 
 ## 5. Verification
 
@@ -80,5 +83,5 @@ node sdkwork-specs/tools/check-sdk-standard.mjs --workspace <root>
 Violations:
 
 - `missing-manifest-ownership` — generated family without ownership in manifest
-- `legacy-per-family-assembly` — per-family `.sdkwork-assembly.json` still present after manifest merge
+- `parallel-sdk-registry-file` — a removed parallel SDK registry is present at any level
 - Naming/layout violations from `SDK_PACKAGE_NAMING_SPEC.md`

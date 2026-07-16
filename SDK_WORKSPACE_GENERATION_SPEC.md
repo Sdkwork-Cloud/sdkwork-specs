@@ -31,7 +31,7 @@ Rules:
 - Generated SDK output `MUST NOT` be hand-edited. Fix the runtime API, OpenAPI authority, generator profile, or composed facade, then regenerate.
 - Generated HTTP SDK output `MUST` retain the `sdkgen` control plane: `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and the regeneration-safe `custom/` root.
 - Generated output `.sdkwork/` directories are generator-owned. They `MUST NOT` contain repository/application skills, plugins, root workspace manifests, local caches, runtime databases, logs, or secrets.
-- Generated HTTP SDK files under `generated/server-openapi` `MUST` remain canonical `sdkgen` output. SDK ownership and dependency standard fields such as `sdkOwner`, `apiAuthority`, `sdkFamily`, `generationInputSpec`, `sdkDependencies`, `dependencyApiExports`, `dependencyApiSurfaces`, `ownerOnlyOperationCount`, `standardProfile`, and `standardVersion` belong in family-root `sdk-manifest.json`, `specs/component.spec.json`, a repo-level `sdks/.sdkwork-assembly.json` generation registry that does not duplicate per-family fields, or approved wrapper/composed package metadata outside `generated/server-openapi`; they `MUST NOT` be synced into generated `sdkwork-sdk.json`, generated `package.json`, generated `sdk-manifest.json`, generator `.sdkwork/*` reports, or generated source `sdkMetadata`.
+- Generated HTTP SDK files under `generated/server-openapi` `MUST` remain canonical `sdkgen` output. SDK ownership and dependency standard fields such as `sdkOwner`, `apiAuthority`, `sdkFamily`, `generationInputSpec`, `sdkDependencies`, `dependencyApiExports`, `dependencyApiSurfaces`, `ownerOnlyOperationCount`, `standardProfile`, and `standardVersion` belong in family-root `sdk-manifest.json`, `specs/component.spec.json`, or approved wrapper/composed package metadata outside `generated/server-openapi`; they `MUST NOT` be synced into generated `sdkwork-sdk.json`, generated `package.json`, generated `sdk-manifest.json`, generator `.sdkwork/*` reports, or generated source `sdkMetadata`. Parallel SDK registries are forbidden.
 - Handwritten extensions belong only in generated `custom/` roots or approved `composed/` facades outside generated ownership.
 - SDK family wrapper scripts `MUST` fail fast when the canonical generator is missing. Stub generators are allowed only as isolated tooling fixtures, not as official SDK family output producers.
 - SDK family wrapper scripts, READMEs, manifests, and CI jobs `MUST` identify the generator as `@sdkwork/sdk-generator` / `sdkgen` and record the canonical path or resolved package location plus the generator version or commit.
@@ -156,9 +156,8 @@ Rules:
 - The family root is the ownership boundary. `openapi/`, generated language workspaces,
   family-root `sdk-manifest.json`, and `specs/component.spec.json`
   belong under that same family root. Ownership and dependency metadata must not be moved into
-  generated transport output to make discovery work. A repo-level `sdks/.sdkwork-assembly.json`
-  generation registry may orchestrate multiple families, but it must not duplicate per-family
-  manifest fields.
+  generated transport output to make discovery work. Multi-family generation scripts `MUST`
+  discover family-root `sdk-manifest.json` files directly and `MUST NOT` add a parallel registry.
 - Rust route crates are source inputs to authority materialization. They `MUST NOT` be placed inside
   generated SDK family directories, and generated SDK code `MUST NOT` import route crate internals.
 - Normalized route manifest artifacts, when produced for materialization or CI, belong under
@@ -181,7 +180,7 @@ Rules:
 
 - The SDK family name and API authority name `MUST` be declared in the family README and component manifest.
 - The authority name is the logical API authority. Physical OpenAPI filenames may include an application prefix during migration, but the declared authority name must stay standard.
-- SDK family names and API authority names `MUST NOT` be conflated. `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, and `sdkwork-<domain>-backend-api` are API authority names only; they are forbidden as directories directly below `sdks/`, as generated language workspace prefixes, as generated package names, as `sdkMetadata.name`, as `sdk-manifest.json.sdkName`, as assembly `workspace`, as generator `SDK_NAME`, and as generator `--sdk-name`.
+- SDK family names and API authority names `MUST NOT` be conflated. `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, and `sdkwork-<domain>-backend-api` are API authority names only; they are forbidden as directories directly below `sdks/`, as generated language workspace prefixes, as generated package names, as `sdkMetadata.name`, as `sdk-manifest.json.sdkName`, as generator `SDK_NAME`, and as generator `--sdk-name`.
 - The SDK family generated from an `open-api` authority is always `sdkwork-<domain>-sdk`, not `sdkwork-<domain>-open-api` and not `sdkwork-<domain>-open-sdk`.
 - Generated language workspaces `MUST` inherit the SDK family name exactly: `sdkwork-<domain>-sdk-{language}`, `sdkwork-<domain>-app-sdk-{language}`, and `sdkwork-<domain>-backend-sdk-{language}`.
 - RPC generated language workspaces inherit the RPC SDK family name exactly, for example
@@ -656,7 +655,7 @@ Every SDK family change should verify the relevant subset:
   `crates/sdkwork-routes-<capability>-<surface>/` and are not placed under `sdks/`.
 - Route crate package names start with `sdkwork-routes-` and end with exactly one of `open-api`,
   `app-api`, or `backend-api`.
-- Generated language workspace directories, generated package names, `sdkMetadata.name`, `sdk-manifest.json.sdkName`, assembly `workspace`, generator `SDK_NAME`, and generator `--sdk-name` all use the SDK family name, not the API authority name.
+- Generated language workspace directories, generated package names, `sdkMetadata.name`, `sdk-manifest.json.sdkName`, generator `SDK_NAME`, and generator `--sdk-name` all use the SDK family name, not the API authority name.
 - Generated HTTP/OpenAPI output retains `sdkwork-sdk.json`, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, and `custom/`.
 - Generated `sdkwork-sdk.json`, generated `package.json`, generated `sdk-manifest.json` when present, and generated source files remain generator-owned and do not carry ownership/dependency standard fields or `sdkwork` ownership metadata blocks.
 - Materialization script produces deterministic authority-to-derived output.

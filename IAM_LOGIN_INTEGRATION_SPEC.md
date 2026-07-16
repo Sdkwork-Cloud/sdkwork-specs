@@ -296,6 +296,21 @@ Rules:
 - Legacy `ORGANIZATION_SELECTION` challenge handling `SHOULD` migrate to `LOGIN_CONTEXT_SELECTION`. Compatibility aliases may remain until all consuming apps are updated.
 - PC (`@sdkwork/auth-pc-react`), H5 (`@sdkwork/iam-h5-auth`), and Flutter mobile (`sdkwork_iam_flutter_mobile_auth`) `MUST` consume the shared login-context helpers from `@sdkwork/iam-contracts` / `@sdkwork/iam-service` and `MUST NOT` fork organization id `"0"` handling locally.
 
+### 5.2 Authenticated Session Recovery Protocol
+
+Sharing a TokenManager does not by itself provide refresh or unauthorized-response recovery. Every interactive authenticated runtime `MUST` compose one session recovery coordinator with the global TokenManager and appbase refresh authority.
+
+Rules:
+
+- Application-owned SDKs, dependency SDKs such as Drive and Messaging, approved composed wrappers, uploads, SSE, WebSocket, and other authenticated transports `MUST` use the same session recovery coordinator for one authenticated session context. They `MUST NOT` implement independent refresh flows.
+- Concurrent protected requests that detect an expired session or receive HTTP `401` / platform code `40101` `MUST` coalesce into one in-flight appbase refresh operation. Waiting requests and realtime transports `MUST` pause until that operation completes.
+- After a successful refresh, a safe or idempotent read operation `MAY` be replayed at most once with credentials read again from the global TokenManager. A mutation `MUST NOT` be replayed automatically unless its generated SDK operation exposes and the caller supplied the contract-authorized idempotency or concurrency precondition.
+- A failed refresh, a second `401` after the one allowed refresh, or an incomplete refreshed dual-token session `MUST` enter the single terminal clearing path from section 5: clear token, session, context, realtime/session bridges, sensitive caches, and native secure storage when present, then route to login according to the runtime policy.
+- HTTP `401` `MUST NOT` enter generic retry or realtime reconnect backoff before session recovery runs. HTTP `403` `MUST NOT` trigger token refresh. Deterministic client errors such as `400`, `404`, and `422` `MUST NOT` be retried without a contract-specific correction. `408`, `429`, network failures, and retryable `5xx` responses may use the bounded retry policy declared by the SDK or transport.
+- SDK and realtime errors `MUST` preserve standard `ProblemDetail` status, numeric `code`, `detail`, and `traceId` through the service boundary. A transport `MUST NOT` reduce an authenticated HTTP failure to a status-only string when a valid problem-detail body is available.
+- SSE and WebSocket reconnect attempts `MUST` resolve credentials again from the global TokenManager after refresh. They `MUST` stop reconnecting after terminal session clearing or a deterministic non-retryable `4xx` response.
+- The TokenManager contract owns credential storage, validity inspection, and token updates. Refresh orchestration, single-flight coordination, replay policy, terminal clearing, realtime pause/resume, and login routing belong to the session recovery coordinator or the approved high-level IAM runtime.
+
 ## 6. Rust Protected API Standard
 
 Rust services that expose protected business APIs normally validate IAM sessions; they do not own login.
@@ -455,6 +470,7 @@ Required checks for IAM login integration:
 | Route guard | Tests or smoke checks prove protected routes redirect to login and authenticated auth routes redirect home/target. |
 | Logout | Tests or smoke checks prove persisted session, global token manager, AppContext, realtime clients, caches, and native storage are cleared even when remote logout fails. |
 | Session persistence | Tests prove login/refresh/current-session calls do not resolve before `commitSession` finishes, token persistence failure does not update the global token manager, new sessions do not inherit old refresh tokens, refresh/current-session continuation passes the already-merged committed session to `commitSession`, context propagation failure rolls back token/context stores, and sessions without AppContext clear stale AppContext. |
+| Session recovery | Tests prove concurrent SDK and realtime `401` responses share one refresh operation, safe reads replay at most once, mutations do not replay without an approved idempotency/precondition contract, refresh failure clears once, and deterministic non-auth `4xx` responses stop retry/reconnect. |
 | Login protocol | Tests prove login requests do not send or trust inbound auth/context headers, appbase returns tenant/organization/login-scope context in both tokens, and multi-organization login returns a continuation challenge instead of a normal session. |
 | Organization selection | Tests prove organization-selection continuation credentials cannot authenticate product APIs, client code does not auto-select the first organization, and final token issuance validates membership before committing session state. |
 | API boundary | Contract scan proves product IM/backend/Rust services do not expose appbase-owned `/app/v3/api/auth/*` routes. |
@@ -483,6 +499,7 @@ rg -n "/app/v3/api/auth|/api/.*/auth|user-center/session" services crates
 - [ ] Generated appbase app SDK or strict IAM adapter over the standard appbase SDK resource surface owns all auth/session transport.
 - [ ] Logout clears local session, global token manager, AppContext, realtime connections, sensitive cache, and native storage when present, including remote logout failure cases.
 - [ ] Login/refresh/current-session restoration waits for session persistence and context propagation before returning to UI/runtime code, replaces refresh tokens for new sessions, preserves current refresh tokens only for continuation flows, rolls back on context propagation failure, and clears stale AppContext when the committed session has no context.
+- [ ] Application/dependency SDKs and realtime transports share one session recovery coordinator; concurrent `401` responses coalesce refresh, safe reads replay at most once, terminal refresh failure clears once, and problem-detail `code` / `traceId` remain available.
 - [ ] Login requests are anonymous; tenant and organization context are returned only by appbase after credential validation and real IAM tenant/organization membership lookup.
 - [ ] Login-like appbase OpenAPI operations are marked `x-sdkwork-auth-mode: anonymous` and `x-sdkwork-forbid-credential-headers: true`, generated SDKs skip auth injection, and appbase backends reject inbound credential/context headers.
 - [ ] Multi-organization login uses the appbase organization-selection continuation protocol and does not commit normal session state until final dual tokens are returned.

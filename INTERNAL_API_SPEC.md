@@ -63,7 +63,7 @@ Rules:
 - Authoritative OpenAPI for an application-owned internal surface `MUST` live under `<application-root>/apis/internal-api/<domain>/` and be mirrored into `<application-root>/sdks/sdkwork-<domain>-internal-sdk/openapi/`.
 - Authority file name `MUST` be `sdkwork-<domain>-internal-api.openapi.yaml`.
 - Derived generator input `MUST` be `sdkwork-<domain>-internal-api.sdkgen.yaml`.
-- SDK generation `MUST` follow `SDK_SPEC.md` with `--standard-profile sdkwork-v3` when the generator profile supports the internal prefix; otherwise the SDK family `MUST` document the supported generator mode in family-root `sdk-manifest.json`. A repo-level `sdks/.sdkwork-assembly.json` may reference the family only as a generation registry and must not duplicate per-family metadata.
+- SDK generation `MUST` follow `SDK_SPEC.md` with `--standard-profile sdkwork-v3` when the generator profile supports the internal prefix; otherwise the SDK family `MUST` document the supported generator mode in family-root `sdk-manifest.json`. Multi-family generation discovers family manifests directly and must not add a parallel registry.
 - Generated internal SDK output `MUST` live under `sdkwork-<domain>-internal-sdk-<language>/generated/server-openapi/`.
 - Internal SDK families `MUST` declare `sdkOwner`, `apiAuthority`, `sdkSurface: internal`, and owner-only operation metadata identical to other HTTP SDK families.
 - Consumers `MUST` integrate through the generated SDK or an approved composed facade; raw HTTP in UI modules is forbidden by `API_SPEC.md`.

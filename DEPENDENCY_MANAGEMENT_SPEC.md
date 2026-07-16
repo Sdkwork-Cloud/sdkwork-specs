@@ -22,7 +22,7 @@ SDKWork distinguishes these dependency concerns:
 | Language/package dependency | Packages, crates, modules, SDK packages, generated client packages, and shared build inputs consumed by code | Native build-tool files such as `pnpm-workspace.yaml`, root `package.json`, `Cargo.toml`, `pubspec.yaml`, `settings.gradle.kts`, `libs.versions.toml`, parent `pom.xml`, `pyproject.toml`, and lockfiles |
 | SDKWork release dependency | Git repository and ref that must be checked out or otherwise resolved for packaging, release, or reproducible CI | `sdkwork.workflow.json` and the reusable SDKWork workflow framework |
 | SDKWork verification dependency | Git repository and ref that must be checked out only for CI, migration, or boundary verification and is not consumed by runtime, package, API, SDK, or release artifacts | `sdkwork.workflow.json` `verificationDependencies[]` and the reusable SDKWork workflow framework |
-| SDK/API ownership dependency | Dependency-owned APIs, SDK families, and composed wrappers consumed by an app | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, SDK assembly metadata, and component specs |
+| SDK/API ownership dependency | Dependency-owned APIs, SDK families, and composed wrappers consumed by an app | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, SDK family manifests, and component specs |
 | Runtime SDK dependency surface | Base URLs, credential modes, same-origin mount proof, and SDK client bootstrap for dependency SDKs | `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md` |
 | Runtime install path | Deployed binary, config, cache, database, service, or user-state path | `DEPLOYMENT_SPEC.md`, install package plans, runtime config |
 | Documentation placeholder | Portable examples that describe a path without binding to a machine | `DOCUMENTATION_SPEC.md` |
@@ -314,10 +314,10 @@ Rules:
   `requiredBaseUrlKey`. They must not invent `cargoFeature` or `cargoDependency` values unless the
   gateway can actually compile and embed the dependency-owned executable router/controller/service.
 - A split gateway surface `MUST` have existing SDKWork semantic evidence before it becomes a
-  gateway startup dependency: an SDK assembly or component/runtime spec that names the SDK family,
+  gateway startup dependency: an SDK family manifest or component/runtime spec that names the SDK family,
   API authority, surface, and a materialized route path set with a stable prefix. The route path set
   may be proven by authority OpenAPI `paths`, derived `*.sdkgen.*` OpenAPI inputs, or normalized
-  route manifest artifacts under `sdks/_route-manifests/<surface>/`. SDK assemblies that only
+  route manifest artifacts under `sdks/_route-manifests/<surface>/`. SDK family manifests that only
   declare a generic root such as `/app/v3/api` or `/backend/v3/api`, or that have no materialized
   paths yet, are inventory candidates, not gateway dependencies.
 - A gateway `MUST` inspect OpenAPI path maps with a real parser or an equivalent detector that
@@ -338,7 +338,7 @@ Rules:
   features a Rust gateway can compile. Standards tooling `MUST` read Cargo metadata before asking
   for any SDKWork-specific dependency catalog.
 - SDKWork semantic evidence remains in existing SDKWork files: `sdkwork.app.config.json`
-  `sdkDependencies`, `specs/component.spec.json` dependency surfaces, dependency SDK assembly
+  `sdkDependencies`, `specs/component.spec.json` dependency surfaces, dependency SDK family manifest
   metadata, and runtime config. Cargo proves executable linkage; SDKWork specs prove SDK family,
   API authority, surface, prefix, runtime mode, and coverage semantics.
 - A standalone gateway catalog file is forbidden when it only repeats Cargo dependency/feature data
@@ -378,7 +378,7 @@ Rules:
   remain the linkage authority; component/app manifests must not gain duplicate `integrationMode`,
   `applicationBundle`, or `httpPlane` fields for this purpose.
 - Application gateway assembly crates `MUST NOT` duplicate SDK dependency catalogs already expressed in
-  `sdkwork.app.config.json` `sdkDependencies` or Cargo `[workspace.dependencies]`. Assembly only
+  `sdkwork.app.config.json` `sdkDependencies` or Cargo `[workspace.dependencies]`. Gateway assembly only
   merges application-owned route crates discovered in the owning repository workspace.
 
 ## 6. SDK/API Ownership

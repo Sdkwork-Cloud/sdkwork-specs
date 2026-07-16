@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+  commandLineReferencesWorkspace,
+  parseStopWorkspaceArgs,
+  selectWorkspaceProcessRoots,
+  stopWorkspaceProcesses,
+} from './stop-sdkwork-workspace-processes.mjs';
+
+const workspaceRoot = 'E:/sdkwork-space/sdkwork-im';
+
+test('parses the workspace stop command options', () => {
+  assert.deepEqual(parseStopWorkspaceArgs(['--workspace', workspaceRoot, '--dry-run']), {
+    workspaceRoot: 'E:\\sdkwork-space\\sdkwork-im', dryRun: true, help: false,
+  });
+});
+
+test('does not confuse a workspace path with a similarly named sibling', () => {
+  assert.equal(commandLineReferencesWorkspace(workspaceRoot, 'node E:/sdkwork-space/sdkwork-im/scripts/dev.mjs'), true);
+  assert.equal(commandLineReferencesWorkspace(workspaceRoot, 'node E:/sdkwork-space/sdkwork-image/scripts/dev.mjs'), false);
+});
+
+test('selects only workspace process-tree roots and excludes the stopper itself', () => {
+  const selected = selectWorkspaceProcessRoots([
+    { Id: 101, ParentProcessId: 1, Name: 'node.exe', CommandLine: 'node E:/sdkwork-space/sdkwork-im/scripts/dev.mjs' },
+    { Id: 102, ParentProcessId: 101, Name: 'node.exe', CommandLine: 'node E:/sdkwork-space/sdkwork-im/node_modules/vite/bin/vite.js' },
+    { Id: 103, ParentProcessId: 1, Name: 'node.exe', CommandLine: 'node E:/sdkwork-space/sdkwork-image/scripts/dev.mjs' },
+    { Id: 104, ParentProcessId: 1, Name: 'node.exe', CommandLine: 'node E:/sdkwork-space/sdkwork-im/sdkwork-specs/tools/stop-sdkwork-workspace-processes.mjs' },
+  ], { workspaceRoot, currentPid: 104 });
+  assert.deepEqual(selected.map((processInfo) => processInfo.Id), [101]);
+});
+
+test('terminates only selected workspace process-tree roots', async () => {
+  const terminated = [];
+  await stopWorkspaceProcesses({
+    workspaceRoot,
+    currentPid: 999,
+    listProcesses: async () => [
+      { Id: 201, ParentProcessId: 1, Name: 'node.exe', CommandLine: 'node E:/sdkwork-space/sdkwork-im/scripts/dev.mjs' },
+      { Id: 202, ParentProcessId: 201, Name: 'node.exe', CommandLine: 'node E:/sdkwork-space/sdkwork-im/node_modules/vite/bin/vite.js' },
+      { Id: 203, ParentProcessId: 1, Name: 'node.exe', CommandLine: 'node E:/sdkwork-space/sdkwork-image/scripts/dev.mjs' },
+    ],
+    terminateProcess: async (processId) => terminated.push(processId),
+  });
+
+  assert.deepEqual(terminated, [201]);
+});

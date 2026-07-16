@@ -25,7 +25,7 @@ import {
 import {
   parseRustCargoManifest,
 } from './rust-backend-composition.mjs';
-import { loadDiscoverySurfaceForWorkspaceConsumer } from './sdk-manifest-assembly.mjs';
+import { loadDiscoverySurfaceForWorkspaceConsumer } from './sdk-manifest-standard.mjs';
 
 const APP_API_PREFIX = '/app/v3/api';
 const BACKEND_API_PREFIX = '/backend/v3/api';
@@ -64,8 +64,8 @@ function defaultCredentialMode(surface) {
   return 'protected-open-api-flexible';
 }
 
-function defaultPrefix(surface, assemblyDiscovery) {
-  if (assemblyDiscovery?.apiPrefix) return assemblyDiscovery.apiPrefix;
+function defaultPrefix(surface, manifestDiscovery) {
+  if (manifestDiscovery?.apiPrefix) return manifestDiscovery.apiPrefix;
   if (surface === 'backend-api') return BACKEND_API_PREFIX;
   if (surface === 'app-api') return APP_API_PREFIX;
   return null;
@@ -92,7 +92,7 @@ function findSiblingRepoRoot(repoRoot, domain) {
   return null;
 }
 
-function loadAssemblyDiscovery(repoRoot, workspace) {
+function loadManifestDiscovery(repoRoot, workspace) {
   return loadDiscoverySurfaceForWorkspaceConsumer(repoRoot, workspace);
 }
 
@@ -362,14 +362,14 @@ export function resolveComposition(repoRoot, options = {}) {
 
   for (const dep of sdkDependencies) {
     const workspace = dep.workspace;
-    const assemblyDiscovery = loadAssemblyDiscovery(repoRoot, workspace);
+    const manifestDiscovery = loadManifestDiscovery(repoRoot, workspace);
     const dependencyIntegration = loadDependencyIntegration(repoRoot, workspace);
     const legacySurface = loadLegacyDependencySurface(repoRoot, workspace);
     const integrationOverride = findIntegrationOverride(overridesByCore, workspace);
 
     const surface = dep.surface ?? surfaceFromWorkspace(workspace);
     const domain = domainFromSdkWorkspace(workspace);
-    const apiPrefix = defaultPrefix(surface, assemblyDiscovery);
+    const apiPrefix = defaultPrefix(surface, manifestDiscovery);
     const connectivityPlane = dependencyIntegration?.defaultConnectivityPlane
       ?? defaultConnectivityPlane(domain, surface);
     const runtimeMode = integrationOverride?.runtimeMode

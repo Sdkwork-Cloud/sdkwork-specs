@@ -9,15 +9,10 @@ import { parsePnpmWorkspacePackages } from './workspace-registry.mjs';
 import { discoverAllSdkFamiliesIncludingApps, listTransportRootsInFamily } from './sdk-family-discovery.mjs';
 import { materializeMissingComposedFacades, facadeBodyForConsumer } from './materialize-composed-sdk-facades.mjs';
 import {
-  alignAllLegacyAssemblyFamilies,
-  alignFamilyManifestFromAssembly,
-  collectLegacyAssemblyViolations,
-  familyAssemblyPath,
+  collectParallelSdkRegistryViolations,
   inferManifestOwnership,
-  isRepoLevelAssemblyPath,
   manifestHasOwnership,
-  mergeFamilyManifestFromAssembly,
-} from './sdk-manifest-assembly.mjs';
+} from './sdk-manifest-standard.mjs';
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/u, ''));
@@ -159,12 +154,7 @@ function ensureManifest(family) {
   };
   changed = true;
 
-  const { manifest: merged } = mergeFamilyManifestFromAssembly(
-    family.familyRoot,
-    family.sdkFamilyStem,
-    manifest,
-  );
-  manifest = inferManifestOwnership(family.familyRoot, family.sdkFamilyStem, merged, family.repoRoot);
+  manifest = inferManifestOwnership(family.familyRoot, family.sdkFamilyStem, manifest, family.repoRoot);
   changed = true;
 
   writeJson(target, manifest);
@@ -431,7 +421,7 @@ export function collectSdkStandardViolations(workspaceRoot) {
     }
   }
 
-  violations.push(...collectLegacyAssemblyViolations(workspaceRoot));
+  violations.push(...collectParallelSdkRegistryViolations(workspaceRoot));
 
   for (const repoRoot of listWorkspaceRepos(workspaceRoot)) {
     const workspacePath = path.join(repoRoot, 'pnpm-workspace.yaml');
@@ -460,7 +450,6 @@ export function alignSdkStandard(workspaceRoot) {
       ensureComposedPackageJson(family),
       ensureComposedFacade(family),
       ...alignAllFamilyTransports(family),
-      alignFamilyManifestFromAssembly(family, { retireAssembly: true }),
     ]) {
       if (file) changed.push(file);
     }
@@ -472,8 +461,6 @@ export function alignSdkStandard(workspaceRoot) {
     const file = alignPnpmWorkspace(repoRoot);
     if (file) changed.push(file);
   }
-
-  changed.push(...alignAllLegacyAssemblyFamilies(workspaceRoot, { retireAssembly: true }));
 
   return [...new Set(changed)];
 }

@@ -78,10 +78,22 @@ export function parseCargoWorkspaceMembers(root) {
 export function discoverRouteCrates(root, applicationCode) {
   const members = [...new Set(parseCargoWorkspaceMembers(root))];
   const prefix = `crates/sdkwork-routes-${applicationCode}-`;
-  const routeMembers = members
+  const applicationRouteMembers = members
     .filter((member) => member.startsWith(prefix))
     .filter((member) => !/-common$/u.test(path.basename(member)))
     .sort((a, b) => a.localeCompare(b));
+
+  // Aggregate applications may keep route crates named after owned subdomains
+  // (for example deploy, match, or webserver). Cargo membership remains the
+  // authority; use this fallback only when the canonical app-code prefix finds
+  // nothing so unrelated support crates cannot leak into a normal assembly.
+  const routeMembers = applicationRouteMembers.length > 0
+    ? applicationRouteMembers
+    : members
+        .filter((member) => /^crates\/sdkwork-routes-[a-z0-9-]+-(?:app|backend|open)-api$/u.test(member))
+        .filter((member) => !/^sdkwork-routes-health-/u.test(path.basename(member)))
+        .filter((member) => !/-common$/u.test(path.basename(member)))
+        .sort((a, b) => a.localeCompare(b));
 
   return routeMembers.map((memberDir) => {
     const crateRoot = path.join(root, memberDir);
@@ -125,7 +137,7 @@ function extractSurface(packageName) {
 
 /** Support crates (manifests, web bootstrap) are not gateway mount surfaces. */
 export function isSupportRouteCrate(packageName) {
-  return /-(?:http-shared|shared|support)$/u.test(packageName);
+  return /-(?:http-auth|http-shared|shared|support)$/u.test(packageName);
 }
 
 export function assemblyMountRouteCrates(routeCrates) {

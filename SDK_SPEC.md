@@ -58,7 +58,7 @@ Rules:
 - Generated HTTP SDK output `.sdkwork/` is generator-owned and `MUST NOT` be used for repository/application skills, plugins, local workspace manifests, runtime files, or user-private data.
 - SDK ownership standard metadata `MUST NOT` be injected into generator-owned files under `generated/server-openapi`, including `sdkwork-sdk.json`, `package.json`, `sdk-manifest.json` when a legacy or product wrapper created one there, `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, `.sdkwork/sdkwork-generator-report.json`, or generated source files such as `src/index.ts`.
 - Generated source files `MUST NOT` be post-processed with `sdkMetadata` fields such as `sdkOwner`, `apiAuthority`, `sdkFamily`, `generationInputSpec`, `sdkDependencies`, `dependencyApiExports`, `dependencyApiSurfaces`, `ownerOnlyOperationCount`, `standardProfile`, or `standardVersion`. If a product needs runtime operation maps or family metadata, place that code in an approved `composed/` wrapper outside `generated/server-openapi`.
-- Repository or application ownership metadata belongs in SDK family files outside generated ownership, such as family-root `sdk-manifest.json`, `specs/component.spec.json`, approved wrapper/composed package metadata outside `generated/server-openapi`, or a repo-level `sdks/.sdkwork-assembly.json` generation registry that does not duplicate per-family manifest fields.
+- Repository or application ownership metadata belongs in SDK family files outside generated ownership, such as family-root `sdk-manifest.json`, `specs/component.spec.json`, or approved wrapper/composed package metadata outside `generated/server-openapi`. Multi-family generation discovers family manifests directly; parallel SDK registries are forbidden.
 - Handwritten code belongs only in generator-scaffolded `custom/` roots or approved composed facade directories outside generated ownership. Generated-owned files `MUST NOT` be edited directly.
 - Missing HTTP SDK capability `MUST` be fixed by updating OpenAPI and the generator, then regenerating.
 - Missing RPC SDK capability `MUST` be fixed by updating proto contracts and the generator, then regenerating.
@@ -128,8 +128,7 @@ Rules:
 - The family-root `sdk-manifest.json` is the per-family metadata SSOT per `SDK_MANIFEST_SPEC.md`.
   Its `sdkOwner`, `apiAuthority`, `sdkFamily`/`sdkName`, `generationInputSpec`, and explicit
   `sdkDependencies` array `MUST` match family-root `specs/component.spec.json`; SDK families with
-  no dependencies `MUST` still write `sdkDependencies: []` in the family manifest. Per-family
-  `.sdkwork-assembly.json` is migration-only and must be removed after manifest materialization.
+  no dependencies `MUST` still write `sdkDependencies: []` in the family manifest.
 - Any existing `generated/server-openapi` output is itself an SDK family signal. A family that has
   generated transport output `MUST` have a discoverable family-root `sdk-manifest.json`; stale or legacy
   generated output without manifest metadata is a standards failure even when no `openapi/*.sdkgen.*`

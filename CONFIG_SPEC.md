@@ -431,10 +431,10 @@ Rules:
   proxy coverage proves gateway routing and upstream configuration; it does not prove same-process
   embedded router availability.
 - A shared gateway external-upstream proxy surface `MUST NOT` be created from SDK family name alone. The
-  existing SDK assembly, component spec, or runtime manifest must also prove a materialized route
+  existing SDK family manifest, component spec, or runtime manifest must also prove a materialized route
   path set with a stable route prefix. Acceptable materialized evidence includes authority OpenAPI
   `paths`, derived `*.sdkgen.*` OpenAPI inputs, or normalized route manifests under
-  `sdks/_route-manifests/<surface>/`. Generic-only roots and SDK assemblies with no paths are
+  `sdks/_route-manifests/<surface>/`. Generic-only roots and SDK family manifests with no paths are
   tracked as future integration candidates, not required runtime upstreams.
 - A dependency SDK family may expose multiple stable route prefixes, for example a comments SDK
   owning both `/app/v3/api/comments` and `/app/v3/api/engagement`. Runtime config `MUST` declare

@@ -12,7 +12,7 @@ Rules:
 
 - Specs before memory. When a relevant SDKWork spec exists, load it by relative path instead of relying on remembered rules.
 - Dictionary before context. Resolve the nearest `AGENTS.md`, the applicable repository/application root, and the relative `sdkwork-specs` path before loading broad source context. Probe the presence and location of `sdkwork.app.config.json`, module `specs/`, repository/application root `specs/`, and `.sdkwork/`; load an entry's contents only when the task or an already-loaded contract makes it applicable.
-- Exact source before inference. Prefer manifest, OpenAPI, route manifest, SDK assembly, package manifest, and component spec evidence over natural-language guesses.
+- Exact source before inference. Prefer application manifests, family-root `sdk-manifest.json`, OpenAPI, route manifests, package manifests, and component specs over natural-language guesses.
 - Native authority before parallel manifests. Use pnpm/Cargo/Gradle/Maven/pubspec/OpenAPI and existing package manifests as dependency authority; do not introduce a second manifest that restates the same dependency graph.
 - Minimal context first. Start with the routing entry or exact section needed for the current task, then expand deliberately when evidence requires it. An index, directory listing, or cross-reference identifies the next candidate; it is not a reason to load every linked file.
 - Plan, execute, verify, fix, retry. Long tasks must be resumable from checkpoints and must not depend on one uninterrupted context window.

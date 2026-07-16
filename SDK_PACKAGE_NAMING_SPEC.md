@@ -47,9 +47,12 @@ Rules for `@sdkwork/sdk-generator` / `sdkgen` with `--standard-profile sdkwork-v
 - `MUST` emit both `consumerPackageName` and `transportPackageName` in `sdkwork-sdk.json`.
 - Legacy `sdkwork-sdk.json#packageName` equals `transportPackageName` for idempotent readers only.
 
-### 1.3 Family-root `sdk-manifest.json` (replaces per-family assembly)
+### 1.3 Family-root `sdk-manifest.json`
 
-Per-family `.sdkwork-assembly.json` is **retired**. All ownership, discovery, dependency, and naming metadata lives in `sdks/<sdkFamily>/sdk-manifest.json`. See `SDK_MANIFEST_SPEC.md`.
+The legacy parallel SDK registry file is removed and forbidden at every level. All family ownership, discovery,
+dependency, and naming metadata lives in `sdks/<sdkFamily>/sdk-manifest.json`. Multi-family discovery
+uses those manifests directly; application dependency composition uses native application and
+component manifests. See `SDK_MANIFEST_SPEC.md`.
 
 For TypeScript HTTP SDK families in `sdk-manifest.json`:
 
@@ -59,8 +62,6 @@ For TypeScript HTTP SDK families in `sdk-manifest.json`:
 | `transportPackageName` | `<sdkFamilyStem>-generated-typescript` |
 | `languages[]` where `language === "typescript"` → `consumerPackageName` | `@sdkwork/<token>` |
 | Same entry → `transportPackageName` | `<sdkFamilyStem>-generated-typescript` |
-
-Repo-level `sdks/.sdkwork-assembly.json` (multi-surface generation registry) **MAY** remain; it must not duplicate per-family manifest fields.
 
 Do not overload `languages[].name` with `@sdkwork/*` when `packagePath` points at `generated/server-openapi`.
 
@@ -165,6 +166,7 @@ Permanent fix (in order):
 1. Upgrade to workspace `@sdkwork/sdk-generator` with `sdkwork-v3` transport derivation (consumer `--package-name` never becomes transport `package.json#name`).
 2. Update repo generate scripts to pass consumer name only as `--package-name`; never hand-set transport `package.json#name`.
 3. Run `node sdkwork-specs/tools/check-sdk-standard.mjs --workspace <root> --fix` once after regeneration.
-4. Do **not** hand-edit transport `package.json#name` to `@sdkwork/*`; edit OpenAPI/generator/assembly instead and regenerate.
+4. Do **not** hand-edit transport `package.json#name` to `@sdkwork/*`; edit OpenAPI, family manifest,
+   or generator input instead and regenerate.
 
 Authority: `APP_SDK_INTEGRATION_SPEC.md` section 9, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`.

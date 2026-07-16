@@ -145,7 +145,7 @@ Language specs are on-demand. Do not require agents to load Rust, Java, TypeScri
 - `.sdkwork/`: local skills, plugins, manifests, and repository/application AI workspace metadata.
 - `specs/`: module-local spec systems (`README.md`, `component.spec.json`, optional narrowing extensions) for authored apps, packages, crates, services, and SDK families; repository/application root `specs/` for cross-module machine contracts such as topology manifests.
 - `docs/`: repository/application documentation layout; Canon entrypoints are `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
-- `sdks/`: SDK families, OpenAPI authorities, derived generator inputs, route manifests, SDK assembly, and generated outputs.
+- `sdks/`: SDK families, family manifests, OpenAPI authorities, derived generator inputs, route manifests, and generated outputs.
 - language manifests such as `package.json`, `Cargo.toml`, `pom.xml`, `pyproject.toml`, or `pubspec.yaml`.
 
 ## 7. Template

@@ -35,7 +35,7 @@ Recommended application-root shape:
   sdks/
     sdkwork-<sdk-family-stem>-rpc-sdk/
       README.md
-      .sdkwork-assembly.json
+      sdk-manifest.json
       rpc/
         sdkwork-<sdk-family-stem>-rpc.manifest.json
       proto/
@@ -65,7 +65,7 @@ Rules:
   `.sdkwork/sdkwork-generator-manifest.json`, `.sdkwork/sdkwork-generator-changes.json`, and
   `.sdkwork/sdkwork-generator-report.json`.
 - Optional RPC control-plane file paths are derived from the language workspace root and these
-  standard file names. SDK family metadata such as `.sdkwork-assembly.json` and
+  standard file names. SDK family metadata in `sdk-manifest.json` and
   `specs/component.spec.json` SHOULD record only the family-level inspection policy, for example
   `inspectionPolicy.mode: "convention"`, `inspectionPolicy.protocol: "rpc"`, and
   `inspectionPolicy.optionalControlPlane.emitFlag: "--emit-control-plane"`. They SHOULD NOT
@@ -125,7 +125,7 @@ Rules:
   line. If the existing HTTP families are `sdkwork-im-sdk`, `sdkwork-im-app-sdk`, and
   `sdkwork-im-backend-sdk`, the RPC family is `sdkwork-im-rpc-sdk`.
 - The proto package domain MAY be broader than the SDK family stem. For example, Craw Chat uses
-  `sdkwork-im-rpc-sdk` for package names under `sdkwork.communication.*`; `.sdkwork-assembly.json`
+  `sdkwork-im-rpc-sdk` for package names under `sdkwork.communication.*`; `sdk-manifest.json`
   and `specs/component.spec.json` must record `domain: "communication"` and `capability: "chat"`.
 - A new RPC SDK family MUST NOT introduce a different stem, such as `sdkwork-communication-rpc-sdk`,
   when sibling HTTP SDKs for the same product line already use `sdkwork-im-*`.
