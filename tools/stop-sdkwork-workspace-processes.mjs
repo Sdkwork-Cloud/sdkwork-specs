@@ -9,6 +9,14 @@ import { promisify } from 'node:util';
 
 const __filename = fileURLToPath(import.meta.url);
 const execFileAsync = promisify(execFile);
+const WORKSPACE_COMMAND_RUNTIME_NAMES = new Set([
+  'bash', 'bash.exe', 'bun', 'bun.exe', 'cargo', 'cargo.exe', 'cmd.exe', 'dart', 'dart.exe',
+  'deno', 'deno.exe', 'dotnet', 'dotnet.exe', 'flutter', 'flutter.bat', 'go', 'go.exe',
+  'gradle', 'gradle.bat', 'gradlew', 'gradlew.bat', 'java', 'java.exe', 'mvn', 'mvn.cmd',
+  'mvnw', 'mvnw.cmd', 'node', 'node.exe', 'npm', 'npm.cmd', 'npx', 'npx.cmd', 'pnpm',
+  'pnpm.cmd', 'powershell.exe', 'pwsh', 'pwsh.exe', 'python', 'python.exe', 'python3',
+  'python3.exe', 'sh', 'sh.exe', 'uv', 'uv.exe', 'yarn', 'yarn.cmd',
+]);
 
 function printHelp() {
   console.log(`Usage: node tools/stop-sdkwork-workspace-processes.mjs --workspace <path> [--dry-run]
@@ -69,14 +77,23 @@ export function commandLineReferencesWorkspace(workspaceRoot, commandLine) {
 }
 
 function processMatchesWorkspace(workspaceRoot, processInfo) {
-  return pathIsInsideWorkspace(workspaceRoot, processInfo.ExecutablePath ?? processInfo.executablePath)
-    || commandLineReferencesWorkspace(workspaceRoot, processInfo.CommandLine ?? processInfo.commandLine);
+  const executablePath = processInfo.ExecutablePath ?? processInfo.executablePath;
+  if (pathIsInsideWorkspace(workspaceRoot, executablePath)) return true;
+  const processName = path.basename(String(
+    processInfo.Name ?? processInfo.name ?? executablePath ?? '',
+  )).toLowerCase();
+  return WORKSPACE_COMMAND_RUNTIME_NAMES.has(processName)
+    && commandLineReferencesWorkspace(workspaceRoot, processInfo.CommandLine ?? processInfo.commandLine);
+}
+
+function processIdOf(processInfo) {
+  return Number(processInfo.Id ?? processInfo.ProcessId ?? processInfo.pid);
 }
 
 export function selectWorkspaceProcessRoots(processes, { workspaceRoot, currentPid = process.pid } = {}) {
   const selected = new Map();
   for (const processInfo of processes) {
-    const processId = Number(processInfo.Id ?? processInfo.pid);
+    const processId = processIdOf(processInfo);
     if (!Number.isInteger(processId) || processId === Number(currentPid)) continue;
     if (processMatchesWorkspace(workspaceRoot, processInfo)) selected.set(processId, processInfo);
   }
@@ -88,7 +105,7 @@ export function selectWorkspaceProcessRoots(processes, { workspaceRoot, currentP
 async function listWindowsProcesses() {
   const script = [
     'Get-CimInstance Win32_Process |',
-    'Select-Object Id,ParentProcessId,Name,ExecutablePath,CommandLine |',
+    'Select-Object ProcessId,ParentProcessId,Name,ExecutablePath,CommandLine |',
     'ConvertTo-Json -Compress',
   ].join(' ');
   const { stdout } = await execFileAsync('powershell.exe', [
@@ -137,15 +154,24 @@ export async function stopWorkspaceProcesses({
     console.log(`[sdkwork-stop] no processes found for ${resolvedWorkspaceRoot}`);
     return roots;
   }
+  const failures = [];
   for (const processInfo of roots) {
-    const processId = Number(processInfo.Id ?? processInfo.pid);
+    const processId = processIdOf(processInfo);
     const name = processInfo.Name ?? path.basename(processInfo.executablePath ?? 'process');
     if (dryRun) {
       console.log(`[sdkwork-stop] would stop PID ${processId} (${name}) for ${resolvedWorkspaceRoot}`);
       continue;
     }
     console.error(`[sdkwork-stop] stop PID ${processId} (${name}) for ${resolvedWorkspaceRoot}`);
-    await terminateProcess(processId);
+    try {
+      await terminateProcess(processId);
+    } catch (error) {
+      failures.push({ error, name, processId });
+      console.error(`[sdkwork-stop] failed PID ${processId} (${name}): ${error.message}`);
+    }
+  }
+  if (failures.length > 0) {
+    throw new Error(`failed to stop ${failures.length} process tree(s) for ${resolvedWorkspaceRoot}`);
   }
   return roots;
 }

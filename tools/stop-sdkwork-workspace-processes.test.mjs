@@ -30,6 +30,32 @@ test('selects only workspace process-tree roots and excludes the stopper itself'
   assert.deepEqual(selected.map((processInfo) => processInfo.Id), [101]);
 });
 
+test('selects Windows CIM processes by ProcessId', () => {
+  const selected = selectWorkspaceProcessRoots([
+    {
+      ProcessId: 111,
+      ParentProcessId: 1,
+      Name: 'cargo.exe',
+      CommandLine: 'cargo run --manifest-path E:/sdkwork-space/sdkwork-im/Cargo.toml',
+    },
+    {
+      ProcessId: 112,
+      ParentProcessId: 111,
+      Name: 'sdkwork-im-standalone-gateway.exe',
+      ExecutablePath: 'E:/sdkwork-space/sdkwork-im/target/debug/sdkwork-im-standalone-gateway.exe',
+    },
+    {
+      ProcessId: 113,
+      ParentProcessId: 1,
+      Name: 'wps.exe',
+      ExecutablePath: 'C:/Program Files/WPS Office/wps.exe',
+      CommandLine: 'wps.exe /file=E:/sdkwork-space/sdkwork-im/docs/review.zip',
+    },
+  ], { workspaceRoot, currentPid: 999 });
+
+  assert.deepEqual(selected.map((processInfo) => processInfo.ProcessId), [111]);
+});
+
 test('terminates only selected workspace process-tree roots', async () => {
   const terminated = [];
   await stopWorkspaceProcesses({
@@ -44,4 +70,25 @@ test('terminates only selected workspace process-tree roots', async () => {
   });
 
   assert.deepEqual(terminated, [201]);
+});
+
+test('attempts every selected process tree before reporting termination failures', async () => {
+  const attempted = [];
+  await assert.rejects(
+    stopWorkspaceProcesses({
+      workspaceRoot,
+      currentPid: 999,
+      listProcesses: async () => [
+        { Id: 301, ParentProcessId: 1, Name: 'node.exe', CommandLine: 'node E:/sdkwork-space/sdkwork-im/scripts/dev.mjs' },
+        { Id: 302, ParentProcessId: 1, Name: 'cargo.exe', CommandLine: 'cargo run --manifest-path E:/sdkwork-space/sdkwork-im/Cargo.toml' },
+      ],
+      terminateProcess: async (processId) => {
+        attempted.push(processId);
+        if (processId === 301) throw new Error('already exiting');
+      },
+    }),
+    /failed to stop 1 process tree/u,
+  );
+
+  assert.deepEqual(attempted, [301, 302]);
 });
