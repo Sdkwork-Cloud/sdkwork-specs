@@ -132,6 +132,7 @@ Rules:
 | RPC contracts / gRPC services | `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md` |
 | Service discovery / dynamic RPC resolution | `DISCOVERY_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md` |
 | App identity/release | `APP_MANIFEST_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md` |
+| Source config, environment profiles, or deployable-root `etc/` | `SOURCE_CONFIG_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md` |
 | Security/auth | `IAM_SPEC.md`, `SUBJECT_ID_SPEC.md` when principal ids or SQL subject mapping is involved, `IAM_LOGIN_INTEGRATION_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md` |
 
 Language specs are on-demand. Do not require agents to load Rust, Java, TypeScript, and frontend specs for unrelated tasks.
@@ -142,6 +143,7 @@ Language specs are on-demand. Do not require agents to load Rust, Java, TypeScri
 
 - `AGENTS.md`: agent execution rules and relative spec entrypoint.
 - `sdkwork.app.config.json`: application identity, app metadata, release surfaces, and owned capabilities.
+- `etc/`: safe source-controlled deployment/runtime configuration for independently deployable roots; load it for environment, Base URL, bind, topology, or packaging-input work.
 - `.sdkwork/`: local skills, plugins, manifests, and repository/application AI workspace metadata.
 - `specs/`: module-local spec systems (`README.md`, `component.spec.json`, optional narrowing extensions) for authored apps, packages, crates, services, and SDK families; repository/application root `specs/` for cross-module machine contracts such as topology manifests.
 - `docs/`: repository/application documentation layout; Canon entrypoints are `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
@@ -165,7 +167,7 @@ This repository follows `../sdkwork-specs/README.md`. Do not copy root standards
 
 ## Application Identity
 
-Read `sdkwork.app.config.json` before changing application behavior, runtime config, SDK wiring, release metadata, or app-owned capabilities.
+Read `sdkwork.app.config.json` for application identity, registration, SDK/API inventory, release metadata, or app-owned capabilities. Read `etc/` for concrete environment, runtime, Base URL, bind, topology, and deployment values. Do not treat the app manifest as runtime configuration authority.
 
 ## Local Dictionary Structure
 
@@ -174,6 +176,7 @@ Read `sdkwork.app.config.json` before changing application behavior, runtime con
 - `specs/`: module-local spec systems for authored packages, crates, services, and SDK families; repository/application root `specs/` for cross-module machine contracts.
 - `docs/`: Canon documentation at `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 - `sdks/`: OpenAPI authorities and SDK generation artifacts.
+- `etc/`: deployable-root source configuration; required only for independently deployable applications and process hosts.
 
 ## Spec Resolution Order
 
@@ -187,13 +190,9 @@ Code changes require `../sdkwork-specs/CODE_STYLE_SPEC.md`, `../sdkwork-specs/NA
 
 Use this repository's package manifest scripts. Record commands and outputs.
 
-## HTTP API Response Envelope
+## Task-Specific Standards
 
-Follow `../sdkwork-specs/API_SPEC.md` section 4.5 and section 15. Omitted `x-sdkwork-wire-protocol` means SDKWork-owned custom API (`sdkwork-v3`). Success bodies use `SdkWorkApiResponse` with numeric `code` (`0`), `data`, and `traceId`; errors use `ProblemDetail` with numeric non-zero `code` and `traceId`. Operation patterns follow section 15.4: create returns `201`, delete returns `204` with no JSON body, and `PUT`/`PATCH` use SDK action `update`. Third-party compatibility `open-api` operations may preserve upstream wire only when every exempt operation declares `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id`. Run `node ../sdkwork-specs/tools/check-api-operation-patterns.mjs` and `node ../sdkwork-specs/tools/check-api-response-envelope.mjs` for the owning repo or workspace before completing API work.
-
-## List And Search Pagination
-
-Follow `../sdkwork-specs/PAGINATION_SPEC.md`. List/search APIs use standard `SdkWorkListQuery` input and `data.items` + `data.pageInfo` output; pagination must happen at SQL/keyset or maintained indexes, not in-process collect + slice. HTTP GET list/search query strings use `page_size` only; `pageSize`, `limit`, numeric cursor offsets, and other pagination aliases are technical debt and are forbidden for new or pre-launch applications. Run `node ../sdkwork-specs/tools/check-pagination.mjs` before completing list/search work.
+Keep task triggers concise. API work loads `API_SPEC.md`; list/search work loads `PAGINATION_SPEC.md`; source config work loads `SOURCE_CONFIG_SPEC.md`. Link the authority and validator instead of copying its normative body into `AGENTS.md`.
 ```
 
 ## 8. Compatibility Shim Templates
@@ -236,11 +235,10 @@ Validation should check:
 - `AGENTS.md` references `CODE_STYLE_SPEC.md` §7 build source integrity rules
   when the repository owns build scripts, dev runners, or cross-repository
   dependency preparation tooling.
-- `AGENTS.md` includes `## List And Search Pagination` with a relative
-  `PAGINATION_SPEC.md` authority reference and `check-pagination.mjs`
-  verification command.
-- `AGENTS.md` includes the HTTP operation-pattern validator command when the
-  repository owns, generates, serves, or consumes SDKWork HTTP APIs.
+- `AGENTS.md` uses a concise task-specific routing section and does not copy API,
+  pagination, SDK integration, source config, or other global normative bodies.
+- Deployable roots reference `SOURCE_CONFIG_SPEC.md` and identify `etc/` as the
+  concrete environment/runtime configuration authority.
 - When `docs/` is active, `AGENTS.md` and root `README.md` link to `docs/README.md`, `docs/product/prd/PRD.md`, and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 
 Application repositories may call the canonical validators with:

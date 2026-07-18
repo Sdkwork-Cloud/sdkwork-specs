@@ -22,7 +22,7 @@ const SKIP_FILES = new Set([
 ]);
 
 const SCAN_SUFFIXES = ['.env.postgres.example', '.toml.example', '.yaml.example', '.yml.example'];
-const SCAN_DIRS = ['configs/topology', 'deployments/templates', 'config/server', 'config/container', 'config/desktop'];
+const SCAN_DIRS = ['etc/topology', 'deployments/templates', 'config/server', 'config/container', 'config/desktop'];
 
 function isCheckedInConfigFile(filePath) {
   const normalized = path.normalize(filePath);
@@ -36,7 +36,7 @@ function isCheckedInConfigFile(filePath) {
   if (base === '.env.postgres.example') {
     return true;
   }
-  if (filePath.includes(`${path.sep}configs${path.sep}topology${path.sep}`) && base.endsWith('.env')) {
+  if (filePath.includes(`${path.sep}etc${path.sep}topology${path.sep}`) && base.endsWith('.env')) {
     return true;
   }
   if (filePath.includes(`${path.sep}deployments${path.sep}templates${path.sep}`)) {
@@ -119,7 +119,12 @@ function inspectLine(line, filePath) {
     }
   }
 
-  if (/sdkwork_chat_prod|sdkwork_knowledgebase_(dev|prod)|sdkwork_news_dev|sdkwork_forum_dev|sdkwork_discovery|sdkwork_documents(_dev)?|sdkwork_rtc|sdkwork_ai_prod_ai_dev/u.test(trimmed)) {
+  const isDatabaseAssignment = /^(?:[A-Z0-9_]*(?:DATABASE|POSTGRES)[A-Z0-9_]*|database|username)\s*=/u
+    .test(trimmed);
+  if (
+    isDatabaseAssignment
+    && /sdkwork_chat_prod|sdkwork_knowledgebase_(dev|prod)|sdkwork_news_dev|sdkwork_forum_dev|sdkwork_discovery|sdkwork_documents(_dev)?|sdkwork_rtc|sdkwork_ai_prod_ai_dev/u.test(trimmed)
+  ) {
     return 'legacy per-app database identity';
   }
 

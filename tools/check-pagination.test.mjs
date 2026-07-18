@@ -223,6 +223,148 @@ paths:
     assert.match(result.stderr, /page_size query parameter must declare maximum 200/);
   });
 
+  it('accepts a complete unexpired operation-level page-size exception', () => {
+    const root = makeRepo();
+    write(root, 'apis/app-api/demo.openapi.json', JSON.stringify({
+      openapi: '3.1.0',
+      paths: {
+        '/app/v3/api/demo/files': {
+          get: {
+            operationId: 'files.list',
+            'x-sdkwork-pagination-exception': {
+              id: 'EX-2099-0001',
+              spec: 'PAGINATION_SPEC.md',
+              rule: 'page_size maximum 200',
+              owner: 'sdkwork-demo',
+              reason: 'Interactive file-system browsing requires a larger first page.',
+              risk: 'Larger response payload and frontend DOM growth.',
+              expiresAt: '2099-12-31',
+              removalPlan: 'Reassess after list virtualization and production telemetry.',
+              maximumPageSize: 1000,
+              controls: ['Cursor continuation', 'Hard response-page limit'],
+            },
+            parameters: [{
+              name: 'page_size',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 1000 },
+            }],
+          },
+        },
+      },
+    }, null, 2));
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('accepts a complete YAML operation-level page-size exception', () => {
+    const root = makeRepo();
+    write(root, 'apis/app-api/demo.openapi.yaml', `
+openapi: 3.1.0
+paths:
+  /app/v3/api/demo/files:
+    get:
+      operationId: files.list
+      x-sdkwork-pagination-exception:
+        id: EX-2099-0002
+        spec: PAGINATION_SPEC.md
+        rule: page_size maximum 200
+        owner: sdkwork-demo
+        reason: Interactive file-system browsing requires a larger first page.
+        risk: Larger response payload and frontend DOM growth.
+        expiresAt: 2099-12-31
+        removalPlan: Reassess after list virtualization and production telemetry.
+        maximumPageSize: 1000
+        controls:
+          - Cursor continuation
+          - Hard response-page limit
+      parameters:
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+`);
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('rejects incomplete or mismatched operation-level page-size exceptions', () => {
+    const root = makeRepo();
+    write(root, 'apis/app-api/demo.openapi.json', JSON.stringify({
+      openapi: '3.1.0',
+      paths: {
+        '/app/v3/api/demo/files': {
+          get: {
+            operationId: 'files.list',
+            'x-sdkwork-pagination-exception': {
+              id: 'EX-2099-0001',
+              spec: 'PAGINATION_SPEC.md',
+              rule: 'page_size maximum 200',
+              owner: 'sdkwork-demo',
+              reason: 'Interactive file-system browsing requires a larger first page.',
+              risk: 'Larger response payload and frontend DOM growth.',
+              expiresAt: '2099-12-31',
+              removalPlan: 'Reassess after list virtualization and production telemetry.',
+              maximumPageSize: 500,
+              controls: ['Cursor continuation'],
+            },
+            parameters: [{
+              name: 'page_size',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 1000 },
+            }],
+          },
+        },
+      },
+    }, null, 2));
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0, 'expected checker failure');
+    assert.match(result.stderr, /maximumPageSize must equal page_size maximum/);
+  });
+
+  it('rejects expired operation-level page-size exceptions', () => {
+    const root = makeRepo();
+    write(root, 'apis/app-api/demo.openapi.json', JSON.stringify({
+      openapi: '3.1.0',
+      paths: {
+        '/app/v3/api/demo/files': {
+          get: {
+            operationId: 'files.list',
+            'x-sdkwork-pagination-exception': {
+              id: 'EX-2000-0001',
+              spec: 'PAGINATION_SPEC.md',
+              rule: 'page_size maximum 200',
+              owner: 'sdkwork-demo',
+              reason: 'Legacy file-system browser page size.',
+              risk: 'Larger response payload and frontend DOM growth.',
+              expiresAt: '2000-01-01',
+              removalPlan: 'Reduce the page size after list virtualization.',
+              maximumPageSize: 1000,
+              controls: ['Cursor continuation'],
+            },
+            parameters: [{
+              name: 'page_size',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 1000 },
+            }],
+          },
+        },
+      },
+    }, null, 2));
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0, 'expected checker failure');
+    assert.match(result.stderr, /pagination-exception is expired/);
+  });
+
   it('rejects list pageInfo schemas without mode', () => {
     const root = makeRepo();
     write(root, 'apis/open-api/demo.openapi.yaml', `

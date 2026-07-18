@@ -225,7 +225,7 @@ function ensureCloudGatewayComponent(spec) {
     crate: 'sdkwork-api-cloud-gateway',
     binary: 'sdkwork-api-cloud-gateway',
     repository: 'sdkwork-api-cloud-gateway',
-    configGlob: `configs/sdkwork-api-cloud-gateway.${appSlug}.{profile}.toml`,
+    configGlob: `etc/sdkwork-api-cloud-gateway.${appSlug}.{profile}.toml`,
   };
   return spec;
 }
@@ -319,7 +319,7 @@ function ensureOrchestrationProfiles(spec) {
 
 function ensureProfileFiles(spec, repoRoot) {
   spec.profileFiles ??= {};
-  const profileRoot = spec.profileRoot ?? 'configs/topology';
+  const profileRoot = spec.profileRoot ?? 'etc/topology';
   const pattern = spec.profilePattern ?? '{deploymentProfile}.{environment}.env';
 
   for (const profileId of canonicalProfileIds(spec)) {
@@ -552,7 +552,7 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
     kind: 'sdkwork.app.topology',
     appId: meta.appId,
     archetype: 'application-http-gateway',
-    profileRoot: 'configs/topology',
+    profileRoot: 'etc/topology',
     profilePattern: '{deploymentProfile}.{environment}.env',
     vocabulary: {
       deploymentProfile: { allowed: ['standalone', 'cloud'] },
@@ -606,7 +606,7 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
         crate: 'sdkwork-api-cloud-gateway',
         binary: 'sdkwork-api-cloud-gateway',
         repository: 'sdkwork-api-cloud-gateway',
-        configGlob: `configs/sdkwork-api-cloud-gateway.${appSlug}.{profile}.toml`,
+        configGlob: `etc/sdkwork-api-cloud-gateway.${appSlug}.{profile}.toml`,
       },
     },
     orchestration: { profiles: {} },

@@ -117,10 +117,6 @@ function run(workspace, manifestPath, ...args) {
   });
 }
 
-function canonicalTail(text) {
-  return text.slice(text.indexOf('## App SDK Consumer Imports'));
-}
-
 afterEach(() => {
   while (temporaryRoots.length > 0) {
     rmSync(temporaryRoots.pop(), { recursive: true, force: true });
@@ -145,7 +141,7 @@ describe('align-agents-progressive-loading', () => {
     assert.equal(readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), before);
   });
 
-  it('writes only routing blocks and preserves canonical sections byte-for-byte', () => {
+  it('writes routing blocks and removes copied global standard bodies', () => {
     const { workspace, root, appPath } = makeWorkspace();
     const before = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
     const manifestPath = writeManifest(workspace, manifestFor({
@@ -167,7 +163,9 @@ describe('align-agents-progressive-loading', () => {
     assert.match(after, /Keep this local resolution note\./);
     assert.match(after, /Keep this local verification command/);
     assert.match(after, /Keep this local execution rule\./);
-    assert.equal(canonicalTail(after), canonicalTail(before));
+    assert.doesNotMatch(after, /^## (?:App SDK Consumer Imports|HTTP API Response Envelope|List And Search Pagination)$/gmu);
+    assert.match(after, /^## Task-Specific Standards$/mu);
+    assert.match(after, /Keep local human review text\./);
   });
 
   it('replaces existing marker-owned content without changing local content', () => {
@@ -217,7 +215,7 @@ describe('align-agents-progressive-loading', () => {
     assert.match(after, /Keep this local execution rule\./);
   });
 
-  it('normalizes every relative sdkwork-specs prefix outside canonical bodies', () => {
+  it('normalizes every relative sdkwork-specs prefix in retained content', () => {
     const withBrokenPaths = agentText().replace(
       '## Spec Resolution Order',
       [
@@ -228,9 +226,6 @@ describe('align-agents-progressive-loading', () => {
         '',
         '## Spec Resolution Order',
       ].join('\n'),
-    ).replace(
-      'CANONICAL APP SDK BODY MUST STAY BYTE-FOR-BYTE.',
-      'CANONICAL APP SDK BODY MUST STAY BYTE-FOR-BYTE. `../../sdkwork-specs/README.md`',
     );
     const { workspace, root, appPath } = makeWorkspace({ agent: withBrokenPaths });
     const manifestPath = writeManifest(workspace, manifestFor({
@@ -246,7 +241,7 @@ describe('align-agents-progressive-loading', () => {
     assert.equal(result.status, 0, result.stderr);
     assert.match(after, /`\.\.\/sdkwork-specs\/README\.md` and `\.\.\/sdkwork-specs\/SOUL\.md`/);
     assert.match(after, /`sdkwork-specs\/README\.md` unchanged/);
-    assert.match(after, /CANONICAL APP SDK BODY MUST STAY BYTE-FOR-BYTE\. `\.\.\/\.\.\/sdkwork-specs\/README\.md`/);
+    assert.doesNotMatch(after, /CANONICAL APP SDK BODY/);
   });
 
   it('safely creates missing routing sections for a sparse legacy entrypoint', () => {
@@ -310,7 +305,8 @@ describe('align-agents-progressive-loading', () => {
     assert.match(after, /PNPM_SCRIPT_SPEC\.md/);
     assert.match(after, /GITHUB_WORKFLOW_SPEC\.md/);
     assert.match(after, /RUST_CODE_SPEC\.md.*JAVA_CODE_SPEC\.md.*TYPESCRIPT_CODE_SPEC\.md.*FRONTEND_CODE_SPEC\.md/);
-    assert.equal(canonicalTail(after), canonicalTail(sparse));
+    assert.doesNotMatch(after, /CANONICAL (?:APP SDK|HTTP|PAGINATION) BODY/);
+    assert.match(after, /^## Task-Specific Standards$/mu);
   });
 
   it('rejects duplicate required sections before changing an existing entrypoint', () => {
@@ -343,7 +339,7 @@ describe('align-agents-progressive-loading', () => {
     assert.equal(readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), duplicate);
   });
 
-  it('repairs the HTTP envelope only when both opt-in switches are present', () => {
+  it('retires copied HTTP envelope sections even when legacy repair switches are present', () => {
     const duplicateHttp = agentText().replace(
       '## List And Search Pagination',
       [
@@ -367,12 +363,12 @@ describe('align-agents-progressive-loading', () => {
     const after = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
 
     assert.equal(result.status, 0, result.stderr);
-    assert.equal((after.match(/^## HTTP API Response Envelope$/gmu) ?? []).length, 1);
+    assert.equal((after.match(/^## HTTP API Response Envelope$/gmu) ?? []).length, 0);
     assert.doesNotMatch(after, /Legacy success uses/);
-    assert.match(after, /SdkWorkApiResponse/);
+    assert.match(after, /API_SPEC\.md/);
   });
 
-  it('ensures pagination only when both opt-in switches are present', () => {
+  it('routes pagination without recreating copied pagination sections', () => {
     const withoutPagination = agentText().replace(
       [
         '## List And Search Pagination',
@@ -395,7 +391,7 @@ describe('align-agents-progressive-loading', () => {
     const after = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(after, /^## List And Search Pagination$/mu);
+    assert.doesNotMatch(after, /^## List And Search Pagination$/mu);
     assert.match(after, /PAGINATION_SPEC\.md/);
     assert.match(after, /check-pagination\.mjs/);
   });
@@ -419,15 +415,13 @@ describe('align-agents-progressive-loading', () => {
     const created = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
     assert.equal(writeResult.status, 0, writeResult.stderr);
     for (const heading of [
-      '## App SDK Consumer Imports',
-      '## HTTP API Response Envelope',
-      '## List And Search Pagination',
+      '## Task-Specific Standards',
       '## Human Review Rules',
     ]) {
       assert.ok(created.includes(heading), `missing ${heading}`);
     }
-    assert.match(created, /@sdkwork\/<application-code>-app-sdk/);
-    assert.match(created, /SdkWorkApiResponse/);
+    assert.match(created, /API_SPEC\.md/);
+    assert.match(created, /SOURCE_CONFIG_SPEC\.md/);
     assert.match(created, /check-pagination\.mjs/);
     assert.match(created, /\.\.\/\.\.\/\.\.\/sdkwork-specs\/SOUL\.md/);
     assert.match(created, /<!-- SDKWORK-PROGRESSIVE-LOADING: v1 -->/);

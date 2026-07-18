@@ -376,6 +376,52 @@ function pageSizeQueryHasCompliantMaximum(parameter) {
   return Number.isFinite(maximum) && maximum <= 200;
 }
 
+function pageSizeExceptionIssue(operation, parameter) {
+  const maximum = Number(parameter?.schema?.maximum);
+  if (!Number.isFinite(maximum)) {
+    return 'page_size query parameter must declare maximum 200';
+  }
+  const exception = operation?.['x-sdkwork-pagination-exception'];
+  if (!exception || typeof exception !== 'object' || Array.isArray(exception)) {
+    return 'page_size maximum above 200 requires x-sdkwork-pagination-exception';
+  }
+  const requiredTextFields = [
+    'id',
+    'spec',
+    'rule',
+    'owner',
+    'reason',
+    'risk',
+    'expiresAt',
+    'removalPlan',
+  ];
+  const missingField = requiredTextFields.find((field) => (
+    typeof exception[field] !== 'string' || exception[field].trim().length === 0
+  ));
+  if (missingField) {
+    return `x-sdkwork-pagination-exception.${missingField} must be a non-empty string`;
+  }
+  if (!Array.isArray(exception.controls) || exception.controls.length === 0 || exception.controls.some((control) => (
+    typeof control !== 'string' || control.trim().length === 0
+  ))) {
+    return 'x-sdkwork-pagination-exception.controls must be a non-empty string array';
+  }
+  if (!Number.isInteger(maximum) || maximum <= 200) {
+    return 'page_size exception requires an integer maximum above 200';
+  }
+  if (exception.maximumPageSize !== maximum) {
+    return 'x-sdkwork-pagination-exception.maximumPageSize must equal page_size maximum';
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(exception.expiresAt)) {
+    return 'x-sdkwork-pagination-exception.expiresAt must use YYYY-MM-DD';
+  }
+  const expiresAt = Date.parse(`${exception.expiresAt}T23:59:59.999Z`);
+  if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) {
+    return 'x-sdkwork-pagination-exception is expired';
+  }
+  return null;
+}
+
 function hasPageInfoWithoutModeInJson(value) {
   if (!value || typeof value !== 'object') {
     return false;
@@ -465,6 +511,121 @@ function pageSizeQueryHasMaximum200(text) {
   return queryParameterBlocks(text, 'page_size').every((block) => /maximum:\s*200\b/u.test(block));
 }
 
+function yamlOperationBlocks(text) {
+  const lines = text.split(/\r?\n/u);
+  const operations = [];
+  let pathsIndent = null;
+  let currentPath = null;
+  let currentPathIndent = null;
+  let currentOperation = null;
+  const finishOperation = (end) => {
+    if (!currentOperation) return;
+    operations.push({
+      ...currentOperation,
+      text: lines.slice(currentOperation.start, end).join('\n'),
+    });
+    currentOperation = null;
+  };
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const trimmed = line.trim();
+    const indent = line.length - line.trimStart().length;
+    if (pathsIndent === null) {
+      if (trimmed === 'paths:') pathsIndent = indent;
+      continue;
+    }
+    if (trimmed && indent <= pathsIndent && trimmed !== 'paths:') {
+      finishOperation(index);
+      break;
+    }
+    const pathMatch = trimmed.match(/^(['"]?)(\/[^'"]*)\1:\s*$/u);
+    if (pathMatch && indent > pathsIndent) {
+      finishOperation(index);
+      currentPath = pathMatch[2];
+      currentPathIndent = indent;
+      continue;
+    }
+    const methodMatch = trimmed.match(/^([a-z]+):\s*$/u);
+    if (
+      currentPath
+      && currentPathIndent !== null
+      && indent > currentPathIndent
+      && methodMatch
+      && HTTP_METHODS.has(methodMatch[1])
+    ) {
+      finishOperation(index);
+      currentOperation = {
+        apiPath: currentPath,
+        method: methodMatch[1],
+        indent,
+        start: index,
+      };
+      continue;
+    }
+    if (currentOperation && trimmed && indent <= currentOperation.indent) {
+      finishOperation(index);
+    }
+  }
+  finishOperation(lines.length);
+  return operations;
+}
+
+function unquoteYamlScalar(value) {
+  const trimmed = value.trim();
+  if (
+    trimmed.length >= 2
+    && ((trimmed.startsWith('"') && trimmed.endsWith('"'))
+      || (trimmed.startsWith("'") && trimmed.endsWith("'")))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function yamlPaginationException(operationText) {
+  const lines = operationText.split(/\r?\n/u);
+  const start = lines.findIndex((line) => /^\s*x-sdkwork-pagination-exception:\s*$/u.test(line));
+  if (start < 0) return null;
+  const exceptionIndent = lines[start].length - lines[start].trimStart().length;
+  const exception = {};
+  let controlsIndent = null;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const indent = line.length - line.trimStart().length;
+    if (indent <= exceptionIndent) break;
+    if (controlsIndent !== null && indent > controlsIndent && trimmed.startsWith('- ')) {
+      exception.controls.push(unquoteYamlScalar(trimmed.slice(2)));
+      continue;
+    }
+    controlsIndent = null;
+    const fieldMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9]*):\s*(.*)$/u);
+    if (!fieldMatch) continue;
+    const [, field, rawValue] = fieldMatch;
+    if (field === 'controls') {
+      exception.controls = [];
+      controlsIndent = indent;
+    } else if (field === 'maximumPageSize') {
+      exception[field] = Number(rawValue);
+    } else {
+      exception[field] = unquoteYamlScalar(rawValue);
+    }
+  }
+  return exception;
+}
+
+function yamlPageSizeParameters(operationText) {
+  return queryParameterBlocks(operationText, 'page_size').map((block) => {
+    const maximum = block.match(/\bmaximum:\s*(\d+)\b/u)?.[1];
+    return {
+      name: 'page_size',
+      in: 'query',
+      schema: maximum ? { maximum: Number(maximum) } : {},
+    };
+  });
+}
+
 function hasInlinePageInfoWithoutMode(text) {
   const yamlPattern = /pageInfo:\s*\n[\s\S]{0,700}?(?:hasMore:|nextCursor:)/gu;
   let yamlMatch;
@@ -494,7 +655,7 @@ function scanOpenApiFile(file, repoRoot, issues) {
   if (jsonDocument) {
     const operations = listOpenApiOperations(jsonDocument);
     const sdkworkOwnedOperations = operations.filter(({ operation }) => !isExternalOperation(operation));
-    for (const { parameters } of sdkworkOwnedOperations) {
+    for (const { operation, parameters } of sdkworkOwnedOperations) {
       for (const parameter of parameters) {
         if (!parameter || parameter.in !== 'query') {
           continue;
@@ -505,7 +666,10 @@ function scanOpenApiFile(file, repoRoot, issues) {
           }
         }
         if (parameter.name === 'page_size' && !pageSizeQueryHasCompliantMaximum(parameter)) {
-          issues.push(`${rel}: [openapi-query-page-size-max] page_size query parameter must declare maximum 200`);
+          const exceptionIssue = pageSizeExceptionIssue(operation, parameter);
+          if (exceptionIssue) {
+            issues.push(`${rel}: [openapi-query-page-size-max] ${exceptionIssue}`);
+          }
         }
       }
     }
@@ -517,13 +681,41 @@ function scanOpenApiFile(file, repoRoot, issues) {
   if (!/\bopenapi\s*[:"]\s*["']?3\./iu.test(text)) {
     return;
   }
-  for (const smell of OPENAPI_QUERY_SMELLS) {
-    if (hasQueryParameterNamed(text, smell.parameterName)) {
-      issues.push(`${rel}: [${smell.id}] ${smell.message}`);
+  const yamlOperations = yamlOperationBlocks(text);
+  if (yamlOperations.length > 0) {
+    for (const { text: operationText } of yamlOperations) {
+      if (isExternalOperation({
+        'x-sdkwork-wire-protocol': operationText.match(/x-sdkwork-wire-protocol:\s*['"]?([^'"\s]+)/u)?.[1],
+        'x-sdkwork-external-protocol-id': operationText.match(/x-sdkwork-external-protocol-id:\s*['"]?([^'"\s]+)/u)?.[1],
+      })) {
+        continue;
+      }
+      for (const smell of OPENAPI_QUERY_SMELLS) {
+        if (hasQueryParameterNamed(operationText, smell.parameterName)) {
+          issues.push(`${rel}: [${smell.id}] ${smell.message}`);
+        }
+      }
+      for (const parameter of yamlPageSizeParameters(operationText)) {
+        if (!pageSizeQueryHasCompliantMaximum(parameter)) {
+          const exceptionIssue = pageSizeExceptionIssue(
+            { 'x-sdkwork-pagination-exception': yamlPaginationException(operationText) },
+            parameter,
+          );
+          if (exceptionIssue) {
+            issues.push(`${rel}: [openapi-query-page-size-max] ${exceptionIssue}`);
+          }
+        }
+      }
     }
-  }
-  if (hasQueryParameterNamed(text, 'page_size') && !pageSizeQueryHasMaximum200(text)) {
-    issues.push(`${rel}: [openapi-query-page-size-max] page_size query parameter must declare maximum 200`);
+  } else {
+    for (const smell of OPENAPI_QUERY_SMELLS) {
+      if (hasQueryParameterNamed(text, smell.parameterName)) {
+        issues.push(`${rel}: [${smell.id}] ${smell.message}`);
+      }
+    }
+    if (hasQueryParameterNamed(text, 'page_size') && !pageSizeQueryHasMaximum200(text)) {
+      issues.push(`${rel}: [openapi-query-page-size-max] page_size query parameter must declare maximum 200`);
+    }
   }
   if (hasInlinePageInfoWithoutMode(text)) {
     issues.push(`${rel}: [openapi-page-info-mode] pageInfo schema must include mode`);

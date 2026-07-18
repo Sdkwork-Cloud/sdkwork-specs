@@ -194,7 +194,7 @@ Extensions `MUST NOT` replace the core directories in section 5.1.
 
 ### 5.3 Workspace Integration
 
-`SDKWORK_WORKSPACE_SPEC.md` `MUST` treat `database/` as a standard application-root directory alongside `apis/`, `sdks/`, `configs/`, and `deployments/`.
+`SDKWORK_WORKSPACE_SPEC.md` `MUST` treat `database/` as a standard application-root directory alongside `apis/`, `sdks/`, `etc/`, and `deployments/`.
 
 Repository verification `SHOULD` include a shared validator:
 

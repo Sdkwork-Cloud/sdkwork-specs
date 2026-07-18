@@ -91,7 +91,7 @@ Examples:
 Profile env file path:
 
 ```text
-configs/topology/<deploymentProfile>.<environment>.env
+etc/topology/<deploymentProfile>.<environment>.env
 ```
 
 CLI:

@@ -128,8 +128,8 @@ function checkSpec(repoRoot, specPath) {
       spec.components?.cloudGateway?.configGlob ?? '',
     );
     const slug = slugMatch?.[1] ?? (spec.appId ?? '').replace(/^sdkwork-/, '');
-    const devConfig = path.join(repoRoot, 'configs', `sdkwork-api-cloud-gateway.${slug}.development.toml`);
-    const prodConfig = path.join(repoRoot, 'configs', `sdkwork-api-cloud-gateway.${slug}.production.toml`);
+    const devConfig = path.join(repoRoot, 'etc', `sdkwork-api-cloud-gateway.${slug}.development.toml`);
+    const prodConfig = path.join(repoRoot, 'etc', `sdkwork-api-cloud-gateway.${slug}.production.toml`);
     if (!fs.existsSync(devConfig)) {
       issues.push(`${rel}: missing cloud gateway config ${path.relative(repoRoot, devConfig)}`);
     }

@@ -11,7 +11,7 @@ function makeWorkspace() {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-align-topology-'));
   const repoRoot = path.join(workspace, 'sdkwork-demo');
   fs.mkdirSync(path.join(repoRoot, 'specs'), { recursive: true });
-  fs.mkdirSync(path.join(repoRoot, 'configs', 'topology'), { recursive: true });
+  fs.mkdirSync(path.join(repoRoot, 'etc', 'topology'), { recursive: true });
   fs.writeFileSync(
     path.join(repoRoot, 'sdkwork.app.config.json'),
     `${JSON.stringify({
@@ -43,7 +43,7 @@ test('migrates topology specs from retired serviceLayout profiles to two-segment
     schemaVersion: 2,
     kind: 'sdkwork.app.topology',
     appId: 'sdkwork-demo',
-    profileRoot: 'configs/topology',
+    profileRoot: 'etc/topology',
     profilePattern: '{deploymentProfile}.{serviceLayout}.{environment}.env',
     vocabulary: {
       deploymentProfile: { allowed: ['standalone', 'cloud'] },
@@ -56,8 +56,8 @@ test('migrates topology specs from retired serviceLayout profiles to two-segment
       desktopBuildProfileId: 'standalone.unified-process.production',
     },
     profileFiles: {
-      'standalone.unified-process.development': 'configs/topology/standalone.unified-process.development.env',
-      'cloud.split-services.production': 'configs/topology/cloud.split-services.production.env',
+      'standalone.unified-process.development': 'etc/topology/standalone.unified-process.development.env',
+      'cloud.split-services.production': 'etc/topology/cloud.split-services.production.env',
     },
     envKeys: {
       deploymentProfile: 'SDKWORK_DEMO_DEPLOYMENT_PROFILE',
@@ -86,7 +86,7 @@ test('migrates topology specs from retired serviceLayout profiles to two-segment
     },
   });
   fs.writeFileSync(
-    path.join(repoRoot, 'configs/topology/standalone.unified-process.development.env'),
+    path.join(repoRoot, 'etc/topology/standalone.unified-process.development.env'),
     [
       '# standalone.unified-process.development',
       'SDKWORK_DEMO_DEPLOYMENT_PROFILE=standalone',
@@ -97,7 +97,7 @@ test('migrates topology specs from retired serviceLayout profiles to two-segment
     ].join('\n'),
   );
   fs.writeFileSync(
-    path.join(repoRoot, 'configs/topology/cloud.split-services.production.env'),
+    path.join(repoRoot, 'etc/topology/cloud.split-services.production.env'),
     [
       '# cloud.split-services.production',
       'SDKWORK_DEMO_DEPLOYMENT_PROFILE=cloud',
@@ -129,9 +129,9 @@ test('migrates topology specs from retired serviceLayout profiles to two-segment
   assert.equal(topology.defaults.productionProfileId, 'cloud.production');
   assert.ok(topology.orchestration.profiles['standalone.development']);
   assert.ok(topology.orchestration.profiles['cloud.production']);
-  assert.equal(fs.existsSync(path.join(repoRoot, 'configs/topology/standalone.unified-process.development.env')), false);
-  assert.equal(fs.existsSync(path.join(repoRoot, 'configs/topology/cloud.split-services.production.env')), false);
-  const standaloneEnv = fs.readFileSync(path.join(repoRoot, 'configs/topology/standalone.development.env'), 'utf8');
+  assert.equal(fs.existsSync(path.join(repoRoot, 'etc/topology/standalone.unified-process.development.env')), false);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'etc/topology/cloud.split-services.production.env')), false);
+  const standaloneEnv = fs.readFileSync(path.join(repoRoot, 'etc/topology/standalone.development.env'), 'utf8');
   assert.match(standaloneEnv, /SDKWORK_DEMO_PROFILE_ID=standalone\.development/);
   assert.doesNotMatch(standaloneEnv, /SERVICE_LAYOUT|unified-process|split-services/);
 });

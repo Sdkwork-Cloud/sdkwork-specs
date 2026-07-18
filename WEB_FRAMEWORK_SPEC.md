@@ -328,6 +328,29 @@ The framework enforces secure defaults without per-route business configuration:
   unique-local-address origins on numeric development ports. The policy `MUST` be rejected by
   production validation; production remains an exact-origin allowlist. Responses that echo a
   concrete allowed origin `MUST` include `Vary: Origin` and `MUST NOT` emit `*` with credentials.
+- A production or production-like gateway that mounts any browser-callable `app` surface `MUST`
+  fail startup when `allowAnyOrigin` is enabled or `allowedOrigins` is empty. Empty means deny all
+  browser origins; it `MUST NOT` be interpreted as same-origin discovery. Each entry `MUST` be an
+  exact HTTP(S) origin without a wildcard, path, query, or fragment. Browser and desktop WebView
+  callers use the same rule, including OAuth authorization and callback completion requests.
+- The source deployment profile is the origin-set authority under `SOURCE_CONFIG_SPEC.md`. Client
+  SDK base URL selection, OAuth redirect URI construction, gateway routing, and CORS configuration
+  `MUST` resolve from the same selected environment/profile; SDK consumers `MUST NOT` repair a 403
+  by suppressing `Origin`, proxying credentials through an ungoverned endpoint, or enabling `*`.
+- Each mounted API router `MUST` have exactly one CORS policy authority: the standard Web Framework
+  CORS interceptor configured with the environment-derived `SecurityPolicy`. A standalone/cloud
+  process host `MUST NOT` wrap routers that already use `WebFrameworkLayer` with a second Tower,
+  Axum, Spring, proxy, or application-local CORS middleware. Public edge proxies may add transport
+  headers only when they preserve and do not independently contradict the application policy.
+- Multi-surface assemblies `MUST` inject the same resolved environment and configured origin set
+  into every mounted Web Framework layer. Process-host assembly, router merge order, and SDK surface
+  must not change whether an Origin is accepted.
+- Embedded dependency routers resolve the host-selected lifecycle environment through the shared
+  `SDKWORK_ENVIRONMENT` projection and the host origin set through
+  `SDKWORK_CORS_ALLOWED_ORIGINS`, as governed by `SOURCE_CONFIG_SPEC.md`. Application-scoped keys
+  such as `SDKWORK_<APP>_ENVIRONMENT` remain application inputs; they do not replace the shared
+  projection consumed by independently owned dependency routers. An outer gateway and its embedded
+  routers `MUST NOT` resolve different environments or CORS policies for the same request.
 - Request ID: server-generated UUID v4; overwrite client `X-Request-Id`
 - Unauthenticated protected paths: `401` problem+json
 - Oversized body: `413`

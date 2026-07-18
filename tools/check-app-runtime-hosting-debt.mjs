@@ -68,7 +68,7 @@ function main() {
     if (!fs.existsSync(path.join(repoRoot, 'specs/topology.spec.json'))) continue;
     if (name === 'sdkwork-deployments') continue;
 
-    const scanRoots = ['package.json', 'configs/topology', 'scripts', 'tests'];
+    const scanRoots = ['package.json', 'etc/topology', 'scripts', 'tests'];
     for (const root of scanRoots) {
       const abs = path.join(repoRoot, root);
       if (!fs.existsSync(abs)) continue;

@@ -219,14 +219,28 @@ function validateAgents(root) {
     if (!text.includes('GITHUB_WORKFLOW_SPEC.md')) {
       issues.push(`${label} must reference GITHUB_WORKFLOW_SPEC.md for packaging workflow changes`);
     }
-    if (!hasHeading(text, 'List And Search Pagination')) {
-      issues.push(`${label} missing required section "List And Search Pagination"`);
-    }
     if (!/PAGINATION_SPEC\.md/u.test(text)) {
       issues.push(`${label} must reference PAGINATION_SPEC.md for list/search pagination work`);
     }
     if (!/check-pagination\.mjs/u.test(text)) {
       issues.push(`${label} must reference check-pagination.mjs verification for list/search pagination work`);
+    }
+    if (fs.existsSync(path.join(agentRoot, 'etc'))) {
+      if (!text.includes('SOURCE_CONFIG_SPEC.md')) {
+        issues.push(`${label} must reference SOURCE_CONFIG_SPEC.md when the root owns etc/`);
+      }
+      if (!text.includes('`etc/`')) {
+        issues.push(`${label} must identify etc/ as deployable-root source configuration`);
+      }
+    }
+    for (const duplicatedHeading of [
+      'App SDK Consumer Imports',
+      'HTTP API Response Envelope',
+      'List And Search Pagination',
+    ]) {
+      if (hasHeading(text, duplicatedHeading)) {
+        issues.push(`${label} must route ${duplicatedHeading} work to global specs instead of copying the normative body`);
+      }
     }
     if (LANGUAGE_SPEC_REFERENCES.every((spec) => !text.includes(spec))) {
       issues.push(`${label} must map at least one language-specific spec and state it is loaded on demand`);
@@ -441,7 +455,28 @@ const root = path.resolve(parsed.values.root || process.cwd());
 
 const agentResult = validateAgents(root);
 const kind = repositoryKind(root);
-const workflowResult = kind === 'standards' ? { workflowCount: getWorkflowFiles(root).length } : validatePackageWorkflow(root);
+const workflowFiles = getWorkflowFiles(root);
+const hasPackageContract =
+  fs.existsSync(path.join(root, 'sdkwork.workflow.json')) ||
+  fs.existsSync(path.join(root, '.github', 'workflows', 'package.yml'));
+const requiresPackageContract = kind === 'application' || hasPackageContract;
+let workflowResult;
+if (kind === 'standards' || !requiresPackageContract) {
+  const copiedWorkflows = workflowFiles.filter((workflowPath) =>
+    FORBIDDEN_COPIED_WORKFLOW_NAMES.has(path.basename(workflowPath)),
+  );
+  if (copiedWorkflows.length > 0) {
+    fail(
+      'GitHub packaging workflow is not compliant',
+      copiedWorkflows.map((workflowPath) =>
+        `${relative(root, workflowPath)} copied packaging workflow is forbidden; use .github/workflows/package.yml`,
+      ),
+    );
+  }
+  workflowResult = { workflowCount: workflowFiles.length };
+} else {
+  workflowResult = validatePackageWorkflow(root);
+}
 
 console.log(
   `agent and workflow standard ok: ${root} (${agentResult.agentRootCount} AGENTS roots, ${agentResult.shimCount} shims, ${workflowResult.workflowCount} workflow files scanned)`,

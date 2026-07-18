@@ -30,7 +30,7 @@ Forbidden:
 | --- | --- | --- | --- |
 | L0 Dependency integration defaults | Dependency repository / SDK family | SDK family `sdk-manifest.json`, dependency `component.spec.json#integration`, `iam.module.manifest.json`, route `gateway_mount` exports, and application `sdkwork.app.config.json#sdkDependencies` | Nothing |
 | L1 Consumer composition | Consumer application core package | `*-core/specs/component.spec.json#contracts.sdkDependencies`, `composition.overrides` | Dependency list + optional overrides only |
-| L2 Deployment wiring | Consumer repository | `specs/topology.spec.json`, `configs/topology/*.env` | Profile, bind, public URL only |
+| L2 Deployment wiring | Consumer repository | `specs/topology.spec.json`, `etc/topology/*.env` | Profile, bind, public URL only |
 
 Consumer application roots should converge on three authoritative files:
 
@@ -68,6 +68,7 @@ Resolver rules:
 
 Rules:
 
+- A consumer `same-origin-mounted` declaration wins over the dependency's default runtime mode only when Cargo contains the declared gateway assembly dependency and the declaration includes a public executable export plus non-empty coverage evidence. Dependency defaults apply when that executable mount closure is absent.
 - `route manifest`, OpenAPI path inventory, and SDK family manifest metadata are not executable mounts.
 - Demo/mock/sample routers never satisfy `same-origin-embedded`.
 - External platform dependencies must not fall back to application same-origin base URLs.

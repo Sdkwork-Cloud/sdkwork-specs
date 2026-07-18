@@ -16,7 +16,7 @@ process layout as an application integration mode.
 | Framework library | `@sdkwork/app-topology` | Load profiles, resolve surface URLs, IAM DB helpers, health waits |
 | Thin adapter | `scripts/lib/<application-code>-topology.mjs` | Pin spec path, export app defaults |
 | Dev orchestrator | `scripts/<application-code>-dev.mjs` | Spawn processes, health-gate clients |
-| Profile env | `configs/topology/*.env` | Authoritative binds and public URLs |
+| Profile env | `etc/topology/*.env` | Authoritative binds and public URLs |
 
 Forbidden:
 
@@ -32,7 +32,7 @@ Forbidden:
 
 ```text
 specs/topology.spec.json              # schemaVersion 4
-configs/topology/<profile-id>.env     # one file per active profile
+etc/topology/<profile-id>.env         # one file per active profile
 scripts/lib/<application-code>-topology.mjs        # adapter over @sdkwork/app-topology
 scripts/<application-code>-dev.mjs                 # topology-aware dev entry
 docs/topology-standard.md             # human summary for the team
@@ -104,7 +104,7 @@ Rules:
 ## 6. Dev Orchestrator Pattern
 
 1. Parse `--deployment-profile` and `--environment`, or use a fixed default profile id.
-2. Load `configs/topology/<profile-id>.env` from the adapter.
+2. Load `etc/topology/<profile-id>.env` from the adapter.
 3. Merge `process.env`, profile env, and optional database env.
 4. Set `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE` to `standalone` or `cloud`.
 5. Set `SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET` to `server`, `container`, `desktop`, `browser`, or `test-runner`.

@@ -108,7 +108,7 @@ function ensureWorkspaceWebBootstrapDependency(root) {
   return true;
 }
 
-function wireHostFrameworkMain(mainPath, applicationCode) {
+export function wireHostFrameworkMain(mainPath, applicationCode) {
   const source = readText(mainPath);
   if (source.includes('gateway_assembly::assemble_application_router')) {
     return false;
@@ -118,7 +118,6 @@ function wireHostFrameworkMain(mainPath, applicationCode) {
     return false;
   }
   const hostVar = match[1];
-  const hostType = match[2];
   const libName = assemblyPackageName(applicationCode).replace(/-/gu, '_');
   let updated = source.replace(
     /^use sdkwork_routes_[^\n]+\n/gm,
@@ -141,7 +140,7 @@ function wireHostFrameworkMain(mainPath, applicationCode) {
   }
   updated = updated.replace(
     businessBlock[0],
-    `let business = assemble_application_router(${hostVar}).await.router.layer(\n        sdkwork_web_bootstrap::application_cors_layer_from_env(\n            &["SDKWORK_${applicationCode.toUpperCase()}_ENVIRONMENT"],\n            &[\n                "SDKWORK_${applicationCode.toUpperCase()}_CORS_ALLOWED_ORIGINS",\n                "SDKWORK_CORS_ALLOWED_ORIGINS",\n            ],\n        ),\n    );`,
+    `let business = assemble_application_router(${hostVar}).await.router;`,
   );
   fs.writeFileSync(mainPath, updated, 'utf8');
   return true;

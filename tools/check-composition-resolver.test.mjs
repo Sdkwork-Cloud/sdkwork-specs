@@ -95,6 +95,78 @@ test('deriveFoundationEnvFromResolution maps platform dependencies to gateway or
   assert.equal(env.VITE_SDKWORK_DRIVE_APP_API_BASE_URL, 'http://127.0.0.1:3902/app/v3/api');
 });
 
+test('resolveComposition prefers verified Rust assembly mounts over dependency gateway defaults', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-composition-embedded-iam-'));
+  const appRoot = path.join(root, 'apps/sdkwork-demo-pc');
+  writeJson(path.join(appRoot, 'sdkwork.app.config.json'), {
+    schemaVersion: 1,
+    applicationCode: 'demo',
+  });
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-core/package.json'), {
+    name: '@sdkwork/demo-pc-core',
+    version: '0.0.0',
+  });
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-core/specs/component.spec.json'), {
+    component: {
+      name: '@sdkwork/demo-pc-core',
+      type: 'typescript-package',
+      surface: 'app',
+    },
+    contracts: {
+      sdkDependencies: [
+        {
+          workspace: 'sdkwork-iam-app-sdk',
+          surface: 'app-api',
+          credentialMode: 'authenticated-app-api',
+        },
+      ],
+    },
+  });
+  writeJson(path.join(root, 'crates/sdkwork-demo-standalone-gateway/specs/component.spec.json'), {
+    component: {
+      name: 'sdkwork-demo-standalone-gateway',
+      type: 'rust-crate',
+      surface: 'backend',
+    },
+    contracts: {
+      dependencyApiSurfaces: [
+        {
+          workspace: 'sdkwork-iam',
+          sdkFamily: 'sdkwork-iam-app-sdk',
+          surface: 'app-api',
+          apiPrefix: '/app/v3/api',
+          runtimeMode: 'same-origin-mounted',
+          cargoDependency: 'sdkwork_iam_gateway_assembly',
+          embeddedExecutableExport: 'sdkwork_iam_gateway_assembly::assemble_application_business_router',
+          coverageEvidence: ['../sdkwork-demo-gateway-assembly/src/bootstrap.rs#assemble_application_router'],
+        },
+      ],
+    },
+  });
+  writeText(
+    path.join(root, 'crates/sdkwork-demo-gateway-assembly/Cargo.toml'),
+    [
+      '[package]',
+      'name = "sdkwork-demo-gateway-assembly"',
+      'version = "0.0.0"',
+      '',
+      '[dependencies]',
+      'sdkwork_iam_gateway_assembly.workspace = true',
+      '',
+    ].join('\n'),
+  );
+
+  const resolution = resolveComposition(root);
+  const iam = resolution.integrations.find((entry) => entry.workspace === 'sdkwork-iam-app-sdk');
+
+  assert.ok(iam);
+  assert.equal(iam.runtimeMode, 'same-origin-embedded');
+  assert.equal(iam.connectivityPlane, 'application');
+  assert.equal(iam.mountStatus, 'verified');
+  assert.equal(iam.envKey, null);
+  assert.equal(resolution.requiresPlatformGatewayProcess, false);
+});
+
 test('resolveComposition includes cross-stack architecture summary', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-composition-architecture-'));
   writeJson(path.join(root, 'specs/component.spec.json'), {

@@ -41,16 +41,6 @@ function extractPreservedDependencies(cargoToml, applicationCode, routePackageNa
   if (!depsSection) {
     return '';
   }
-  const routePackagePattern = new RegExp(
-    `package\\s*=\\s*"sdkwork-routes-${applicationCode}-`,
-    'u',
-  );
-  const routeKeyPattern = new RegExp(`^\\s*sdkwork_routes_${applicationCode.replace(/-/gu, '_')}`, 'u');
-  const routeWorkspaceKeyPattern = new RegExp(
-    `^\\s*sdkwork-routes-${applicationCode}-`,
-    'u',
-  );
-
   return depsSection[1]
     .split('\n')
     .filter((line) => {
@@ -64,19 +54,20 @@ function extractPreservedDependencies(cargoToml, applicationCode, routePackageNa
       if (/^\s*tokio(?:\.workspace)?\s*=/u.test(line)) {
         return false;
       }
-      if (/^\s*sqlx\.workspace\s*=/u.test(line)) {
-        return false;
-      }
       const dependencyKey = /^\s*([^\s#=]+?)(?:\.workspace)?\s*=/u.exec(line)?.[1];
       if (dependencyKey && routePackageNames.has(dependencyKey)) {
-        return false;
-      }
-      if (routeKeyPattern.test(line) || routeWorkspaceKeyPattern.test(line) || routePackagePattern.test(line)) {
         return false;
       }
       return true;
     })
     .join('\n');
+}
+
+function extractPreservedBuildDependencies(cargoToml) {
+  const section = /\[build-dependencies\]([\s\S]*?)(?:\n\[|$)/u.exec(cargoToml);
+  return section
+    ? section[1].split('\n').map((line) => line.trim()).filter(Boolean).join('\n')
+    : '';
 }
 
 function dedupeDependencyLines(lines) {
@@ -161,6 +152,7 @@ function renderCargoToml(
   workspaceFields = {},
   bootstrapDeps = [],
   workspaceDepNames = new Set(),
+  preservedBuildDeps = '',
 ) {
   const packageName = assemblyPackageName(applicationCode);
   const licenseLine = workspaceFields.license ? 'license.workspace = true\n' : '';
@@ -198,7 +190,7 @@ name = "${packageName.replace(/-/gu, '_')}"
 path = "src/lib.rs"
 
 [dependencies]
-${dependencyLines}
+${dependencyLines}${preservedBuildDeps ? `\n\n[build-dependencies]\n${preservedBuildDeps}` : ''}
 `;
 }
 
@@ -552,8 +544,9 @@ export function materializeGatewayAssembly(root) {
   const preservedDeps = extractPreservedDependencies(
     existingCargoToml,
     applicationCode,
-    new Set(routeCrates.map((crate) => crate.packageName)),
+    new Set(routeCrates.flatMap((crate) => [crate.packageName, crate.libName])),
   );
+  const preservedBuildDeps = extractPreservedBuildDependencies(existingCargoToml);
   const manifest = buildAssemblyManifest(root, applicationCode, routeCrates);
   const mounts = discoverGatewayMounts(root, routeCrates);
   const workspaceDeps = readWorkspaceDependencyNames(root);
@@ -569,6 +562,7 @@ export function materializeGatewayAssembly(root) {
       readWorkspacePackageFields(root),
       bootstrapDeps,
       workspaceDeps,
+      preservedBuildDeps,
     ),
   );
   writeFileEnsuringDir(path.join(crateDir, 'src', 'generated.rs'), renderGeneratedRs(routeCrates));
@@ -576,9 +570,14 @@ export function materializeGatewayAssembly(root) {
   const bootstrapSource = readText(bootstrapPath);
   const bootstrapReady =
     fs.existsSync(bootstrapPath) && !bootstrapNeedsRegeneration(bootstrapSource);
+  const libPath = path.join(crateDir, 'src', 'lib.rs');
+  const existingLib = readText(libPath);
+  const preserveAuthoredLib = existingLib.includes('SDKWORK-ASSEMBLY-LIB-CUSTOM');
   writeFileEnsuringDir(
-    path.join(crateDir, 'src', 'lib.rs'),
-    renderLibRs(applicationCode, routeCrates, bootstrapReady, bootstrapSource),
+    libPath,
+    preserveAuthoredLib
+      ? existingLib
+      : renderLibRs(applicationCode, routeCrates, bootstrapReady, bootstrapSource),
   );
 
   if (!preserveBootstrap) {

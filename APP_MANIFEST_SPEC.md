@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: app registration, app manifest, release metadata, install packages, media assets, platform_app projection
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_SPEC.md`, `IAM_APPLICATION_BOOTSTRAP_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `CONFIG_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `SOURCE_CONFIG_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_SPEC.md`, `IAM_APPLICATION_BOOTSTRAP_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `CONFIG_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `DRIVE_SPEC.md`, `MEDIA_RESOURCE_SPEC.md`, `SECURITY_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 SDKWork App Manifest Standard v3 defines the canonical app configuration used by new applications under `apps/`. The standard is intentionally strict: new apps do not carry legacy compatibility branches, and every field is designed to map cleanly into `platform_app` while retaining enough metadata for professional multi-platform release operations.
 
@@ -23,14 +23,26 @@ The manifest must use:
 }
 ```
 
-The schema lives at `apps/schemas/sdkwork.app.schema.v3.json`. The full example lives at `apps/examples/sdkwork.app.config.v3.full.example.json`. The examples file carries the version suffix only because it is a reusable reference; each real app directory must use the unsuffixed canonical filename above.
+This standard is the current manifest field authority. A centralized JSON Schema, full example, and
+validator `MUST` be introduced together and listed in `TEST_SPEC.md`; standards `MUST NOT` reference
+schema or validator paths that are not present in this repository. Each real app directory uses the
+unsuffixed canonical filename above.
 
 The same `<app-root>` `MUST` contain the source-controlled `.sdkwork/` workspace required by
 `SDKWORK_WORKSPACE_SPEC.md`, including `.sdkwork/skills/` and `.sdkwork/plugins/`.
+When the application is independently deployable, the same root `MUST` contain source-controlled
+`etc/` governed by `SOURCE_CONFIG_SPEC.md`.
 
 ## 2. Design Principles
 
 - `sdkwork.app.config.json` is the source of truth for registration, package distribution, update checks, and release governance.
+- `sdkwork.app.config.json` is an application declaration, not an environment deployment file.
+  Concrete environment domains, ports, SDK Base URLs, bind addresses, database/Redis targets,
+  feature-flag values, and CORS origins belong to source `etc/`.
+- New manifests `MUST NOT` declare concrete environment maps such as
+  `environments.*.accessUrl`, `environments.*.deployUrl`, or per-environment Base URL maps under
+  `envBindings`. Legacy readers may consume those fields only during an explicit migration and
+  must name the canonical `etc/` replacement.
 - `.sdkwork/` is the source-controlled workspace metadata directory for the same application root. It stores local skills and plugins; it does not store manifest release payloads, runtime state, generated SDK transport output, or user-private data.
 - `platform_app` is the database projection, not a second independent source.
 - App icons, screenshots, and preview assets are governed data, not loose files. SDKWork-owned media bytes must be stored through Drive, represented as `MediaResource` where app APIs expose them, and projected into `platform_app.config.media`.
@@ -549,10 +561,10 @@ The validator enforces:
 - strict unknown-field rejection to prevent schema drift
 - global `app.key` uniqueness across discovered app configs before batch export
 
-Schema and examples must stay aligned with validator behavior:
+When a centralized schema and validator are introduced, they must stay aligned with this standard:
 
-- `apps/schemas/sdkwork.app.schema.v3.json` `MUST` declare the exact
-  `deploymentProfile` and `runtimeTarget` vocabularies used by this standard.
+- The schema `MUST` declare the exact `deploymentProfile` and `runtimeTarget` vocabularies used by
+  this standard and `MUST` reject concrete environment/runtime value maps in the manifest.
 - Manifest examples `MUST` include at least one package target for every
   supported app mode family the example claims: browser, desktop, server,
   container/Docker-compatible, mobile, tablet, mini program, and test-only

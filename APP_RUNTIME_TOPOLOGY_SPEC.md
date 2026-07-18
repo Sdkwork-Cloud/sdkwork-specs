@@ -151,7 +151,7 @@ Rules:
 
 ```text
 specs/topology.spec.json
-configs/topology/<profile-id>.env
+etc/topology/<profile-id>.env
 docs/topology-standard.md
 scripts/lib/<application-code>-topology.mjs
 ```
@@ -178,7 +178,7 @@ Forbidden:
 
 Dev scripts `MUST`:
 
-1. Load profile env from `configs/topology/` through `@sdkwork/app-topology`.
+1. Load profile env from `etc/topology/` through `@sdkwork/app-topology`.
 2. Start processes from `topology.spec.json` `orchestration.profiles[<profile-id>]`.
 3. Health-check required surfaces before starting clients.
 4. Accept `--deployment-profile` and `--environment`.

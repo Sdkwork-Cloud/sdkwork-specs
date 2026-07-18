@@ -283,7 +283,7 @@ Application gateway crates `MUST` live under `crates/`:
     sdkwork-<application-code>-standalone-gateway/
     sdkwork-<application-code>-cloud-gateway/
   specs/topology.spec.json
-  configs/topology/
+  etc/topology/
   scripts/gateway/
     assembly-materialize.mjs
     assembly-validate.mjs
@@ -299,7 +299,7 @@ sdkwork-api-cloud-gateway/
     sdkwork-api-cloud-gateway-registry/
     sdkwork-api-cloud-gateway-observability/
   specs/
-  configs/
+  etc/
   deployments/
   scripts/
 ```

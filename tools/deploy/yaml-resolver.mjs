@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -10,10 +9,10 @@ let cachedYaml;
 function yamlCandidates(repoRoot) {
   const resolvedRoot = path.resolve(repoRoot);
   return [
-    path.join(resolvedRoot, 'node_modules/yaml'),
-    path.join(resolvedRoot, '../sdkwork-deployments/node_modules/yaml'),
-    path.join(__dirname, '../../../sdkwork-deployments/node_modules/yaml'),
-    path.join(__dirname, '../../sdkwork-deployments/node_modules/yaml'),
+    path.join(resolvedRoot, 'node_modules'),
+    path.join(resolvedRoot, '../sdkwork-deployments/node_modules'),
+    path.join(__dirname, '../../../sdkwork-deployments/node_modules'),
+    path.join(__dirname, '../../sdkwork-deployments/node_modules'),
   ];
 }
 
@@ -23,13 +22,7 @@ export function getYaml(repoRoot = process.cwd()) {
   const require = createRequire(path.join(path.resolve(repoRoot), 'package.json'));
   for (const candidate of yamlCandidates(repoRoot)) {
     try {
-      const searchPath = fs.existsSync(candidate)
-        ? candidate
-        : fs.existsSync(`${candidate}/package.json`)
-          ? candidate
-          : null;
-      if (!searchPath) continue;
-      cachedYaml = require(require.resolve('yaml', { paths: [path.dirname(searchPath)] }));
+      cachedYaml = require(require.resolve('yaml', { paths: [candidate] }));
       return cachedYaml;
     } catch {
       // try next candidate

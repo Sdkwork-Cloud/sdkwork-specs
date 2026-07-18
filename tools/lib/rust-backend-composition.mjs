@@ -58,7 +58,7 @@ function parseCargoManifest(filePath) {
       continue;
     }
     if (!['dependencies', 'dev-dependencies', 'build-dependencies'].includes(section)) continue;
-    const depMatch = line.match(/^([A-Za-z0-9_-]+)\s*=\s*(.+)$/u);
+    const depMatch = line.match(/^([A-Za-z0-9_-]+)(?:\.workspace)?\s*=\s*(.+)$/u);
     if (!depMatch) continue;
     dependencies.push({
       name: depMatch[1].replaceAll('_', '-'),

@@ -90,10 +90,22 @@ SDKWork supports two standard modes. Mode selection is part of the API contract 
 | Offset | `page`, `page_size` | `offset` | Admin tables, low-volume stable lists, exact `totalItems` |
 | Cursor | `cursor`, `page_size` | `cursor` | High-volume feeds, inbox, messages, logs, notifications, unstable lists |
 
+### 3.1 Operation-Specific Page-Size Exceptions
+
+The standard maximum remains `200`. A larger bound is permitted only for an intentional, individually reviewed operation when the OpenAPI operation declares `x-sdkwork-pagination-exception` with all governance evidence required by `GOVERNANCE_SPEC.md`: `id`, `spec`, `rule`, `owner`, `reason`, `risk`, `expiresAt`, `removalPlan`, `maximumPageSize`, and non-empty `controls`.
+
+Rules:
+
+- `maximumPageSize` `MUST` equal the operation's `page_size` schema maximum.
+- The exception `MUST` be unexpired and limited to one operation; it does not alter shared defaults or sibling operations.
+- The operation `MUST` remain paginated and bounded at the authoritative store or provider. An exception cannot legalize unbounded reads, `listAll*`, or client-side slicing.
+- Contract tests `MUST` prove the declared maximum is accepted and the next value is rejected.
+- `check-pagination.mjs` `MUST` reject missing, incomplete, expired, or mismatched exception evidence.
+
 Rules:
 
 - `page` and `cursor` `MUST NOT` be combined in one request.
-- `page_size` `MUST` default to `20` and `MUST NOT` exceed `200` unless a documented L3 exception defines a lower ceiling.
+- `page_size` `MUST` default to `20` and `MUST NOT` exceed `200` unless a valid operation-specific exception under section 3.1 declares a larger ceiling.
 - HTTP GET list/search contracts and handlers `MUST NOT` accept `pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`, or equivalent aliases for `page_size` or `page`.
 - Cursor tokens `MUST` be opaque to clients. Clients `MUST NOT` parse or construct cursor payloads.
 - Stable sorts `SHOULD` include a unique tie-breaker such as `id` or `createdAt`.
@@ -233,7 +245,7 @@ Pagination work is not complete without:
 
 - OpenAPI list operation using `SdkWorkListQuery` / standard query params and `SdkWorkPageData` output;
 - service/repository test proving a requested page returns only `page_size` rows without loading total collection size into memory;
-- rejection test for `page_size > 200` (`40003 INVALID_PARAMETER`);
+- rejection test for `page_size` above the operation's declared maximum (`40003 INVALID_PARAMETER`), normally `200` or the exact bound registered by section 3.1;
 - rejection tests for forbidden pagination aliases (`pageSize`, `limit`, `page_no`, `pageNo`, `per_page`, `size`, and numeric cursor aliases where cursor mode is declared);
 - frontend or SDK consumer test proving UI/service uses server `cursor`/`page` rather than local slicing for the same resource;
 - performance class declaration for P0/P1 lists per `PERFORMANCE_SPEC.md`.

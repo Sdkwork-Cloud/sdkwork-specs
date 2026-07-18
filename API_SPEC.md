@@ -1178,6 +1178,7 @@ Rules:
 - `GET` list operations `MUST NOT` accept a request body.
 - Domain filters beyond the standard set `MUST` use explicit query parameters such as `status`, `organization_id`, or `role_id`. Each filter parameter `MUST` be typed and documented.
 - A list operation `MUST NOT` accept both `page` and `cursor` in the same request.
+- An intentional operation-specific `page_size` maximum above `200` requires an unexpired `x-sdkwork-pagination-exception` record on that OpenAPI operation. The record `MUST` include `id`, `spec`, `rule`, `owner`, `reason`, `risk`, `expiresAt`, `removalPlan`, `maximumPageSize`, and non-empty `controls`; `maximumPageSize` `MUST` equal the parameter schema maximum. This exception does not change the platform default or any sibling operation.
 - When `cursor` and `page` are both supplied, servers `MUST` reject the request with `40003 INVALID_PARAMETER`. Already-launched L0/L1 authorities that temporarily keep ignore semantics `MUST` record a migration exception per `MIGRATION_SPEC.md`; new and pre-launch authorities have no exception path.
 
 Sort grammar:
@@ -1793,7 +1794,7 @@ GET /app/v3/api/forum/topics?page=2&page_size=20&sort=-createdAt&q=release
 Rules:
 
 - Offset pagination `SHOULD` be used for admin tables and stable, low-volume lists.
-- Servers `MUST` reject `page_size` above `200` with `40003 INVALID_PARAMETER`.
+- Servers `MUST` reject `page_size` above `200` with `40003 INVALID_PARAMETER` unless the operation declares a valid exception under section 14.1.1; excepted operations `MUST` reject values above their declared `maximumPageSize` with the same error.
 
 ### 16.3 Cursor Pagination
 

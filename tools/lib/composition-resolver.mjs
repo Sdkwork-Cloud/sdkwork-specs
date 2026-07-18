@@ -350,6 +350,17 @@ function findIntegrationOverride(overridesByCore, workspace) {
   return null;
 }
 
+function findVerifiedEmbeddedSurface(architecture, workspace, surface) {
+  return architecture.runtime.dependencyApiSurfaces.find((candidate) => {
+    if (candidate.sdkFamily !== workspace || candidate.surface !== surface) return false;
+    if (candidate.runtimeMode !== 'same-origin-mounted') return false;
+    if (!candidate.cargoDependency || !candidate.embeddedExecutableExport) return false;
+    if (!Array.isArray(candidate.coverageEvidence) || candidate.coverageEvidence.length === 0) return false;
+    const cargoDependency = candidate.cargoDependency.replaceAll('_', '-');
+    return architecture.rust.crates.some((crate) => crate.dependencies.includes(cargoDependency));
+  }) ?? null;
+}
+
 export function resolveComposition(repoRoot, options = {}) {
   const issues = [];
   const integrations = [];
@@ -359,6 +370,7 @@ export function resolveComposition(repoRoot, options = {}) {
 
   const sdkDependencies = collectConsumerSdkDependencies(repoRoot);
   const overridesByCore = loadCompositionOverrides(repoRoot);
+  const architecture = buildArchitectureSummary(repoRoot);
 
   for (const dep of sdkDependencies) {
     const workspace = dep.workspace;
@@ -368,12 +380,17 @@ export function resolveComposition(repoRoot, options = {}) {
     const integrationOverride = findIntegrationOverride(overridesByCore, workspace);
 
     const surface = dep.surface ?? surfaceFromWorkspace(workspace);
+    const embeddedSurface = findVerifiedEmbeddedSurface(architecture, workspace, surface);
     const domain = domainFromSdkWorkspace(workspace);
-    const apiPrefix = defaultPrefix(surface, manifestDiscovery);
-    const connectivityPlane = dependencyIntegration?.defaultConnectivityPlane
-      ?? defaultConnectivityPlane(domain, surface);
+    const apiPrefix = embeddedSurface?.apiPrefix ?? defaultPrefix(surface, manifestDiscovery);
+    const connectivityPlane = embeddedSurface
+      ? 'application'
+      : dependencyIntegration?.defaultConnectivityPlane
+        ?? defaultConnectivityPlane(domain, surface);
     const runtimeMode = integrationOverride?.runtimeMode
-      ?? resolveRuntimeMode({ dependencyIntegration, legacySurface, connectivityPlane });
+      ?? (embeddedSurface
+        ? 'same-origin-embedded'
+        : resolveRuntimeMode({ dependencyIntegration, legacySurface, connectivityPlane }));
     const permissionManifestRef = resolvePermissionManifestRef(
       repoRoot,
       workspace,
@@ -388,8 +405,10 @@ export function resolveComposition(repoRoot, options = {}) {
       });
     }
 
-    const envKey = baseUrlEnvKey(workspace);
-    const mountStatus = legacySurface?.runtimeIntegration?.mountCoverage?.status ?? null;
+    const envKey = embeddedSurface ? null : baseUrlEnvKey(workspace);
+    const mountStatus = embeddedSurface
+      ? 'verified'
+      : legacySurface?.runtimeIntegration?.mountCoverage?.status ?? null;
     const forbidProductSameOriginFallback = runtimeMode === 'external-via-platform-gateway'
       && connectivityPlane === 'platform'
       && mountStatus === 'not-mounted';
@@ -458,7 +477,7 @@ export function resolveComposition(repoRoot, options = {}) {
       inheritanceMode: 'module-catalog-with-overrides',
       inheritedManifests,
     },
-    architecture: buildArchitectureSummary(repoRoot),
+    architecture,
     env,
     requiresPlatformGatewayProcess,
     issues,

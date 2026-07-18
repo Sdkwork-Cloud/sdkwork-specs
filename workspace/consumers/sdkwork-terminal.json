@@ -1,15 +1,18 @@
 {
   "pnpm": {
     "packages": [
-      "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/src/index.ts",
-      "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/src/index.ts",
+      "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript",
+      "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript",
       "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-runtime-pc-react",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts",
+      "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-credential-entry",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-runtime",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-adapter",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-ports",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-service",
       "../sdkwork-appbase/packages/common/foundation/sdkwork-runtime-bootstrap",
+      "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript",
+      "../sdkwork-sdk-generator",
       "../sdkwork-utils/packages/sdkwork-utils-typescript"
     ]
   },

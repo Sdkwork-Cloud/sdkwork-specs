@@ -81,7 +81,12 @@ export function parsePnpmWorkspaceCatalog(text) {
       break;
     }
     const match = line.match(/^\s*["']?([^"':]+)["']?\s*:\s*(.+?)\s*$/u);
-    if (inCatalog && match) catalog[match[1]] = match[2];
+    if (inCatalog && match) {
+      const value = match[2];
+      catalog[match[1]] = value.startsWith('"') && value.endsWith('"')
+        ? JSON.parse(value)
+        : value;
+    }
   }
   return catalog;
 }
@@ -120,7 +125,8 @@ export function renderPnpmWorkspace({ packages, catalog }) {
     lines.push('', 'catalog:');
     for (const [key, value] of Object.entries(catalog)) {
       const renderedKey = /[^A-Za-z0-9_-]/u.test(key) ? `"${key}"` : key;
-      lines.push(`  ${renderedKey}: ${value}`);
+      const renderedValue = /\s/u.test(value) ? JSON.stringify(value) : value;
+      lines.push(`  ${renderedKey}: ${renderedValue}`);
     }
   }
   lines.push('');

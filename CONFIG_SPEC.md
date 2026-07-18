@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: environment config, SDK client initialization, secrets, feature flags, typed runtime config, dev/test/staging/prod profiles, desktop/server/container/web/H5/Flutter/mini-program/native Android/native iOS/native Harmony switching
-- Related: `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `REGION_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`
+- Related: `SOURCE_CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `REGION_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`
 
 This standard defines how applications select environment, deployment profile,
 runtime target, base URLs, SDK clients, token storage, and feature flags without
@@ -15,7 +15,8 @@ Allowed config sources:
 | Source | Use |
 | --- | --- |
 | app manifest | App identity, runtime family, release/distribution metadata |
-| environment variables | Deployment-specific base URLs, feature flags, safe non-secret runtime values |
+| source `etc/` | Safe environment/profile instances, SDK Base URLs, bind/public URLs, browser bootstrap inputs, and server/gateway templates |
+| environment variables | Explicit deployment/container overrides for safe values; not the primary checked-in topology authority |
 | secret manager / secure storage | Secrets, tokens, private keys, signing credentials |
 | bootstrap file | Local development defaults and app shell wiring |
 | server config | Java/Rust service process settings |
@@ -25,6 +26,11 @@ Rules:
 
 - Shared modules `MUST NOT` read process env, `.env` files, local storage, registry, or native config directly.
 - Shared modules receive typed config from runtime/bootstrap.
+- Every independently deployable root owns source-controlled `etc/` according to `SOURCE_CONFIG_SPEC.md`.
+- Concrete environment URLs, ports, topology values, database targets, and Redis targets `MUST NOT`
+  be stored in `sdkwork.app.config.json`; they belong to the selected source `etc/` profile.
+- Repository-root `configs/` is retired for runtime/deployment configuration. New config instances
+  use `etc/`; infrastructure descriptors remain under `deployments/`.
 - Secrets `MUST NOT` be stored in app manifests or committed config files.
 - Standalone/cloud differences `MUST` be represented as typed
   `deploymentProfile`, not scattered conditionals.

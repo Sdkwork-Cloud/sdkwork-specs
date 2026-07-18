@@ -35,6 +35,8 @@ Rules:
 - App surface and package commands may be narrower, but they should still use standard base names such as `dev`, `build`, `typecheck`, `lint`, `test`, and `clean`.
 - Internal runner names may contain product names when the file is application-owned, but those names `MUST NOT` leak into public root script names.
 - Root commands `SHOULD` call a standard dispatcher such as `node scripts/sdkwork-command.mjs ...` or a thin equivalent wrapper.
+- Vendored upstream source trees under `external/`, `third_party/`, and `vendor/` are excluded from application-owned script-name validation. SDKWork-owned wrappers and workspace packages around them remain in scope.
+- Historical release records under `docs/release/` and tool-owned scratch plans such as `.mimocode/` are not active command documentation and are excluded. Current README, AGENTS, guides, references, runbooks, architecture decisions, and migration instructions remain in scope.
 
 ## 3. Required Root Commands
 

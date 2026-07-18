@@ -136,7 +136,7 @@ use the following reserved top-level directory names when the corresponding capa
   tools/
   plugins/
   examples/
-  configs/
+  etc/
   deployments/
   scripts/
   docs/
@@ -160,8 +160,8 @@ Directory meanings:
 | `tools/` | Developer, validation, generation, migration, and operator tools that are not shipped as app runtime code | Repository-local reusable tooling is authored |
 | `plugins/` | Application/runtime plugin source packages, marketplace plugin implementations, or extension packages | Application or runtime plugins are authored |
 | `examples/` | Runnable examples, integration examples, sample configs, and SDK/API usage examples | Examples are needed for consumers or verification |
-| `configs/` | Source-controlled safe config templates, profile examples, config schemas, and non-secret runtime defaults | The repository defines config templates or app/runtime configuration |
-| `deployments/` | Deployment descriptors, environment topology, packaging handoff files, infrastructure examples, and release deployment documentation | The repository ships, deploys, or documents deployable artifacts |
+| `etc/` | Source-controlled safe deployment/runtime profiles, browser bootstrap inputs, service/gateway templates, and secret-file references per `SOURCE_CONFIG_SPEC.md` | The root is independently deployable or owns deployable configuration |
+| `deployments/` | Infrastructure descriptors, packaging handoff files, installers, rollout/rollback assets, and deployment documentation | The repository ships, deploys, or documents deployable artifacts |
 | `scripts/` | Thin command entrypoints for build, verification, generation, migration, packaging, and release workflows | Shell/Node/Python/PowerShell command wrappers are needed |
 | `docs/` | Repository/application documentation layout, Canon product PRD, technical architecture, requirements, architecture decisions, guides, runbooks, changelogs, and user/developer docs | Documentation is authored beyond root README files |
 | `tests/` | Cross-package tests, contract tests, integration tests, end-to-end tests, fixtures, and static verification inputs | Verification exists outside package-local test directories |
@@ -274,12 +274,10 @@ Recommended initial skeleton:
       tests/
   examples/
     README.md
-  configs/
+  etc/
     README.md
-    schemas/
-    profiles/
-    examples/
-    defaults/
+    sdkwork.deployment.config.json
+    deployments/
   deployments/
     README.md
     docker/
@@ -367,8 +365,8 @@ Capability activation signals:
 | `tools/` | Reusable validators, generators, migration tools, parsers, CLIs, or operator utilities are authored |
 | `plugins/` | Application/runtime installable extension source is authored |
 | `examples/` | Consumer-facing runnable or copyable examples are maintained |
-| `configs/` | Safe config templates, schemas, profiles, or non-secret defaults are committed |
-| `deployments/` | Docker, Kubernetes, systemd, nginx, environment topology, release handoff, or deployment runbook content is owned |
+| `etc/` | A deployable root owns safe runtime/deployment profiles, browser bootstrap inputs, or service/gateway templates |
+| `deployments/` | Docker, Kubernetes, systemd, nginx, installer, release handoff, rollout/rollback, or deployment runbook content is owned |
 | `scripts/` | Thin shell/Node/Python/PowerShell entrypoints are committed |
 | `docs/` | Canon PRD, technical architecture, requirements, ADRs, guides, runbooks, changelogs, migrations, releases, domain extensions, or archives are authored |
 | `tests/` | Cross-package, contract, integration, end-to-end, fixture, or static verification content exists |
@@ -415,18 +413,19 @@ Boundary rules:
   in a proper package/crate.
 - `plugins/` stores application/runtime plugin source. Repository/application agent plugins remain
   under `.sdkwork/plugins/` and follow this standard's plugin workspace rules.
-- `configs/` stores source-controlled safe config templates, schemas, profile examples, and
-  non-secret defaults. Runtime user/private config remains governed by `RUNTIME_DIRECTORY_SPEC.md`
-  and must not be committed.
-- `deployments/` stores deployment topology, infrastructure descriptors, release handoff files, and
-  deployment runbooks. It must not store live secrets, private keys, local override files, or
-  runtime user config.
+- `etc/` stores source-controlled safe deployment/runtime profiles and templates according to
+  `SOURCE_CONFIG_SPEC.md`. Every independently deployable root owns its own `etc/`; reusable
+  libraries, SDKs, and embedded-only modules do not duplicate parent configuration.
+- `deployments/` stores infrastructure descriptors, release handoff files, installers, rollout,
+  rollback, and deployment runbooks. Runtime value authority remains in `etc/`.
+- Repository-root `configs/` is retired. Migration tooling may read it only as a temporary fallback
+  and must move runtime config to `etc/`, infrastructure to `deployments/`, and schemas to `specs/`.
 - Root `tests/` stores cross-package, contract, integration, end-to-end, fixture, and static
   verification content. Package-local unit tests stay beside the package/crate/module they verify.
   Fixtures must not contain real secrets, tokens, private customer data, or runtime state.
 - Top-level `config/` is allowed only as an architecture-local directory when the repository root is
   itself the selected app surface root and that architecture standard requires `config/`. Otherwise
-  project-root config content belongs in `configs/`.
+  project-root deployable config content belongs in `etc/`.
 - Top-level `packages/` is allowed only for a dedicated shared package-family repository whose root
   README declares `repository-kind: shared-package-family`. Application git repositories that own
   `apps/sdkwork-<application-code>-*` roots or application-line `apis/`, `crates/`, or `sdks/`
@@ -456,7 +455,7 @@ Standard root examples:
   tools/
   plugins/
   examples/
-  configs/
+  etc/
   deployments/
   scripts/
   docs/
@@ -491,7 +490,7 @@ Standard root examples:
   tools/
   plugins/
   examples/
-  configs/
+  etc/
   deployments/
   scripts/
   docs/
@@ -515,7 +514,7 @@ Standard root examples:
   tools/
   plugins/
   examples/
-  configs/
+  etc/
   deployments/
   scripts/
   docs/
@@ -550,7 +549,7 @@ Rules for `<domain-multi-surface-repository>`:
   sdks/sdkwork-<domain>-app-sdk/
   jobs/schedules/
   tools/
-  configs/
+  etc/
   deployments/
   scripts/
   docs/
@@ -787,7 +786,7 @@ Repository/application workspace verification `MUST` check:
 - `jobs/` does not duplicate Rust worker implementation that belongs in `crates/sdkwork-<domain>-<capability>-worker/`.
 - `scripts/` contains thin entrypoints only; reusable logic lives in `tools/` or an appropriate package/crate.
 - `plugins/` application/runtime source and `.sdkwork/plugins/` agent plugin workspaces are distinct.
-- `configs/`, `deployments/`, and any architecture-local `config/` contain no live secrets, local overrides, user-private runtime config, or runtime state.
+- `etc/`, `deployments/`, and any architecture-local `config/` contain no live secrets, local overrides, user-private runtime config, or runtime state.
 - Root `tests/` contains cross-package/contract/integration/e2e/static verification and safe fixtures, while package-local unit tests remain package-local.
 - Application git repositories `MUST` pass `node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --root .` or the workspace sweep equivalent.
 - Repository/application README files link to specs and contracts; README prose is not treated as normative standards authority.
@@ -812,7 +811,7 @@ Repository/application workspace verification `MUST` check:
 - [ ] New repository/application templates contain the complete standard project root dictionary with tracked placeholders or content.
 - [ ] Narrow roots that omit inactive standard directories document the active layout in the root README.
 - [ ] Independent application repositories have `apps/README.md` that indexes every direct child application root and states whether the repository root is the primary runnable app surface.
-- [ ] Active repository/application capabilities use only the standard top-level directory names: `apis/`, `apps/`, `crates/`, `sdks/`, `jobs/`, `tools/`, `plugins/`, `examples/`, `configs/`, `deployments/`, `scripts/`, `docs/`, and `tests/`; `config/` and `packages/` are used only as architecture-local directories for the selected app surface root.
+- [ ] Active repository/application capabilities use only the standard top-level directory names: `apis/`, `apps/`, `crates/`, `sdks/`, `jobs/`, `tools/`, `plugins/`, `examples/`, `etc/`, `deployments/`, `scripts/`, `docs/`, and `tests/`; `config/` and `packages/` are used only as architecture-local directories for the selected app surface root.
 - [ ] API contract sources, generated SDK workspaces, application/runtime plugins, agent plugins, source config templates, deployment descriptors, job definitions, worker implementations, and runtime private config are placed in their distinct standard directories.
 - [ ] Active `docs/` layouts provide Canon `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`, and new ADRs use `docs/architecture/decisions/`.
 - [ ] New repositories bootstrap `docs/` with `tools/bootstrap-repository-docs.mjs` or an equivalent tracked skeleton.

@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   buildWorkspacePackages,
+  parsePnpmWorkspaceCatalog,
   parsePnpmWorkspacePackages,
   renderPnpmWorkspace,
 } from './lib/workspace-registry.mjs';
@@ -112,6 +113,18 @@ test('renderPnpmWorkspace round-trips package list parsing', () => {
   });
   const parsed = parsePnpmWorkspacePackages(rendered);
   assert.deepEqual(parsed, ['apps/*', '../sdkwork-utils/packages/sdkwork-utils-typescript']);
+});
+
+test('renderPnpmWorkspace quotes and round-trips catalog ranges containing spaces', () => {
+  const rendered = renderPnpmWorkspace({
+    packages: ['apps/*'],
+    catalog: { 'react-router': '>=6.0.0 <8.0.0' },
+  });
+
+  assert.match(rendered, /react-router: ">=6\.0\.0 <8\.0\.0"/u);
+  assert.deepEqual(parsePnpmWorkspaceCatalog(rendered), {
+    'react-router': '>=6.0.0 <8.0.0',
+  });
 });
 
 test('verify-repo reports duplicate route path collisions', () => {

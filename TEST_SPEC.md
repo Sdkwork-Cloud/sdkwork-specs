@@ -47,7 +47,7 @@ No standard is complete until it is executable.
 | Harmony native mobile architecture | Validate `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`: `sdkwork-<application-code>-harmony-mobile-*`, `sdkwork-<application-code>-harmony-mobile-console-*`, and `sdkwork-<application-code>-harmony-mobile-admin-*` package names, thin root `entry/`, generated ArkTS/TypeScript app/backend SDK boundary, HarmonyOS host adapters, route identity, Harmony config, and release metadata |
 | Native mobile UI | Validate `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, or `APP_HARMONY_NATIVE_UI_SPEC.md`: package-local screens/pages/components/services/state/i18n/routes, host adapter contracts, app/user-console SDK boundary, UI states, and lifecycle/security checks |
 | Internationalization | Validate `I18N_SPEC.md`: language/framework i18n directory layouts through `tools/check-i18n-standard.mjs`, package-local **message catalog** fragments, backend message bundles, framework `WebLocaleContext`, locale fallback, API `ProblemDetail` i18n metadata, SDK locale providers, database seed i18n versions, duplicate-key checks, missing-key checks, commerce `catalog` vs i18n catalog disambiguation, and no authored app/root/backend/admin/package locale monoliths |
-| Environment/config | Validate `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`: lifecycle environment, profile alias, deployment profile, build mode, runtime target, dev/test/staging/prod files, browser/desktop/H5/Capacitor/Flutter/mini-program/native Android/native iOS/native Harmony/server/container/Tauri config separation, public/private/secret boundaries |
+| Source/environment config | Validate `SOURCE_CONFIG_SPEC.md`, `CONFIG_SPEC.md`, and `ENVIRONMENT_SPEC.md`: deployable-root `etc/`, app manifest boundary, lifecycle environment, deployment profile, runtime target, dev/test/staging/prod profiles, browser/desktop/mobile/server/container separation, retired `configs/`, and public/private/secret boundaries |
 | Database | Schema lint, migration test, tenant/index checks, and `DATABASE_FRAMEWORK_SPEC.md` lifecycle asset checks when `database/` exists |
 | Drive | Drive API/SDK contract tests, Drive Uploader App SDK tests, Rust `DriveUploaderService` tests, upload-session idempotency, resumable part tests, attribution/statistic tests, retention cleanup tests, provider capability tests, business-module scans for forbidden app-local storage lifecycle |
 | IAM/security | Token validation, permission denial, tenant isolation, audit event, appbase login integration, logout clearing, Rust AppContext guard |
@@ -165,11 +165,11 @@ Rules:
 - Tests `MUST` allow inactive capability directories to be absent only when the root README or linked
   root layout documentation explains the active layout.
 - Tests `MUST` fail when active capabilities use competing top-level names instead of `apis/`,
-  `apps/`, `crates/`, `sdks/`, `jobs/`, `tools/`, `plugins/`, `examples/`, `configs/`,
+  `apps/`, `crates/`, `sdks/`, `jobs/`, `tools/`, `plugins/`, `examples/`, `etc/`,
   `deployments/`, `scripts/`, `docs/`, or `tests/`.
 - Tests `MUST` fail on generic competing top-level names such as `api/`, `sdk/`, `package/`,
   `deploy/`, `deployment/`, or `tooling/`.
-- Tests `MUST` allow top-level `config/` only when the selected architecture-specific app surface root under `apps/sdkwork-<application-code>-<client-arch>/` requires `config/` per the governing architecture standard; otherwise project-root config content uses `configs/`.
+- Tests `MUST` allow top-level `config/` only when the selected architecture-specific app surface root under `apps/sdkwork-<application-code>-<client-arch>/` requires `config/` per the governing architecture standard; otherwise independently deployable project-root config content uses `etc/`.
 - Tests `MUST` fail when root `README.md` omits `repository-kind:` for SDKWork git repository roots.
 - Tests `MUST` allow top-level `packages/` only for `shared-package-family` or `foundation-dependency` repositories with the matching README declaration; `application` repositories `MUST` place package families under `apps/sdkwork-<application-code>-common/packages/` or `apps/sdkwork-<application-code>-<client-arch>/packages/`.
 - Tests `MUST` fail when a domain multi-surface repository that owns `apis/`, `apps/`, `crates/`, or
@@ -209,8 +209,8 @@ Rules:
   repository/application agent plugin workspaces in `.sdkwork/plugins/`.
 - Tests `MUST` fail when `plugins/<plugin-name>/` lacks a README, component spec, source boundary,
   or tests appropriate for an installable application/runtime plugin.
-- Tests `MUST` fail when source-controlled `configs/`, architecture-local `config/`, or
-  `deployments/` includes user-private runtime config, live secrets, tokens, private keys,
+- Tests `MUST` fail when retired source-controlled `configs/` exists in a repository root, or when
+  source-controlled `etc/`, architecture-local `config/`, or `deployments/` includes user-private runtime config, live secrets, tokens, private keys,
   environment-local overrides, runtime databases, caches, logs, or generated local state.
 - Tests `MUST` fail when root `tests/` fixtures contain real secrets, tokens, private customer data,
   or runtime state, or when package-local unit tests are moved to root `tests/` without a
@@ -458,6 +458,15 @@ The validator covers application packaging workflow entrypoints, target
 `deploymentProfile`/`runtimeTarget` metadata, copied release workflow drift,
 repository/application `AGENTS.md` dynamic progressive loading, compatibility
 shims, and relative `sdkwork-specs` path resolution.
+
+Deployable roots validate source configuration ownership with:
+
+```text
+node ../sdkwork-specs/tools/check-source-config-standard.mjs --root .
+```
+
+This check covers required `etc/` discovery, deployment index presence, app manifest environment
+debt, retired `configs/`, local/private overlays, and obvious committed secret values.
 - Framework planner tests `MUST` reject unknown config properties, schema-declared type violations, empty target lists, duplicate target ids, non-canonical target ids, duplicate target formats, unsupported enum values, missing or mismatched Linux native package distributions, mixed Linux native/generic formats, dynamic lifecycle `uses`, unsafe relative paths, dependency checkout path overlaps, unsafe dependency refs, unsupported dependency token secret names, deployment selectors that match no package target, and non-string lifecycle `env` values.
 - Framework planner tests `MUST` prove JSON Schema, planner validation, example configs, generated bootstrap output, and reusable workflow policy consumption remain aligned.
 - Package naming tests `MUST` prove package ids use `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>` for generic packages, Linux native `deb`/`rpm` package ids use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<format-token>`, variant packages use `<platform>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>` or `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>`, artifact names use `<artifactPrefix>-<packageId>`, `tar.gz` becomes `tar-gz`, server packages do not use `service` aliases, Windows desktop targets cover both `msi` and `exe` when both installers are configured, and browser, H5, server, PC desktop, Capacitor, Flutter, native mobile, tablet, mini program, container, variant, and multi-format targets remain unique.
@@ -1064,7 +1073,10 @@ Rules:
   `CONFIG_SPEC.md` `runtime_target` label values without introducing
   `web`, `mobile`, `native`, or `docker` runtime-target aliases.
 - Module README examples `SHOULD` be checked against exported public APIs when tooling is available.
-- App manifest changes `SHOULD` run `node apps/scripts/validate-sdkwork-app-standard-v3.mjs`.
+- App manifest ownership changes `MUST` run
+  `node <sdkwork-specs>/tools/check-source-config-standard.mjs --root <application-root>`.
+  A future full manifest validator may become required only after its schema, executable, tests, and
+  examples are added together and this standard names the real command.
 
 ## 6. Completion Checklist
 

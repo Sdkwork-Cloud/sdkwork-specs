@@ -41,16 +41,16 @@ function standardTopology() {
       environment: { allowed: ['development', 'production'] },
     },
     profileFiles: {
-      'standalone.development': 'configs/topology/standalone.development.env',
-      'cloud.development': 'configs/topology/cloud.development.env',
-      'cloud.production': 'configs/topology/cloud.production.env',
+      'standalone.development': 'etc/topology/standalone.development.env',
+      'cloud.development': 'etc/topology/cloud.development.env',
+      'cloud.production': 'etc/topology/cloud.production.env',
     },
     surfaces: {
       'platform.api-gateway': {},
     },
     components: {
       cloudGateway: {
-        configGlob: 'configs/sdkwork-api-cloud-gateway.demo.{profile}.toml',
+        configGlob: 'etc/sdkwork-api-cloud-gateway.demo.{profile}.toml',
       },
     },
     orchestration: {
@@ -64,11 +64,11 @@ function standardTopology() {
 
 test('accepts standalone and cloud two-segment topology profiles', () => {
   const { workspace } = makeWorkspace('sdkwork-demo', standardTopology(), {
-    'configs/topology/standalone.development.env': '',
-    'configs/topology/cloud.development.env': '',
-    'configs/topology/cloud.production.env': '',
-    'configs/sdkwork-api-cloud-gateway.demo.development.toml': '',
-    'configs/sdkwork-api-cloud-gateway.demo.production.toml': '',
+    'etc/topology/standalone.development.env': '',
+    'etc/topology/cloud.development.env': '',
+    'etc/topology/cloud.production.env': '',
+    'etc/sdkwork-api-cloud-gateway.demo.development.toml': '',
+    'etc/sdkwork-api-cloud-gateway.demo.production.toml': '',
     'package.json': JSON.stringify({
       scripts: { 'gateway:package:cloud': 'node scripts/package.mjs' },
     }),
@@ -83,16 +83,16 @@ test('rejects retired serviceLayout vocabulary and three-segment profile ids', (
   const legacy = standardTopology();
   legacy.vocabulary.serviceLayout = { allowed: ['unified-process', 'split-services'] };
   legacy.profileFiles = {
-    'standalone.unified-process.development': 'configs/topology/standalone.unified-process.development.env',
-    'cloud.split-services.production': 'configs/topology/cloud.split-services.production.env',
+    'standalone.unified-process.development': 'etc/topology/standalone.unified-process.development.env',
+    'cloud.split-services.production': 'etc/topology/cloud.split-services.production.env',
   };
   legacy.orchestration.profiles = {
     'standalone.unified-process.development': { processes: [] },
     'cloud.split-services.production': { processes: [] },
   };
   const { workspace } = makeWorkspace('sdkwork-demo', legacy, {
-    'configs/topology/standalone.unified-process.development.env': '',
-    'configs/topology/cloud.split-services.production.env': '',
+    'etc/topology/standalone.unified-process.development.env': '',
+    'etc/topology/cloud.split-services.production.env': '',
   });
 
   const result = runChecker(workspace);
@@ -106,11 +106,11 @@ test('rejects pre-v4 topology specs', () => {
   const legacy = standardTopology();
   legacy.schemaVersion = 2;
   const { workspace } = makeWorkspace('sdkwork-demo', legacy, {
-    'configs/topology/standalone.development.env': '',
-    'configs/topology/cloud.development.env': '',
-    'configs/topology/cloud.production.env': '',
-    'configs/sdkwork-api-cloud-gateway.demo.development.toml': '',
-    'configs/sdkwork-api-cloud-gateway.demo.production.toml': '',
+    'etc/topology/standalone.development.env': '',
+    'etc/topology/cloud.development.env': '',
+    'etc/topology/cloud.production.env': '',
+    'etc/sdkwork-api-cloud-gateway.demo.development.toml': '',
+    'etc/sdkwork-api-cloud-gateway.demo.production.toml': '',
     'package.json': JSON.stringify({
       scripts: { 'gateway:package:cloud': 'node scripts/package.mjs' },
     }),

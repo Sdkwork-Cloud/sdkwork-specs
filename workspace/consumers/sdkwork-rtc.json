@@ -1,6 +1,7 @@
 {
   "pnpm": {
     "packages": [
+      "../sdkwork-app-topology",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-runtime",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-ports",

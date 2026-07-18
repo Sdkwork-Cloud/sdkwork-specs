@@ -7,6 +7,7 @@
       "../sdkwork-core/sdkwork-core-pc-react",
       "../sdkwork-ui/sdkwork-ui-pc-react",
       "../sdkwork-aiot/sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript",
+      "../sdkwork-sdk-generator",
       "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript",
       "../sdkwork-utils/packages/sdkwork-utils-typescript"
     ]

@@ -217,8 +217,8 @@ Workspace-level batch bootstrap lives in `sdkwork-space/bin/`:
 Rules:
 
 - Batch bootstrap `MUST` delegate per-app execution to `@sdkwork/iam-application-bootstrap` through `sdkwork-appbase/scripts/bootstrap/bootstrap-app.mjs`.
-- Batch bootstrap `MUST` load environment profile values from `configs/bootstrap/profiles/<profile>.env` or `<profile>.local.env`.
-- Batch bootstrap `MUST` resolve per-app domain from `sdkwork.app.config.json#environments`, `runtime.apiBaseUrl`, or `backend.defaultBind` unless `--domain` overrides all apps.
+- Batch bootstrap `MUST` load tracked environment profile values from `etc/bootstrap/profiles/<profile>.env`; ignored developer overrides use `etc/bootstrap/profiles/<profile>.local.env`.
+- Batch bootstrap `MUST` resolve per-app domains and API Base URLs from `etc/sdkwork.deployment.config.json` and its referenced typed profiles unless an explicit command-line override is provided. It `MUST NOT` read concrete environment values from `sdkwork.app.config.json`.
 - Legacy `schemaVersion: 1` `sdkwork.app.config` and `schemaVersion: 2` backend gateway manifests `MAY` be upgraded in place through `bin/scaffold-app-manifest-bootstrap.mjs` before batch bootstrap.
 - Public script first segment `MUST` be `admin` per `PNPM_SCRIPT_SPEC.md` for application repositories; workspace `bin/` utilities `MAY` use neutral names such as `bootstrap-all-apps`.
 - Database seed/bootstrap scripts `MUST NOT` be confused with IAM application bootstrap; database lifecycle remains under `db:*`.

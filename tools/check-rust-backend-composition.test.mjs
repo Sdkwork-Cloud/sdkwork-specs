@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
+  parseRustCargoManifest,
   validateRustBackendComposition,
 } from './lib/rust-backend-composition.mjs';
 
@@ -14,6 +15,30 @@ function writeText(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, value, 'utf8');
 }
+
+test('Cargo parser includes dotted workspace dependency shorthand', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-rust-workspace-dependency-'));
+  const cargoPath = path.join(root, 'Cargo.toml');
+  writeText(
+    cargoPath,
+    [
+      '[package]',
+      'name = "sdkwork-demo-gateway-assembly"',
+      'version = "0.0.0"',
+      '',
+      '[dependencies]',
+      'sdkwork_iam_gateway_assembly.workspace = true',
+      '',
+    ].join('\n'),
+  );
+
+  const manifest = parseRustCargoManifest(cargoPath);
+
+  assert.deepEqual(
+    manifest.dependencies.map((dependency) => dependency.name),
+    ['sdkwork-iam-gateway-assembly'],
+  );
+});
 
 test('service crates must not depend on concrete SQLx repository crates', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-rust-service-repo-'));

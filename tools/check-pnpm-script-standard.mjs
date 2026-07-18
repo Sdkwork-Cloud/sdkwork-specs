@@ -150,20 +150,28 @@ const PNPM_NATIVE_COMMANDS = new Set([
 const PNPM_PROSE_WORDS = new Set([
   'command',
   'commands',
+  'child-process',
   'script',
   'scripts',
+  'workspace',
+  'workspaces',
 ]);
 const IGNORED_DIRS = new Set([
   '.git',
+  '.mimocode',
   '.pnpm',
   '.vite',
+  'external',
   'node_modules',
   'target',
   'dist',
   'generated',
+  'third_party',
+  'vendor',
 ]);
 const IGNORED_DOCUMENT_PATH_PARTS = new Set([
   'artifacts',
+  'docs/release',
   'docs/review',
   'docs/superpowers',
   '.sdkwork/manual-backups',

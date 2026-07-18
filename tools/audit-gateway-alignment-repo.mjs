@@ -67,6 +67,13 @@ function hasStandaloneOrCloudGateway(root, applicationCode) {
   return found;
 }
 
+function cargoDependsOnAssembly(cargo, applicationCode) {
+  const packageName = assemblyPackageName(applicationCode);
+  const dependencyKey = packageName.replaceAll('-', '_');
+  return cargo.includes(packageName)
+    || new RegExp(`^\\s*${dependencyKey.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}\\s*(?:=|\\.)`, 'mu').test(cargo);
+}
+
 function bootstrapHasTodoMacro(bootstrapSource) {
   return bootstrapSource
     .split('\n')
@@ -170,7 +177,7 @@ export function auditGatewayAlignmentRepo(root) {
       'Cargo.toml',
     );
     const cargo = readText(cargoPath);
-    return cargo.includes(assemblyPackageName(applicationCode));
+    return cargoDependsOnAssembly(cargo, applicationCode);
   });
 
   if (Object.keys(gatewayCrates).length > 0 && !hasAssemblyDep) {

@@ -256,7 +256,7 @@ function ensureCloudConfigs(repoRoot, spec, manifest, dryRun, actions) {
   const standaloneEnvPath = path.join(
     repoRoot,
     spec.profileFiles?.['standalone.development']
-      ?? 'configs/topology/standalone.development.env',
+      ?? 'etc/topology/standalone.development.env',
   );
   const standaloneEnv = fs.existsSync(standaloneEnvPath)
     ? fs.readFileSync(standaloneEnvPath, 'utf8')
@@ -270,7 +270,7 @@ function ensureCloudConfigs(repoRoot, spec, manifest, dryRun, actions) {
     const abs = path.join(repoRoot, 'configs', fileName);
     const content = buildCloudGatewayToml(spec, manifest, env, upstreamHost);
     if (!fs.existsSync(abs)) {
-      actions.push(`write configs/${fileName}`);
+      actions.push(`write etc/${fileName}`);
       if (!dryRun) fs.writeFileSync(abs, content, 'utf8');
     }
   }
@@ -297,8 +297,8 @@ function ensureCloudConfigs(repoRoot, spec, manifest, dryRun, actions) {
 
 function patchCloudEnvFiles(repoRoot, spec, dryRun, actions) {
   const slug = configSlug(spec);
-  const devConfig = `configs/sdkwork-api-cloud-gateway.${slug}.development.toml`;
-  const prodConfig = `configs/sdkwork-api-cloud-gateway.${slug}.production.toml`;
+  const devConfig = `etc/sdkwork-api-cloud-gateway.${slug}.development.toml`;
+  const prodConfig = `etc/sdkwork-api-cloud-gateway.${slug}.production.toml`;
 
   for (const [profileId, relativePath] of Object.entries(spec.profileFiles ?? {})) {
     if (!profileId.startsWith('cloud.')) continue;
@@ -414,7 +414,7 @@ function alignRepo(repoRoot, dryRun) {
   patchCloudEnvFiles(repoRoot, spec, dryRun, actions);
   ensurePackageScripts(repoRoot, spec, dryRun, actions);
 
-  if (actions.some((a) => a.startsWith('write configs/'))) {
+  if (actions.some((a) => a.startsWith('write etc/'))) {
     actions.push('update specs/topology.spec.json packaging');
     if (!dryRun) writeJson(specPath, spec, false);
   } else if (!spec.packaging?.cloudConfigFiles?.length && spec.surfaces?.['platform.api-gateway']) {

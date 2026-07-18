@@ -377,7 +377,7 @@ Rules:
 - Each standard top-level directory README `MUST` document purpose, owner, allowed content, forbidden content, related specs, and verification command or checklist. For `apps/`, use `apps/README.md` and follow section 3.3.
 - If both `apis/` and `sdks/` exist, the README `MUST` explain that `apis/` contains authored API contracts and API review inputs, while `sdks/` contains SDK family workspaces, materialized authority OpenAPI, derived `sdkgen` inputs, and generated SDK output.
 - If both `plugins/` and `.sdkwork/plugins/` exist, the README `MUST` distinguish application/runtime plugin source from repository/application agent plugin workspaces.
-- If `configs/` or architecture-local `config/` and runtime config paths are documented, the README `MUST` distinguish source-controlled safe templates from user-private or environment-private runtime config governed by `RUNTIME_DIRECTORY_SPEC.md`.
+- If `etc/`, architecture-local `config/`, or runtime config paths are documented, the README `MUST` distinguish source-controlled safe profiles/templates from user-private or environment-private runtime config governed by `RUNTIME_DIRECTORY_SPEC.md`.
 
 ## 3.3 Required apps/ Directory Index
 

@@ -92,6 +92,30 @@ describe('check-pnpm-script-standard', () => {
     assert.equal(result.status, 0, result.stderr);
   });
 
+  it('ignores vendored upstream package scripts', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'node scripts/sdkwork-command.mjs dev',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+      },
+    });
+    const externalRoot = path.join(root, 'external', 'upstream');
+    mkdirSync(externalRoot, { recursive: true });
+    writeFileSync(
+      path.join(externalRoot, 'package.json'),
+      `${JSON.stringify({ scripts: { prepare: 'node upstream-build.mjs', 'dev:web': 'vite' } }, null, 2)}\n`,
+    );
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
   it('accepts browser and desktop dev defaults that delegate to postgres standalone profiles', () => {
     const root = makeRepo({
       name: 'sdkwork-demo',
@@ -833,6 +857,7 @@ describe('check-pnpm-script-standard', () => {
         '',
         '- pnpm command changes follow `../sdkwork-specs/PNPM_SCRIPT_SPEC.md`.',
         '- Use canonical root pnpm commands from `PNPM_SCRIPT_SPEC.md`.',
+        '- pnpm workspace configuration is owned by `pnpm-workspace.yaml`.',
         '- `pnpm check:pnpm-script-standard`: validate pnpm command standardization.',
       ].join('\n'),
     );

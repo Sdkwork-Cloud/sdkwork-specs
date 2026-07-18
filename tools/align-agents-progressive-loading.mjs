@@ -365,11 +365,11 @@ function soulSectionBody(specsPath) {
 }
 
 function applicationIdentitySectionBody() {
-  return 'Read `sdkwork.app.config.json` only when the current task touches application identity, behavior, runtime configuration, SDK wiring, release metadata, or app-owned capabilities.';
+  return 'Read `sdkwork.app.config.json` for application identity, registration, SDK/API inventory, release metadata, or app-owned capabilities. Read `etc/` for concrete environment, Base URL, bind, topology, and deployment values; the app manifest is not runtime configuration authority.';
 }
 
 function localDictionarySectionBody() {
-  return 'Use `AGENTS.md` as the local routing entrypoint; read `.sdkwork/`, `specs/`, and `docs/` only when the current task reaches the workflow, contract, or documentation each location governs.';
+  return 'Use `AGENTS.md` as the local routing entrypoint; read `.sdkwork/`, `specs/`, `etc/`, and `docs/` only when the current task reaches the workflow, contract, source configuration, or documentation each location governs. Only independently deployable roots own `etc/`.';
 }
 
 function requiredSpecsSectionBody(specsPath) {
@@ -458,6 +458,35 @@ function insertPlainSection(text, heading, body, insertionPoint) {
   const after = text.slice(insertionPoint).replace(/^\s*/u, '');
   const addition = plainSectionText(heading, body, eol);
   return `${before}${before ? `${eol}${eol}` : ''}${addition}${after ? `${eol}${eol}${after}` : ''}`;
+}
+
+function removeDeprecatedCopiedStandardSections(text) {
+  const retiredHeadings = new Set([
+    'App SDK Consumer Imports',
+    'HTTP API Response Envelope',
+    'List And Search Pagination',
+  ]);
+  const sections = allLevelTwoSections(text);
+  let updated = text;
+  for (const section of [...sections].reverse()) {
+    if (!retiredHeadings.has(section.heading)) {
+      continue;
+    }
+    updated = `${updated.slice(0, section.start).replace(/\s*$/u, '')}\n\n${updated.slice(section.end).replace(/^\s*/u, '')}`;
+  }
+  return updated;
+}
+
+function ensureTaskSpecificStandardsSection(text, specsPath) {
+  const heading = 'Task-Specific Standards';
+  if (allLevelTwoSections(text).some((section) => section.heading === heading)) {
+    return text;
+  }
+  const humanReview = allLevelTwoSections(text).find(
+    (section) => section.heading === SECTION_HEADINGS.humanReview,
+  );
+  const body = `API work loads \`${specFile(specsPath, 'API_SPEC.md')}\` and its validators. List/search work loads \`${specFile(specsPath, 'PAGINATION_SPEC.md')}\` and \`check-pagination.mjs\`. Source configuration work loads \`${specFile(specsPath, 'SOURCE_CONFIG_SPEC.md')}\` and \`check-source-config-standard.mjs\`. Link these authorities instead of copying their normative bodies into \`AGENTS.md\`.`;
+  return insertPlainSection(text, heading, body, humanReview?.start ?? text.length);
 }
 
 function supportingInsertionPoint(text, heading) {
@@ -555,7 +584,8 @@ function ensureRoutingSections(text, specsPath) {
 }
 
 function updateAgentsText(text, specsPath) {
-  const normalized = normalizeRelativeSpecsPathsOutsideCanonicalSections(text, specsPath);
+  const withoutCopiedStandards = removeDeprecatedCopiedStandardSections(text);
+  const normalized = normalizeRelativeSpecsPathsOutsideCanonicalSections(withoutCopiedStandards, specsPath);
   validateRequiredSectionUniqueness(normalized);
   validateMarkerLocations(normalized);
   let updated = ensureAuthorityPathBlock(normalized, specsPath);
@@ -573,6 +603,7 @@ function updateAgentsText(text, specsPath) {
   updated = upsertMarkerBlock(updated, SECTION_HEADINGS.specResolution, PROGRESSIVE_MARKER, progressiveSpecResolutionBody(specsPath));
   updated = upsertMarkerBlock(updated, SECTION_HEADINGS.verification, VERIFICATION_MARKER, verificationRoutingBody());
   updated = upsertMarkerBlock(updated, SECTION_HEADINGS.execution, PROGRESSIVE_MARKER, progressiveExecutionBody(specsPath));
+  updated = ensureTaskSpecificStandardsSection(updated, specsPath);
   return updated;
 }
 
@@ -599,13 +630,14 @@ function createAgentsText({ rootKind, specsPath }) {
     '',
     '## Application Identity',
     '',
-    'Read `sdkwork.app.config.json` only when the task touches application identity, behavior, runtime configuration, SDK wiring, release metadata, or app-owned capabilities.',
+    'Read `sdkwork.app.config.json` for application identity, registration, SDK/API inventory, release metadata, or app-owned capabilities. Read `etc/` for concrete environment, Base URL, bind, topology, and deployment values.',
     '',
     '## Local Dictionary Structure',
     '',
     '- `AGENTS.md`: local agent execution entrypoint.',
     '- `.sdkwork/`: repository/application skills, plugins, and workspace metadata; read only the matching workflow.',
     '- `specs/`: repository/application contracts or module-local component contracts.',
+    '- `etc/`: source configuration for independently deployable roots; it is not required for libraries or SDK packages.',
     '- `docs/`: Canon documentation and discovery material.',
     '',
     '## Spec Resolution Order',
@@ -632,11 +664,9 @@ function createAgentsText({ rootKind, specsPath }) {
     '',
     markerBlock(PROGRESSIVE_MARKER, progressiveExecutionBody(specsPath), eol),
     '',
-    canonicalSection(APP_SDK_SECTION_BODY, specsPath),
+    '## Task-Specific Standards',
     '',
-    canonicalSection(HTTP_SECTION_BODY, specsPath),
-    '',
-    canonicalSection(PAGINATION_SECTION_BODY, specsPath),
+    `API work loads \`${specFile(specsPath, 'API_SPEC.md')}\` and its validators. List/search work loads \`${specFile(specsPath, 'PAGINATION_SPEC.md')}\` and \`check-pagination.mjs\`. Source configuration work loads \`${specFile(specsPath, 'SOURCE_CONFIG_SPEC.md')}\` and \`check-source-config-standard.mjs\`. Link these authorities instead of copying their normative bodies into \`AGENTS.md\`.`,
     '',
     '## Human Review Rules',
     '',

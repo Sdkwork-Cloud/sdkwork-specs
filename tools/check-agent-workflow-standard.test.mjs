@@ -171,9 +171,9 @@ function makeRepo(options = {}) {
     '',
     'Do not copy root standards locally. Use task-specific specs and record verification evidence.',
     '',
-    '## List And Search Pagination',
+    '## Task-Specific Standards',
     '',
-    'Follow `PAGINATION_SPEC.md`. Run `node ../sdkwork-specs/tools/check-pagination.mjs --workspace .` before completing list/search work.',
+    'List/search work loads `PAGINATION_SPEC.md`. Run `node ../sdkwork-specs/tools/check-pagination.mjs --workspace .` before completing list/search work.',
     '',
     '## Human Review Rules',
     '',
@@ -248,6 +248,26 @@ describe('check-agent-workflow-standard', () => {
           '# SDKWork Standards',
           '',
           'repository-kind: standards',
+          '',
+        ].join('\n'));
+        rmSync(path.join(repoRoot, 'sdkwork.workflow.json'), { force: true });
+        rmSync(path.join(repoRoot, '.github'), { recursive: true, force: true });
+      },
+    });
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /agent and workflow standard ok/);
+  });
+
+  it('does not require an empty application packaging contract for foundation dependencies', () => {
+    const root = makeRepo({
+      mutate(repoRoot) {
+        write(repoRoot, 'README.md', [
+          '# SDKWork Foundation',
+          '',
+          'repository-kind: foundation-dependency',
           '',
         ].join('\n'));
         rmSync(path.join(repoRoot, 'sdkwork.workflow.json'), { force: true });
