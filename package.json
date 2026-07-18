@@ -7,7 +7,8 @@
     "stop": "node ../sdkwork-specs/tools/stop-sdkwork-workspace-processes.mjs --workspace .",    "audit:app-iam-integration": "node tools/audit-app-iam-integration.mjs --workspace .. --strict",
     "check:auth-session-retention": "node tools/check-auth-session-retention.mjs --workspace ..",
     "test:postgres-tools": "node tools/postgres/postgres-tools.contract.test.mjs",
-    "check:unified-postgres-profile": "node tools/check-unified-postgres-profile.mjs"
+    "check:unified-postgres-profile": "node tools/check-unified-postgres-profile.mjs",
+    "check:credential-entry-bootstrap": "node tools/check-credential-entry-bootstrap-standard.mjs --workspace .."
   },
   "dependencies": {
     "pg": "^8.16.3"

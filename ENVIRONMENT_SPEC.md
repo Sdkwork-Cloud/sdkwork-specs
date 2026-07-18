@@ -383,6 +383,17 @@ Credential sources:
 | Interactive session | Appbase IAM login/registration/refresh/current-session response | Same appbase IAM response | Replaces bootstrap credentials in TokenManager, session store, and context store. |
 | Browser/renderer | TokenManager session storage after login | TokenManager session storage after login | `MUST NOT` read live tokens from `VITE_*`, `PORTAL_PUBLIC_*`, or public runtime config. |
 
+Bootstrap lifecycle policy:
+
+| Environment | Private bootstrap source | Missing-token behavior | Browser artifact rule |
+| --- | --- | --- | --- |
+| `development` | Existing private `SDKWORK_ACCESS_TOKEN`, otherwise the shared IAM manifest-based local generator | May generate a disposable local JWT | The IAM serve-only Vite plugin may inject the canonical credential-entry global before application modules execute. |
+| `test` | Explicit test token, otherwise the shared generator only when the isolated runner opts in | Fail unless a token exists or `allowTestTokenGeneration: true` is set | Injection requires the separate `allowTestInjection: true` opt-in. |
+| `staging` | Secret manager, mounted secret, protected host env, or equivalent private runtime source | Fail closed | Never embed in HTML, bundles, public env, or static runtime config. |
+| `production` | Secret manager, mounted secret, protected host env, or equivalent private runtime source | Fail closed | Never embed in HTML, bundles, public env, or static runtime config. |
+
+The canonical Node owner is `sdkwork-iam/scripts/dev/create-dev-bootstrap-access-token-env.mjs`. The canonical Vite owner is `@sdkwork/iam-credential-entry/vite`. Application repositories `MUST NOT` copy fixture JWT creation, manifest identity lookup, env merge, private bootstrap env-file parsing, inline serialization, or canonical global assignment. `process.env.SDKWORK_ACCESS_TOKEN` Vite define replacement is forbidden as the browser handoff because it is not reliable for linked client source in Vite 6.
+
 | Credential | Source | Header | Env/config rule |
 | --- | --- | --- | --- |
 | Auth token | Appbase IAM session/login/refresh/current-session only | `Authorization: Bearer <auth_token>` | Forbidden in environment variables. Forbidden in browser public runtime config. |
@@ -403,6 +414,7 @@ Rules:
 - `SDKWORK_ACCESS_TOKEN_HEADER` may exist only to assert that the runtime uses `Access-Token`; SDKWork v3 applications must reject any value other than `Access-Token`.
 - `SDKWORK_AUTH_TOKEN_HEADER` may exist only to assert that the runtime uses `Authorization`; SDKWork v3 applications must reject any value other than `Authorization`.
 - Browser public runtime config must never include token manager state, token storage contents, refresh tokens, API keys, or generated `getAuthHeaders()` output.
+- Staging and production build commands must produce byte-identical credential-free browser artifacts regardless of whether the build host process has `SDKWORK_ACCESS_TOKEN` set.
 - Desktop apps should store tokens through OS secure storage or approved encrypted storage. Server-side service contexts should use typed request context or trusted service credentials, not `.env` session tokens.
 - Test fixtures may contain fake token strings only when the file is clearly test-only, excluded from production bundles, and covered by static scans that prevent reuse in release config.
 - Runtime env, tracked `.env.example`, bootstrap overlays, runtime TOML, and public runtime config `MUST NOT` define fixed IAM identity scope through `SDKWORK_IAM_BOOTSTRAP_*`, `SDKWORK_IAM_LOCAL_*`, `SDKWORK_USER_CENTER_BOOTSTRAP_*`, runtime `SDKWORK_APP_ID`, `VITE_SDKWORK_APP_ID`, or equivalent tenant/organization/user/owner bootstrap variables. Current tenant, organization, user, session, and app scope `MUST` come from dual-token JWT claims after login according to `IAM_LOGIN_INTEGRATION_SPEC.md`.
