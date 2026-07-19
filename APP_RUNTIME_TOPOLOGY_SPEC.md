@@ -314,6 +314,15 @@ Processes without `runtimeTargets` apply to every runtime target for the
 profile. This selection is declarative; public pnpm scripts must not duplicate
 the process graph for browser and desktop variants.
 
+When one runtime target has multiple client implementations, a `client`
+process `MAY` additionally declare `clientArchitectures` using the canonical
+`APP_MANIFEST_SPEC.md` vocabulary. Runtime-plan selection applies both axes.
+For example, PC Web and H5 both use `runtimeTarget = browser` and are selected
+with `clientArchitecture = pc-web` or `h5`; H5 is not a new runtime target.
+Processes without `clientArchitectures` remain shared. The default browser
+architecture is `pc-web` and the default desktop architecture is `tauri` for
+backward-compatible public commands; other architectures are explicit.
+
 `cloud.development` plans `MUST` report zero local standalone gateway,
 application cloud gateway, platform gateway, API listener, database, Redis,
 migration, seed, and deployed-service worker processes.

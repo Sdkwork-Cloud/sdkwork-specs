@@ -1057,6 +1057,9 @@ Rules:
   API, data, migration, seed, or deployed-service worker roles. The tests must
   inspect canonical v5 `process.role` values and config provenance rather than
   only names; missing or unknown roles fail validation.
+- Resolved-plan tests `MUST` prove clients that share a runtime target are
+  filtered by canonical `clientArchitecture`, including `pc-web` versus `h5`
+  on `browser`, without inventing an H5 deployment profile or runtime target.
 - Default cloud HTTP tests `MUST` prove `platform-collapsed` resolves
   application and platform SDK surfaces through the deployed
   `sdkwork-api-cloud-gateway`. Dedicated application/edge strategies require
