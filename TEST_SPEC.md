@@ -12,7 +12,7 @@ No standard is complete until it is executable.
 | --- | --- |
 | Agent entrypoints | Repository/application `AGENTS.md` presence, tool compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` where required, required sections, relative `sdkwork-specs` path checks, `SOUL.md`/`AGENTS_SPEC.md` references, and no duplicated root spec bodies |
 | Repository workspace | Git repository root and application root standard top-level directory dictionary checks, `.sdkwork/` presence checks, tracked `skills/` and `plugins/` placeholders, skill/plugin manifest checks, static scans for forbidden secrets/runtime/generated SDK files, repository `README.md` `repository-kind:` declaration, and package-family path layout via `tools/check-workspace-packages-layout.mjs` (`enforce`, `migration`, or `audit` mode) |
-| pnpm scripts | Validate `PNPM_SCRIPT_SPEC.md`: required root scripts, application-code-prefix retirement, allowed public namespaces, action-first runtime target command names, canonical gateway command order, retired deployment word rejection, package-local script scans, documentation/config command examples, and active runner-script `pnpm` invocation scans |
+| pnpm scripts | Validate `PNPM_SCRIPT_SPEC.md`: required root scripts, application-code-prefix retirement, allowed public namespaces, action-first runtime target command names, canonical gateway command order, retired deployment word rejection, private `_sdkwork:*` hook grammar, package-local script scans, documentation/config command examples, and active runner-script `pnpm` invocation scans |
 | Code style and naming | `CODE_STYLE_SPEC.md` and `NAMING_SPEC.md` checks for focused entrypoints, public exports, generated-code boundaries, canonical names, identity lattice terminology (`tools/check-identity-naming.mjs`), and no catch-all implementation files |
 | Language-specific code | On-demand Rust, Java, TypeScript, and frontend checks only when those languages/frameworks are touched |
 | Tailwind CSS integration | `TAILWIND_CSS_INTEGRATION_SPEC.md` checks via `tools/check-tailwind-integration.mjs` for shell bootstrap ownership, forbidden feature-package `@import "tailwindcss"`, and deprecated Vite aliases |
@@ -286,7 +286,14 @@ pnpm script tests make `PNPM_SCRIPT_SPEC.md` executable.
 Rules:
 
 - Every SDKWork application repository root that uses `package.json#scripts`
-  `MUST` expose `dev`, `build`, `test`, `check`, `verify`, and `clean`.
+  `MUST` expose `dev`, `dev:standalone`, `dev:cloud`, `build`, `test`, `check`,
+  `verify`, and `clean`.
+- Tests `MUST` prove bare `dev` directly delegates to `dev:standalone`,
+  `dev:standalone` resolves to `standalone.development`, and `dev:cloud`
+  resolves to `cloud.development`.
+- Tests `MUST` fail when `dev:cloud` selects a database, starts local API or
+  gateway processes, inherits standalone loopback URLs, or falls back to
+  `cloud.production`.
 - Tests `MUST` fail when repository root public script names start with product
   tokens such as `drive`, `im`, `clawrouter`, or the application-specific
   application code.
@@ -309,12 +316,22 @@ Rules:
 - Tests `MUST` fail when gateway scripts use deployment profile before action,
   such as `gateway:cloud:bundle` or `gateway:standalone:pack`. Use
   `gateway:package:cloud` and `gateway:package:standalone`.
+- Tests `MUST` fail when release or deploy scripts put deployment profile
+  before lifecycle phase, such as `release:cloud:package` or
+  `deploy:cloud:apply`. Profile-aware commands use
+  `release:<phase>[:runtimeTarget]:<deploymentProfile>` and
+  `deploy:<phase>:<deploymentProfile>[:provider]`.
+- For every exposed profile-sensitive release or deploy phase, tests `MUST`
+  require paired standalone/cloud variants when the application owns both
+  profiles. Apply and rollback tests must prove profile, lifecycle environment,
+  immutable artifact, and rollback selection fail closed before side effects.
 - Tests `MUST` fail when root `dev:browser` or `dev:desktop` defaults resolve
   to SQLite, cloud, hidden topology modes, or retired `--hosting` flags. These
   defaults must resolve through their direct command value or root-script
   delegation chain to PostgreSQL, `standalone`, and `development`; explicit
   alternatives use suffixed scripts such as `dev:desktop:sqlite` or
-  `dev:browser:postgres:cloud`.
+  `dev:browser:cloud`. Cloud development variants must not carry a database
+  axis.
 - Tests `MUST` verify new root API/SDK command families use `api:*` and
   `sdk:*` public namespaces for cross-application automation.
 - Tests `MUST` scan app surface and package-local `package.json#scripts` for
@@ -422,6 +439,26 @@ node ../sdkwork-specs/tools/bootstrap-database-module.mjs --repo <repo-name>
 - Checksum immutability tests `MUST` prove modified applied migration files fail migrate/plan with `checksum_mismatch`.
 - Layout validation `MUST` fail when a numbered `.up.sql` migration lacks its paired `.down.sql`.
 
+### Process-Shared Pool Tests
+
+Process-shared pool tests make `DATABASE_SPEC_PROCESS_SHARED_POOL.md` executable.
+
+Rules:
+
+- Every database-owning application gateway, service, or worker process `MUST` publish `specs/process-database-pool.spec.json`.
+- Contract tests `MUST` prove pool enablement or canonical pool creation occurs before IAM, application, dependency, route, readiness, or scheduler database bootstrap.
+- Integrated module tests `MUST` prove every consumer receives or resolves a clone of the installed process pool and does not create independent capacity.
+- Identity tests `MUST` reject a service-specific URL, database, schema, engine, driver, credential identity, or TLS mode that differs from the process pool.
+- Driver tests `MUST` reject undeclared `PgPool`/`AnyPool`/r2d2 coexistence in one production process.
+- Capacity tests `MUST` treat `MAX_CONNECTIONS` as a process budget and prove embedded module count does not multiply it.
+- Recovery tests `MUST` prove PostgreSQL unavailability produces bounded retries and does not create an unbounded connection storm.
+- Live smoke tests `SHOULD` record `pg_stat_activity` counts before startup, after readiness, and after graceful shutdown.
+- Application repositories call the canonical validator with:
+
+```text
+node ../sdkwork-specs/tools/check-process-shared-database-pool.mjs --root .
+```
+
 ## 2.0.2.2 IAM Application Bootstrap Tests
 
 IAM application bootstrap tests make `IAM_APPLICATION_BOOTSTRAP_SPEC.md` executable.
@@ -454,8 +491,8 @@ Rules:
 node ../sdkwork-specs/tools/check-agent-workflow-standard.mjs --root .
 ```
 
-The validator covers application packaging workflow entrypoints, target
-`deploymentProfile`/`runtimeTarget` metadata, copied release workflow drift,
+The validator covers application packaging workflow entrypoints, target fixed
+or runtime-configurable profile binding, `runtimeTarget` metadata, copied release workflow drift,
 repository/application `AGENTS.md` dynamic progressive loading, compatibility
 shims, and relative `sdkwork-specs` path resolution.
 
@@ -468,10 +505,11 @@ node ../sdkwork-specs/tools/check-source-config-standard.mjs --root .
 This check covers required `etc/` discovery, deployment index presence, app manifest environment
 debt, retired `configs/`, local/private overlays, and obvious committed secret values.
 - Framework planner tests `MUST` reject unknown config properties, schema-declared type violations, empty target lists, duplicate target ids, non-canonical target ids, duplicate target formats, unsupported enum values, missing or mismatched Linux native package distributions, mixed Linux native/generic formats, dynamic lifecycle `uses`, unsafe relative paths, dependency checkout path overlaps, unsafe dependency refs, unsupported dependency token secret names, deployment selectors that match no package target, and non-string lifecycle `env` values.
-- Framework planner tests `MUST` prove JSON Schema, planner validation, example configs, generated bootstrap output, and reusable workflow policy consumption remain aligned.
-- Package naming tests `MUST` prove package ids use `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>` for generic packages, Linux native `deb`/`rpm` package ids use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<format-token>`, variant packages use `<platform>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>` or `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>`, artifact names use `<artifactPrefix>-<packageId>`, `tar.gz` becomes `tar-gz`, server packages do not use `service` aliases, Windows desktop targets cover both `msi` and `exe` when both installers are configured, and browser, H5, server, PC desktop, Capacitor, Flutter, native mobile, tablet, mini program, container, variant, and multi-format targets remain unique.
-- Package target taxonomy tests `MUST` prove `platform`, package `profile`,
-  `deploymentProfile`, and `runtimeTarget` are separate fields. They must fail
+- Framework planner tests `MUST` prove JSON Schema, planner validation, example configs, generated bootstrap output, reusable workflow policy consumption, and fixed/runtime-configurable/non-deployable target binding behavior remain aligned.
+- Package naming tests `MUST` prove fixed package ids use `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>`, runtime-configurable clients use `<platform>-<architecture>-dual-<profile>-<format-token>`, Linux native `deb`/`rpm` package ids include distribution, variant ids insert the variant before format, artifact names use `<artifactPrefix>-<packageId>`, and `dual` is rejected as a runtime/deploy profile.
+- Package target taxonomy tests `MUST` prove `platform`, client architecture,
+  package `profile`, fixed/supported deployment profiles, profile binding, and
+  `runtimeTarget` are separate fields. They must fail
   when package profile is `web`, `docker`, `standalone`, or `cloud`; when
   platform is used as `runtimeTarget`; or when runtime target is used as
   deployment profile.
@@ -483,7 +521,8 @@ debt, retired `configs/`, local/private overlays, and obvious committed secret v
   `test-runner`. Tests must fail when `mobile`, `native`, `web`, or `docker`
   is used as a runtime target.
 - Toolchain tests `MUST` prove `actions/setup-toolchains` consumes every planner output for supported toolchains instead of silently ignoring declared language versions or mobile/native toggles.
-- Matrix tests `MUST` cover platform, architecture, deployment profile, package
+- Matrix tests `MUST` cover platform, architecture, fixed/runtime-configurable/
+  non-deployable binding, active deployment profile, package
   profile, runtime target, format, multi-format artifact naming, no-target
   failure behavior, browser/H5 targets, mobile/native targets, mini program
   targets, container/Docker-compatible targets, and tablet targets when tablet
@@ -501,6 +540,14 @@ debt, retired `configs/`, local/private overlays, and obvious committed secret v
 - Composite action tests `MUST` prove shell-based actions pass action inputs through environment variables or structured argument arrays instead of embedding `${{ inputs.* }}` directly in shell script bodies.
 - Repository validation tests `MUST` include both a negative case for `${{ inputs.* }}` inside literal `run` script bodies and a positive case proving later `env:`, `with:`, `if:`, or reusable workflow metadata expressions are not misclassified as shell script content.
 - Deployment tests `MUST` prove configured deployments bind to GitHub Environments and pass deployment environment, URL, and lifecycle values to the lifecycle runner.
+- Artifact evidence tests `MUST` prove the canonical or configured evidence
+  path is carried into the deployment matrix, the evidence document is checked
+  against package id, profile binding, active deployment profile, runtime target,
+  digest, SBOM, provenance, and signature before deployment lifecycle execution,
+  and invalid or stale evidence fails closed. They `MUST` also mutate or replace
+  the referenced artifact and prove byte-level SHA-256 mismatch, version/source
+  commit drift, evidence upload-path inclusion, and aggregate Release exclusion
+  of non-deployable test artifacts.
 - Repository validation for `sdkwork-github-workflow` `MUST` check `AGENTS.md`, compatibility shims, `.sdkwork/` files, reusable workflow YAML, composite actions, schema, examples, templates, generator output, and repository documentation.
 
 ## 2.0.3 Engineering Lifecycle Tests
@@ -916,7 +963,7 @@ Rules:
   `[runtime].deployment_mode`, `deploymentMode`, or CLI flags such as
   `--hosting` as active deployment architecture. Migration tools may cover
   those aliases only when tests prove they normalize to `deploymentProfile`,
-  `runtimeTarget`, and v4 topology profile ids before application code sees the
+  `runtimeTarget`, and v5 topology profile ids before application code sees the
   config.
 - Topology tests `MUST` fail when profile ids begin with `self-hosted.` or
   `cloud-hosted.`, or when they do not follow
@@ -963,6 +1010,15 @@ Rules:
   format, package profile, deployment profile, runtime target, and
   `runtime.framework` align with the package consistency matrix in
   `APP_MANIFEST_SPEC.md`.
+- App manifest and workflow tests `MUST` prove every artifact uses exactly one
+  fixed or runtime-configurable profile binding. Runtime-configurable clients
+  carry a unique supported-profile set and `dual` package-id token;
+  runtime/config/deploy validators continue to reject `dual` as a
+  deploymentProfile.
+- Client matrix tests `MUST` cover H5 browser, Capacitor iOS/Android, Flutter
+  iOS/Android, native iOS/Android, desktop, tablet, Harmony, and mini-program
+  mappings across runtime target, target platform, client architecture,
+  package format, runner/toolchain, signing, and profile binding.
 - App manifest tests `MUST` fail when a package id profile segment conflicts
   with explicit package metadata, `runtimeTarget`, or `runtime.framework`.
 - App manifest tests `MUST` prove schema, full example, validator, initializer,
@@ -987,6 +1043,46 @@ Rules:
   application deployment unit with one public application ingress for HTTP
   `*-api` surfaces, while cloud profiles use explicit upstream URLs,
   secrets, probes, rollout, and rollback metadata.
+- Development topology tests `MUST` prove `standalone.development` may start
+  the local application unit while `cloud.development` contains no local
+  application/platform API, gateway, database, Redis, migration, or seed
+  process; remote required surfaces use explicit non-fallback URLs and bounded
+  health checks.
+- Resolved-plan tests `MUST` prove standalone HTTP development has exactly one
+  application standalone gateway and cloud development has zero local gateway,
+  API, data, migration, seed, or deployed-service worker roles. The tests must
+  inspect canonical v5 `process.role` values and config provenance rather than
+  only names; missing or unknown roles fail validation.
+- Default cloud HTTP tests `MUST` prove `platform-collapsed` resolves
+  application and platform SDK surfaces through the deployed
+  `sdkwork-api-cloud-gateway`. Dedicated application/edge strategies require
+  an ADR and explicit remote URLs.
+- Release matrix tests `MUST` prove dual-profile application authorities plan
+  at least one valid standalone and one valid cloud target without cloning an
+  invalid runtime-target/profile combination.
+- Publication and deployment tests `MUST` prove package/publish jobs cannot
+  deploy, deploy jobs cannot rebuild, `all` is rejected for unapproved
+  side-effecting jobs, and production apply/rollback requires protected
+  environment approval plus immutable artifact and rollback evidence.
+- Deploy tool tests run `node --test tools/check-deploy-standard.test.mjs` and
+  prove v2 profile structure, production source-tree exception handling,
+  explicit side-effect selection, digest and artifact-evidence validation, v2
+  combination rules, profile/environment equality, atomic nginx replacement,
+  and apply/rollback restoration on test or reload failure. Apply/rollback must
+  never consume `defaultProfile`.
+- App manifest tests run `node --test tools/check-app-manifest-standard.test.mjs`
+  and `node --test tools/check-app-manifest-deployment-standard.test.mjs` and
+  prove the v3 schema/validator, package/release references, secret rejection,
+  fixed/runtime-configurable/non-deployable binding, and runtime-target matrix.
+- Topology plan tests run `node --test tools/resolve-app-runtime-plan.test.mjs`
+  and validate canonical URL provenance, local gateway/data-store reporting,
+  and forbidden cloud-development roles.
+- Lifecycle facade tests `MUST` include a live supervisor stop, stale-session
+  rejection, Windows registered-child fallback semantics, and one composed
+  `doctor` fixture that validates topology, workflow, and deploy contracts.
+- Installed-client tests `MUST` prove profile/environment/origin switches use
+  isolated token, cookie, secure-storage, cache, offline-queue, and local-data
+  namespaces and require re-authentication.
 
 ## 3. Security Tests
 
@@ -1122,6 +1218,7 @@ Rules:
 - [ ] H5 mobile, Flutter mobile, mini program, Android native, iOS native, and Harmony native architecture checks pass when those client roots or packages are touched.
 - [ ] Environment/config checks pass for lifecycle environment, profile alias, deployment profile, build mode, runtime target, dev/test/staging/prod files, local override ignore rules, browser public runtime, desktop user/server split, H5/Capacitor config, Flutter config, mini program config, native Android config, native iOS config, native Harmony config, container config, and Tauri platform config.
 - [ ] Deployment profile checks reject retired deployment-mode keys and values, validate standalone/cloud topology profile ids, and prove package/workflow metadata carries `deploymentProfile` and `runtimeTarget`.
+- [ ] Development/release/deploy profile checks prove deterministic dev defaults, remote-only cloud development, phase-first profile commands, paired release lanes, explicit side-effect targets, and independent rollback evidence.
 - [ ] GitHub workflow checks pass for thin reusable workflow entrypoints, config validation, matrix planning, dependency checkout safety, lifecycle env injection, publication policy gates, artifact attestation policy, deployment environment binding, and framework repository validation when GitHub packaging/release/deployment workflows are touched.
 - [ ] Observability checks pass for structured logs, metrics, traces, health
       checks, `deployment_profile`, exact `runtime_target` labels, bounded

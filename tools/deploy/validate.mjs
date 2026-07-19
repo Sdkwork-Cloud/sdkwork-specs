@@ -195,6 +195,7 @@ export function buildDeployContext(repoRoot, profileId, options = {}) {
     appId,
     runtimeCode,
     layout,
+    deployment: block.deployment ?? null,
     expose: exposePlans,
     packages,
     apiSurfaces,

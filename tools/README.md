@@ -7,10 +7,43 @@ Rules:
 - Tools in this directory are standards-owned and application-neutral.
 - Application repositories may call these tools through thin `package.json` scripts.
 - `check-pnpm-script-standard.mjs` validates root scripts, package-local
-  script names and command values, default `dev:browser`/`dev:desktop`
-  PostgreSQL + standalone + development resolution, action-first runtime
-  target command names, retired deployment flags, and active Markdown/AGENTS
-  plus command-bearing JSON examples against `PNPM_SCRIPT_SPEC.md`.
+  script names and command values, deterministic `dev` -> `dev:standalone`
+  delegation, remote-only `dev:cloud`, default `dev:browser`/`dev:desktop`
+  PostgreSQL + standalone + development resolution, paired phase-first
+  standalone/cloud release and deploy variants, action-first runtime target
+  command names, retired deployment flags, and active Markdown/AGENTS plus
+  command-bearing JSON examples against `PNPM_SCRIPT_SPEC.md`.
+- `audit-pnpm-lifecycle-framework.mjs` discovers application roots from
+  `sdkwork.app.config.json`, reports development/build/release/deploy framework
+  coverage, and assigns deterministic migration waves without modifying
+  consumers. Use `--json` for migration automation and `--fail-on-debt` only
+  after the approved consumer wave has completed.
+- `check-topology-deployment-profiles.mjs` validates current v5 and migration
+  v4 standalone/cloud profile coverage, v5 cloud ingress strategy and canonical
+  platform gateway identity, and rejects cloud development profiles that
+  autostart local API/dependency processes, omit deployed surface URLs, use
+  placeholders, or inherit loopback URLs without an explicit tunnel/proxy.
+- `resolve-app-runtime-plan.mjs` resolves a v5 topology into the canonical
+  runtime plan shape, including local processes, remote surfaces, URL
+  provenance, data stores, health checks, and forbidden cloud-development
+  roles.
+- `schemas/sdkwork.app.topology.schema.v5.json` and
+  `schemas/sdkwork.runtime-plan.schema.v1.json` are the machine contracts for
+  topology declarations and resolved plans.
+- `check-app-manifest-deployment-standard.mjs` validates application runtime
+  supported/default profiles and fixed versus runtime-configurable package
+  bindings, canonical runtime targets/source types, dual-binding artifact ids,
+  and client-only profile-configurable targets.
+- `check-app-manifest-standard.mjs` validates the v3 app manifest identity,
+  required sections, package/release references, secrets, and composes the
+  deployment/profile gate. `non-deployable` test-runner evidence is excluded
+  from publication and deployment profile coverage.
+- `check-deploy-standard.mjs` and `deployctl.mjs` validate v1 migration or v2
+  deploy manifests. V2 adds typed deployment dimensions; side-effecting apply
+  requires explicit profile/environment, immutable artifact digest, verified
+  artifact evidence, and approval plus rollback/forward-fix target. Nginx
+  apply and rollback preserve target-keyed recovery evidence, use atomic file
+  replacement, and fail closed on `nginx -t` or reload.
 - `check-agent-workflow-standard.mjs` validates repository/application
   `AGENTS.md` dynamic progressive loading, compatibility shims, relative
   `sdkwork-specs` links, and list/search pagination section presence. For

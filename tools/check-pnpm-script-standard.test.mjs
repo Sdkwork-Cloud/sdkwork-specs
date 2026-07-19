@@ -7,12 +7,19 @@ import { spawnSync } from 'node:child_process';
 
 const CHECKER = path.resolve('tools/check-pnpm-script-standard.mjs');
 
-function makeRepo(manifest, { includeStop = true } = {}) {
+function makeRepo(manifest, { includeStop = true, normalizeDevProfiles = true } = {}) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-pnpm-script-standard-'));
   const normalizedManifest = {
     ...manifest,
     scripts: { ...manifest.scripts },
   };
+  if (normalizeDevProfiles && normalizedManifest.scripts.dev) {
+    normalizedManifest.scripts.dev = 'pnpm dev:standalone';
+    normalizedManifest.scripts['dev:standalone'] ??=
+      'node scripts/sdkwork-command.mjs dev --deployment-profile standalone --environment development';
+    normalizedManifest.scripts['dev:cloud'] ??=
+      'node scripts/sdkwork-command.mjs dev --deployment-profile cloud --environment development';
+  }
   if (includeStop && normalizedManifest.scripts.dev && !normalizedManifest.scripts.stop) {
     normalizedManifest.scripts.stop = 'node scripts/sdkwork-stop.mjs';
   }
@@ -66,6 +73,200 @@ describe('check-pnpm-script-standard', () => {
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /pnpm script standard ok/);
+  });
+
+  it('accepts deterministic standalone/cloud development and paired release/deploy phases', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'pnpm dev:standalone',
+        'dev:standalone': 'node scripts/sdkwork-command.mjs dev --deployment-profile standalone --environment development',
+        'dev:cloud': 'node scripts/sdkwork-command.mjs dev --deployment-profile cloud --environment development',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+        'release:package:standalone': 'node scripts/sdkwork-command.mjs release package --deployment-profile standalone',
+        'release:package:cloud': 'node scripts/sdkwork-command.mjs release package --deployment-profile cloud',
+        'deploy:plan:standalone': 'node scripts/sdkwork-command.mjs deploy plan --deployment-profile standalone',
+        'deploy:plan:cloud': 'node scripts/sdkwork-command.mjs deploy plan --deployment-profile cloud',
+      },
+    });
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('accepts private SDKWork lifecycle hooks behind the canonical public facade', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'pnpm dev:standalone',
+        'dev:standalone': 'pnpm exec sdkwork-app dev --deployment-profile standalone --environment development',
+        'dev:cloud': 'pnpm exec sdkwork-app dev --deployment-profile cloud --environment development',
+        build: 'pnpm exec sdkwork-app build',
+        test: 'pnpm exec sdkwork-app test',
+        check: 'pnpm exec sdkwork-app check',
+        verify: 'pnpm exec sdkwork-app verify',
+        clean: 'pnpm exec sdkwork-app clean',
+        '_sdkwork:dev:standalone': 'node scripts/demo-dev.mjs --legacy-layout',
+        '_sdkwork:dev:cloud': 'vite --mode cloud',
+        '_sdkwork:stop': 'node scripts/demo-stop.mjs',
+        '_sdkwork:build': 'cargo build --release',
+        '_sdkwork:release:package': 'node scripts/demo-package.mjs',
+      },
+    });
+
+    const result = runChecker(root);
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('rejects malformed private SDKWork hook names', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'pnpm dev:standalone',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+        '_sdkwork:custom': 'node scripts/custom.mjs',
+      },
+    });
+
+    const result = runChecker(root);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /private SDKWork hooks must use an approved _sdkwork lifecycle or topology namespace/u);
+  });
+
+  it('rejects private development hooks without a scoped private stop hook', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'pnpm dev:standalone',
+        build: 'pnpm exec sdkwork-app build',
+        test: 'pnpm exec sdkwork-app test',
+        check: 'pnpm exec sdkwork-app check',
+        verify: 'pnpm exec sdkwork-app verify',
+        clean: 'pnpm exec sdkwork-app clean',
+        '_sdkwork:dev:standalone': 'node scripts/dev.mjs',
+      },
+    });
+
+    const result = runChecker(root);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /private _sdkwork:dev hooks require a scoped _sdkwork:stop hook/u);
+  });
+
+  it('accepts one runtime-configurable client release lane', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'pnpm dev:standalone',
+        'dev:standalone': 'node scripts/sdkwork-command.mjs dev --deployment-profile standalone --environment development',
+        'dev:cloud': 'node scripts/sdkwork-command.mjs dev --deployment-profile cloud --environment development',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+        'release:package:desktop:runtime-configurable': 'node scripts/sdkwork-command.mjs release package --target desktop --profile-binding runtime-configurable',
+      },
+    });
+
+    const result = runChecker(root);
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('rejects missing or ambiguous development profile entrypoints', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'node scripts/sdkwork-command.mjs dev',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+      },
+    }, { normalizeDevProfiles: false });
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /missing required root script "dev:standalone"/);
+    assert.match(result.stderr, /missing required root script "dev:cloud"/);
+    assert.match(result.stderr, /bare dev must directly delegate to "dev:standalone"/);
+  });
+
+  it('rejects cloud development that selects a local database', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'pnpm dev:standalone',
+        'dev:standalone': 'node scripts/sdkwork-command.mjs dev --deployment-profile standalone --environment development',
+        'dev:cloud': 'node scripts/sdkwork-command.mjs dev --deployment-profile cloud --environment development --database postgres',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+      },
+    });
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /remote cloud development must not select or bootstrap a local database/);
+  });
+
+  it('rejects target-specific cloud development scripts with a database axis', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'pnpm dev:standalone',
+        'dev:browser:postgres:cloud': 'node scripts/sdkwork-command.mjs dev --target browser --database postgres --deployment-profile cloud --environment development',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+      },
+    });
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /cloud development consumes deployed APIs and must not include a database axis/);
+  });
+
+  it('rejects profile-first lifecycle names and unpaired profile phases', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'pnpm dev:standalone',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+        'release:cloud:package': 'node scripts/sdkwork-command.mjs release package --deployment-profile cloud',
+        'release:package:cloud': 'node scripts/sdkwork-command.mjs release package --deployment-profile cloud',
+        'deploy:cloud:apply': 'node scripts/sdkwork-command.mjs deploy apply --deployment-profile cloud',
+        'deploy:apply:cloud': 'node scripts/sdkwork-command.mjs deploy apply --deployment-profile cloud',
+      },
+    });
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /release:cloud:package: use release:<phase>/);
+    assert.match(result.stderr, /deploy:cloud:apply: use deploy:<phase>/);
+    assert.match(result.stderr, /release:package: exposed lifecycle phase must provide a standalone profile variant/);
+    assert.match(result.stderr, /deploy:apply: exposed lifecycle phase must provide a standalone profile variant/);
   });
 
   it('accepts UTF-8 BOM JSON command manifests', () => {

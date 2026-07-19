@@ -333,6 +333,31 @@ Rules:
 
 ## 6. SDK Base URL Standard
 
+Development profile routing rules:
+
+- `standalone.development` Base URLs resolve to the local standalone
+  application ingress and any explicitly embedded or local platform adapter.
+- `cloud.development` Base URLs resolve to already deployed cloud application
+  and platform surfaces. They must be explicit source config values and must
+  not inherit standalone loopback defaults or production endpoints.
+- Under the default `platform-collapsed` cloud ingress strategy, application
+  and platform SDK roots resolve to the deployed `sdkwork-api-cloud-gateway`
+  origin. Surface paths remain SDK/API-authority owned even when origins are
+  identical.
+- Dedicated application or edge ingress URLs require the matching topology
+  strategy and ADR reference; they are not implicit alternatives to the
+  platform cloud gateway.
+- Installed client profile/endpoint switching must namespace secure storage,
+  tokens, cookies, caches, offline queues, local databases, and update state by
+  application identity, active profile, environment, and normalized origin.
+  Switching across that boundary requires re-authentication.
+- A browser client started by `dev:cloud` may use a local development origin,
+  but the cloud development API must authorize only the declared development
+  origins under the shared Web Framework CORS policy. This does not permit a
+  production wildcard origin.
+- Missing, placeholder, or unauthorized cloud development endpoints fail
+  bootstrap with redacted diagnostics before SDK client construction.
+
 Generated SDK bootstrap should require one common SDK root by default, then resolve explicit base URLs for each SDK surface before constructing generated clients. Per-surface and per-SDK variables are overrides, not mandatory boilerplate for ordinary same-gateway deployments.
 
 | SDK surface | Private server/runtime env | Public browser runtime env | Vite/dev-server public env | Default |

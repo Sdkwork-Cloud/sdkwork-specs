@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdkwork.com/schemas/sdkwork.app.config.schema.v3.json",
+  "title": "SDKWork Application Manifest v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "app", "backend", "runtime", "media", "publish", "artifacts", "release", "security"],
+  "anyOf": [
+    { "required": ["environments"] },
+    {
+      "required": ["metadata"],
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "required": ["deploymentConfig"],
+          "properties": { "deploymentConfig": { "const": "etc/sdkwork.deployment.config.json" } }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 3 },
+    "kind": { "const": "sdkwork.app" },
+    "app": {
+      "type": "object",
+      "required": ["key", "name", "displayName", "officialWebsiteUrl", "appType"],
+      "properties": {
+        "key": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "displayName": { "type": "string", "minLength": 1 },
+        "officialWebsiteUrl": { "type": "string", "format": "uri" },
+        "appType": { "enum": ["NONE", "SDK", "PPT", "APP_HTML", "APP_VUE", "APP_FLUTTER", "APP_UNIAPP", "APP_REACT", "APP_UNITY", "VIDEO", "POSTER"] }
+      }
+    },
+    "backend": { "type": "object" },
+    "runtime": {
+      "type": "object",
+      "required": ["family", "framework", "supportedDeploymentProfiles", "defaultDeploymentProfile"],
+      "properties": {
+        "family": { "enum": ["web", "mobile", "desktop", "server", "cli", "mini-program", "library", "plugin"] },
+        "framework": { "type": "string", "minLength": 1 },
+        "supportedDeploymentProfiles": { "type": "array", "items": { "enum": ["standalone", "cloud"] }, "minItems": 1, "uniqueItems": true },
+        "defaultDeploymentProfile": { "enum": ["standalone", "cloud"] }
+      }
+    },
+    "media": {
+      "type": "object",
+      "required": ["icons", "screenshots", "previews"],
+      "properties": {
+        "icons": {
+          "type": "object",
+          "required": ["primary", "platform"],
+          "properties": {
+            "primary": { "$ref": "#/$defs/mediaAsset" },
+            "platform": { "type": "array", "items": { "$ref": "#/$defs/mediaAsset" } }
+          }
+        },
+        "screenshots": { "type": "array", "items": { "$ref": "#/$defs/mediaAsset" } },
+        "previews": { "type": "array", "items": { "$ref": "#/$defs/mediaAsset" } }
+      }
+    },
+    "publish": { "type": "object" },
+    "environments": { "type": "object" },
+    "artifacts": {
+      "type": "object",
+      "required": ["installConfig"],
+      "properties": {
+        "installConfig": {
+          "type": "object",
+          "required": ["packages"],
+          "properties": {
+            "defaultPackageId": { "type": "string" },
+            "packages": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/package" }
+            }
+          }
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "required": ["notes"],
+      "properties": { "currentVersion": { "type": "string" }, "notes": { "type": "array", "minItems": 1 } }
+    },
+    "security": { "type": "object" },
+    "devApp": { "type": "object" },
+    "metadata": { "type": "object" }
+  },
+  "$defs": {
+    "package": {
+      "type": "object",
+      "required": ["id", "name", "sourceType", "packageFormat", "platform", "architecture", "profileBinding", "runtimeTarget"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "sourceType": { "enum": ["GIT_REPOSITORY", "BINARY_URL", "APP_STORE", "CONTAINER_IMAGE", "MINI_PROGRAM", "WEB_URL", "SCRIPT"] },
+        "packageFormat": { "enum": ["SOURCE_CODE", "JAR", "WAR", "ZIP", "TAR_GZ", "APK", "AAB", "IPA", "EXE", "MSI", "DMG", "APPIMAGE", "DEB", "RPM", "DOCKER_IMAGE", "MINI_PROGRAM_PACKAGE", "OTHER"] },
+        "platform": { "type": "string", "minLength": 1 },
+        "architecture": { "type": "string", "minLength": 1 },
+        "profileBinding": { "enum": ["fixed", "runtime-configurable", "non-deployable"] },
+        "deploymentProfile": { "enum": ["standalone", "cloud"] },
+        "supportedDeploymentProfiles": { "type": "array", "items": { "enum": ["standalone", "cloud"] }, "uniqueItems": true },
+        "defaultDeploymentProfile": { "enum": ["standalone", "cloud"] },
+        "runtimeTarget": { "enum": ["browser", "desktop", "tablet-ipados", "tablet-android", "capacitor-ios", "capacitor-android", "flutter-ios", "flutter-android", "android-native", "ios-native", "harmony-native", "mini-program", "server", "container", "test-runner"] },
+        "targetPlatform": { "type": "string" },
+        "clientArchitecture": { "type": "string" }
+      }
+    },
+    "mediaAsset": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["ICON", "SCREENSHOT", "PREVIEW_IMAGE", "PREVIEW_VIDEO", "FEATURE_GRAPHIC"] },
+        "url": { "type": "string", "format": "uri" },
+        "driveUri": { "type": "string" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "format": { "enum": ["PNG", "JPG", "JPEG", "WEBP", "MP4", "MOV"] }
+      },
+      "anyOf": [{ "required": ["url"] }, { "required": ["driveUri"] }, { "required": ["resource"] }]
+    }
+  }
+}

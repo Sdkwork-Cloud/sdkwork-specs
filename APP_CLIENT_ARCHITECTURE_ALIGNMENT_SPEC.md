@@ -308,7 +308,8 @@ Rules:
 ## 10. Config Alignment
 
 All client roots separate lifecycle environment, profile alias, build mode,
-deployment profile, and runtime target.
+active deployment profile, runtime target, target platform, client
+architecture, and artifact format.
 
 Rules:
 
@@ -316,6 +317,17 @@ Rules:
 - Host/platform config belongs in `config/host/` or the host package's platform config directory. It owns bundle ids, package ids, app ids, schemes, permissions, capabilities, associated domains/app links, signing references, and store profile references.
 - Host/platform config `MUST NOT` contain signing private keys, auth tokens, refresh tokens, database credentials, API keys, SDK package ownership, or business route constants.
 - Server/container config remains separate from client public runtime config.
+- Every client root supports the standard standalone/cloud bootstrap contract.
+  Standalone resolves the application-owned standalone gateway; cloud resolves
+  the deployed `sdkwork-api-cloud-gateway` by default and starts no local
+  gateway/API/data process.
+- A signed client artifact may support both profiles through
+  `profileBinding = runtime-configurable`. Bootstrap selects one active profile,
+  isolates credentials/cache/offline data by profile/environment/origin, and
+  requires re-authentication when the security boundary changes.
+- H5 browser, Capacitor, Flutter, and native iOS/Android are distinct client
+  architectures. Running H5 in a mobile browser does not create a native
+  mobile package.
 - Release preflight must fail when production client config contains localhost endpoints, development secrets, test databases, writable developer paths, unresolved placeholders, or source-controlled secret files.
 
 ## 11. Verification

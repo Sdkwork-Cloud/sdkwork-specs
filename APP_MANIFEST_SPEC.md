@@ -23,10 +23,12 @@ The manifest must use:
 }
 ```
 
-This standard is the current manifest field authority. A centralized JSON Schema, full example, and
-validator `MUST` be introduced together and listed in `TEST_SPEC.md`; standards `MUST NOT` reference
-schema or validator paths that are not present in this repository. Each real app directory uses the
-unsuffixed canonical filename above.
+This standard is the current manifest field authority. The canonical repository-level schema and
+validator are [schemas/sdkwork.app.config.schema.v3.json](schemas/sdkwork.app.config.schema.v3.json),
+`tools/check-app-manifest-standard.mjs`, and
+`tools/check-app-manifest-deployment-standard.mjs`. Application framework repositories may add a
+media/store projection validator, but they must not replace this deployment/profile gate or invent a
+second manifest authority. Each real app directory uses the unsuffixed canonical filename above.
 
 The same `<app-root>` `MUST` contain the source-controlled `.sdkwork/` workspace required by
 `SDKWORK_WORKSPACE_SPEC.md`, including `.sdkwork/skills/` and `.sdkwork/plugins/`.
@@ -68,7 +70,6 @@ When the application is independently deployable, the same root `MUST` contain s
   "runtime": {},
   "media": {},
   "publish": {},
-  "environments": {},
   "artifacts": {},
   "release": {},
   "security": {},
@@ -77,7 +78,10 @@ When the application is independently deployable, the same root `MUST` contain s
 }
 ```
 
-Required sections are `app`, `backend`, `runtime`, `media`, `publish`, `environments`, `artifacts`, `release`, and `security`.
+Required sections are `app`, `backend`, `runtime`, `media`, `publish`, `artifacts`, `release`, and `security`.
+Legacy manifests may retain an `environments` object. New manifests governed by
+`SOURCE_CONFIG_SPEC.md` omit it and MUST set
+`metadata.deploymentConfig` to `etc/sdkwork.deployment.config.json`.
 
 ## 4. Identity
 
@@ -157,12 +161,41 @@ standalone, cloud
 tooling, package generation, and latest-download resolution when a caller does
 not request one explicitly.
 
+Client runtime metadata may additionally declare:
+
+```json
+{
+  "targetPlatforms": ["windows", "macos", "linux", "ios", "android"],
+  "clientArchitectures": ["tauri", "h5", "capacitor", "flutter", "ios-native", "android-native"]
+}
+```
+
+`targetPlatforms` records operating/delivery platforms. `clientArchitectures`
+records implementation/host architectures. Neither field is a deployment
+profile or a replacement for exact package `runtimeTarget` metadata.
+
+Canonical client architecture values are `pc-web`, `h5`, `capacitor`,
+`flutter`, `tauri`, `electron`, `android-native`, `ios-native`,
+`harmony-native`, and `mini-program`. Target platform values follow the
+lower-kebab workflow platform registry, including `web`, `h5`, `windows`,
+`macos`, `linux`, `ios`, `ipados`, `android`, `android-tablet`, `harmony`, and
+approved `mp-*` platforms. New architectures require an architecture standard
+and governance review rather than an ad hoc manifest string.
+
 Rules:
 
 - `runtime.supportedDeploymentProfiles` `MUST` be non-empty and every value
   `MUST` be `standalone` or `cloud`.
 - `runtime.defaultDeploymentProfile` `MUST` be one of
   `runtime.supportedDeploymentProfiles`.
+- A complete application release authority that owns both the self-contained
+  and service deployment architectures `MUST` declare both `standalone` and
+  `cloud`. A profile-limited surface manifest may declare only the profile
+  permitted by section 10.1, but the enclosing application release matrix must
+  provide the other lane when the product claims dual-profile support.
+- `runtime.defaultDeploymentProfile` is a discovery/default-selection hint. It
+  `MUST NOT` authorize `release:publish`, `deploy:apply`, or `deploy:rollback`
+  to infer a side-effecting target.
 - App manifests `MUST NOT` use `saas`, `private`, `local`, `test`, `server`,
   `container`, `desktop`, `web`, `self-hosted`, or `cloud-hosted` as deployment
   profile values. `server`, `container`, `desktop`, browser, mobile, tablet,
@@ -274,7 +307,7 @@ The standard projects to `platform_app` as follows:
 | `app.name` | `name` |
 | `app.description` | `description` |
 | `release.currentVersion` or channel latest | `version` |
-| `environments[env].accessUrl` | `accessUrl` |
+| `environments[env].accessUrl` or the selected `etc/` profile | `accessUrl` |
 | `publish.status` | `status` |
 | `app.appType` | `appType` |
 | `media.icons.primary.url` | `iconUrl` |
@@ -307,13 +340,32 @@ Required fields:
   "packageFormat": "MSI",
   "platform": "DESKTOP_WINDOWS",
   "architecture": "x64",
+  "profileBinding": "fixed",
   "deploymentProfile": "standalone",
   "runtimeTarget": "desktop",
+  "targetPlatform": "windows",
+  "clientArchitecture": "tauri",
   "url": "https://cdn.sdkwork.com/...",
   "checksumAlgorithm": "SHA-256",
   "checksum": "...",
   "sizeBytes": 104857600,
   "enabled": true
+}
+```
+
+The example above is a fixed-profile artifact. A client artifact whose signed
+binary supports both API topologies uses the mutually exclusive
+runtime-configurable form:
+
+```json
+{
+  "id": "windows-x64-dual-desktop-msi",
+  "profileBinding": "runtime-configurable",
+  "supportedDeploymentProfiles": ["standalone", "cloud"],
+  "defaultDeploymentProfile": "standalone",
+  "runtimeTarget": "desktop",
+  "targetPlatform": "windows",
+  "clientArchitecture": "tauri"
 }
 ```
 
@@ -340,17 +392,17 @@ Package ids must follow `NAMING_SPEC.md`:
 | WeChat H5 URL | `h5-weixin-universal-cloud-mobile-web-url` | `WEB_URL` | `OTHER` | `H5_WEIXIN` |
 | Standalone server archive | `linux-x64-standalone-server-tar-gz` | `BINARY_URL` | `TAR_GZ` | `API` or `OTHER` |
 | Standalone or cloud container image | `container-x64-cloud-container-oci` | `CONTAINER_IMAGE` | `DOCKER_IMAGE` | `API` or `OTHER` |
-| Windows desktop installer | `windows-x64-standalone-desktop-msi` | `BINARY_URL` | `MSI` | `DESKTOP_WINDOWS` |
-| macOS desktop image | `macos-arm64-standalone-desktop-dmg` | `BINARY_URL` | `DMG` | `DESKTOP_MACOS` |
-| iPadOS tablet app | `ipados-universal-standalone-tablet-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
-| Android tablet app | `android-tablet-arm64-standalone-tablet-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
-| Capacitor iOS mobile app | `ios-universal-standalone-mobile-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
-| Capacitor Android mobile app | `android-arm64-standalone-mobile-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
-| Flutter iOS mobile app | `ios-universal-standalone-mobile-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
-| Flutter Android mobile app | `android-arm64-standalone-mobile-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
-| Android mobile app bundle | `android-arm64-standalone-mobile-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
-| iOS mobile app archive | `ios-universal-standalone-mobile-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
-| Harmony mobile app package | `harmony-arm64-standalone-mobile-other` | `BINARY_URL` or `APP_STORE` | `OTHER` until a backend package format enum for Harmony package artifacts is available; metadata must state the HAP/APP artifact kind | `APP_HARMONY` |
+| Windows desktop installer | `windows-x64-dual-desktop-msi` | `BINARY_URL` | `MSI` | `DESKTOP_WINDOWS` |
+| macOS desktop image | `macos-arm64-dual-desktop-dmg` | `BINARY_URL` | `DMG` | `DESKTOP_MACOS` |
+| iPadOS tablet app | `ipados-universal-dual-tablet-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
+| Android tablet app | `android-tablet-arm64-dual-tablet-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
+| Capacitor iOS mobile app | `ios-universal-dual-mobile-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
+| Capacitor Android mobile app | `android-arm64-dual-mobile-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
+| Flutter iOS mobile app | `ios-universal-dual-mobile-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
+| Flutter Android mobile app | `android-arm64-dual-mobile-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
+| Android native mobile app | `android-arm64-dual-mobile-aab` | `BINARY_URL` or `APP_STORE` | `AAB`, `APK`, or `OTHER` when the store owns the final artifact | `APP_ANDROID` |
+| iOS native mobile app | `ios-universal-dual-mobile-ipa` | `BINARY_URL` or `APP_STORE` | `IPA` or `OTHER` when the store owns the final artifact | `APP_IOS` |
+| Harmony mobile app package | `harmony-arm64-dual-mobile-other` | `BINARY_URL` or `APP_STORE` | `OTHER` until a backend package format enum for Harmony package artifacts is available; metadata must state the HAP/APP artifact kind | `APP_HARMONY` |
 | WeChat mini program package | `mp-weixin-universal-cloud-mini-program-mini-program-package` | `MINI_PROGRAM` | `MINI_PROGRAM_PACKAGE` | `MP_WEIXIN` |
 
 The package id profile segment is an artifact taxonomy segment, not
@@ -366,12 +418,46 @@ Container packages must use an immutable OCI reference or digest-bearing URL.
 
 Rules:
 
-- Every deployable package entry `MUST` declare `deploymentProfile` and
-  `runtimeTarget`.
-- Package `deploymentProfile` values `MUST` be included in
+- Every deployable package entry `MUST` declare `runtimeTarget` and exactly one
+  profile binding form:
+  - fixed artifacts declare `profileBinding = fixed` and one
+    `deploymentProfile`;
+  - runtime-configurable client artifacts declare `profileBinding =
+    runtime-configurable`, `supportedDeploymentProfiles`, and
+    `defaultDeploymentProfile`.
+- Test evidence packages declare `profileBinding = non-deployable` and
+  `runtimeTarget = test-runner`; they must not declare `deploymentProfile`,
+  `supportedDeploymentProfiles`, or `defaultDeploymentProfile`, and they are
+  evidence-only artifacts rather than publication or deployment targets.
+- `profileBinding` defaults to `fixed` only during the v3 compatibility window
+  when legacy package entries contain `deploymentProfile` and omit the field.
+- Runtime-configurable package `supportedDeploymentProfiles` contains exactly
+  the unique values `standalone` and `cloud` and includes its
+  `defaultDeploymentProfile`. A client supporting only one profile uses fixed
+  binding.
+- Server, gateway, worker, and container deployment units `MUST` use fixed
+  binding. Browser, desktop, tablet, Capacitor, Flutter, and native mobile
+  clients `MAY` use runtime-configurable binding when endpoint and credential
+  selection occurs safely at bootstrap.
+- Every client package declares canonical `targetPlatform` and
+  `clientArchitecture`, whether fixed or runtime-configurable. These fields
+  must decompose consistently from `runtimeTarget`, backend platform, package
+  format, and application runtime framework.
+- A dual-profile application release matrix `MUST` cover each declared profile
+  through fixed packages, runtime-configurable client packages, or both.
+  Validators report uncovered profiles and must not synthesize an invalid or
+  byte-identical duplicate runtime target.
+- A `DRAFT` application `MAY` cover a declared profile with disabled package
+  entries whose metadata explicitly declares `releaseBuildDeferred = true`.
+  An `ACTIVE` application `MUST` have at least one enabled package covering
+  every supported deployment profile; disabled or deferred packages cannot
+  satisfy active publication coverage.
+- Fixed package `deploymentProfile` and runtime-configurable package
+  `supportedDeploymentProfiles` values `MUST` be included in application
   `runtime.supportedDeploymentProfiles`.
-- Package ids for deployable artifacts `MUST` include the deployment profile
-  segment as required by `GITHUB_WORKFLOW_SPEC.md`.
+- Fixed package ids include the deployment profile segment. Runtime-configurable
+  client package ids use the reserved single artifact-binding segment `dual`;
+  this token is not a third deployment profile.
 - Package metadata `MUST NOT` treat `server`, `container`, `desktop`, mobile,
   tablet, browser, or mini-program as deployment profiles.
 - Docker-compatible images use `runtimeTarget = "container"`. `docker` may
@@ -392,11 +478,11 @@ platform enums, SDKWork deployment metadata, and runtime target vocabulary from
 | Package/platform class | Required runtime target | Deployment profile rule | Package profile rule |
 | --- | --- | --- | --- |
 | `WEB`, `H5`, `H5_WEIXIN` web URL/static package | `browser` | Usually `cloud`; `standalone` requires a documented local/offline/private bundle | `browser` or `mobile` according to root architecture. |
-| `DESKTOP_WINDOWS`, `DESKTOP_MACOS`, `DESKTOP_LINUX` | `desktop` | `standalone` | `desktop`. |
-| iPadOS/Android tablet native package | `tablet-ipados` or `tablet-android` | `standalone` for packaged tablet apps | `tablet`. |
-| Capacitor mobile package | `capacitor-ios` or `capacitor-android` | `standalone` | `mobile`. |
-| Flutter mobile package | `flutter-ios` or `flutter-android` | `standalone` | `mobile`. |
-| Native Android/iOS/Harmony package | `android-native`, `ios-native`, or `harmony-native` | `standalone` | `mobile`. |
+| `DESKTOP_WINDOWS`, `DESKTOP_MACOS`, `DESKTOP_LINUX` | `desktop` | Fixed `standalone`/`cloud` or runtime-configurable for both | `desktop`. |
+| iPadOS/Android tablet native package | `tablet-ipados` or `tablet-android` | Fixed `standalone`/`cloud` or runtime-configurable for both | `tablet`. |
+| Capacitor mobile package | `capacitor-ios` or `capacitor-android` | Fixed `standalone`/`cloud` or runtime-configurable for both | `mobile`. |
+| Flutter mobile package | `flutter-ios` or `flutter-android` | Fixed `standalone`/`cloud` or runtime-configurable for both | `mobile`. |
+| Native Android/iOS/Harmony package | `android-native`, `ios-native`, or `harmony-native` | Fixed `standalone`/`cloud` or runtime-configurable for both | `mobile`. |
 | `MP_*` mini program package | `mini-program` | Usually `cloud`; `standalone` requires documented platform-local/private distribution | `mini-program`. |
 | Server archive/service package | `server` | `standalone` or `cloud` depending artifact role | `server`. |
 | Container or Docker-compatible image | `container` | `standalone` for single-container units; `cloud` for orchestrated images/bundles | `container`. |
@@ -506,35 +592,28 @@ Recommended external standards:
 
 ## 15. Validation
 
-Run:
+Run the canonical repository-level checks:
 
 ```bash
-node apps/scripts/validate-sdkwork-app-standard-v3.mjs --config apps/examples/sdkwork.app.config.v3.full.example.json
+node ../sdkwork-specs/tools/check-app-manifest-standard.mjs --root .
+node ../sdkwork-specs/tools/check-app-manifest-deployment-standard.mjs --root .
 ```
+
+The repository-independent deployment/profile gate is composed into
+`tools/check-app-manifest-standard.mjs`. Application framework repositories may
+add media dimensions, Drive resource ownership, and `platform_app` projection
+checks, but a completion claim for manifest alignment `MUST` run the two
+repository-level validators and their tests.
 
 Machine-readable output:
 
 ```bash
-node apps/scripts/validate-sdkwork-app-standard-v3.mjs --config apps/examples/sdkwork.app.config.v3.full.example.json --json
+node ../sdkwork-specs/tools/check-app-manifest-standard.mjs --root . --json
 ```
 
-Validate every real app manifest discovered under `apps/`:
-
-```bash
-node apps/scripts/initialize-sdkwork-app-standard-v3.mjs --validate-existing
-```
-
-Initialize or migrate every real app manifest to v3:
-
-```bash
-node apps/scripts/initialize-sdkwork-app-standard-v3.mjs --force
-```
-
-Export the registration-ready `platform_app` projection bundle:
-
-```bash
-node apps/scripts/initialize-sdkwork-app-standard-v3.mjs --export-platform-app
-```
+For a workspace release gate, use `--workspace <workspace-root>`; the command
+discovers every unsuffixed app manifest, validates each one, and rejects
+duplicate global `app.key` values.
 
 The validator enforces:
 
@@ -544,7 +623,8 @@ The validator enforces:
 - valid default package id
 - package id uniqueness
 - valid supported/default deployment profiles
-- package deploymentProfile/runtimeTarget consistency
+- package fixed/runtime-configurable/non-deployable profile binding and runtimeTarget consistency
+- client targetPlatform/clientArchitecture/runtimeTarget consistency
 - package runtime target/platform/package format consistency from the matrix in
   this standard
 - required media icons, screenshots, and preview assets
@@ -561,7 +641,7 @@ The validator enforces:
 - strict unknown-field rejection to prevent schema drift
 - global `app.key` uniqueness across discovered app configs before batch export
 
-When a centralized schema and validator are introduced, they must stay aligned with this standard:
+The schema and validators must stay aligned with this standard:
 
 - The schema `MUST` declare the exact `deploymentProfile` and `runtimeTarget` vocabularies used by
   this standard and `MUST` reject concrete environment/runtime value maps in the manifest.
@@ -569,9 +649,9 @@ When a centralized schema and validator are introduced, they must stay aligned w
   supported app mode family the example claims: browser, desktop, server,
   container/Docker-compatible, mobile, tablet, mini program, and test-only
   fixtures when present.
-- The validator, schema, full example, initializer, and platform_app export
-  projection `MUST` be updated in the same change whenever this package matrix
-  changes.
+- The validator and schema `MUST` be updated in the same change whenever this
+  package matrix changes. A framework-specific full example or `platform_app`
+  export projection is an extension and must link back to this authority.
 
 ## 16. New App Checklist
 

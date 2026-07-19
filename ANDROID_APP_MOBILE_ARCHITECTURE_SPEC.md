@@ -291,13 +291,16 @@ Application roots may expose stable aliases when pnpm or repository tooling orch
 
 ```text
 pnpm install
-pnpm android:sync
-pnpm android:lint
-pnpm android:test
-pnpm android:test:instrumented
-pnpm android:build:debug
-pnpm android:build:release
-pnpm android:bundle:release
+pnpm dev:standalone
+pnpm dev:cloud
+pnpm dev:android-native:standalone
+pnpm dev:android-native:cloud
+pnpm check:android-native
+pnpm test:android-native
+pnpm test:android-native:instrumented
+pnpm build:android-native:debug
+pnpm build:android-native:release
+pnpm release:package:android-native:runtime-configurable
 pnpm test
 pnpm test:config
 ```
@@ -305,6 +308,13 @@ pnpm test:config
 Rules:
 
 - Production build commands must run config, SDK boundary, manifest, media, signing-reference, and secret preflight before packaging.
+- Standalone variants consume the application-owned standalone gateway at its
+  declared private/LAN/appliance endpoint; Android clients do not implicitly
+  launch an on-device gateway. Cloud variants use the deployed
+  `sdkwork-api-cloud-gateway` and start no local gateway or data service.
+- Runtime-configurable AAB/APK packages may support both profiles with isolated
+  credentials and endpoint namespaces. Endpoint selection alone must not
+  produce duplicate signed binaries.
 - Android builds require Android SDK, JDK, Gradle tooling, and a documented signing/release profile.
 - Package-level commands should allow focused unit tests and Android lint for changed modules.
 

@@ -65,6 +65,11 @@ const RUNTIME_TARGETS = new Set([
   'container',
   'test-runner',
 ]);
+const CLIENT_RUNTIME_TARGETS = new Set([
+  'browser', 'desktop', 'tablet-ipados', 'tablet-android',
+  'capacitor-ios', 'capacitor-android', 'flutter-ios', 'flutter-android',
+  'android-native', 'ios-native', 'harmony-native', 'mini-program',
+]);
 const PACKAGE_PROFILES = new Set([
   'browser',
   'desktop',
@@ -377,8 +382,36 @@ function validatePackageWorkflow(root) {
         if (!target.id) issues.push(`${pointer} must declare id`);
         if (target.id && targetIds.has(target.id)) issues.push(`${pointer} duplicates target id ${target.id}`);
         if (target.id) targetIds.add(target.id);
-        if (!DEPLOYMENT_PROFILES.has(target.deploymentProfile)) {
-          issues.push(`${pointer} must declare deploymentProfile as standalone or cloud`);
+        const profileBinding = target.profileBinding
+          ?? (target.deploymentProfile ? 'fixed' : undefined);
+        if (profileBinding === 'fixed') {
+          if (!DEPLOYMENT_PROFILES.has(target.deploymentProfile)) {
+            issues.push(`${pointer} fixed binding must declare deploymentProfile as standalone or cloud`);
+          }
+          if (target.supportedDeploymentProfiles !== undefined) {
+            issues.push(`${pointer} fixed binding forbids supportedDeploymentProfiles`);
+          }
+        } else if (profileBinding === 'runtime-configurable') {
+          const supported = target.supportedDeploymentProfiles;
+          if (!CLIENT_RUNTIME_TARGETS.has(target.runtimeTarget)) {
+            issues.push(`${pointer} runtime-configurable binding is limited to client targets`);
+          }
+          if (target.deploymentProfile !== undefined) {
+            issues.push(`${pointer} runtime-configurable binding forbids deploymentProfile`);
+          }
+          if (!Array.isArray(supported) || supported.length !== 2
+            || new Set(supported).size !== supported.length
+            || supported.some((profile) => !DEPLOYMENT_PROFILES.has(profile))) {
+            issues.push(`${pointer} must declare valid unique supportedDeploymentProfiles`);
+          }
+          if (!supported?.includes(target.defaultDeploymentProfile)) {
+            issues.push(`${pointer} defaultDeploymentProfile must be supported`);
+          }
+          if (!String(target.id ?? '').split('-').includes('dual')) {
+            issues.push(`${pointer} runtime-configurable id must include dual`);
+          }
+        } else {
+          issues.push(`${pointer} must declare profileBinding as fixed or runtime-configurable`);
         }
         if (!RUNTIME_TARGETS.has(target.runtimeTarget)) {
           issues.push(`${pointer} must declare runtimeTarget from CONFIG_SPEC.md`);

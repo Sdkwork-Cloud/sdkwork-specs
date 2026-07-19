@@ -59,7 +59,7 @@ Rules:
 
 | Layout | Meaning | Web prod root (PC) | Web prod root (H5) | Binary prod path |
 | --- | --- | --- | --- | --- |
-| `source-tree` | Source install; mirrors repository tree | `/usr/share/sdkwork-space/{appId}/apps/{appId}-pc/dist/` | `/usr/share/sdkwork-space/{appId}/apps/{appId}-h5/dist/` | `/usr/share/sdkwork-space/{appId}/target/release/{binary}` |
+| `source-tree` | Development/diagnostic source install; production requires a dated governance exception | `/usr/share/sdkwork-space/{appId}/apps/{appId}-pc/dist/` | `/usr/share/sdkwork-space/{appId}/apps/{appId}-h5/dist/` | `/usr/share/sdkwork-space/{appId}/target/release/{binary}` |
 | `binary-package` | Traditional package install per `RUNTIME_DIRECTORY_SPEC` | `/usr/share/sdkwork/{runtimeCode}/web/pc/` | `/usr/share/sdkwork/{runtimeCode}/web/h5/` | `/usr/lib/sdkwork/{runtimeCode}/{binary}` |
 
 Development always uses `{repoRoot}` with the same relative paths as the repository.
@@ -102,13 +102,27 @@ apps/{appId}-mini-program/dist/weixin/
 
 ## 6. Manifest Contract
 
-Format: YAML. Schema: `schemas/sdkwork.deploy.schema.v1.json`. Version field: `version: 1`.
+Format: YAML. New manifests use
+`schemas/sdkwork.deploy.schema.v2.json` and `version: 2`. Version 1 remains
+readable only during `MIG-2026-0720`.
 
 ### 6.1 Simple mode
 
 ```yaml
-version: 1
+version: 2
 profile: cloud.production
+
+deployment:
+  deploymentProfile: cloud
+  environment: production
+  deliveryKind: container-image
+  deploymentDriver: kubernetes
+  managementModel: sdkwork-managed
+  tenancyModel: multi-tenant
+  isolationModel: shared
+  networkExposure: public
+  rolloutStrategy: rolling
+  availabilityMode: high-availability
 
 install:
   layout: binary-package
@@ -123,17 +137,76 @@ overrides: {}
 When `profiles` exists, root-level `profile`, `install`, `expose`, `packages`, and `overrides` MUST be absent. Use `defaultProfile`.
 
 ```yaml
-version: 1
+version: 2
 defaultProfile: cloud.production
 
 profiles:
+  standalone.production:
+    deployment:
+      deploymentProfile: standalone
+      environment: production
+      deliveryKind: host-package
+      deploymentDriver: host-service
+      managementModel: customer-managed
+      tenancyModel: single-tenant
+      isolationModel: dedicated
+      networkExposure: private
+      rolloutStrategy: recreate
+      availabilityMode: single-instance
+    install:
+      layout: binary-package
+    expose: []
+    packages: []
+    overrides: {}
   cloud.production:
+    deployment:
+      deploymentProfile: cloud
+      environment: production
+      deliveryKind: container-image
+      deploymentDriver: kubernetes
+      managementModel: sdkwork-managed
+      tenancyModel: multi-tenant
+      isolationModel: shared
+      networkExposure: public
+      rolloutStrategy: rolling
+      availabilityMode: high-availability
     install:
       layout: binary-package
     expose: []
     packages: []
     overrides: {}
 ```
+
+Dual-profile applications `MUST` use multi-profile mode and declare both
+`standalone.production` and `cloud.production`. `defaultProfile` is permitted
+for read-only discovery and operator UI selection; apply and rollback commands
+must still name the profile and lifecycle environment explicitly.
+
+Development profiles remain source config under `etc/` and are not deploy
+targets. `standalone.development` and `cloud.development` must not be selected
+by a production apply command.
+
+Version 2 profile ids `MUST` match their structured
+`deployment.deploymentProfile` and `deployment.environment`. Production
+profiles `MUST` use `binary-package`; `source-tree` requires an explicit dated
+exception reference and is never the default.
+
+Delivery and driver combinations are constrained:
+
+| `deliveryKind` | Allowed `deploymentDriver` |
+| --- | --- |
+| `host-package` | `host-service`, `nginx` |
+| `container-image` | `container-runtime`, `kubernetes` |
+| `static-web` | `static-host`, `nginx` |
+| `platform-package` | `application-store`, `mini-program-platform` |
+| `configuration-bundle` | `host-service`, `container-runtime`, `kubernetes`, `nginx` |
+
+Cloud deployments must not use `networkExposure = offline`. Offline
+deployments must not declare public `expose` domains. `multi-region` requires
+an infrastructure provider, provider region, and at least two availability
+zones. `canary` requires `container-runtime`, `kubernetes`, or `static-host`;
+`platform-staged` requires an application-store or mini-program-platform
+driver. Schema and executable validation enforce these combinations.
 
 ## 7. expose
 
@@ -334,20 +407,57 @@ Repositories SHOULD expose:
 ```text
 deploy:validate
 deploy:plan
-deploy:nginx:render
+nginx:render
 ```
+
+Repositories that own both deployment architectures also expose
+`deploy:plan:standalone`, `deploy:apply:standalone`,
+`deploy:validate:standalone`, `deploy:rollback:standalone`, and matching
+`:cloud` variants according to `PNPM_SCRIPT_SPEC.md`. Applying or rolling back
+requires an explicit environment and immutable artifact identity.
 
 Implementation:
 
 ```text
 node ../sdkwork-specs/tools/deployctl.mjs validate --root .
 node ../sdkwork-specs/tools/deployctl.mjs plan --root . [--dev]
+node ../sdkwork-specs/tools/deployctl.mjs apply --root . --profile <profile> --environment <environment> --artifact-id <id> --artifact-digest sha256:<digest> --artifact-evidence <evidence.json> [--artifact-root <download-or-package-root>] --rollback-target <id-or-digest-or-forward-fix:boundary> --approval-ref <protected-environment-or-change-record> [--domain <domain>]
+node ../sdkwork-specs/tools/deployctl.mjs rollback --root . --profile <profile> --environment <environment> --artifact-id <failed-id> --artifact-digest sha256:<failed-digest> --artifact-evidence <evidence.json> [--artifact-root <download-or-package-root>] --rollback-target <previous-id-or-digest> --approval-ref <protected-environment-or-change-record> [--domain <domain>]
 node ../sdkwork-specs/tools/deployctl.mjs nginx render --root . --domain <domain>
-node ../sdkwork-specs/tools/deployctl.mjs nginx apply --root . --domain <domain>
+node ../sdkwork-specs/tools/deployctl.mjs nginx apply --root . --profile <profile> --environment <environment> --artifact-id <id> --artifact-digest sha256:<digest> --artifact-evidence <evidence.json> --rollback-target <id-or-digest-or-forward-fix:boundary> --approval-ref <protected-environment-or-change-record> --domain <domain>
+node ../sdkwork-specs/tools/deployctl.mjs nginx rollback --root . --profile <profile> --environment <environment> --artifact-id <failed-id> --artifact-digest sha256:<failed-digest> --artifact-evidence <evidence.json> --rollback-target <previous-id-or-digest> --approval-ref <protected-environment-or-change-record> --domain <domain>
 node ../sdkwork-specs/tools/deployctl.mjs init --root .
 ```
 
 Production nginx reload is gated by `SDKWORK_DEPLOY_NGINX_RELOAD=true` and uses `SDKWORK_DEPLOY_NGINX_RELOAD_CMD` (default `nginx -s reload`).
+
+Top-level `apply` and `rollback` dispatch by the typed
+`deployment.deploymentDriver`. The built-in deployctl executor currently owns
+`nginx`. Kubernetes, container-runtime, host-service, static-host,
+application-store, and mini-program-platform side effects run through approved
+`sdkwork-github-workflow` lifecycle adapters until a reviewed deployctl executor
+is registered. Deployctl `MUST` fail closed for an unregistered driver and
+`MUST NOT` reinterpret it as nginx.
+
+Side-effecting apply and rollback commands `MUST NOT` use `defaultProfile`.
+They require explicit profile, lifecycle environment, immutable artifact id and
+digest, an artifact evidence document, approval context, and rollback target or
+approved forward-fix boundary. The evidence document must bind artifact id,
+artifact path, digest computed from the packaged bytes, version, source commit,
+package id, selected profile support, SBOM,
+provenance, and signature references; see
+`schemas/sdkwork.artifact-evidence.schema.v1.json`.
+`--artifact-root` defaults to the application root and selects the root against
+which `artifactPath` is resolved after a workflow artifact download.
+The selected environment must equal the environment segment in the profile id.
+Nginx apply stores the replaced configuration in a rollback-target-keyed backup
+with selection evidence. Rollback validates that backup, preserves the failed
+current config, restores the selected backup, runs
+`nginx -t`, reloads only when approved, and restores the failed config if test
+or reload fails.
+The first installation, where no previous site exists, uses an explicitly
+approved `forward-fix:<boundary>` value. A rollback operation rejects that
+value because it must name a concrete stored target.
 
 ### 12.1 Deploy Server orchestration
 
@@ -369,7 +479,7 @@ Rules:
 - `appRoot` MUST contain `deployments/deploy.yaml`.
 - `domain` MAY be omitted when the site primary domain is registered in Deploy DB.
 - `POST /backend/v3/api/nginx/configs/{configId}/deploy` MUST validate config content, then:
-  1. when orchestration is enabled (default), run `deployctl nginx apply --root {appRoot} --domain {domain}`
+  1. when orchestration is enabled (default), run `deployctl nginx apply` with explicit root, profile, environment, artifact id/digest, rollback target, and domain from the approved deployment record
   2. otherwise write validated DB content to `{siteFile}` with backup and optional reload
 - Orchestration is disabled only when `SDKWORK_DEPLOY_ORCHESTRATE_NGINX=false`.
 - `deployctl` path resolves from `SDKWORK_DEPLOY_DEPLOYCTL`, `SDKWORK_DEPLOY_SPEC_ROOT`, or `{SDKWORK_DEPLOY_APP_ROOT}/../sdkwork-specs/tools/deployctl.mjs`.
@@ -399,7 +509,11 @@ plan → render → nginx -t → deploy → reload → health-check → rollback
 | V13 | apiSurfaces/OpenAPI prefix conflict fails validation |
 | V14 | per-domain API locations MUST match `cloudPublicHosts` surface filter |
 | V15 | nginx render MUST resolve upstreams from profile env or topology defaults; no placeholder ports |
-| V16 | deploy manifest MUST validate against `schemas/sdkwork.deploy.schema.v1.json` structural rules |
+| V16 | deploy manifest MUST validate against its declared v1/v2 schema; new manifests use v2 |
+| V17 | profile ids use exactly `<standalone|cloud>.<test|staging|production>` and match structured deployment fields |
+| V18 | v2 profiles declare typed delivery, driver, management, tenancy, isolation, exposure, rollout, and availability dimensions |
+| V19 | production source-tree installation fails without an approved dated governance exception |
+| V20 | side-effecting operations require explicit profile/environment/artifact digest/evidence/rollback selection and never consume `defaultProfile` |
 
 ## 14. Examples
 

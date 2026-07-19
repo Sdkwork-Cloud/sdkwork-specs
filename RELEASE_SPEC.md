@@ -30,11 +30,43 @@ Rules:
 Rules:
 
 - Production releases must be reproducible enough to trace source, config, dependency refs, build workflow, and artifact evidence.
-- Production releases must record whether each deployable artifact or rollout
-  uses `deploymentProfile = standalone` or `deploymentProfile = cloud`, and the
-  `runtimeTarget` it serves.
+- Production releases must record whether each artifact is fixed to
+  `standalone`/`cloud` or is a runtime-configurable client supporting both, and
+  the `runtimeTarget` it serves. Every rollout still selects one active
+  deployment profile.
 - Hotfixes must still satisfy security, generated SDK, migration, and rollback rules for touched surfaces.
 - SDK releases must trace to OpenAPI/proto/generator inputs and generated output boundaries.
+
+### 2.1 Deployment-Profile Release Lanes
+
+An application may produce standalone and cloud artifacts from one source
+version, but each profile is an independently verifiable release lane.
+
+| Lane | Typical artifacts | Publication boundary |
+| --- | --- | --- |
+| `standalone` | Standalone gateways, server archives, single-unit containers, fixed private/offline clients | Artifact registry, GitHub Release, private distribution, or download catalog |
+| `cloud` | Cloud services, containers, charts/manifests, gateway config bundles, fixed cloud Web/platform packages | Artifact/container registry, CDN/edge, GitHub Release, platform upload, or deployment catalog |
+| `runtime-configurable` artifact binding | Browser, desktop, tablet, Capacitor, Flutter, native mobile, or approved platform clients supporting both profiles | Signed installer/store/Web artifact with a declared supported-profile set; not a third deployment profile |
+
+Rules:
+
+- The canonical command order is
+  `release:<phase>[:runtimeTarget]:<deploymentProfile>`.
+- Runtime-configurable clients use
+  `release:<phase>:<runtimeTarget>:runtime-configurable`; this release token never
+  authorizes a deploy operation, which must select standalone or cloud.
+- `release:package:*` creates immutable candidate artifacts and
+  `release:publish:*` publishes already validated artifact identities. Neither
+  phase deploys those artifacts to staging or production.
+- A side-effecting publish operation `MUST` select `standalone` or `cloud`
+  explicitly, or reference an approved all-profile release plan that lists
+  every artifact. It must not infer a profile from a default download target.
+- One logical SemVer release `MAY` contain both lanes. Evidence, compatibility,
+  signing, SBOM, provenance, rollout, and rollback remain attributable to each
+  package id and runtime target.
+- Releasing both profiles at one version does not require an invalid duplicate
+  of every runtime target or byte-identical signed client. Target validity and
+  profile binding follow `APP_MANIFEST_SPEC.md`.
 
 ## 3. Versioning
 
@@ -55,6 +87,8 @@ Production release evidence should include:
 - manifest validation.
 - build and test output.
 - artifact names, checksums, and storage locations.
+- canonical artifact evidence document binding artifact id, digest, version,
+  source commit, package id, profile support, SBOM, provenance, and signature.
 - signing evidence where required.
 - SBOM and provenance where required.
 - migration plan and status when relevant.
@@ -69,6 +103,10 @@ Rules:
 - Releases for composable applications `MUST` include the applicable `COMPOSABLE_ARCHITECTURE_SPEC.md` closure-matrix evidence required by `QUALITY_GATE_SPEC.md`; skipped rows must be named as not applicable with reason.
 - Required composition evidence includes the applicable outputs from `check-component-port-bindings.mjs`, `check-frontend-composition.mjs`, `check-rust-backend-composition.mjs`, `check-permission-composition.mjs`, `check-route-path-collisions.mjs`, `resolve-composition.mjs --write`, `check-composition-resolver.mjs`, and `verify-repo.mjs`.
 - Release artifacts must not contain secrets, private keys, local env overrides, or user-private runtime state.
+- Release artifacts must not contain `cloud.development` endpoints, developer
+  origins, local tunnel config, or development credentials. Public production
+  runtime config is a versioned deployment/publication input with its own
+  provenance.
 - Release artifacts must not encode retired deployment profile values such as
   `saas`, `private`, `local`, `server`, `container`, or `desktop`; `server`,
   `container`, and `desktop` are runtime targets only.
@@ -89,6 +127,10 @@ version.
 | `server` | Archive/service package id, runtime config version, database/Redis compatibility, service health checks | Previous service package/config can be restored or forward-fix plan is approved. |
 | `container` | Image/bundle package id, immutable digest, SBOM/provenance, orchestration manifest/chart version, probes | Previous digest/manifest can be redeployed and data migrations are covered. |
 | `test-runner` | Test artifact id or workflow run evidence only | Not a production rollback target. |
+
+Test-runner evidence uses `profileBinding = non-deployable`; it is retained for
+traceability and quality gates, but is excluded from publish, deploy, and
+rollback artifact selectors.
 
 Rules:
 

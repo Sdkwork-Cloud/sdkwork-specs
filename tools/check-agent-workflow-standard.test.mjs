@@ -306,8 +306,34 @@ describe('check-agent-workflow-standard', () => {
     const result = runChecker(root);
 
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /targets\.0 must declare deploymentProfile/);
+    assert.match(result.stderr, /targets\.0 must declare profileBinding as fixed or runtime-configurable/);
     assert.match(result.stderr, /targets\.0 must declare runtimeTarget/);
+  });
+
+  it('accepts a runtime-configurable client workflow target', () => {
+    const root = makeRepo({
+      mutate(repoRoot) {
+        const workflowPath = path.join(repoRoot, 'sdkwork.workflow.json');
+        const workflow = JSON.parse(readFileSync(workflowPath, 'utf8'));
+        workflow.targets = [{
+          id: 'ios-universal-dual-mobile-ipa',
+          profileBinding: 'runtime-configurable',
+          supportedDeploymentProfiles: ['standalone', 'cloud'],
+          defaultDeploymentProfile: 'standalone',
+          runtimeTarget: 'ios-native',
+          profile: 'mobile',
+          platform: 'ios',
+          architecture: 'universal',
+          formats: ['ipa'],
+          runner: 'macos-15',
+          outputGlobs: ['dist/*.ipa'],
+        }];
+        write(repoRoot, 'sdkwork.workflow.json', JSON.stringify(workflow, null, 2));
+      },
+    });
+
+    const result = runChecker(root);
+    assert.equal(result.status, 0, result.stderr);
   });
 
   it('rejects dependency refInputs that are not exposed through the package workflow', () => {

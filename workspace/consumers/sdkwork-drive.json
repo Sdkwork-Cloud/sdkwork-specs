@@ -1,6 +1,7 @@
 {
   "pnpm": {
     "packages": [
+      "../sdkwork-app-topology",
       "../sdkwork-ui/sdkwork-ui-pc-react",
       "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-appbase-pc-react",
       "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-i18n-pc-react",

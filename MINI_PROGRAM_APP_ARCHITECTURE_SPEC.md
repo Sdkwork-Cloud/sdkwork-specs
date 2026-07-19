@@ -305,12 +305,15 @@ Mini program roots should provide:
 ```text
 pnpm install
 pnpm dev
-pnpm mp:dev
-pnpm mp:build
-pnpm mp:build:staging
-pnpm mp:build:prod
-pnpm mp:preview
-pnpm mp:upload
+pnpm dev:standalone
+pnpm dev:cloud
+pnpm dev:mini-program:standalone
+pnpm dev:mini-program:cloud
+pnpm build:mini-program
+pnpm build:mini-program:staging
+pnpm build:mini-program:prod
+pnpm preview:mini-program
+pnpm release:publish:mini-program:cloud
 pnpm typecheck
 pnpm lint
 pnpm test

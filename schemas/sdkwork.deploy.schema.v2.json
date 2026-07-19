@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdkwork.dev/schemas/sdkwork.deploy.schema.v2.json",
+  "title": "SDKWork Deploy Manifest v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": { "const": 2 },
+    "profile": { "$ref": "#/$defs/profileId" },
+    "defaultProfile": { "$ref": "#/$defs/profileId" },
+    "profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/profileId" },
+      "additionalProperties": { "$ref": "#/$defs/profileBlock" }
+    },
+    "deployment": { "$ref": "#/$defs/deployment" },
+    "install": { "$ref": "#/$defs/install" },
+    "expose": { "$ref": "#/$defs/expose" },
+    "packages": { "$ref": "#/$defs/packages" },
+    "overrides": { "$ref": "#/$defs/overrides" }
+  },
+  "oneOf": [
+    {
+      "required": ["profile", "deployment", "expose"],
+      "not": { "required": ["profiles"] }
+    },
+    {
+      "required": ["profiles", "defaultProfile"],
+      "not": {
+        "anyOf": [
+          { "required": ["profile"] },
+          { "required": ["deployment"] },
+          { "required": ["install"] },
+          { "required": ["expose"] },
+          { "required": ["packages"] },
+          { "required": ["overrides"] }
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "profileId": {
+      "type": "string",
+      "pattern": "^(standalone|cloud)\\.(test|staging|production)$"
+    },
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deploymentProfile",
+        "environment",
+        "deliveryKind",
+        "deploymentDriver",
+        "managementModel",
+        "tenancyModel",
+        "isolationModel",
+        "networkExposure",
+        "rolloutStrategy",
+        "availabilityMode"
+      ],
+      "properties": {
+        "deploymentProfile": { "enum": ["standalone", "cloud"] },
+        "environment": { "enum": ["test", "staging", "production"] },
+        "deliveryKind": {
+          "enum": ["host-package", "container-image", "static-web", "platform-package", "configuration-bundle"]
+        },
+        "deploymentDriver": {
+          "enum": ["host-service", "container-runtime", "kubernetes", "static-host", "application-store", "mini-program-platform", "nginx"]
+        },
+        "managementModel": {
+          "enum": ["sdkwork-managed", "customer-managed", "platform-managed", "end-user-managed"]
+        },
+        "tenancyModel": { "enum": ["single-tenant", "multi-tenant"] },
+        "isolationModel": { "enum": ["shared", "dedicated"] },
+        "networkExposure": { "enum": ["public", "private", "internal", "offline"] },
+        "rolloutStrategy": { "enum": ["recreate", "rolling", "blue-green", "canary", "platform-staged"] },
+        "availabilityMode": { "enum": ["single-instance", "high-availability", "multi-region"] },
+        "infrastructureProvider": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "providerRegion": { "type": "string", "minLength": 1 },
+        "availabilityZones": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "driverConfigRef": { "type": "string", "pattern": "^(?![/\\\\])(?!.*\\.\\.).+$" },
+        "exceptionRef": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "deliveryKind": { "const": "host-package" } } },
+          "then": { "properties": { "deploymentDriver": { "enum": ["host-service", "nginx"] } } }
+        },
+        {
+          "if": { "properties": { "deliveryKind": { "const": "container-image" } } },
+          "then": { "properties": { "deploymentDriver": { "enum": ["container-runtime", "kubernetes"] } } }
+        },
+        {
+          "if": { "properties": { "deliveryKind": { "const": "static-web" } } },
+          "then": { "properties": { "deploymentDriver": { "enum": ["static-host", "nginx"] } } }
+        },
+        {
+          "if": { "properties": { "deliveryKind": { "const": "platform-package" } } },
+          "then": { "properties": { "deploymentDriver": { "enum": ["application-store", "mini-program-platform"] } } }
+        },
+        {
+          "if": { "properties": { "deliveryKind": { "const": "configuration-bundle" } } },
+          "then": { "properties": { "deploymentDriver": { "enum": ["host-service", "container-runtime", "kubernetes", "nginx"] } } }
+        },
+        {
+          "if": { "properties": { "deploymentProfile": { "const": "cloud" } } },
+          "then": { "not": { "properties": { "networkExposure": { "const": "offline" } } } }
+        },
+        {
+          "if": { "properties": { "availabilityMode": { "const": "multi-region" } } },
+          "then": {
+            "required": ["infrastructureProvider", "providerRegion", "availabilityZones"],
+            "properties": { "availabilityZones": { "minItems": 2 } }
+          }
+        },
+        {
+          "if": { "properties": { "rolloutStrategy": { "const": "canary" } } },
+          "then": { "properties": { "deploymentDriver": { "enum": ["container-runtime", "kubernetes", "static-host"] } } }
+        },
+        {
+          "if": { "properties": { "rolloutStrategy": { "const": "platform-staged" } } },
+          "then": { "properties": { "deploymentDriver": { "enum": ["application-store", "mini-program-platform"] } } }
+        }
+      ]
+    },
+    "install": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "layout": { "enum": ["source-tree", "binary-package"] }
+      }
+    },
+    "profileBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deployment"],
+      "properties": {
+        "deployment": { "$ref": "#/$defs/deployment" },
+        "install": { "$ref": "#/$defs/install" },
+        "expose": { "$ref": "#/$defs/expose" },
+        "packages": { "$ref": "#/$defs/packages" },
+        "overrides": { "$ref": "#/$defs/overrides" }
+      }
+    },
+    "expose": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/exposeItem" }
+    },
+    "exposeItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domain"],
+      "properties": {
+        "domain": { "type": "string", "minLength": 1 },
+        "tls": { "type": "string" },
+        "mode": { "enum": ["web", "api", "web+api"] },
+        "web": {
+          "oneOf": [
+            { "enum": ["adaptive", "pc", "h5"] },
+            {
+              "type": "array",
+              "items": { "enum": ["pc", "h5"] },
+              "minItems": 1,
+              "maxItems": 2,
+              "uniqueItems": true
+            }
+          ]
+        },
+        "aliases": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "apiPathStyle": { "enum": ["full-prefix", "strip-prefix"] }
+      }
+    },
+    "packages": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "uniqueItems": true
+          }
+        }
+      ]
+    },
+    "overrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowInsecureTls": { "type": "boolean" },
+        "install": { "$ref": "#/$defs/install" },
+        "proxy": { "type": "object" },
+        "web": { "type": "object" },
+        "nginx": { "type": "object" },
+        "packages": { "type": "object" }
+      }
+    }
+  }
+}

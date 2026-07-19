@@ -264,13 +264,18 @@ Application roots should expose stable aliases when pnpm or repository tooling o
 ```text
 pnpm install
 pnpm dev
-pnpm flutter:pub-get
-pnpm flutter:analyze
-pnpm flutter:test
-pnpm flutter:build:android
-pnpm flutter:build:android:prod
-pnpm flutter:build:ios
-pnpm flutter:build:ios:prod
+pnpm dev:standalone
+pnpm dev:cloud
+pnpm dev:flutter-ios:standalone
+pnpm dev:flutter-ios:cloud
+pnpm dev:flutter-android:standalone
+pnpm dev:flutter-android:cloud
+pnpm check:flutter
+pnpm test:flutter
+pnpm build:flutter-android
+pnpm build:flutter-android:prod
+pnpm build:flutter-ios
+pnpm build:flutter-ios:prod
 pnpm test
 pnpm test:config
 ```
@@ -278,6 +283,12 @@ pnpm test:config
 Rules:
 
 - Build commands must run config and manifest preflight before production packaging.
+- Standalone variants consume the application-owned standalone gateway at its
+  declared local/private endpoint. Cloud variants consume the deployed
+  `sdkwork-api-cloud-gateway` and start no local gateway or data service.
+- One signed Flutter package should declare runtime-configurable dual-profile
+  support when endpoint selection occurs safely at bootstrap; endpoint changes
+  alone do not justify duplicate IPA/AAB artifacts.
 - iOS build commands require macOS and Apple tooling. Android build commands require Android SDK/JDK/Gradle tooling.
 - Package-level commands should allow focused `flutter test` and `flutter analyze` for changed packages.
 

@@ -281,7 +281,9 @@ Recommended commands:
 
 ```text
 pnpm dev:desktop
-pnpm dev:desktop:server
+pnpm dev:desktop:standalone
+pnpm dev:desktop:cloud
+pnpm dev:server:standalone
 pnpm dev:desktop:sqlite
 pnpm test:desktop
 pnpm check:tauri-config
@@ -299,7 +301,13 @@ Command rules:
   remain client-only when the application standard assigns default API serving
   to a shared gateway, but the selected dev topology/database profile is still
   `postgres:standalone`.
-- `dev:desktop:server` or an equivalent explicit server command makes the backend
+- `dev:desktop:standalone` starts or locates the application-owned standalone
+  gateway according to typed `gatewayPlacement`; local ownership uses a
+  scoped desktop supervisor and exactly one application HTTP ingress.
+- `dev:desktop:cloud` starts the renderer/native host only, resolves the
+  deployed `sdkwork-api-cloud-gateway`, and starts no local gateway, API,
+  database, Redis, migration, or seed process.
+- `dev:server:standalone` or an equivalent explicit server command makes the backend
   service profile explicit when contributors need to debug the desktop plus
   service integration path.
 - `dev:desktop:sqlite`, `dev:server:sqlite`, or an equivalent documented command
@@ -309,6 +317,21 @@ Command rules:
 - `build:desktop:prod`, `build:tablet-ipados:prod`, and `build:tablet-android:prod` must run release preflight before packaging.
 
 ## 8. Native Capability Boundary
+
+Desktop local gateway supervision rules:
+
+- The host `MUST` verify gateway artifact identity/version before execution,
+  bind loopback by default, allocate a collision-safe port, and publish the
+  resolved URL only through typed runtime bootstrap.
+- Readiness, crash restart, graceful shutdown, process ownership, log paths,
+  schema migration, and updater compatibility are bounded and attributable to
+  the application/session. Generic process-name termination is forbidden.
+- Gateway data, SQLite, locks, logs, cache, and temp files live under the
+  application user-private runtime namespace. Upgrade failure preserves a
+  recoverable previous data/artifact boundary.
+- Switching profile, environment, issuer, or endpoint requires a distinct
+  secure-storage/cache/data namespace and re-authentication. Cloud mode never
+  reuses standalone tokens or mutable local service state implicitly.
 
 Native capability is local capability. Business authorization remains on the API side.
 

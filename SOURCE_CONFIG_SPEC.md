@@ -88,6 +88,7 @@ Every deployable root uses this minimum layout:
     sdkwork.deployment.config.json # profile index when the root supports deployment profiles
     deployments/
       standalone.development.json
+      cloud.development.json
       cloud.production.json
 ```
 
@@ -106,6 +107,26 @@ Rules:
   schema authority, local override policy, secret sources, materialization target, and validation command.
 - Profile ids use `<deployment-profile>.<environment>` where deployment profile is `standalone` or
   `cloud` and environment is `development`, `test`, `staging`, or `production`.
+- A pnpm-managed application root `MUST` provide both
+  `standalone.development` and `cloud.development` source profiles.
+  `standalone.development` owns local application surface values;
+  `cloud.development` owns explicit deployed cloud application/platform URLs
+  for `pnpm dev:cloud`.
+- `cloud.development` `MUST NOT` copy standalone loopback API defaults or
+  production endpoints as fallback values. Missing required cloud URLs fail
+  materialization. An approved local tunnel must be explicit and documented in
+  `etc/README.md`.
+- Autostart values in `cloud.development` `MUST` be false for remote API,
+  gateway, database, and cache processes. Source config may declare bounded
+  remote health checks without declaring those services as local processes.
+- Client source config may describe both supported deployment profiles, but
+  materialized runtime config contains exactly one active profile. Cloud
+  source config defaults to `platform-collapsed` and a deployed
+  `sdkwork-api-cloud-gateway` origin; standalone source config identifies the
+  application-owned standalone gateway placement and URL.
+- Profile/environment/endpoint switches `MUST` use distinct credential,
+  cache, offline-state, and user-data namespaces. Source config never copies
+  tokens or mutable runtime state between those namespaces.
 - Browser renderer config owns renderer ports and binding names; cross-renderer public domains belong
   to the enclosing application deployment config and are injected into renderer bootstrap.
 - A shared adaptive ingress owns the public application origin. PC and H5 renderer configs `MUST NOT`

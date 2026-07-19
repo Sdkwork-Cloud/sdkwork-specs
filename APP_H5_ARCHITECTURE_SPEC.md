@@ -159,7 +159,7 @@ H5 application roots must keep lifecycle environment, profile alias, build mode,
 | Profile alias | `dev`, `test`, `staging`, `prod` | scripts and config file names only |
 | Build mode | Vite/Capacitor/build-tool mode | build scripts and tool config |
 | Deployment profile | `standalone`, `cloud` | runtime/bootstrap |
-| Runtime target | `browser`, `wechat-browser`, `embedded-webview`, `capacitor-ios`, `capacitor-android`, `server`, `container`, `test-runner` | runtime/bootstrap |
+| Runtime target | `browser`, `capacitor-ios`, `capacitor-android`, `server`, `container`, `test-runner`; WeChat browser and embedded WebView are host/runtime variants, not canonical runtime targets | runtime/bootstrap |
 
 Standard config ownership:
 
@@ -176,8 +176,8 @@ Rules:
 - `development`, `test`, `staging`, and `production` examples are required for server/container targets; browser and host targets should provide the same set unless the target is explicitly dev-only.
 - `dev` and `prod` are script/file aliases only. Runtime config content should use `development` and `production`.
 - `.env.local`, `.env.<profile>.local`, `.env.postgres`, `.env.release.local`, `config/*.local.*`, native signing files, and platform credential files must be ignored.
-- `pnpm dev` starts the H5 mobile renderer with browser public runtime config.
-- `pnpm h5:dev` is the explicit H5 browser development command.
+- `pnpm dev` delegates to `dev:standalone`; `dev:browser:standalone` and
+  `dev:browser:cloud` are the explicit H5 browser profile commands.
 - `pnpm test` uses an isolated test profile and must not share development or production database/schema, Redis prefix, logs, cache, runtime, or temp directories.
 - Browser SDK base URLs must be loaded from public runtime config before SDK client construction. Vite `VITE_*` variables are public non-secret build/dev inputs only.
 - Release builds must fail preflight if production profiles contain localhost service endpoints, development secrets, test database names, writable developer directories, unresolved placeholders, or source-controlled secret files.
@@ -404,10 +404,13 @@ Rules:
 
 Rules:
 
-- `pnpm dev` should start the default H5 browser renderer for the application root.
-- `pnpm h5:dev` should start the explicit H5 development target.
-- `pnpm cap:ios:dev` should start the iOS Capacitor development target when iOS packaging is enabled.
-- `pnpm cap:android:dev` should start the Android Capacitor development target when Android packaging is enabled.
+- `pnpm dev` starts the default standalone H5 browser renderer/topology.
+- `pnpm dev:browser:standalone` and `pnpm dev:browser:cloud` select the
+  explicit H5 browser profile.
+- `pnpm dev:capacitor-ios:standalone`, `pnpm dev:capacitor-ios:cloud`,
+  `pnpm dev:capacitor-android:standalone`, and
+  `pnpm dev:capacitor-android:cloud` select Capacitor targets when packaging is
+  enabled.
 - Capacitor builds `MUST` use the H5 mobile renderer build output.
 - Browser web mode `MUST` degrade gracefully when native host adapters are unavailable.
 - Native host commands expose OS capability only. They `MUST NOT` own login, permission evaluation, business authorization, app-api/backend-api calls, or direct database access for feature workflows.
@@ -497,11 +500,14 @@ Every H5 application root should provide these command equivalents:
 ```text
 pnpm install
 pnpm dev
-pnpm h5:dev
-pnpm h5:build
-pnpm h5:build:staging
-pnpm h5:build:prod
-pnpm h5:preview
+pnpm dev:standalone
+pnpm dev:cloud
+pnpm dev:browser:standalone
+pnpm dev:browser:cloud
+pnpm build:browser
+pnpm build:browser:staging
+pnpm build:browser:prod
+pnpm preview:browser
 pnpm build
 pnpm build:staging
 pnpm build:prod
@@ -514,16 +520,14 @@ pnpm test:config
 Capacitor-enabled roots should also provide:
 
 ```text
-pnpm cap:sync
-pnpm cap:copy
-pnpm cap:ios:dev
-pnpm cap:ios:open
-pnpm cap:ios:build
-pnpm cap:ios:build:prod
-pnpm cap:android:dev
-pnpm cap:android:open
-pnpm cap:android:build
-pnpm cap:android:build:prod
+pnpm build:capacitor-ios
+pnpm build:capacitor-ios:prod
+pnpm build:capacitor-android
+pnpm build:capacitor-android:prod
+pnpm dev:capacitor-ios:standalone
+pnpm dev:capacitor-ios:cloud
+pnpm dev:capacitor-android:standalone
+pnpm dev:capacitor-android:cloud
 ```
 
 Package filters should be stable:
@@ -539,9 +543,18 @@ Rules:
 
 - Internal package dependencies `MUST` use `workspace:*`.
 - Root commands should run recursively or through a deterministic task runner when package count grows.
-- `pnpm dev` starts the H5 mobile renderer by default.
-- `cap:*` commands must run the required H5 build or sync preflight and use the same renderer output.
-- `h5:build:prod`, `cap:ios:build:prod`, and `cap:android:build:prod` must run release preflight for public runtime config, Capacitor host config, manifest, media, signing references, package metadata, and secret absence.
+- `pnpm dev` delegates to `dev:standalone` and starts the H5 mobile renderer
+  plus the standalone topology selected by the root dispatcher.
+- Cloud variants start only the renderer/host/simulator and resolve the
+  deployed `sdkwork-api-cloud-gateway`; they start no local gateway or data
+  service.
+- Capacitor synchronization/copy/open commands remain internal runner details
+  behind action-first public commands and use the same renderer output.
+- Production browser and Capacitor builds must run release preflight for
+  public runtime config, host config, manifest, media, signing references,
+  package metadata, and secret absence.
+- H5 browser output is a Web artifact even on iOS/Android browsers. Only an
+  approved native host such as Capacitor produces IPA/APK/AAB artifacts.
 - Package commands remain the canonical development interface. `bin/` scripts may call package commands but must not become a second build system.
 
 ## 14. Standard Ownership

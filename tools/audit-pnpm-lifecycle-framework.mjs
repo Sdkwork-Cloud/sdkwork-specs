@@ -1,0 +1,160 @@
+#!/usr/bin/env node
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
+
+const REQUIRED_SCRIPTS = ['dev', 'stop', 'build', 'test', 'check', 'verify', 'clean'];
+const IGNORED_DIRECTORIES = new Set([
+  '.git', '.pnpm-store', '.runtime', 'node_modules', 'target', 'dist', 'build',
+  'vendor', 'coverage', 'tmp',
+]);
+
+function readJson(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/u, ''));
+  } catch {
+    return null;
+  }
+}
+
+function findApplicationRoots(workspace) {
+  const roots = [];
+  const walk = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if (entry.isSymbolicLink()) continue;
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (!IGNORED_DIRECTORIES.has(entry.name)
+          && !entry.name.startsWith('_sdkwork-agents-local-archive')) walk(full);
+      } else if (entry.name === 'sdkwork.app.config.json') {
+        roots.push(directory);
+      }
+    }
+  };
+  walk(workspace);
+  return [...new Set(roots)].sort();
+}
+
+function scriptNamesMatching(scripts, prefix) {
+  return Object.keys(scripts).filter((name) => name.startsWith(prefix));
+}
+
+function waveFor(entry) {
+  if (entry.foundationDependency) return 0;
+  if (entry.topology && entry.workflow && entry.deployManifest) return 1;
+  if (entry.topology && entry.workflow) return 2;
+  if (entry.topology) return 3;
+  if (entry.packageManifest) return 4;
+  return 5;
+}
+
+export function inspectApplicationRoot(workspace, root) {
+  const relativeRoot = path.relative(workspace, root).replaceAll('\\', '/');
+  const packagePath = path.join(root, 'package.json');
+  const packageManifestExists = fs.existsSync(packagePath);
+  const packageManifest = packageManifestExists ? readJson(packagePath) : null;
+  const appManifest = readJson(path.join(root, 'sdkwork.app.config.json'));
+  const scripts = packageManifest?.scripts ?? {};
+  const readmePath = path.join(root, 'README.md');
+  const readme = fs.existsSync(readmePath) ? fs.readFileSync(readmePath, 'utf8') : '';
+  const foundationDependency = /repository-kind:\s*foundation-dependency/iu.test(readme);
+  const lifecycleFacadePattern = /sdkwork-app(?:\.mjs)?|@sdkwork\/app-topology\/lifecycle/iu;
+  const allScriptText = Object.values(scripts).join('\n');
+  const entry = {
+    root: relativeRoot || '.',
+    applicationId: appManifest?.app?.key ?? path.basename(root),
+    foundationDependency,
+    packageManifest: packageManifestExists,
+    packageManifestValid: Boolean(packageManifest),
+    topology: fs.existsSync(path.join(root, 'specs', 'topology.spec.json')),
+    workflow: fs.existsSync(path.join(root, 'sdkwork.workflow.json')),
+    deployManifest: fs.existsSync(path.join(root, 'deployments', 'deploy.yaml')),
+    lifecycleFacade: lifecycleFacadePattern.test(allScriptText),
+    scripts: {
+      required: Object.fromEntries(REQUIRED_SCRIPTS.map((name) => [name, typeof scripts[name] === 'string'])),
+      devStandalone: typeof scripts['dev:standalone'] === 'string',
+      devCloud: typeof scripts['dev:cloud'] === 'string',
+      devDelegatesStandalone: /^(?:pnpm\s+(?:run\s+)?dev:standalone|node\s+.*sdkwork-app(?:\.mjs)?\s+dev(?:\s+.*)?--deployment-profile\s+standalone)$/u.test(String(scripts.dev ?? '').trim()),
+      releaseCommands: scriptNamesMatching(scripts, 'release:'),
+      deployCommands: scriptNamesMatching(scripts, 'deploy:'),
+    },
+    debt: [],
+  };
+  if (packageManifestExists && !packageManifest) entry.debt.push('invalid-package-manifest-json');
+  if (!appManifest) entry.debt.push('invalid-app-manifest-json');
+  if (!entry.packageManifest) entry.debt.push('missing-package-manifest');
+  for (const [name, present] of Object.entries(entry.scripts.required)) {
+    if (!present) entry.debt.push(`missing-script:${name}`);
+  }
+  if (!entry.scripts.devStandalone) entry.debt.push('missing-script:dev:standalone');
+  if (!entry.scripts.devCloud) entry.debt.push('missing-script:dev:cloud');
+  if (entry.scripts.required.dev && !entry.scripts.devDelegatesStandalone) {
+    entry.debt.push('dev-does-not-delegate-standalone');
+  }
+  if ((scripts['_sdkwork:dev:standalone'] || scripts['_sdkwork:dev:cloud']) && !scripts['_sdkwork:stop']) {
+    entry.debt.push('private-dev-without-scoped-stop');
+  }
+  if (!entry.topology && !foundationDependency) entry.debt.push('missing-topology-v5-contract');
+  if (!entry.workflow && (entry.scripts.releaseCommands.length > 0 || entry.scripts.deployCommands.length > 0)) {
+    entry.debt.push('lifecycle-commands-without-workflow-contract');
+  }
+  if (!entry.lifecycleFacade && packageManifest) entry.debt.push('not-using-lifecycle-facade');
+  entry.wave = waveFor(entry);
+  return entry;
+}
+
+export function auditPnpmLifecycleWorkspace(workspace) {
+  const root = path.resolve(workspace);
+  const applications = findApplicationRoots(root).map((appRoot) => inspectApplicationRoot(root, appRoot));
+  const counts = (predicate) => applications.filter(predicate).length;
+  return {
+    schemaVersion: 1,
+    kind: 'sdkwork.pnpm-lifecycle-audit',
+    workspace: root,
+    generatedAt: new Date().toISOString(),
+    summary: {
+      applications: applications.length,
+      packageManifests: counts((entry) => entry.packageManifest),
+      topologyContracts: counts((entry) => entry.topology),
+      workflowContracts: counts((entry) => entry.workflow),
+      deployManifests: counts((entry) => entry.deployManifest),
+      devProfilePairs: counts((entry) => entry.scripts.devStandalone && entry.scripts.devCloud),
+      lifecycleFacadeAdopters: counts((entry) => entry.lifecycleFacade),
+      debtFree: counts((entry) => entry.debt.length === 0),
+    },
+    applications,
+  };
+}
+
+function printReport(report) {
+  const summary = report.summary;
+  console.log(`SDKWork pnpm lifecycle audit: ${summary.applications} application roots`);
+  console.log(`package=${summary.packageManifests} topology=${summary.topologyContracts} workflow=${summary.workflowContracts} deploy=${summary.deployManifests}`);
+  console.log(`dev-pair=${summary.devProfilePairs} lifecycle-facade=${summary.lifecycleFacadeAdopters} debt-free=${summary.debtFree}`);
+  for (let wave = 0; wave <= 5; wave += 1) {
+    const entries = report.applications.filter((entry) => entry.wave === wave);
+    if (entries.length === 0) continue;
+    console.log(`\nwave ${wave} (${entries.length})`);
+    for (const entry of entries) {
+      console.log(`- ${entry.root}: ${entry.debt.length === 0 ? 'ok' : entry.debt.join(', ')}`);
+    }
+  }
+}
+
+function main() {
+  const { values } = parseArgs({
+    options: {
+      workspace: { type: 'string', default: '..' },
+      json: { type: 'boolean', default: false },
+      'fail-on-debt': { type: 'boolean', default: false },
+    },
+  });
+  const report = auditPnpmLifecycleWorkspace(values.workspace);
+  if (values.json) console.log(JSON.stringify(report, null, 2));
+  else printReport(report);
+  if (values['fail-on-debt'] && report.summary.debtFree !== report.summary.applications) process.exitCode = 1;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

@@ -22,6 +22,9 @@ Rules:
 - Generated SDK artifacts must trace to OpenAPI/proto/generator inputs.
 - Generated or derived composition artifacts, including `generated/composition.resolved.json` and SDK family `sdk-manifest.json`, must trace to native dependency manifests, component specs, route manifests, OpenAPI/proto authorities, and approved resolver or generator commands.
 - Release artifacts must include checksums and signing/SBOM/provenance evidence when required by release policy.
+- Evidence identity `MUST` include deployment profile and runtime target so
+  standalone and cloud artifacts from one version cannot overwrite or borrow
+  each other's checksum, signature, SBOM, provenance, or attestation.
 
 ## 2. Dependency Integrity
 
@@ -43,6 +46,11 @@ Rules:
 - Build logs must not print tokens, API keys, private keys, signing credentials, or credential-bearing URLs.
 - Toolchain versions should be declared through standard workflow/toolchain config.
 - Build output must not include local override files, runtime databases, logs, caches, or user-private state.
+- Build output must not include `cloud.development` endpoints, developer CORS
+  origins, local tunnel configuration, or development bootstrap credentials.
+- Deployment jobs consume immutable published artifact evidence and must not
+  rebuild source after approval or substitute a mutable container tag for the
+  approved digest.
 
 ## 4. SBOM And Provenance
 
@@ -53,6 +61,11 @@ Rules:
 - SBOM and provenance files are release evidence and must match the artifact version and package id.
 - A package requiring `sbomRequired` must fail release validation when SBOM evidence is missing.
 - A package requiring artifact attestations must fail release validation when provenance/attestation evidence is missing.
+- Deployment-consumable evidence uses
+  `schemas/sdkwork.artifact-evidence.schema.v1.json`; `artifactId`, digest,
+  version, source commit, package id, SBOM, provenance, and signature are
+  mandatory and the selected deployment profile must be supported by the
+  evidence.
 
 ## 5. Signing And Checksums
 
@@ -77,7 +90,7 @@ channel.
 | `mini-program` | Upload identity, platform app id, package checksum when exported, review/release record, and platform key custody evidence. |
 | `server` | Archive/service checksum, build provenance, SBOM, signing when required, and runtime config template provenance. |
 | `container` | Immutable OCI digest or Docker-compatible image digest, SBOM/provenance, base image trace, and attestation when enabled. |
-| `test-runner` | Workflow/test artifact provenance; no production signing claim. |
+| `test-runner` | Workflow/test artifact provenance; `non-deployable` binding and no production signing claim. |
 
 Rules:
 
@@ -88,6 +101,14 @@ Rules:
   not in source-controlled manifests, config, or package assets.
 - Browser and H5 packages must not embed private SDK endpoints, auth tokens,
   API keys, or tenant-specific runtime config in static assets.
+- Runtime-configurable client provenance `MUST` record the exact supported
+  deployment-profile set, default profile, target platform, client
+  architecture, and runtime config schema version. Endpoint runtime config is
+  separately versioned and integrity-protected; it is not allowed to mutate
+  the signed binary identity silently.
+- Switching profile/origin must not reuse credentials or mutable offline state
+  across issuer/security boundaries. Release evidence includes tests for
+  secure-storage namespace isolation and re-authentication.
 
 ## 6. Generated Artifacts
 

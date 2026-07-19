@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: public `package.json#scripts` command names for SDKWork application repositories, application roots, app surface roots, and TypeScript/JavaScript packages
-- Related: `README.md`, `SOUL.md`, `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `RELEASE_SPEC.md`, `TEST_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`
+- Related: `README.md`, `SOUL.md`, `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `RELEASE_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `SDKWORK_DEPLOY_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `TEST_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`
 
 This standard defines the public `pnpm` command surface for SDKWork. It prevents each application from inventing application-code-prefixed or locally ordered commands such as `drive:dev`, `clawrouter:dev`, or `im:dev`.
 
@@ -38,12 +38,73 @@ Rules:
 - Vendored upstream source trees under `external/`, `third_party/`, and `vendor/` are excluded from application-owned script-name validation. SDKWork-owned wrappers and workspace packages around them remain in scope.
 - Historical release records under `docs/release/` and tool-owned scratch plans such as `.mimocode/` are not active command documentation and are excluded. Current README, AGENTS, guides, references, runbooks, architecture decisions, and migration instructions remain in scope.
 
+## 2.1 Shared Application Lifecycle Framework
+
+SDKWork application roots `SHOULD` compose the lifecycle from the three shared
+framework authorities instead of copying orchestration logic into each project:
+
+| Authority | Responsibility |
+| --- | --- |
+| `sdkwork-app-topology` | Local `sdkwork-app` facade, topology v5 validation, resolved runtime plans, environment loading, and development process orchestration |
+| `sdkwork-github-workflow` | Build, package, sign, SBOM, publish, release matrix, and reusable GitHub workflow planning |
+| `sdkwork-specs/tools/deployctl.mjs` | Typed deployment plan validation, immutable artifact evidence, apply, health verification, and rollback |
+
+Rules:
+
+- Public root scripts `MUST` remain thin aliases to the shared facade or an
+  equally thin repository wrapper. They `MUST NOT` duplicate topology process
+  ordering, profile selection, artifact matrix calculation, publication, or
+  deployment side effects.
+- Applications using `pnpm exec sdkwork-app` `MUST` declare a pinned
+  `@sdkwork/app-topology` workspace or release dependency. They `MUST NOT`
+  depend on an undeclared globally installed CLI or a fixed parent-directory
+  checkout layout.
+- The shared framework `MUST` resolve the existing application manifest,
+  topology, workflow, source-config, and deploy declarations. It `MUST NOT`
+  introduce a second application identity or parallel deployment-mode manifest.
+- Application-specific implementation commands `MAY` remain in the private
+  `_sdkwork:*` namespace. These hooks are consumed by the shared facade and are
+  not public automation commands, release documentation, or a replacement for
+  the standard lifecycle contract.
+- The canonical root facade is:
+
+```json
+{
+  "dev": "pnpm dev:standalone",
+  "dev:standalone": "pnpm exec sdkwork-app dev --deployment-profile standalone",
+  "dev:cloud": "pnpm exec sdkwork-app dev --deployment-profile cloud",
+  "stop": "pnpm exec sdkwork-app stop",
+  "build": "pnpm exec sdkwork-app build",
+  "test": "pnpm exec sdkwork-app test",
+  "check": "pnpm exec sdkwork-app check",
+  "verify": "pnpm exec sdkwork-app verify",
+  "clean": "pnpm exec sdkwork-app clean"
+}
+```
+
+- A private hook `MUST` be named `_sdkwork:<phase>` or
+  `_sdkwork:dev:<standalone|cloud>`. The public command `MUST` select the
+  profile; the private hook supplies only application-specific tool commands.
+- An application declaring either private `_sdkwork:dev:*` hook `MUST` also
+  declare `_sdkwork:stop`. Generic topology processes use the facade's scoped,
+  heartbeat-backed development session registry; private runners remain
+  responsible for stopping only processes they own.
+- Release and deployment public scripts `MUST` delegate to the workflow or
+  deploy framework and preserve phase-first profile order. Product packaging
+  hooks may be called by `sdkwork.workflow.json` lifecycle steps, but a public
+  release script `MUST NOT` invoke `_sdkwork:release:*` directly and bypass the
+  workflow matrix, validation, or evidence gates.
+- `pnpm dev` remains exactly equivalent to `pnpm dev:standalone`; adding a
+  private hook must never change that default.
+
 ## 3. Required Root Commands
 
 Every SDKWork application repository root `MUST` expose these commands:
 
 ```text
 pnpm dev
+pnpm dev:standalone
+pnpm dev:cloud
 pnpm build
 pnpm test
 pnpm check
@@ -55,7 +116,9 @@ Meanings:
 
 | Command | Meaning |
 | --- | --- |
-| `dev` | Start the default local development workflow for the application |
+| `dev` | Delegate to `dev:standalone` as the transparent default development workflow |
+| `dev:standalone` | Start `standalone.development`, including the local application deployment unit and declared local dependencies |
+| `dev:cloud` | Start local developer-facing clients against already deployed `cloud.development` API surfaces without starting local API, gateway, or database processes |
 | `stop` | Stop only the processes attributable to this repository's development workflow |
 | `build` | Build the default production artifact or default app surface |
 | `test` | Run the default stable test subset for the repository |
@@ -67,6 +130,25 @@ When a repository root exposes `dev`, it `MUST` also expose `stop`. A `stop` com
 MUST scope process selection to the owning repository or its explicitly configured
 runtime bindings. It MUST NOT terminate processes merely because they share a generic
 executable name such as `node`, `cargo`, `java`, or `python`.
+
+Development profile rules:
+
+- Root `dev` `MUST` directly delegate to `dev:standalone` through `pnpm
+  dev:standalone` or `pnpm run dev:standalone`; it must not independently
+  reproduce the standalone flags.
+- `dev:standalone` `MUST` resolve to `deploymentProfile = standalone` and
+  `environment = development` through its delegation chain.
+- `dev:cloud` `MUST` resolve to `deploymentProfile = cloud` and
+  `environment = development` through its delegation chain.
+- `dev:cloud` `MUST NOT` select a local database, run database bootstrap, or
+  autostart application/platform API processes. It loads explicit remote
+  surface URLs from `cloud.development` source config and fails before client
+  startup when a required URL is absent.
+- `dev:cloud` `MUST NOT` fall back to `standalone.development`, loopback API
+  defaults, or `cloud.production`. An approved local tunnel remains explicit
+  topology config rather than an implicit command fallback.
+- `stop` after `dev:cloud` stops only processes created by the local
+  development session and never operates on deployed cloud services.
 
 When the capability exists, the repository root `MUST` expose the matching command family:
 
@@ -144,9 +226,25 @@ Rules:
   either by delegating to `dev:<target>:postgres:standalone`
   or by passing equivalent explicit flags such as `--database postgres`,
   `--deployment-profile standalone`, and `--environment development`.
-  SQLite or cloud development variants must use explicit
-  suffixed scripts such as `dev:browser:sqlite`,
-  `dev:desktop:sqlite`, or `dev:browser:postgres:cloud`.
+  SQLite or cloud development variants must use explicit suffixed scripts such
+  as `dev:browser:sqlite`, `dev:desktop:sqlite`, `dev:browser:cloud`, or
+  `dev:desktop:cloud`. Cloud development variants do not include a database
+  axis because they consume deployed API surfaces.
+- Root `dev:standalone` and `dev:cloud` are deployment-profile shortcuts that
+  select the repository's default developer-facing runtime target. More
+  specific commands retain the grammar
+  `dev:<runtimeTarget>[:database]:<deploymentProfile>`.
+- Every supported developer-facing client target `SHOULD` expose both profile
+  variants, for example `dev:desktop:standalone` / `dev:desktop:cloud`,
+  `dev:capacitor-ios:standalone` / `dev:capacitor-ios:cloud`,
+  `dev:flutter-android:standalone` / `dev:flutter-android:cloud`, and
+  `dev:ios-native:standalone` / `dev:ios-native:cloud`. Cloud variants never
+  include a database axis or start a local gateway.
+- Client build commands are profile-neutral by default, such as
+  `build:desktop`, `build:capacitor-ios`, `build:flutter-android`, and
+  `build:ios-native`. A profile-specific client build is allowed only when
+  code, permissions, signing identity, entitlement, or store identity differs;
+  endpoint selection alone is not sufficient reason to duplicate an artifact.
 - Tool or platform names such as `browser:*`, `desktop:*`, `tauri:*`, `docker:*`,
   `android:*`, `ios:*`, `harmony:*`, `flutter:*`, and `mini-program:*` `MUST NOT`
   be public root, app surface, or package-local script names when they represent
@@ -252,7 +350,7 @@ Migration examples:
 | `drive:build:self-hosted` | `build:standalone` |
 | `clawrouter:dev` | `dev` |
 | `clawrouter:dev:postgres` | `dev:server:postgres` or `dev:browser:postgres` based on the orchestrated target |
-| `clawrouter:dev:cloud:split` | `dev:browser:postgres:cloud` |
+| `clawrouter:dev:cloud:split` | `dev:browser:cloud` |
 | `browser:dev` | `dev:browser` |
 | `desktop:dev` | `dev:desktop` |
 | `desktop:build` | `build:desktop` |
@@ -349,11 +447,55 @@ release:publish
 release:preflight
 ```
 
+Profile-aware release scripts use:
+
+```text
+release:<phase>[:runtimeTarget]:<deploymentProfile>
+```
+
+Runtime-configurable client artifacts use the explicit artifact-binding token:
+
+```text
+release:<phase>:<runtimeTarget>:runtime-configurable
+```
+
+`runtime-configurable` is valid only as a release artifact-binding token and `MUST NOT` be
+accepted as a deploymentProfile by runtime, topology, config, or deploy tools.
+
+Examples:
+
+```text
+release:plan:standalone
+release:package:standalone
+release:validate:standalone
+release:publish:standalone
+release:plan:cloud
+release:package:container:cloud
+release:validate:cloud
+release:publish:cloud
+```
+
 Rules:
 
 - Bare `release` is not a canonical required command. Repositories may keep it only as a documented aggregate that calls canonical `release:*` phases.
 - Use `release:build:desktop` or `release:package:desktop`, not `release:desktop`.
 - Environment selection belongs in config/profile flags or runtime config, not in application-specific release command names.
+- Every exposed profile-sensitive release phase `MUST` provide both its
+  `:standalone` and `:cloud` variants when the application release authority
+  supports both profiles. Individual runtime targets remain constrained by
+  `APP_MANIFEST_SPEC.md` rather than being duplicated into invalid artifacts.
+- A single runtime-configurable client release lane may satisfy both profile
+  capabilities when its manifest and workflow target declare
+  `profileBinding = runtime-configurable`. It must not be cloned into two
+  byte-identical signed artifacts solely to vary API endpoints.
+- `release:package:*` produces immutable candidate artifacts;
+  `release:publish:*` registers or uploads validated artifacts. Neither phase
+  applies an artifact to a deployment environment.
+- A side-effecting `release:publish` aggregate `MUST` require an explicit
+  deployment profile or an explicitly approved all-profile release plan. It
+  must not infer a target from `runtime.defaultDeploymentProfile`.
+- `release:<deploymentProfile>:<phase>` is forbidden. Lifecycle phase always
+  precedes runtime target and deployment profile.
 
 Deploy scripts `MUST` use:
 
@@ -364,7 +506,36 @@ deploy:rollback
 deploy:validate
 ```
 
+Profile-aware deploy scripts use:
+
+```text
+deploy:<phase>:<deploymentProfile>[:provider]
+```
+
+Examples:
+
+```text
+deploy:plan:standalone
+deploy:apply:standalone
+deploy:rollback:standalone
+deploy:plan:cloud:kubernetes
+deploy:apply:cloud:kubernetes
+deploy:rollback:cloud:kubernetes
+```
+
 Provider-specific wrappers may add a provider suffix only after the phase, such as `deploy:plan:kubernetes`, when a deployment standard or runbook owns that provider.
+
+Deployment rules:
+
+- Every exposed deploy phase `MUST` provide both `:standalone` and `:cloud`
+  variants when the application owns both deployment architectures.
+- `deploy:apply:*` and `deploy:rollback:*` `MUST` require an explicit lifecycle
+  environment in runtime config or CLI input and fail before side effects when
+  it is absent or ambiguous.
+- `deploy:apply:*` consumes an already validated immutable artifact identity;
+  it must not rebuild a different artifact during deployment.
+- Provider suffixes follow the deployment profile. Profile-first forms such as
+  `deploy:cloud:apply` and phase/provider/profile ambiguity are forbidden.
 
 ## 9. Dispatcher Standard
 
@@ -386,13 +557,21 @@ Rules:
 
 pnpm script validation `MUST` check:
 
-- Required repository root commands exist.
+- Required repository root commands, including `dev:standalone` and
+  `dev:cloud`, exist.
+- Bare `dev` directly delegates to `dev:standalone`; standalone and cloud
+  entrypoints resolve to their matching `development` profiles.
+- `dev:cloud` does not select a local database or retired/local API bootstrap
+  axis.
 - Product-prefixed public root scripts are absent.
 - Retired deployment words and flags are absent from new script names, script
   command values, standard command examples, and command-bearing manifests.
 - New root scripts use allowed first segments.
 - `api:*` is preferred over new `apis:*` root scripts.
 - `gateway:*` commands use action before deployment profile.
+- Release and deploy commands use phase before deployment profile, expose
+  profile-paired variants for supported phases, and keep provider suffixes
+  after the deploy profile.
 - Runtime target command aliases use action-first names; `browser:*`, `desktop:*`,
   `tauri:*`, `docker:*`, `android:*`, `ios:*`, `harmony:*`, `flutter:*`,
   `mini-program:*`, and `*:tauri` are absent from root, app surface, and
@@ -442,7 +621,9 @@ Rules:
 
 ## 12. Acceptance Checklist
 
-- [ ] Repository root exposes `dev`, `build`, `test`, `check`, `verify`, and `clean`.
+- [ ] Repository root exposes `dev`, `dev:standalone`, `dev:cloud`, `build`, `test`, `check`, `verify`, and `clean`.
+- [ ] `dev` directly delegates to `dev:standalone`; both profile entrypoints resolve to the matching `development` profile.
+- [ ] `dev:cloud` consumes explicit deployed cloud API surfaces without starting a local API, gateway, or database.
 - [ ] Capability-specific root commands exist for release, deploy, API, SDK, database, gateway, topology, and supply-chain workflows when those capabilities exist.
 - [ ] No repository root public script starts with a application-code prefix such as `drive`, `im`, or `clawrouter`.
 - [ ] Runtime-target commands are action-first, for example `dev:browser`, `dev:desktop`, `build:desktop`, `build:container`, `build:android-native`, `build:ios-native`, and `build:mini-program`; no public script uses platform/tool-first aliases such as `browser:*`, `desktop:*`, `tauri:*`, `docker:*`, `android:*`, `ios:*`, `harmony:*`, `flutter:*`, `mini-program:*`, or `*:tauri`.
@@ -451,6 +632,8 @@ Rules:
       variants are explicit suffixed commands.
 - [ ] Script suffixes use canonical runtime target, database, deployment profile, and tier values.
 - [ ] Gateway commands use `gateway:<action>[:deploymentProfile]`.
+- [ ] Release commands use `release:<phase>[:runtimeTarget]:<deploymentProfile>` and deployment commands use `deploy:<phase>:<deploymentProfile>[:provider]`.
+- [ ] Publish, apply, and rollback do not infer an ambiguous deployment profile or lifecycle environment.
 - [ ] Root public scripts call a standard dispatcher or thin wrapper.
 - [ ] App surface/package scripts remain package-local and do not become a second root automation standard.
 - [ ] `pnpm clean` does not delete git-tracked build-critical source files (see `CODE_STYLE_SPEC.md` §7).

@@ -190,6 +190,13 @@ Rules:
   user-private SQLite by default. Tauri remains an internal runner detail;
   public pnpm commands follow `PNPM_SCRIPT_SPEC.md` action-first runtime target
   names.
+- PC roots that support cloud `MUST` expose browser and desktop cloud variants.
+  They start only local renderer/desktop-host processes and consume the
+  deployed `sdkwork-api-cloud-gateway`; no local standalone gateway, API, or
+  data process is started.
+- Desktop/browser packages may declare runtime-configurable support for both
+  profiles. One active profile is selected at bootstrap and profile/origin
+  switches isolate credentials, cache, offline state, and local data.
 - Browser SDK base URLs must be loaded from public runtime config before SDK client construction. Vite `VITE_*` variables are public non-secret build/dev inputs only.
 - Release builds must fail preflight if production profiles contain localhost service endpoints, development secrets, test database names, writable developer directories, or unresolved placeholders.
 

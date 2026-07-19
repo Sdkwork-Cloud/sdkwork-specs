@@ -4,7 +4,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 
-const REQUIRED_ROOT_SCRIPTS = ['dev', 'build', 'test', 'check', 'verify', 'clean'];
+const REQUIRED_ROOT_SCRIPTS = [
+  'dev',
+  'dev:standalone',
+  'dev:cloud',
+  'build',
+  'test',
+  'check',
+  'verify',
+  'clean',
+];
 
 const ALLOWED_FIRST_SEGMENTS = new Set([
   'dev',
@@ -60,6 +69,16 @@ const RETIRED_COMMAND_VALUE_PATTERNS = [
   ['deploymentMode', /\bdeploymentMode\b/iu],
 ];
 const DEPLOYMENT_PROFILES = new Set(['standalone', 'cloud']);
+const RELEASE_PHASES = new Set([
+  'preflight',
+  'plan',
+  'build',
+  'stage',
+  'package',
+  'validate',
+  'publish',
+]);
+const DEPLOY_PHASES = new Set(['plan', 'apply', 'rollback', 'validate']);
 const RUNTIME_TARGETS = new Set([
   'browser',
   'desktop',
@@ -221,6 +240,36 @@ function pushGatewayNameIssues(scriptName, issues, prefix = '') {
   }
 }
 
+function pushLifecycleProfileOrderIssues(scriptName, issues, prefix = '') {
+  const parts = scriptName.split(':');
+  const [namespace, second] = parts;
+  if (!['release', 'deploy'].includes(namespace) || parts.length < 3) return;
+
+  if (DEPLOYMENT_PROFILES.has(second)) {
+    issues.push(
+      `${prefix}${scriptName}: use ${namespace}:<phase>[:runtimeTarget]:<deploymentProfile>; for example ${namespace}:${parts[2]}:${second}`,
+    );
+    return;
+  }
+
+  if (namespace === 'deploy') {
+    const profileIndex = parts.findIndex((part) => DEPLOYMENT_PROFILES.has(part));
+    if (profileIndex > 0 && profileIndex !== 2) {
+      issues.push(
+        `${prefix}${scriptName}: deploy profile must immediately follow the phase; use deploy:<phase>:<deploymentProfile>[:provider]`,
+      );
+    }
+    return;
+  }
+
+  const profileIndex = parts.findIndex((part) => DEPLOYMENT_PROFILES.has(part));
+  if (profileIndex > 3) {
+    issues.push(
+      `${prefix}${scriptName}: release profile must follow the phase or one runtime target; use release:<phase>[:runtimeTarget]:<deploymentProfile>`,
+    );
+  }
+}
+
 function pushActionFirstRuntimeTargetIssues(scriptName, issues, prefix = '') {
   const parts = scriptName.split(':');
   const runtimeTarget = ACTION_FIRST_RUNTIME_TARGET_ALIASES.get(parts[0]);
@@ -262,6 +311,12 @@ function pushDevAxisIssues(scriptName, issues, prefix = '') {
         `${prefix}${scriptName}: "${part}" is not a standard dev runtime target; use one of ${[...RUNTIME_TARGETS].join(', ')}`,
       );
     }
+  }
+
+  if (parts.includes('cloud') && parts.some((part) => DATABASE_ALIASES.has(part))) {
+    issues.push(
+      `${prefix}${scriptName}: cloud development consumes deployed APIs and must not include a database axis`,
+    );
   }
 }
 
@@ -345,6 +400,88 @@ function resolveRootScriptDelegation(scriptName, scripts) {
   return trace;
 }
 
+function directDelegatedScriptName(commandText) {
+  return commandText.match(
+    /^\s*pnpm(?:\.cmd)?(?:\s+run)?\s+([a-z0-9][a-z0-9-]*(?::[a-z0-9][a-z0-9-]*)*)\s*$/iu,
+  )?.[1];
+}
+
+function resolvedProfileState(scriptName, scripts) {
+  const trace = resolveRootScriptDelegation(scriptName, scripts);
+  const scriptNames = trace.map((entry) => entry.scriptName);
+  const commandText = trace.map((entry) => entry.commandText).join('\n');
+  return {
+    commandText,
+    hasCloud: scriptNames.some((name) => scriptNameHasSegment(name, 'cloud'))
+      || commandHasFlagValue(commandText, 'deployment-profile', 'cloud'),
+    hasDevelopment: commandHasFlagValue(commandText, 'environment', 'development'),
+    hasPostgres: scriptNames.some((name) => scriptNameHasSegment(name, 'postgres'))
+      || commandHasFlagValue(commandText, 'database', 'postgres'),
+    hasSqlite: scriptNames.some((name) => scriptNameHasSegment(name, 'sqlite'))
+      || commandHasFlagValue(commandText, 'database', 'sqlite'),
+    hasStandalone: scriptNames.some((name) => scriptNameHasSegment(name, 'standalone'))
+      || commandHasFlagValue(commandText, 'deployment-profile', 'standalone'),
+  };
+}
+
+function pushProfileDevelopmentEntrypointIssues(scripts, issues) {
+  if (scripts.dev && directDelegatedScriptName(String(scripts.dev)) !== 'dev:standalone') {
+    issues.push('dev: bare dev must directly delegate to "dev:standalone"');
+  }
+
+  if (scripts['dev:standalone']) {
+    const state = resolvedProfileState('dev:standalone', scripts);
+    if (!state.hasStandalone || state.hasCloud) {
+      issues.push('dev:standalone: must resolve only to deployment profile "standalone"');
+    }
+    if (!state.hasDevelopment) {
+      issues.push('dev:standalone: must resolve to environment "development"');
+    }
+  }
+
+  if (scripts['dev:cloud']) {
+    const state = resolvedProfileState('dev:cloud', scripts);
+    if (!state.hasCloud || state.hasStandalone) {
+      issues.push('dev:cloud: must resolve only to deployment profile "cloud"');
+    }
+    if (!state.hasDevelopment) {
+      issues.push('dev:cloud: must resolve to environment "development"');
+    }
+    if (state.hasPostgres || state.hasSqlite || /(?:^|\s)--database(?:\s|=|$)/iu.test(state.commandText)) {
+      issues.push('dev:cloud: remote cloud development must not select or bootstrap a local database');
+    }
+  }
+  if ((scripts['_sdkwork:dev:standalone'] || scripts['_sdkwork:dev:cloud']) && !scripts['_sdkwork:stop']) {
+    issues.push('private _sdkwork:dev hooks require a scoped _sdkwork:stop hook');
+  }
+}
+
+function pushPairedLifecycleProfileIssues(scripts, issues) {
+  const names = Object.keys(scripts);
+  for (const [namespace, phases] of [
+    ['release', RELEASE_PHASES],
+    ['deploy', DEPLOY_PHASES],
+  ]) {
+    for (const phase of phases) {
+      const phasePrefix = `${namespace}:${phase}`;
+      const exposed = names.filter((name) => name === phasePrefix || name.startsWith(`${phasePrefix}:`));
+      if (exposed.length === 0) continue;
+
+      const hasStandalone = exposed.some((name) => scriptNameHasSegment(name, 'standalone'));
+      const hasCloud = exposed.some((name) => scriptNameHasSegment(name, 'cloud'));
+      const hasRuntimeConfigurable = namespace === 'release'
+        && exposed.some((name) => scriptNameHasSegment(name, 'runtime-configurable'));
+      if (hasRuntimeConfigurable) continue;
+      if (!hasStandalone) {
+        issues.push(`${phasePrefix}: exposed lifecycle phase must provide a standalone profile variant`);
+      }
+      if (!hasCloud) {
+        issues.push(`${phasePrefix}: exposed lifecycle phase must provide a cloud profile variant`);
+      }
+    }
+  }
+}
+
 function pushDefaultDevRuntimeIssues(defaultScriptName, scripts, issues) {
   if (!scripts[defaultScriptName]) {
     return;
@@ -391,6 +528,12 @@ function pushCommandNameIssues(
   prefix = '',
   productPrefixMessage = 'application-code-prefixed public root scripts are forbidden',
 ) {
+  if (scriptName.startsWith('_sdkwork:')) {
+    if (!/^_sdkwork:(dev:(standalone|cloud)|stop|build|test|check|verify|clean|release:[a-z0-9:-]+|deploy:[a-z0-9:-]+|client(?::[a-z0-9-]+)*|gateway(?::[a-z0-9-]+)*)$/u.test(scriptName)) {
+      issues.push(`${prefix}${scriptName}: private SDKWork hooks must use an approved _sdkwork lifecycle or topology namespace`);
+    }
+    return;
+  }
   const first = scriptName.split(':')[0];
   if (!ALLOWED_FIRST_SEGMENTS.has(first)) {
     issues.push(`${prefix}${scriptName}: first segment "${first}" is not a standard public namespace`);
@@ -407,6 +550,7 @@ function pushCommandNameIssues(
     }
   }
   pushGatewayNameIssues(scriptName, issues, prefix);
+  pushLifecycleProfileOrderIssues(scriptName, issues, prefix);
 }
 
 function validateRootScripts(root, productPrefixes) {
@@ -432,9 +576,13 @@ function validateRootScripts(root, productPrefixes) {
 
   for (const scriptName of scriptNames) {
     pushCommandNameIssues(scriptName, issues, productPrefixes);
-    pushRetiredCommandValueIssues(scriptName, String(scripts[scriptName]), issues);
+    if (!scriptName.startsWith('_sdkwork:')) {
+      pushRetiredCommandValueIssues(scriptName, String(scripts[scriptName]), issues);
+    }
   }
   pushDefaultDevelopmentRuntimeIssues(scripts, issues);
+  pushProfileDevelopmentEntrypointIssues(scripts, issues);
+  pushPairedLifecycleProfileIssues(scripts, issues);
 
   if (issues.length > 0) {
     fail(`${path.relative(process.cwd(), packagePath)} is not compliant`, issues);
@@ -469,6 +617,7 @@ function validatePackageLocalScripts(root) {
     const manifest = readJson(packagePath);
     const scripts = manifest.scripts || {};
     for (const scriptName of Object.keys(scripts)) {
+      if (scriptName.startsWith('_sdkwork:')) continue;
       const first = scriptName.split(':')[0];
       if (RETIRED_LOCAL_FIRST_SEGMENTS.has(first)) {
         issues.push(

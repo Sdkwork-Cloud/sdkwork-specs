@@ -30,16 +30,18 @@ document uses a retired synonym, that document is wrong.
 
 | Canonical key | Spoken name | Allowed values | Meaning |
 | --- | --- | --- | --- |
-| `deploymentProfile` | deployment profile | `standalone`, `cloud` | Application deployment architecture |
+| `deploymentProfile` | deployment profile | `standalone`, `cloud` | Active application API/runtime topology |
 | `environment` | environment tier | `development`, `test`, `staging`, `production` | Lifecycle stage from `ENVIRONMENT_SPEC.md` |
 | `connectivityPlane` | connectivity plane | `application`, `platform`, `operations`, `edge` | Who owns the route and protocol termination |
+| `cloudIngress.strategy` | cloud ingress strategy | `platform-collapsed`, `dedicated-application`, `edge-split` | How deployed cloud public planes bind to gateway roles; not a deployment profile |
+| `orchestration.processes[].role` | process role | `client`, gateway/API/data/migration/worker roles, `tunnel` | Machine authority for local-process safety checks in topology v5 |
 
 ### Deployment Profile
 
 | Value | When to say it | Typical deployment |
 | --- | --- | --- |
-| `standalone` | Self-contained application unit | Desktop install, local dev, private appliance, single service, single container |
-| `cloud` | Cloud/service deployment with managed dependencies and orchestration | SDKWork hosted SaaS, customer VPC/private cloud, Kubernetes or equivalent |
+| `standalone` | APIs terminate at the application-owned standalone gateway | Local dev, desktop-local gateway, private appliance/host, single service/container |
+| `cloud` | Clients consume deployed cloud APIs, defaulting to `sdkwork-api-cloud-gateway` HTTP ingress | SDKWork hosted cloud, customer VPC/private cloud, Kubernetes, or local clients consuming cloud APIs |
 
 Rules:
 
@@ -51,6 +53,8 @@ Rules:
   topology axis.
 - `server`, `container`, `desktop`, browser, mobile, mini-program, and
   `test-runner` are runtime targets in `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md`.
+- `dual` is the package-id artifact-binding token for a runtime-configurable client, not a
+  deployment profile or topology profile-id segment.
 
 ### Retired Public Topology Vocabulary
 
@@ -252,8 +256,8 @@ Gateway crate names `MUST` encode scope and deployment profile. Naming authority
 | Scope | Deployment profile | Canonical crate | Primary surface | Platform dependency |
 | --- | --- | --- | --- | --- |
 | application | `standalone` | `sdkwork-<application-code>-standalone-gateway` | `application.public-ingress` | may embed approved platform adapter |
-| application | `cloud` | `sdkwork-<application-code>-cloud-gateway` | `application.public-ingress` | uses external `sdkwork-api-cloud-gateway` for `platform.api-gateway` |
-| platform | `cloud` | `sdkwork-api-cloud-gateway` | `platform.api-gateway` | n/a |
+| application | `cloud` | `sdkwork-<application-code>-cloud-gateway` | exceptional dedicated `application.public-ingress` | uses external `sdkwork-api-cloud-gateway` for `platform.api-gateway` |
+| platform | `cloud` | `sdkwork-api-cloud-gateway` | `platform.api-gateway` plus default collapsed application HTTP | n/a |
 
 Rules:
 
@@ -262,7 +266,7 @@ Rules:
   `api-cloud-gateway` explicitly in reviews, scripts, manifests, and topology docs.
 - `gateway:run:standalone` and related `gateway:*:standalone` commands target the standalone
   gateway crate; `gateway:run:cloud` and related `gateway:*:cloud` commands target the cloud
-  gateway crate.
+  gateway crate only when an ADR-approved dedicated/edge cloud ingress exists.
 - `sdkwork-<application-code>-api-server` is not a substitute for an application gateway crate when
   the process composes or proxies dependency/platform surfaces for a deployment profile.
 - Internal capability gateways such as `session-gateway` remain internal service names and do not

@@ -71,7 +71,9 @@ Rules:
 
 Release gate evidence should include:
 
-- manifest, deployment profile, runtime target, and package target validation.
+- manifest active/supported deployment profile, fixed/runtime-configurable
+  package binding, runtime target, target platform, client architecture, and
+  package target validation.
 - application mode matrix coverage for every browser, desktop, server,
   container/Docker-compatible, mobile, tablet, mini program, or test-runner
   artifact in the release.
@@ -82,6 +84,20 @@ Release gate evidence should include:
 - migration readiness and rollback path.
 - deployment/rollout plan that names `standalone` or `cloud` and the affected
   runtime targets.
+- immutable artifact identity and independent publish/deploy/rollback evidence
+  for every selected standalone or cloud release lane.
+- topology v5 cloud ingress evidence proving platform-collapsed routes use
+  `sdkwork-api-cloud-gateway`, or a dedicated/edge strategy has an approved ADR.
+- shared lifecycle framework evidence proving public pnpm scripts are thin
+  aliases, application-specific work is isolated under `_sdkwork:*` hooks, and
+  `sdkwork-app-topology`, `sdkwork-github-workflow`, and `deployctl` versions are
+  pinned or otherwise reproducibly resolved.
+- deploy manifest v2 typed dimensions and explicit profile/environment,
+  artifact digest, artifact evidence, approval, and rollback target for
+  side-effecting jobs. Evidence must bind the selected package, profile,
+  checksum, SBOM, provenance, and signature.
+- installed-client profile/origin credential and mutable-state isolation tests
+  when a signed client supports both profiles.
 - smoke test and monitoring plan.
 - owner approval for production or customer-impacting releases.
 
@@ -95,6 +111,10 @@ Rules:
 - Release evidence for SDKWork-owned create/update/delete/search/command/bulk APIs `MUST NOT` contain create `200` success, delete JSON success bodies, command `accepted: false` success bodies, `batch_*` URL aliases, or frontend/local SDK aliases that bypass generated SDK operation methods.
 - Release evidence for route and URL composition `MUST NOT` contain duplicate normalized `(surface, method, path)` ownership, generic capability paths such as `/status`, `/health`, `/ready`, `/system/health`, or `/system/ready`, or dependency-owned paths copied into application-owned route authorities.
 - Workflow automation follows `GITHUB_WORKFLOW_SPEC.md`.
+- Side-effecting publication, apply, and rollback gates `MUST` reject an
+  implicit deployment profile, missing lifecycle environment, mutable-only
+  artifact reference, or absent rollback/forward-fix target before protected
+  credentials are acquired.
 
 ## 6. Risk Levels
 

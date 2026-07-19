@@ -12,15 +12,18 @@
     },
     "profile": {
       "type": "string",
-      "minLength": 1
+      "pattern": "^(standalone|cloud)\\.(test|staging|production)$"
     },
     "defaultProfile": {
       "type": "string",
-      "minLength": 1
+      "pattern": "^(standalone|cloud)\\.(test|staging|production)$"
     },
     "profiles": {
       "type": "object",
       "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^(standalone|cloud)\\.(test|staging|production)$"
+      },
       "additionalProperties": {
         "$ref": "#/$defs/profileBlock"
       }

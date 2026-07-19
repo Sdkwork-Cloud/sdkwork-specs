@@ -291,11 +291,15 @@ Application roots may expose stable aliases when pnpm or repository tooling orch
 
 ```text
 pnpm install
-pnpm harmony:install
-pnpm harmony:test
-pnpm harmony:build:debug
-pnpm harmony:build:release
-pnpm harmony:package:release
+pnpm dev:standalone
+pnpm dev:cloud
+pnpm dev:harmony-native:standalone
+pnpm dev:harmony-native:cloud
+pnpm check:harmony-native
+pnpm test:harmony-native
+pnpm build:harmony-native:debug
+pnpm build:harmony-native:release
+pnpm release:package:harmony-native:runtime-configurable
 pnpm test
 pnpm test:config
 ```
@@ -303,6 +307,9 @@ pnpm test:config
 Rules:
 
 - Production build commands must run config, SDK boundary, manifest, media, signing-reference, and secret preflight before packaging.
+- Standalone variants consume the application-owned standalone gateway at its
+  declared private endpoint; cloud variants use the deployed
+  `sdkwork-api-cloud-gateway` and start no local gateway or data service.
 - Harmony builds require DevEco Studio or compatible HarmonyOS SDK/hvigor/ohpm tooling and a documented signing/release profile.
 - Package-level commands should allow focused tests/static checks for changed modules.
 

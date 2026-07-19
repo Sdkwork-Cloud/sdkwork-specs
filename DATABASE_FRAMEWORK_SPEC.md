@@ -3,7 +3,7 @@
 - Version: 1.0
 - Status: active
 - Scope: application database lifecycle, standardized `database/` asset layout, migration and seed governance, schema drift observation, lifecycle SPI hosted in `sdkwork-database`, bootstrap and upgrade orchestration, locale-aware initialization data
-- Related: `DATABASE_SPEC.md`, `SCHEMA_REGISTRY_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `MIGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `GOVERNANCE_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `DATABASE_SPEC.md`, `DATABASE_SPEC_PROCESS_SHARED_POOL.md`, `SCHEMA_REGISTRY_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `MIGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `GOVERNANCE_SPEC.md`, `DOCUMENTATION_SPEC.md`
 - Detail implementation profile: `../sdkwork-database/specs/DATABASE_FRAMEWORK_STANDARD.md` (L1 framework repository authoritative for crate APIs, SPI trait signatures, CLI commands, and verification harnesses)
 
 This standard defines how SDKWork applications **build, initialize, upgrade, observe, and govern** relational databases. `DATABASE_SPEC.md` owns table semantics, logical types, naming, indexes, tenant isolation, connection pools, and repository boundaries. This file owns **database lifecycle orchestration** and the **application asset dictionary** that lifecycle consumes.
@@ -39,7 +39,9 @@ Rules:
 - Every SDKWork application or backend service repository that owns a relational database `MUST` follow this standard for lifecycle assets and bootstrap behavior.
 - Table and column semantics `MUST` still follow `DATABASE_SPEC.md`. Lifecycle assets `MUST NOT` redefine naming or logical-type rules.
 - All connection pools `MUST` still be created through `sdkwork-database` as defined in `DATABASE_SPEC.md` section 32.
-- Any application ingress, internal service, or worker process that embeds IM database adapters `MUST` install one IM sqlx lifecycle pool and one shared r2d2 PostgreSQL pool per process via `bootstrap_im_process_database_pools_from_env()` (or `bootstrap_im_service_database_from_env()`); embedded modules `MUST NOT` open independent pools against the same DSN. Applies to standalone, cloud, and internal IM service processes. See `DATABASE_SPEC.md` section 33.4 and `DATABASE_SPEC_PROCESS_SHARED_POOL.md`.
+- Every application ingress, internal service, or worker process `MUST` install one process-local pool per normalized database identity before module lifecycle bootstrap. Embedded modules reuse that pool and do not own independent capacity. See `DATABASE_SPEC.md` section 33.4 and `DATABASE_SPEC_PROCESS_SHARED_POOL.md`.
+- A temporary `sqlx::AnyPool` compatibility driver is fail-closed by default. When an approved process-pool contract and ADR declare the exception, `SDKWORK_DATABASE_TEMPORARY_ANY_POOL_EXCEPTION=true` permits the framework to install one identity-checked compatibility pool; every compatibility consumer reuses that handle until driver migration removes the exception.
+- IM's current sqlx plus r2d2 bundle is migration infrastructure, not strict single-pool compliance. New adapters use the canonical process driver; remaining incompatible adapters require a governed temporary exception and removal milestone.
 - Application-specific lifecycle behavior `MUST` extend the framework through SPI traits defined in `sdkwork-database-spi`. Applications `MUST NOT` fork lifecycle orchestration into ad-hoc installers unless an approved exception exists.
 - The canonical database framework repository is `sdkwork-database`. Business repositories `MAY` ship `database/` assets and SPI implementations; they `MUST NOT` ship competing lifecycle engines.
 - Java and other non-Rust runtimes `SHOULD` consume the same `database/` asset dictionary and manifest contracts. Their first-party reference implementation is Rust in `sdkwork-database`; parity tests `MUST` validate asset compatibility even when runtime orchestration differs.
@@ -693,18 +695,21 @@ let orchestrator = LifecycleOrchestrator::new(pool, module);
 orchestrator.bootstrap(&LocaleTag::zh_cn(), &SeedProfile::standard()).await?;
 ```
 
-Multi-module registry orchestration is reserved for database lifecycle SPI; v1 applications use a single `DefaultDatabaseModule` per app root `database/` directory. Cross-module **schema registry** composition is governed by `SCHEMA_REGISTRY_SPEC.md` and implemented in `sdkwork-web-framework` (`sdkwork-web-schema-registry`, `tools/schema_registry/`). Application `database.manifest.json#modules[]` `SHOULD` align with schema registry dependency order.
+Multi-module registry orchestration is the canonical lifecycle path for an integrated process. Each module retains its own `DatabaseModule` and assets, while one `RegistryLifecycleOrchestrator` executes them sequentially against clones of the process pool. Cross-module **schema registry** composition is governed by `SCHEMA_REGISTRY_SPEC.md` and implemented in `sdkwork-web-framework` (`sdkwork-web-schema-registry`, `tools/schema_registry/`). Application `database.manifest.json#modules[]` `SHOULD` align with schema registry dependency order.
 
 ```rust
 let registry = DatabaseModuleRegistry::builder()
     .register(DefaultDatabaseModule::from_manifest(".", "database/database.manifest.json")?)?
     .build();
-// registry-wide orchestrator: planned
+let orchestrator = RegistryLifecycleOrchestrator::new(process_pool.clone(), registry);
+orchestrator.bootstrap_all_from_env().await?;
 ```
 
 Rules:
 
 - Registry order `MUST` be deterministic and manifest-declared.
+- All modules in one registry `MUST` receive clones of the same process pool handle.
+- Registry assembly `MUST NOT` call per-module pool constructors.
 - A module `MUST NOT` mutate another module's tables inside hooks unless explicitly documented and tested.
 - Custom modules `MUST` still store assets under standard `database/` layout unless an approved exception allows external asset paths via `DatabaseAssetProvider`.
 

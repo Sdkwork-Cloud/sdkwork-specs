@@ -129,8 +129,27 @@ function renameKeyObject(obj) {
   return next;
 }
 
+function inferProcessRole(process) {
+  const identity = [process.id, process.name, process.crate, process.binary]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  if (/standalone-gateway/u.test(identity)) return 'standalone-gateway';
+  if (/sdkwork-api-cloud-gateway|platform-api-cloud-gateway/u.test(identity)) return 'platform-gateway';
+  if (/cloud-gateway/u.test(identity)) return 'application-cloud-gateway';
+  if (/migrat/u.test(identity)) return 'migration';
+  if (/seed/u.test(identity)) return 'seed';
+  if (/postgres|database/u.test(identity)) return 'database';
+  if (/redis/u.test(identity)) return 'redis';
+  if (/tunnel|local-proxy/u.test(identity)) return 'tunnel';
+  if (/api-server|api-listener|public-ingress/u.test(identity)) return 'api-listener';
+  if (/vite|renderer|desktop|browser|\bh5\b|flutter|android|ios|harmony|mini-program/u.test(identity)) return 'client';
+  if (/worker/u.test(identity)) return 'worker';
+  return undefined;
+}
+
 function ensureDeploymentVocabulary(spec) {
-  spec.schemaVersion = 4;
+  spec.schemaVersion = 5;
   spec.vocabulary ??= {};
   if (spec.vocabulary.serviceLayout) {
     delete spec.vocabulary.serviceLayout;
@@ -139,13 +158,33 @@ function ensureDeploymentVocabulary(spec) {
   if (spec.vocabulary?.deploymentProfile?.allowed) {
     spec.vocabulary.deploymentProfile.allowed = ['standalone', 'cloud'];
     spec.profilePattern = '{deploymentProfile}.{environment}.env';
-    return spec;
+  } else {
+    delete spec.vocabulary.hosting;
+    spec.vocabulary.deploymentProfile = {
+      allowed: ['standalone', 'cloud'],
+    };
   }
-
-  delete spec.vocabulary.hosting;
-  spec.vocabulary.deploymentProfile = {
-    allowed: ['standalone', 'cloud'],
-  };
+  if (!spec.cloudIngress) {
+    const applicationGateway = spec.components?.cloudGateway?.crate
+      ?? spec.components?.cloudGateway?.binary;
+    const isPlatformGateway = applicationGateway === 'sdkwork-api-cloud-gateway';
+    spec.cloudIngress = applicationGateway && !isPlatformGateway
+      ? {
+          strategy: 'dedicated-application',
+          platformGateway: 'sdkwork-api-cloud-gateway',
+          applicationGateway,
+        }
+      : {
+          strategy: 'platform-collapsed',
+          platformGateway: 'sdkwork-api-cloud-gateway',
+        };
+  }
+  for (const orchestration of Object.values(spec.orchestration?.profiles ?? {})) {
+    for (const process of orchestration.processes ?? []) {
+      const inferredRole = inferProcessRole(process);
+      if (!process.role && inferredRole) process.role = inferredRole;
+    }
+  }
   spec.profilePattern = '{deploymentProfile}.{environment}.env';
   return spec;
 }
@@ -295,6 +334,22 @@ function ensureOrchestrationProfiles(spec) {
     }
   }
 
+  if (spec.profileFiles?.['cloud.development']) {
+    const current = spec.orchestration.profiles['cloud.development'] ?? {};
+    const localClientOrTunnelProcesses = (current.processes ?? []).filter((process) => {
+      const id = String(process.id ?? process.name ?? process.binary ?? '');
+      return /(?:client|browser|desktop|vite|tunnel|proxy)/iu.test(id)
+        && !/(?:api(?:-server)?|gateway|public-ingress|database|postgres|redis|migrat|seed)/iu.test(id);
+    });
+    const healthSurfaces = ['application.public-ingress', 'platform.api-gateway']
+      .filter((surfaceId) => spec.surfaces?.[surfaceId]);
+    spec.orchestration.profiles['cloud.development'] = {
+      ...current,
+      processes: localClientOrTunnelProcesses,
+      healthSurfaces,
+    };
+  }
+
   for (const profileId of canonicalProfileIds(spec)) {
     if (!spec.profileFiles?.[profileId]) continue;
     if (spec.orchestration.profiles[profileId]) continue;
@@ -351,7 +406,24 @@ function createMissingEnvFiles(spec, repoRoot, dryRun, actions) {
     if (fs.existsSync(abs)) continue;
 
     let content;
-    if (template) {
+    if (profileId === 'cloud.development') {
+      const lines = [
+        '# cloud.development - configure deployed development API URLs before use',
+        `${appPrefix}_DEPLOYMENT_PROFILE=cloud`,
+        `${appPrefix}_ENVIRONMENT=development`,
+        `${appPrefix}_PROFILE_ID=cloud.development`,
+        '',
+      ];
+      for (const surfaceId of ['application.public-ingress', 'platform.api-gateway']) {
+        const surface = spec.surfaces?.[surfaceId];
+        if (!surface) continue;
+        if (surface.httpUrlEnv) lines.push(`${surface.httpUrlEnv}=`);
+        if (surface.clientHttpEnv) lines.push(`${surface.clientHttpEnv}=`);
+        if (surface.autostartEnv) lines.push(`${surface.autostartEnv}=false`);
+      }
+      lines.push('');
+      content = lines.join('\n');
+    } else if (template) {
       content = migrateEnvFileContent(template, spec, 'standalone.development', profileId);
     } else {
       const [deploymentProfile, environment] = profileId.split('.');
@@ -363,7 +435,7 @@ function createMissingEnvFiles(spec, repoRoot, dryRun, actions) {
         '',
         `SDKWORK_API_CLOUD_GATEWAY_BIND=127.0.0.1:3900`,
         `${appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL=http://127.0.0.1:3900`,
-        `${appPrefix}_PLATFORM_API_GATEWAY_AUTOSTART=${deploymentProfile === 'cloud' ? 'true' : 'false'}`,
+        `${appPrefix}_PLATFORM_API_GATEWAY_AUTOSTART=false`,
         '',
       ].join('\n');
     }
@@ -487,6 +559,17 @@ function ensurePackageScripts(repoRoot, dryRun, actions) {
     'topology:validate':
       'node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs validate --root . --spec specs/topology.spec.json',
   };
+  const dispatcherExists = fs.existsSync(path.join(repoRoot, 'scripts/sdkwork-command.mjs'));
+  if (pkg.scripts.dev && dispatcherExists) {
+    additions['dev:standalone'] =
+      'node scripts/sdkwork-command.mjs dev --deployment-profile standalone --environment development';
+    additions['dev:cloud'] =
+      'node scripts/sdkwork-command.mjs dev --deployment-profile cloud --environment development';
+    if (pkg.scripts.dev !== 'pnpm dev:standalone') {
+      pkg.scripts.dev = 'pnpm dev:standalone';
+      actions.push('delegate package.json script dev to dev:standalone');
+    }
+  }
   if (fs.existsSync(path.join(repoRoot, 'scripts/gateway-cloud-bundle.mjs'))) {
     additions['gateway:package:cloud'] = 'node scripts/gateway-cloud-bundle.mjs bundle';
     additions['gateway:validate:cloud'] = 'node scripts/gateway-cloud-bundle.mjs validate';
@@ -497,7 +580,8 @@ function ensurePackageScripts(repoRoot, dryRun, actions) {
     actions.push(`add package.json script ${key}`);
   }
   const scriptActions = actions.filter((a) => a.startsWith('add package.json'));
-  if (!dryRun && scriptActions.length > 0) {
+  const devDelegated = actions.includes('delegate package.json script dev to dev:standalone');
+  if (!dryRun && (scriptActions.length > 0 || devDelegated)) {
     writeJson(pkgPath, pkg, false);
   }
 }
@@ -548,7 +632,7 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
 
   const appSlug = meta.appId.replace(/^sdkwork-/, '');
   const spec = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     kind: 'sdkwork.app.topology',
     appId: meta.appId,
     archetype: 'application-http-gateway',
@@ -557,6 +641,10 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
     vocabulary: {
       deploymentProfile: { allowed: ['standalone', 'cloud'] },
       environment: { allowed: ['development', 'production'] },
+    },
+    cloudIngress: {
+      strategy: 'platform-collapsed',
+      platformGateway: 'sdkwork-api-cloud-gateway',
     },
     defaults: {
       developmentProfileId: 'standalone.development',

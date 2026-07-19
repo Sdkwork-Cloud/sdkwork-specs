@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdkwork.com/schemas/sdkwork.runtime-plan.schema.v1.json",
+  "title": "SDKWork Resolved Runtime Plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "appId", "activeProfile", "deploymentProfile", "environment", "runtimeTarget", "localProcesses", "localGateway", "remoteSurfaces", "resolvedBaseUrls", "endpointProvenance", "localDataStores", "healthChecks", "configSources", "forbiddenProcessRoles", "forbiddenProcesses"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "sdkwork.runtime-plan" },
+    "appId": { "type": "string", "pattern": "^sdkwork-[a-z0-9-]+$" },
+    "activeProfile": { "type": "string", "pattern": "^(standalone|cloud)\\.[a-z0-9-]+$" },
+    "deploymentProfile": { "enum": ["standalone", "cloud"] },
+    "environment": { "type": "string", "minLength": 1 },
+    "runtimeTarget": { "type": "string", "minLength": 1 },
+    "localProcesses": { "type": "array", "items": { "$ref": "#/$defs/process" } },
+    "localGateway": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "role", "binary"],
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "role": { "enum": ["standalone-gateway", "application-cloud-gateway", "platform-gateway"] },
+            "binary": { "type": ["string", "null"] }
+          }
+        }
+      ]
+    },
+    "remoteSurfaces": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "resolvedBaseUrls": { "type": "object", "additionalProperties": { "type": "string", "format": "uri" } },
+    "endpointProvenance": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "key"],
+        "properties": {
+          "source": { "type": "string", "minLength": 1 },
+          "key": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "localDataStores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "role"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "role": { "enum": ["database", "redis"] }
+        }
+      }
+    },
+    "healthChecks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["surfaceId", "url", "required"],
+        "properties": {
+          "surfaceId": { "type": "string", "minLength": 1 },
+          "url": { "type": ["string", "null"] },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "configSources": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 2, "uniqueItems": true },
+    "forbiddenProcessRoles": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "forbiddenProcesses": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+  },
+  "$defs": {
+    "process": {
+      "type": "object",
+      "required": ["id", "role"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "role": { "enum": ["client", "standalone-gateway", "application-cloud-gateway", "platform-gateway", "api-listener", "database", "redis", "migration", "seed", "worker", "tunnel"] }
+      }
+    }
+  }
+}

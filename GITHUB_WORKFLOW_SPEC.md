@@ -90,10 +90,16 @@ Rules:
 - Package target identifiers and optional `packageId` values `MUST` be stable
   because they appear in artifact names, deployment selection, and lifecycle
   environment variables.
-- Deployable package targets `MUST` declare `deploymentProfile` as either
-  `standalone` or `cloud`, and `runtimeTarget` separately from the package
-  `profile`.
+- Deployable package targets `MUST` declare one fixed `deploymentProfile` or a
+  runtime-configurable supported-profile set, and `runtimeTarget` separately
+  from the package `profile`.
 - `publish` and `security` fields `MUST` be consumed by the reusable workflow, not only stored as documentation.
+- Manual profile selection uses one normalized `deployment_profile` input with
+  `standalone`, `cloud`, or `all`. `all` is valid for planning, building,
+  packaging, and validation; side-effecting publish or deploy jobs require an
+  explicit profile or a source-controlled approved all-profile release plan.
+- Deployment selection also requires `deploy_environment`; it must not derive
+  production from a tag, branch, profile default, or package target alone.
 
 ## 4. Lifecycle Steps
 
@@ -132,7 +138,8 @@ Rules:
   - `SDKWORK_PACKAGE_VERSION`
   - `SDKWORK_PACKAGE_TARGET_ID`
   - `SDKWORK_PACKAGE_ID`
-  - `SDKWORK_DEPLOYMENT_PROFILE`
+  - `SDKWORK_DEPLOYMENT_PROFILE` for fixed targets, or
+    `SDKWORK_SUPPORTED_DEPLOYMENT_PROFILES` for runtime-configurable targets
   - `SDKWORK_RUNTIME_TARGET`
   - `SDKWORK_PACKAGE_PROFILE`
   - `SDKWORK_PACKAGE_PLATFORM`
@@ -161,11 +168,25 @@ Rules:
 
 ## 5. Targets And Matrix Planning
 
+### 5.0 Shared Framework Boundary
+
+`sdkwork-github-workflow` is the single workflow planner and reusable GitHub
+Actions implementation for application release matrices. It is composed with
+`sdkwork-app-topology` for local development/topology resolution and
+`sdkwork-specs/tools/deployctl.mjs` for typed deployment apply/rollback. An
+application repository `MUST NOT` copy matrix, artifact publication, release
+notes, attestation, or deployment selection logic into its local workflow YAML.
+Application-specific build commands remain lifecycle steps or private
+`_sdkwork:*` pnpm hooks behind the public facade described by
+`PNPM_SCRIPT_SPEC.md`.
+
 Rules:
 
 - Matrix planning `MUST` be deterministic and implemented in tested code, not duplicated YAML expressions.
-- `targets[]` `MUST` declare deploymentProfile, runtimeTarget, profile,
-  platform, architecture, formats, runner, and output globs.
+- `targets[]` `MUST` declare profileBinding, runtimeTarget, profile, platform,
+  architecture, formats, runner, and output globs. Fixed targets declare one
+  deploymentProfile; runtime-configurable client targets declare
+  supportedDeploymentProfiles and defaultDeploymentProfile.
 - `targets` `MUST` contain at least one target.
 - `targets[].platform` identifies the delivery ecosystem or package platform,
   such as `web`, `h5`, `h5-weixin`, `windows`, `macos`, `linux`, `container`,
@@ -175,24 +196,45 @@ Rules:
   `browser`, `desktop`, `mobile`, `tablet`, `mini-program`, `server`,
   `container`, `worker`, `library`, and `test`. It is not a deployment profile
   and must not use `web`, `docker`, `standalone`, or `cloud`.
-- `targets[].deploymentProfile` `MUST` be `standalone` or `cloud` for every
-  deployable target.
+- `targets[].profileBinding` is `fixed`, `runtime-configurable`, or
+  `non-deployable`.
+- Fixed deployable targets `MUST` declare `targets[].deploymentProfile` as
+  `standalone` or `cloud` and `MUST NOT` declare a supported-profile set.
+- Runtime-configurable targets are limited to browser, desktop, tablet,
+  Capacitor, Flutter, native mobile, Harmony, and mini-program clients. They
+  `MUST` declare exactly the unique `supportedDeploymentProfiles` values
+  `standalone` and `cloud`, plus a supported default. Server, gateway, worker,
+  and container targets `MUST NOT` use runtime-configurable binding.
 - `targets[].runtimeTarget` `MUST` describe where the package runs using the
   runtime target vocabulary from `CONFIG_SPEC.md`, such as `server`,
   `container`, `desktop`, `browser`, `tablet-ipados`, `tablet-android`,
   `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`,
   `android-native`, `ios-native`, `harmony-native`, `mini-program`, or
   `test-runner`. It must not be used as a deployment profile.
+- `non-deployable` targets are limited to `runtimeTarget = test-runner`; they
+  emit workflow/test evidence, must not declare a deployment profile, and must
+  not appear in publication or deployment job selectors.
 - `targets[].formats` `MUST` contain unique format values so one target cannot emit duplicate package jobs or duplicate artifact names.
 - Selecting no targets for a requested deployment profile/platform/profile/architecture/format `MUST` fail before package jobs run.
-- Every matrix package item `MUST` have a canonical `packageId` using `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>`.
+- A dual-profile application matrix `MUST` cover both profiles through fixed
+  targets, a runtime-configurable client target, or both. The planner must not
+  clone a signed client binary merely to change an endpoint profile.
+- Every fixed matrix package item `MUST` have a canonical `packageId` using
+  `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>`.
+- Every runtime-configurable matrix package item `MUST` use
+  `<platform>-<architecture>-dual-<profile>-<format-token>`.
+  `dual` is an artifact-binding token and `MUST NOT` be accepted as a
+  deploymentProfile value.
 - Linux native `deb` and `rpm` package items `MUST` use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<format-token>`.
 - Package targets with a real package variant `MUST` insert the lowercase kebab `variant` segment before the format token: `<platform>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>`. Linux native package variants use `linux-<distribution>-<architecture>-<deployment-profile>-<profile>-<variant>-<format-token>`.
 - Use `targets[].variant` only when two or more releasable artifacts would otherwise share the same platform, architecture, deployment profile, profile, and format. Common examples are container or deployment packages split by `cpu`, `nvidia-cuda`, or `amd-rocm`.
 - `format-token` `MUST` be lowercase kebab-case. Format values with separators normalize those separators to hyphens; for example `tar.gz` becomes `tar-gz`.
 - GitHub workflow artifact names `MUST` use `<release.artifactPrefix>-<packageId>`.
 - Multi-format targets `MUST` produce distinct package ids and artifact names for each format.
-- Single-format `targets[].id` `MUST` equal the canonical package id. Multi-format `targets[].id` `MUST` equal `<platform>-<architecture>-<deployment-profile>-<profile>` and omit the format token.
+- Single-format `targets[].id` `MUST` equal the canonical package id.
+  Multi-format fixed ids use
+  `<platform>-<architecture>-<deployment-profile>-<profile>`; runtime-configurable
+  ids use `<platform>-<architecture>-dual-<profile>`.
 - Explicit `targets[].packageId`, when present, `MUST` equal the canonical package id for a single-format target. Multi-format targets `MUST` omit `packageId` so the planner can generate one package id per format.
 - Targets with format-specific output globs `SHOULD` be split into separate single-format targets. Windows desktop packages that produce both `.msi` and `.exe` installers SHOULD use `windows-x64-standalone-desktop-msi` and `windows-x64-standalone-desktop-exe` as separate targets unless one lifecycle command deliberately emits only the active `SDKWORK_PACKAGE_FORMAT`.
 - `targets[].distribution` is required for `platform: linux` with `formats: ["deb"]` or `formats: ["rpm"]`, and it is invalid for generic Linux archive formats such as `tar.gz`.
@@ -223,10 +265,12 @@ Examples:
 | Cloud CPU container bundle | `container` | omitted | `x64` | `tar.gz` | `container-x64-cloud-container-cpu-tar-gz` |
 | Cloud NVIDIA CUDA container bundle | `container` | omitted | `x64` | `tar.gz` | `container-x64-cloud-container-nvidia-cuda-tar-gz` |
 | Standalone PC desktop | `windows` | omitted | `x64` | `msi` | `windows-x64-standalone-desktop-msi` |
+| Runtime-configurable PC desktop | `windows` | omitted | `x64` | `msi` | `windows-x64-dual-desktop-msi` |
 | Standalone PC desktop | `windows` | omitted | `x64` | `exe` | `windows-x64-standalone-desktop-exe` |
 | Standalone PC desktop | `macos` | omitted | `arm64` | `dmg` | `macos-arm64-standalone-desktop-dmg` |
 | Standalone Capacitor Android | `android` | omitted | `arm64` | `aab` | `android-arm64-standalone-mobile-aab` |
 | Standalone Capacitor iOS | `ios` | omitted | `universal` | `ipa` | `ios-universal-standalone-mobile-ipa` |
+| Runtime-configurable iOS client | `ios` | omitted | `universal` | `ipa` | `ios-universal-dual-mobile-ipa` |
 | Standalone Flutter Android | `android` | omitted | `arm64` | `aab` | `android-arm64-standalone-mobile-aab` |
 | Standalone Flutter iOS | `ios` | omitted | `universal` | `ipa` | `ios-universal-standalone-mobile-ipa` |
 | Standalone mobile phone | `android` | omitted | `arm64` | `aab` | `android-arm64-standalone-mobile-aab` |
@@ -311,12 +355,48 @@ Rules:
 
 - Deployment targets are declared under `deployments[]`.
 - Deployment matrix items `MUST` bind to selected package targets through
-  deploymentProfile, runtimeTarget, profile, platform, architecture, variant,
-  format, target id, or package id selectors.
+  active deploymentProfile, runtimeTarget, profile binding/support set,
+  package profile, platform, architecture, variant, format, target id, or
+  package id selectors. Selecting a runtime-configurable client requires the
+  requested active profile to be present in its supported set.
 - Each configured deployment `MUST` match at least one package target in the full application workflow config. Selector typos must fail validation instead of silently producing no deployment jobs.
 - Deployment jobs `MUST` bind to GitHub Environments using the configured environment name and URL when present.
 - Deployment lifecycle jobs `MUST` explicitly pass deployment environment, URL, and lifecycle values to the lifecycle runner.
 - Production deployment approvals, environment secrets, and provider credentials belong to GitHub Environments or OIDC provider configuration, not source-controlled workflow config.
+- Apply and rollback jobs `MUST` select one deployment profile, one lifecycle
+  environment, and one immutable artifact/package identity before acquiring
+  environment credentials.
+- Deployment jobs `MUST NOT` rebuild artifacts. They consume digests,
+  checksums, signatures, attestations, or equivalent immutable publication
+  evidence from the package/publish jobs. The deployment selector must verify
+  an artifact evidence document against the selected artifact id, digest,
+  package id, profile support, SBOM, provenance, and signature references.
+- `deployments[].artifactEvidencePath` may override the canonical
+  `.sdkwork/evidence/{packageId}.json` path and may use only `{packageId}` or
+  `{targetId}` placeholders. The reusable workflow `MUST` download the selected
+  package artifact and run the framework evidence validator before invoking
+  `lifecycle.deploy` or `lifecycle.publish`; merely exporting an unchecked path
+  is not sufficient evidence.
+- A deployable package target `MUST` declare or generate an evidence document
+  before workflow artifact upload. The document `MUST` include a safe relative
+  `artifactPath`; the framework `MUST` recompute that file's SHA-256 digest and
+  bind its SemVer and source commit to the current package job. The shared
+  `evidence:create` command is the canonical generator. Deployment validation
+  repeats the byte-level digest check against the downloaded artifact root.
+- A target with one primary packaged file `SHOULD` declare the safe relative
+  `targets[].artifactPath`. The framework projects it as
+  `SDKWORK_PACKAGE_ARTIFACT_PATH`; `evidence:create` may consume that value
+  together with the injected target id, version, evidence path, and
+  SBOM/provenance/signature references. `outputGlobs` remains the upload set and
+  must include referenced SBOM or signature files that deployment consumers
+  need; it is not a substitute for the primary byte-bound artifact path.
+- Workflow artifact names `MUST` use the framework scopes
+  `sdkwork-publishable-` and `sdkwork-non-deployable-`. Aggregate Release jobs
+  `MUST` download only the publishable scope; a wildcard over all workflow
+  artifacts is forbidden because test-only outputs are not release assets.
+- Standalone and cloud deployments have independent approval, smoke,
+  monitoring, and rollback evidence even when they originate from the same
+  source version.
 
 ## 9. Framework Repository Requirements
 
@@ -357,11 +437,20 @@ Application integration verification `MUST` check:
 - Matrix selection works for all declared deployment profiles, runtime targets,
   target profiles, platforms, architectures, variants, and formats.
 - Package ids and artifact names follow `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>` and `<artifactPrefix>-<packageId>` for browser, H5, server, PC desktop, Capacitor, Flutter, native mobile, tablet, mini program, container/Docker-compatible, and multi-format targets, Linux native `deb`/`rpm` package ids include the `distribution` segment, and variant targets insert `<variant>` before `<format-token>`.
-- Lifecycle steps receive `SDKWORK_DEPLOYMENT_PROFILE` and
-  `SDKWORK_RUNTIME_TARGET` for package and deployment jobs.
+- Package lifecycle steps receive `SDKWORK_DEPLOYMENT_PROFILE` for fixed
+  targets or `SDKWORK_SUPPORTED_DEPLOYMENT_PROFILES` for runtime-configurable
+  targets, plus `SDKWORK_RUNTIME_TARGET`. Deployment jobs always select and
+  receive one active `SDKWORK_DEPLOYMENT_PROFILE`.
 - Linux native package lifecycle and deployment lifecycle receive `SDKWORK_PACKAGE_DISTRIBUTION`.
 - Variant package lifecycle and deployment lifecycle receive `SDKWORK_PACKAGE_VARIANT`.
 - Lifecycle steps receive the standard package and deployment environment variables.
+- Lifecycle steps receive `SDKWORK_WORKFLOW_CLI` and deployable package steps
+  receive newline-delimited `SDKWORK_ARTIFACT_EVIDENCE_PATHS`, allowing private
+  hooks to call the shared evidence generator without a fixed workspace path.
+- Targets that declare `artifactPath` project it as
+  `SDKWORK_PACKAGE_ARTIFACT_PATH`, and the evidence CLI accepts all canonical
+  lifecycle values from the injected environment when equivalent CLI flags are
+  omitted.
 - Signing, SBOM, attestation, workflow artifact, GitHub Release, dependency checkout, and deployment policies are enforced by executable tests or framework validation.
 - Runtime dependencies and verification-only dependencies are both checked out
   by the framework, but dependency plans preserve their dependency type so

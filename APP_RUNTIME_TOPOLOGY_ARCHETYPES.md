@@ -50,7 +50,7 @@ adapter for IAM and cross-application SDKs.
 | --- | --- | --- | --- |
 | `standalone.development` | standalone | development | Yes |
 | `standalone.production` | standalone | production | Yes for standalone release |
-| `cloud.development` | cloud | development | Optional cloud integration profile |
+| `cloud.development` | cloud | development | Required remote-consumer profile for pnpm-managed application roots |
 | `cloud.staging` | cloud | staging | Optional cloud pre-prod |
 | `cloud.production` | cloud | production | Yes for cloud release |
 
@@ -168,6 +168,7 @@ approved cloud application gateway.
 | --- | --- |
 | `standalone.development` | standalone |
 | `standalone.production` | standalone |
+| `cloud.development` | cloud |
 | `cloud.staging` | cloud |
 | `cloud.production` | cloud |
 
@@ -186,7 +187,7 @@ Rules:
    an architecture decision.
 2. Add a section to this file and register names in
    `APP_RUNTIME_TOPOLOGY_NAMING.md`.
-3. Extend `sdkwork-app-topology` JSON Schema v4 enum when archetype validation
+3. Extend `sdkwork-app-topology` JSON Schema v5 enum when archetype validation
    is enforced.
 4. Add a reference `examples/<application-code>/topology.spec.json` in
    `sdkwork-app-topology`.

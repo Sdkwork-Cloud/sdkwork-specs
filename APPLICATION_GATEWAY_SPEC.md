@@ -41,7 +41,7 @@ SDKWork recognizes exactly three normative gateway roles:
 | --- | --- | --- | --- | --- |
 | Platform cloud gateway | `sdkwork-api-cloud-gateway` | `platform` | `platform.api-gateway` | Shared SDKWork platform APIs such as IAM, Drive, and Notary |
 | Standalone application gateway | `sdkwork-<application-code>-standalone-gateway` | `application` | `application.public-ingress` | Self-contained application ingress for `deploymentProfile=standalone` |
-| Cloud application gateway | `sdkwork-<application-code>-cloud-gateway` | `application` | `application.public-ingress` | Scale-out application ingress for `deploymentProfile=cloud` |
+| Cloud application gateway | `sdkwork-<application-code>-cloud-gateway` | `application` | exceptional dedicated `application.public-ingress` | Scale-out/realtime application ingress only when platform-collapsed HTTP is insufficient |
 
 Rules:
 
@@ -113,11 +113,25 @@ additional public topology modes.
 
 ### 5.2 Cloud Application Gateway
 
-Use `sdkwork-<application-code>-cloud-gateway` when the repository ships `deploymentProfile=cloud` application ingress that:
+Use `sdkwork-<application-code>-cloud-gateway` only when the repository ships
+an ADR-governed `deploymentProfile=cloud` application ingress that:
 
 - terminates `application.public-ingress` for cloud, scale-out, or private-cloud release;
 - proxies to decomposed internal upstream services declared in `topology.spec.json`;
 - consumes external `sdkwork-api-cloud-gateway` for `platform.api-gateway` unless an approved exception exists.
+
+This is not the default cloud HTTP shape. New cloud applications `MUST` first
+use `cloudIngress.strategy = platform-collapsed`, where
+`sdkwork-api-cloud-gateway` embeds or proxies registered application business
+routes. A dedicated application cloud gateway requires
+`cloudIngress.strategy = dedicated-application`, `decisionRef`, explicit
+public URLs, route-collision evidence, and an operational reason such as
+realtime protocol handling or independently scaled ingress.
+
+`edge-split` is distinct: it requires an ADR-governed `edgeGateway` for device,
+realtime, or non-HTTP edge protocols, while application HTTP may remain on
+`sdkwork-api-cloud-gateway`. It does not require an application cloud gateway
+unless the topology separately declares one.
 
 Typical topology profile: `cloud.*`. Internal upstream decomposition is
 declared as gateway-to-service wiring inside topology and deployment manifests,
@@ -130,6 +144,8 @@ Use `sdkwork-api-cloud-gateway` when the repository owns the shared SDKWork plat
 - terminates `platform.api-gateway`;
 - serves IAM, Drive, Notary, and other approved platform HTTP surfaces;
 - is consumed by cloud application gateways and cloud client bootstrap through `SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL` or equivalent topology env keys.
+- is the default public HTTP origin for cloud application and platform SDK
+  surfaces under `platform-collapsed` topology.
 
 Platform gateway crates `MUST` keep the canonical `sdkwork-api-cloud-gateway` identity and `MUST` document the `platform.api-gateway` topology context where the role could otherwise be ambiguous.
 
@@ -140,7 +156,11 @@ Platform gateway crates `MUST` keep the canonical `sdkwork-api-cloud-gateway` id
 Rules:
 
 - Application HTTP listeners `MUST` use `sdkwork-<application-code>-standalone-gateway` for `deploymentProfile=standalone` and `application.public-ingress`.
-- Cloud application ingress `MUST` use `sdkwork-<application-code>-cloud-gateway` when the repository ships a cloud deployment profile.
+- Platform-collapsed cloud application ingress `MUST NOT` create or start an
+  application cloud gateway; it uses the deployed `sdkwork-api-cloud-gateway`.
+- Dedicated cloud ingress `MUST` use `sdkwork-<application-code>-cloud-gateway`.
+  Edge-split uses that gateway only when `applicationGateway` is explicitly
+  declared; its `edgeGateway` remains a separate protocol ingress.
 - Repositories `MUST NOT` introduce new `*-api-server` crate or binary names. Existing crates `MUST` migrate with `node sdkwork-specs/tools/migrate-retire-api-server.mjs`.
 - `sdkwork-routes-*-app-api` / `backend-api` / `open-api` remain **route surface** names. They are not process roles and `MUST NOT` be used as default dev/release HTTP listener binaries.
 - Platform ingress remains `sdkwork-api-cloud-gateway` (crate + binary). The retired `sdkwork-api-cloud-gateway-api-server` listener crate `MUST` fold into `sdkwork-api-cloud-gateway`.
@@ -162,13 +182,21 @@ SDKWork HTTP APIs `MUST` expose **one client-facing HTTP bind per connectivity p
 | Plane | Canonical ingress crate/binary | Client-facing surface | Integration model |
 | --- | --- | --- | --- |
 | Application (standalone) | `sdkwork-<application-code>-standalone-gateway` | `application.public-ingress` | Mount application route crates and approved dependency/platform adapters **in-process** on the gateway router |
-| Application (cloud) | `sdkwork-<application-code>-cloud-gateway` | `application.public-ingress` | Terminate one public HTTP bind; compose or proxy to internal upstreams declared in topology without requiring extra loopback HTTP listeners in dev |
-| Platform (cloud/shared) | `sdkwork-api-cloud-gateway` | `platform.api-gateway` | Integrate all approved platform `*-api` surfaces on **one** HTTP bind |
+| Application (cloud, exceptional) | `sdkwork-<application-code>-cloud-gateway` | dedicated `application.public-ingress` | Required by `dedicated-application`; optional in `edge-split` when application HTTP also needs dedicated ingress |
+| Platform (cloud/shared default) | `sdkwork-api-cloud-gateway` | `platform.api-gateway` and collapsed application HTTP surfaces | Integrate or proxy approved platform/application `*-api` surfaces on **one** public HTTP bind |
 
 Rules:
 
 - `standalone.*` profiles `MUST` start exactly **one** application-plane HTTP ingress process: `sdkwork-<application-code>-standalone-gateway`. Dev orchestration `MUST NOT` spawn additional loopback HTTP servers for `app-api`, `backend-api`, `open-api`, `*-api-server`, or per-service listener packages.
-- `cloud.*` client bootstrap and dev orchestration `MUST` still present **one** `application.public-ingress` HTTP URL and **one** `platform.api-gateway` HTTP URL. Decomposed service binaries are internal scaling/release artifacts; they `MUST NOT` become the default way to make APIs reachable through multiple local HTTP ports.
+- `cloud.*` client bootstrap and dev orchestration `MUST` still present logical
+  `application.public-ingress` and `platform.api-gateway` HTTP URLs. Under
+  `platform-collapsed` they resolve to the same platform gateway origin. Under
+  an approved dedicated strategy they may differ. An `edge-split` topology may
+  still keep those HTTP surfaces on the same platform origin while its
+  `edgeGateway` owns the separate protocol endpoint. Decomposed service
+  binaries remain internal scaling/release artifacts.
+- `cloud.development` `MUST NOT` start any of the gateway roles in this table;
+  it consumes their deployed URLs.
 - Route crates (`sdkwork-routes-*`) and service libraries (`*-service`) are **composition units**. They `MAY` ship `*-service-bin` packages for cloud deployment matrices, CI smoke, or operator-managed scale-out, but those binaries `MUST NOT` replace gateway embedding for standalone dev or become mandatory multi-port dev sidecars.
 - Background workers, schedulers, and non-HTTP runtimes `MAY` run as separate processes when they do not terminate additional public HTTP API surfaces.
 - gRPC, internal RPC, WebSocket upgrades on the declared ingress bind, and client renderer dev servers (for example Vite) are out of scope for this HTTP ingress count; they follow `RPC_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md` §3, and frontend dev orchestration rules respectively.
@@ -177,7 +205,9 @@ Rules:
 Reference implementations:
 
 - Standalone: `sdkwork-drive` `standalone.*` starts `sdkwork-drive-standalone-gateway` only.
-- Application cloud ingress: `sdkwork-im` `cloud.*` starts `sdkwork-im-cloud-gateway` as the sole application HTTP ingress in dev orchestration.
+- Application cloud ingress: an ADR-governed `sdkwork-im` dedicated cloud
+  release packages `sdkwork-im-cloud-gateway`; `cloud.development` consumes its
+  deployed URL and starts no gateway locally.
 - Platform cloud ingress: `sdkwork-api-cloud-gateway` composes IAM, Drive, Notary, and other platform HTTP surfaces on one bind.
 
 ### 5.7 Gateway Assembly (Normative)
@@ -372,6 +402,9 @@ Rules:
 
 - Platform gateway repository scripts `MUST` target the canonical `sdkwork-api-cloud-gateway` package or an explicitly named support crate such as `sdkwork-api-cloud-gateway-config`.
 - Config-bundle-only application repositories `MAY` expose `gateway:package:cloud` without a local application gateway binary.
+- `gateway:run:cloud` is an operator/gateway-development command for a
+  repository that owns an approved dedicated cloud gateway. Application-root
+  `dev:cloud` `MUST NOT` delegate to it or to any platform gateway run command.
 
 ## 10. Reference Matrix
 

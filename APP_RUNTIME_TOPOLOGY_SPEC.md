@@ -65,7 +65,7 @@ Rules:
 
 | Plane | Owner | Protocols | Terminated by |
 | --- | --- | --- | --- |
-| `application` | Application repository | `http`, `ws`, future `sse` | Application public ingress (`sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway`) |
+| `application` | Application repository | `http`, `ws`, future `sse` | Standalone application gateway, platform-collapsed `sdkwork-api-cloud-gateway`, or an ADR-approved dedicated application cloud gateway |
 | `platform` | Shared SDKWork platform | `http` | `sdkwork-api-cloud-gateway` or an approved embedded standalone adapter |
 | `operations` | Application operator APIs | `http` | Operations control ingress |
 | `edge` | Device or edge gateway | `ws`, `mqtt`, `udp`, device `http` | Edge device ingress |
@@ -78,6 +78,16 @@ Rules:
 - Edge protocols `MUST NOT` be routed through `sdkwork-api-cloud-gateway` unless a
   future platform spec adds an edge tier.
 - Each plane `MUST` have distinct env keys from `APP_RUNTIME_TOPOLOGY_NAMING.md`.
+- Cloud HTTP defaults to `cloudIngress.strategy = platform-collapsed` and the
+  deployed `sdkwork-api-cloud-gateway`. In that strategy,
+  `application.public-ingress` and `platform.api-gateway` `MUST` share one origin
+  while retaining distinct logical surfaces and API path ownership.
+- `dedicated-application` requires `applicationGateway` and `decisionRef`.
+  `edge-split` requires a distinct `edgeGateway` and `decisionRef`; an
+  `applicationGateway` remains optional when application HTTP stays
+  platform-collapsed. Both exceptional strategies require explicit remote URLs
+  and a realtime/device/protocol reason. They do not authorize a local gateway
+  in `cloud.development`.
 
 ## 4. Surfaces
 
@@ -147,6 +157,25 @@ Rules:
 - A profile id `MUST NOT` encode runtime target, database engine, process
   count, upstream count, hosting ownership, or package format.
 
+Cloud-capable topology schema v5 roots additionally declare:
+
+```json
+{
+  "cloudIngress": {
+    "strategy": "platform-collapsed",
+    "platformGateway": "sdkwork-api-cloud-gateway"
+  }
+}
+```
+
+`applicationGateway` is required for `dedicated-application`. `edge-split`
+requires `edgeGateway`; it may additionally declare `applicationGateway` only
+when application HTTP also uses dedicated ingress. Both exceptional strategies
+require `decisionRef`. The machine authority is
+`schemas/sdkwork.app.topology.schema.v5.json`. Schema v4 remains readable
+during the declared migration window, but new and aligned topology contracts
+use v5.
+
 ### Repository Files
 
 ```text
@@ -157,6 +186,21 @@ scripts/lib/<application-code>-topology.mjs
 ```
 
 Implementation: `@sdkwork/app-topology` (`../sdkwork-app-topology`).
+
+The repository-level `sdkwork-app` facade in `sdkwork-app-topology` is the
+standard local lifecycle adapter. Public `pnpm dev`, `build`, `test`, `check`,
+`verify`, `clean`, and `stop` scripts delegate to it; application-specific commands
+remain private `_sdkwork:*` hooks. The facade consumes this topology contract
+and the resolved runtime-plan schema rather than introducing another runtime
+manifest. Package/release planning belongs to `sdkwork-github-workflow`, and
+deployment apply/rollback belongs to `sdkwork-specs/tools/deployctl.mjs`.
+Generic development orchestration records a repository-scoped heartbeat under
+`.runtime/sdkwork-app/` so a separate `sdkwork-app stop` invocation can reject
+stale ownership and terminate only that development process tree. The registry
+also records directly spawned child PIDs. Windows uses process-tree termination
+when available and falls back to those registered children plus the supervisor
+when the operating-system tree enumeration service fails. Private
+development runners must provide their own scoped `_sdkwork:stop` hook.
 
 ## 7. Client Bootstrap
 
@@ -190,6 +234,84 @@ They `MUST` resolve to `standalone.development` and the PostgreSQL dev database
 profile unless the command name explicitly selects another database or `cloud`.
 New dev scripts `MUST NOT` accept or emit retired deployment flags such as
 `--hosting self-hosted` or `--hosting cloud-hosted`.
+
+Every pnpm-managed application root `MUST` also expose the profile entrypoints
+defined by `PNPM_SCRIPT_SPEC.md`:
+
+```text
+pnpm dev:standalone
+pnpm dev:cloud
+```
+
+`dev:standalone` selects `standalone.development`. Its orchestration profile may
+start the local application ingress, an approved embedded platform adapter,
+declared local dependencies, and local developer-facing clients.
+
+`dev:cloud` selects `cloud.development` as a remote-consumer development
+profile. It starts local developer-facing clients only. The profile:
+
+- `MUST` resolve `application.public-ingress` and every required external plane
+  to explicit deployed URLs from the selected source config.
+- `MUST NOT` start an application gateway, platform gateway, API server,
+  worker required only by the deployed API, database, Redis, migration, or seed
+  process.
+- `MUST` health-check required remote surfaces with bounded timeouts before
+  starting clients.
+- `MUST` fail closed when a required remote URL is missing and must not inherit
+  a loopback URL from `standalone.development` or a URL from
+  `cloud.production`.
+- `MAY` use an explicitly declared local tunnel or proxy, but that process and
+  its loopback URL must be visible in the topology profile rather than created
+  as an orchestrator fallback.
+
+`orchestration.profiles["cloud.development"].processes` therefore contains no
+local API-plane or platform-plane server process by default. Its
+`healthSurfaces` may name remote surfaces. Client dev servers remain local
+runtime targets and do not become cloud release artifacts merely because they
+consume a cloud deployment.
+
+Every orchestrator `MUST` expose a deterministic JSON plan equivalent to:
+
+```text
+pnpm topology:plan --deployment-profile <standalone|cloud> --environment <environment> --runtime-target <target> --json
+```
+
+The plan includes active profile/environment, local client processes, local
+gateway identity, remote surfaces, Base URLs with source provenance, local
+data stores, health checks, config inputs, and forbidden process roles.
+Validation operates on the resolved plan rather than only process-name
+matching.
+
+The canonical plan contract is
+`schemas/sdkwork.runtime-plan.schema.v1.json`. Repositories may call the shared
+resolver directly when their `@sdkwork/app-topology` adapter does not yet expose
+an equivalent command:
+
+```bash
+node ../sdkwork-specs/tools/resolve-app-runtime-plan.mjs --root . --deployment-profile cloud --environment development --runtime-target browser --json
+```
+
+Topology schema v5 orchestration processes `MUST` declare one canonical
+`role`: `client`, `standalone-gateway`, `application-cloud-gateway`,
+`platform-gateway`, `api-listener`, `database`, `redis`, `migration`, `seed`,
+`worker`, or `tunnel`. `id`, binary, or script text is not role authority.
+`cloud.development` allows only `client` and explicitly configured `tunnel`
+roles. `standalone.development` may declare local dependencies, but an
+application that serves HTTP APIs has exactly one `standalone-gateway` role.
+
+An orchestration process that applies only to selected runtime targets `MAY`
+declare `runtimeTargets`. The runtime plan `MUST` exclude that process unless
+the selected `runtimeTarget` appears in the non-empty canonical target list.
+Processes without `runtimeTargets` apply to every runtime target for the
+profile. This selection is declarative; public pnpm scripts must not duplicate
+the process graph for browser and desktop variants.
+
+`cloud.development` plans `MUST` report zero local standalone gateway,
+application cloud gateway, platform gateway, API listener, database, Redis,
+migration, seed, and deployed-service worker processes.
+`standalone.development` plans with application HTTP APIs `MUST` report exactly
+one application HTTP ingress:
+`sdkwork-<application-code>-standalone-gateway`.
 
 For `deploymentProfile=standalone`, orchestration `MUST` start only the
 application ingress process for application-plane HTTP APIs. Internal route
@@ -291,5 +413,5 @@ Rules:
 Unreleased applications delete retired keys, binaries, and docs. No aliases or
 bridges are allowed in application code. Compatibility aliases are allowed only
 inside an approved migration tool and must normalize to `deploymentProfile`,
-`runtimeTarget`, `environment`, and the v4 profile id before application code
+`runtimeTarget`, `environment`, and the v5 profile id before application code
 sees them.

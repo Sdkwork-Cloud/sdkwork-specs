@@ -1,5 +1,17 @@
-version: 1
+version: 2
 profile: cloud.production
+
+deployment:
+  deploymentProfile: cloud
+  environment: production
+  deliveryKind: configuration-bundle
+  deploymentDriver: nginx
+  managementModel: sdkwork-managed
+  tenancyModel: multi-tenant
+  isolationModel: shared
+  networkExposure: public
+  rolloutStrategy: rolling
+  availabilityMode: high-availability
 
 install:
   layout: binary-package

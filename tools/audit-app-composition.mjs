@@ -40,7 +40,12 @@ for (const entry of fs.readdirSync(workspace, { withFileTypes: true })) {
   if (!manifest.backend) continue;
   const clientRoots = listClientAppRoots(repoRoot);
   if (clientRoots.length > 0 || hasClientAppSurfaceDirectories(repoRoot)) continue;
-  if (!Array.isArray(manifest.sdkDependencies)) {
+  const componentSpecPath = path.join(repoRoot, 'specs/component.spec.json');
+  const componentSpec = fs.existsSync(componentSpecPath) ? readJson(componentSpecPath) : null;
+  const hasBackendSdkInventory = manifest.schemaVersion >= 3
+    ? Array.isArray(componentSpec?.contracts?.sdkDependencies)
+    : Array.isArray(manifest.sdkDependencies);
+  if (!hasBackendSdkInventory) {
     missingBackendSdkDeps.push(entry.name);
   }
 }

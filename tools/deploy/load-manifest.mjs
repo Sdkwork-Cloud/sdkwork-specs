@@ -33,9 +33,10 @@ export function loadAppConfig(repoRoot) {
   return JSON.parse(fs.readFileSync(configPath, 'utf8'));
 }
 
-export function resolveProfileBlock(doc, profileId) {
+export function resolveProfileBlock(doc, profileId, options = {}) {
+  const allowDefault = options.allowDefault !== false;
   if (doc.profiles && typeof doc.profiles === 'object') {
-    const forbiddenRootKeys = ['expose', 'packages', 'overrides', 'install', 'profile'];
+    const forbiddenRootKeys = ['deployment', 'expose', 'packages', 'overrides', 'install', 'profile'];
     for (const key of forbiddenRootKeys) {
       if (doc[key] !== undefined) {
         throw new Error(
@@ -43,9 +44,9 @@ export function resolveProfileBlock(doc, profileId) {
         );
       }
     }
-    const selected = profileId ?? doc.defaultProfile;
+    const selected = profileId ?? (allowDefault ? doc.defaultProfile : undefined);
     if (!selected) {
-      throw new Error('profiles mode requires --profile or defaultProfile');
+      throw new Error('explicit --profile is required for this operation');
     }
     const block = doc.profiles[selected];
     if (!block) {
@@ -54,14 +55,15 @@ export function resolveProfileBlock(doc, profileId) {
     return { profileId: selected, block };
   }
 
-  const selected = profileId ?? doc.profile;
+  const selected = profileId ?? (allowDefault ? doc.profile : undefined);
   if (!selected) {
-    throw new Error('simple mode requires profile or --profile');
+    throw new Error('explicit --profile is required for this operation');
   }
   return {
     profileId: selected,
     block: {
       install: doc.install,
+      deployment: doc.deployment,
       expose: doc.expose,
       packages: doc.packages,
       overrides: doc.overrides,

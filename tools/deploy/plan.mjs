@@ -3,16 +3,26 @@ import { buildDeployContext } from './validate.mjs';
 import { loadProfileEnv } from './topology-env.mjs';
 import { webRoots, binaryPath, hostRoot, nginxStagingFile } from './paths.mjs';
 
+export function selectDeploymentBinary(topology, deployment) {
+  if (deployment && deployment.deliveryKind !== 'host-package') return null;
+  return topology?.components?.standaloneGateway?.binary
+    ?? topology?.components?.appApiRouter?.binary
+    ?? topology?.components?.cloudGateway?.binary
+    ?? null;
+}
+
+export function shouldResolveDeploymentUpstreams(deployment) {
+  return !deployment || deployment.deploymentDriver === 'nginx';
+}
+
 export function planDeploy(repoRoot, profileId, options = {}) {
   const context = buildDeployContext(repoRoot, profileId, options);
   const profileEnv = loadProfileEnv(context.repoRoot, context.topology, context.profileId);
-  const upstreams = resolveUpstreams(context.topology, context.overrides, profileEnv);
+  const upstreams = shouldResolveDeploymentUpstreams(context.deployment)
+    ? resolveUpstreams(context.topology, context.overrides, profileEnv)
+    : {};
 
-  const binary =
-    context.topology?.components?.standaloneGateway?.binary ??
-    context.topology?.components?.appApiRouter?.binary ??
-    context.topology?.components?.cloudGateway?.binary ??
-    null;
+  const binary = selectDeploymentBinary(context.topology, context.deployment);
 
   const expose = context.expose.map((item) => ({
     ...item,
@@ -37,6 +47,7 @@ export function planDeploy(repoRoot, profileId, options = {}) {
     appId: context.appId,
     runtimeCode: context.runtimeCode,
     installLayout: context.layout,
+    deployment: context.deployment,
     hostRoot: hostRoot({ appId: context.appId, layout: context.layout }),
     topology: context.topology,
     profileEnv,
@@ -70,15 +81,25 @@ export function formatPlan(plan) {
   lines.push(`appId:          ${plan.appId}`);
   lines.push(`runtimeCode:    ${plan.runtimeCode}`);
   lines.push(`install.layout: ${plan.installLayout}`);
+  if (plan.deployment) {
+    lines.push(`deployment:     ${plan.deployment.deploymentProfile}.${plan.deployment.environment}`);
+    lines.push(`driver:         ${plan.deployment.deploymentDriver}`);
+    lines.push(`delivery:       ${plan.deployment.deliveryKind}`);
+  }
   if (plan.hostRoot) lines.push(`hostRoot:       ${plan.hostRoot}`);
   if (plan.binary) lines.push(`binary:         ${plan.binary.path}`);
-  lines.push('upstreams:');
-  for (const [key, value] of Object.entries(plan.upstreams ?? {})) {
-    lines.push(`  ${key}: ${value}`);
+  const upstreams = Object.entries(plan.upstreams ?? {});
+  if (upstreams.length > 0) {
+    lines.push('upstreams:');
+    for (const [key, value] of upstreams) {
+      lines.push(`  ${key}: ${value}`);
+    }
   }
-  lines.push('apiSurfaces:');
-  for (const item of plan.apiSurfaces ?? []) {
-    lines.push(`  ${item.prefix} (${item.kind}, ${item.source})`);
+  if (plan.apiSurfaces?.length > 0) {
+    lines.push('apiSurfaces:');
+    for (const item of plan.apiSurfaces) {
+      lines.push(`  ${item.prefix} (${item.kind}, ${item.source})`);
+    }
   }
   if (plan.websocketPath) lines.push(`websocketPath:  ${plan.websocketPath}`);
   lines.push('expose:');

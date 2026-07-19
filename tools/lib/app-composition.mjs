@@ -522,8 +522,22 @@ export function validateBackendReleaseComposition(repoRoot) {
   if (clientRoots.length > 0 || hasClientAppSurfaceDirectories(repoRoot)) return issues;
 
   const manifest = readJson(manifestPath);
-  if (manifest.backend && !Array.isArray(manifest.sdkDependencies)) {
-    issues.push('sdkwork.app.config.json#sdkDependencies required for backend-only application roots');
+  if (!manifest.backend) return issues;
+
+  if (manifest.schemaVersion >= 3) {
+    const componentSpecPath = path.join(repoRoot, 'specs/component.spec.json');
+    const componentSpec = fs.existsSync(componentSpecPath)
+      ? readJson(componentSpecPath)
+      : null;
+    if (!Array.isArray(componentSpec?.contracts?.sdkDependencies)) {
+      issues.push(
+        'specs/component.spec.json#contracts.sdkDependencies required for backend-only App Standard v3 roots',
+      );
+    }
+  } else if (!Array.isArray(manifest.sdkDependencies)) {
+    issues.push(
+      'sdkwork.app.config.json#sdkDependencies required for legacy backend-only application roots',
+    );
   }
   return issues;
 }

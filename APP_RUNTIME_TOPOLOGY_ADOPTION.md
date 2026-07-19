@@ -31,7 +31,8 @@ Forbidden:
 ## 2. Required Files Per Application
 
 ```text
-specs/topology.spec.json              # schemaVersion 4
+specs/topology.spec.json              # schemaVersion 5; v4 read-only during migration
+schemas are owned by ../sdkwork-specs/schemas/sdkwork.app.topology.schema.v5.json
 etc/topology/<profile-id>.env         # one file per active profile
 scripts/lib/<application-code>-topology.mjs        # adapter over @sdkwork/app-topology
 scripts/<application-code>-dev.mjs                 # topology-aware dev entry
@@ -43,6 +44,8 @@ Validate:
 
 ```bash
 node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs validate --root . --spec specs/topology.spec.json
+node ../sdkwork-specs/tools/check-topology-deployment-profiles.mjs --workspace .. --repo <repository>
+node ../sdkwork-specs/tools/resolve-app-runtime-plan.mjs --root . --deployment-profile cloud --environment development --runtime-target browser --json
 ```
 
 ## 3. Pick An Archetype
@@ -99,7 +102,8 @@ Rules:
 
 - The adapter must not duplicate profile id parsing.
 - The adapter must reject unknown deployment profiles before process startup.
-- The adapter must expose only normalized v4 values to application code.
+- The adapter must expose only normalized v5 values to application code; v4
+  input is normalized during the migration window.
 
 ## 6. Dev Orchestrator Pattern
 
@@ -115,8 +119,10 @@ CLI naming follows `PNPM_SCRIPT_SPEC.md`:
 
 ```bash
 pnpm dev                                      # default standalone development profile
+pnpm dev:standalone
+pnpm dev:cloud                               # local client, deployed cloud APIs
 pnpm dev:browser:postgres:standalone
-pnpm dev:browser:postgres:cloud
+pnpm dev:browser:cloud
 pnpm dev:desktop
 pnpm verify:smoke
 ```
@@ -155,10 +161,10 @@ node scripts/print-package-matrix.mjs --deployment-profile cloud
 
 | Repo | Required status |
 | --- | --- |
-| `sdkwork-drive` | v4 topology spec, standalone and cloud profiles |
-| `sdkwork-im` | v4 topology spec, realtime standalone smoke and cloud profiles |
-| `sdkwork-aiot` | v4 topology spec, edge surfaces and cloud profiles |
-| `sdkwork-app-topology` | v4 schema/runtime, profile loader, surface resolvers, health helpers |
+| `sdkwork-drive` | v5 target, standalone plus platform-collapsed cloud profiles |
+| `sdkwork-im` | v5 target, realtime standalone plus governed dedicated cloud ingress |
+| `sdkwork-aiot` | v5 target, standalone plus governed edge-split cloud profiles |
+| `sdkwork-app-topology` | v5 schema/runtime, v4 migration reader, resolved-plan and surface helpers |
 
 ## 10. Retirement Checklist
 
@@ -171,8 +177,14 @@ When migrating an application, delete and do not alias:
 - App-local `commonSdkRootEnv` pointing at application URLs for platform SDKs.
 - Hardcoded ports in Rust `default_*_upstreams()`; load from spec/profile.
 
-Migration tools may read retired values only long enough to emit v4
-`deploymentProfile`, `runtimeTarget`, `environment`, and profile id outputs.
+Migration tools may read retired values only long enough to emit v5
+`deploymentProfile`, `runtimeTarget`, `environment`, profile id, and
+`cloudIngress` outputs. An existing application cloud gateway must be reviewed
+and assigned an ADR-backed dedicated/edge strategy or collapsed into
+`sdkwork-api-cloud-gateway`; the aligner must not silently change live routing.
+The aligner may infer canonical v5 process roles only from unambiguous gateway,
+client, database, cache, migration, seed, tunnel, or worker identities;
+unclassified processes remain validator failures for human review.
 
 ## 11. Single HTTP Ingress Migration
 

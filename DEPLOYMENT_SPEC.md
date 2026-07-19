@@ -10,14 +10,17 @@ Use `CONFIG_SPEC.md` for typed runtime config, SDK client construction, token st
 
 ## 1. Deployment Profiles
 
-`deploymentProfile` is the canonical application deployment architecture field.
-All SDKWork applications `MUST` declare exactly one active deployment profile at
-runtime and in release/package metadata.
+`deploymentProfile` is the canonical active API/runtime topology field. Every
+SDKWork runtime instance and every server-side deployment unit `MUST` select
+exactly one active profile. A runtime-configurable client artifact may support
+both profiles and selects exactly one during bootstrap; artifact capability is
+declared through `supportedDeploymentProfiles`, not by inventing a third
+profile value.
 
 | Profile | Architecture | Use case |
 | --- | --- | --- |
-| `standalone` | Self-contained application unit with one public application ingress and application-owned runtime config | Desktop, local development, demos, private appliance/server install, single-node service, single-container package |
-| `cloud` | Cloud/service deployment with managed dependencies, explicit ingress, environment-scoped secrets, release orchestration, and independent scaling | SDKWork hosted SaaS, customer VPC/private cloud, Kubernetes or equivalent orchestration |
+| `standalone` | Application API topology terminates at the application's independent `sdkwork-<application-code>-standalone-gateway` | Local development, desktop-local service, customer-private gateway, appliance/server install, single-node service, single-container unit |
+| `cloud` | Application HTTP topology consumes the deployed `sdkwork-api-cloud-gateway` by default; no client-side standalone gateway is started | SDKWork hosted cloud, customer VPC/private cloud, Kubernetes or equivalent orchestration, and local clients consuming deployed cloud APIs |
 
 Rules:
 
@@ -31,6 +34,13 @@ Rules:
   environment, release metadata, runtime target, topology profile, or test
   fixture config, not through a third deployment profile.
 - Shared API contracts `MUST` remain identical across `standalone` and `cloud`.
+- `deploymentProfile` `MUST NOT` encode whether a client artifact is installed
+  locally. Desktop, mobile, tablet, and browser clients may support one or both
+  profiles while retaining their exact runtime target and package identity.
+- Runtime config carries one active `deploymentProfile`. Client package and
+  workflow metadata uses either a fixed `deploymentProfile` or
+  `profileBinding = runtime-configurable` plus
+  `supportedDeploymentProfiles`; these forms are mutually exclusive.
 - Differences in storage, process model, topology, dependency availability, or token issuer `MUST` be hidden behind SDK client initialization and `WebRequestContext` construction.
 - Local-only native capabilities may have local host APIs, but common IAM/API contracts must remain compatible and must not leak local-only parameters into generated SDK inputs.
 - Runtime config and SDK client bootstrap `MUST` follow `CONFIG_SPEC.md`.
@@ -62,6 +72,14 @@ Rules:
 - Standalone release artifacts may be archives, OS services, desktop
   installers, or single-container packages, but all of them remain one
   application deployment unit.
+- A desktop host that owns a local standalone gateway `MUST` supervise only
+  its application-scoped process, bind loopback by default, allocate a
+  collision-safe port, wait for bounded readiness, use user-private runtime
+  paths, perform bounded graceful shutdown, and record crash/restart evidence.
+- Mobile and browser clients `MUST NOT` assume that standalone means an
+  on-device gateway. They may consume the application standalone gateway on a
+  developer machine, customer-private host, LAN appliance, or other declared
+  private endpoint. Offline capability is a separate contract.
 
 ### 1.2 Cloud Profile
 
@@ -84,6 +102,16 @@ Rules:
 - Cloud release artifacts are container images, charts/manifests, deployment
   bundles, or provider-specific deployment packages with SBOM, provenance,
   checksums, signing, rollout, and rollback evidence.
+- Cloud client bootstrap defaults to `cloudIngressStrategy =
+  platform-collapsed`: public SDKWork HTTP surfaces resolve through the
+  deployed `sdkwork-api-cloud-gateway`. `dedicated-application` is permitted
+  only for an application ingress that cannot be collapsed safely, and
+  `edge-split` is permitted for non-HTTP/realtime/device planes; either
+  exception requires topology and ADR evidence.
+- Local `cloud.development` `MUST NOT` start a standalone gateway, application
+  cloud gateway, platform gateway, API listener, database, Redis, migration,
+  seed process, or deployed-service worker. Dedicated cloud and edge ingresses
+  are remote surfaces in this profile.
 
 ### 1.3 Application Mode Coverage
 
@@ -93,12 +121,12 @@ it is not a second enum.
 
 | Application mode | Runtime target values | Allowed deployment profiles | Primary config owner | Release behavior |
 | --- | --- | --- | --- | --- |
-| Browser web | `browser` | `cloud`; `standalone` only for a packaged local/offline web shell or private static bundle | Public runtime config from `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md` | Web URL, static bundle, or edge-hosted package with public SDK base URLs and asset rollback evidence. |
-| PC desktop | `desktop` | `standalone` | Desktop/user runtime config plus platform host config | Signed installer or app bundle; user-private storage defaults apply. |
-| Large-screen tablet | `tablet-ipados`, `tablet-android` | `standalone` for packaged tablet apps; `cloud` only for hosted browser/tablet web surfaces | PC renderer config plus tablet host config | IPA/APK/AAB or platform package evidence; tablet is a runtime/package target, not a deployment profile. |
-| H5 and Capacitor mobile | `browser`, `capacitor-ios`, `capacitor-android` | `cloud` for H5 web URLs; `standalone` for packaged Capacitor apps | H5 public config plus Capacitor host config | Web URL for H5; IPA/APK/AAB for Capacitor packages. |
-| Flutter mobile | `flutter-ios`, `flutter-android` | `standalone` for packaged apps | Flutter app config plus platform host config | IPA/APK/AAB or store-owned package with signing and store rollout evidence. |
-| Native mobile | `android-native`, `ios-native`, `harmony-native` | `standalone` for packaged apps | Native app config plus platform host config | AAB/APK, IPA, Harmony package, app-store, or private distribution evidence. |
+| Browser web | `browser` | `standalone`, `cloud`, or runtime-configurable for both | Public runtime config from `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md` | Web URL, static bundle, or private/offline shell with public SDK base URLs and asset rollback evidence. |
+| PC desktop | `desktop` | `standalone`, `cloud`, or runtime-configurable for both | Desktop/user runtime config plus platform host config | Signed installer or app bundle; standalone may supervise a local gateway, cloud must not. |
+| Large-screen tablet | `tablet-ipados`, `tablet-android` | `standalone`, `cloud`, or runtime-configurable for both | PC renderer config plus tablet host config | IPA/APK/AAB or platform package evidence; hosted tablet Web uses `browser`. |
+| H5 and Capacitor mobile | `browser`, `capacitor-ios`, `capacitor-android` | `standalone`, `cloud`, or runtime-configurable for both | H5 public config plus optional Capacitor host config | H5 is a Web URL/static package; Capacitor produces IPA/APK/AAB. |
+| Flutter mobile | `flutter-ios`, `flutter-android` | `standalone`, `cloud`, or runtime-configurable for both | Flutter app config plus platform host config | IPA/APK/AAB or store-owned package with signing and store rollout evidence. |
+| Native mobile | `android-native`, `ios-native`, `harmony-native` | `standalone`, `cloud`, or runtime-configurable for both | Native app config plus platform host config | AAB/APK, IPA, Harmony package, app-store, or private distribution evidence. |
 | Mini program | `mini-program` | `cloud` when served through platform review/release; `standalone` only for documented private/platform-local packages | Mini program config plus host platform config | Platform upload/review/release package with app id, version, and rollback notes. |
 | Server service | `server` | `standalone` or `cloud` | Server process config | Archive, service package, or cloud service artifact with PostgreSQL/Redis and ingress evidence. |
 | Container image or bundle | `container` | `standalone` for single-container units; `cloud` for orchestrated images/bundles | Mounted container config, env, and platform secrets | OCI image, Docker-compatible image, chart/manifest, or deployment bundle with digest and rollback evidence. |
@@ -106,19 +134,74 @@ it is not a second enum.
 
 Rules:
 
-- `deploymentProfile` answers how the application is deployed and operated.
-  `runtimeTarget` answers where the package runs. A client package may be a
-  standalone artifact while calling cloud SDK surfaces.
+- `deploymentProfile` answers which API/runtime topology is active.
+  `runtimeTarget` answers where the executable config adapter runs. Client
+  architecture, target platform, artifact format, and management ownership are
+  separate metadata axes.
+- A runtime-configurable client package `MUST` declare
+  `profileBinding = runtime-configurable`, both supported profile values, and
+  one non-side-effecting default. Server, gateway, worker, and container
+  deployment units remain fixed-profile artifacts.
 - `docker` is a packaging/tool ecosystem term. SDKWork runtime metadata uses
   `runtimeTarget = "container"` and package/workflow metadata uses container or
   OCI/Docker image formats as defined by `APP_MANIFEST_SPEC.md` and
   `GITHUB_WORKFLOW_SPEC.md`.
 - Package metadata, workflow targets, release notes, and manifest entries
-  `MUST` carry both `deploymentProfile` and `runtimeTarget` and validate them
-  against the matrix above.
+  `MUST` carry `runtimeTarget` plus either a fixed `deploymentProfile` or a
+  runtime-configurable supported-profile set and validate them against the
+  matrix above.
 - Pure client packages do not have to expose HTTP ingress. Any API surface they
   serve, proxy, or compose still follows `WEB_FRAMEWORK_SPEC.md`,
   `API_SPEC.md`, and `WebRequestContext` rules.
+
+### 1.4 Development, Release, And Deployment Boundaries
+
+The deployment profile has one meaning across the lifecycle, but each command
+stage performs a different operation:
+
+| Stage | Selects | Permitted side effect |
+| --- | --- | --- |
+| `dev` | `standalone.development` or `cloud.development` | Starts only processes declared local by the development topology |
+| `release` | Standalone or cloud package targets | Produces, validates, signs, attests, or publishes immutable artifacts |
+| `deploy` | An immutable artifact, deployment profile, and lifecycle environment | Plans, applies, validates, or rolls back an installation/rollout |
+
+Rules:
+
+- Release packaging `MUST NOT` apply a deployment, and deployment `MUST NOT`
+  rebuild an artifact with different source or config.
+- `dev:cloud` consuming a deployed API does not reclassify the local client
+  package. Package fixed/runtime-configurable profile binding remains an
+  explicit release-matrix fact.
+- A deployment apply or rollback operation `MUST` name `standalone` or
+  `cloud`, the lifecycle environment, immutable artifact identity, and the
+  rollback target or forward-fix boundary before side effects.
+- Fixed standalone and cloud artifacts from one logical release may share a
+  SemVer version, but retain distinct package ids and evidence. One
+  runtime-configurable client artifact retains one binary identity plus
+  profile-specific runtime-config provenance, smoke, rollout, and recovery
+  evidence.
+- Environment-specific secrets and provider credentials are deployment inputs,
+  not release artifact contents.
+
+### 1.5 Orthogonal Deployment Dimensions
+
+Deployment manifests and plans keep these dimensions separate from
+`deploymentProfile`:
+
+| Field | Canonical values |
+| --- | --- |
+| `deliveryKind` | `host-package`, `container-image`, `static-web`, `platform-package`, `configuration-bundle` |
+| `deploymentDriver` | `host-service`, `container-runtime`, `kubernetes`, `static-host`, `application-store`, `mini-program-platform`, `nginx` |
+| `managementModel` | `sdkwork-managed`, `customer-managed`, `platform-managed`, `end-user-managed` |
+| `tenancyModel` | `single-tenant`, `multi-tenant` |
+| `isolationModel` | `shared`, `dedicated` |
+| `networkExposure` | `public`, `private`, `internal`, `offline` |
+| `rolloutStrategy` | `recreate`, `rolling`, `blue-green`, `canary`, `platform-staged` |
+| `availabilityMode` | `single-instance`, `high-availability`, `multi-region` |
+
+Provider identity, provider region, availability zones, market region, and
+storage region remain separate fields governed by `REGION_SPEC.md`. None of
+these values may become a deployment profile or profile-id segment.
 
 ## 2. Environment Names
 
@@ -201,9 +284,10 @@ Rules:
 
 SdkWork Claw Router release packages must support fast installation on Linux,
 Windows, and macOS across `x64` and `arm64` architectures. Archive, service,
-single-container, and desktop packages use the `standalone` deployment profile.
-Cloud container images and orchestration bundles use the `cloud` deployment
-profile.
+single-container packages use fixed `standalone`; cloud container images and
+orchestration bundles use fixed `cloud`. Desktop packages are
+runtime-configurable for both profiles unless a release explicitly limits the
+client.
 
 ### 5.1 Runtime Profile Defaults
 
@@ -213,7 +297,7 @@ profile.
 | Service | `standalone` | `server` | PostgreSQL | Initialize missing config, install service integration, then run after PostgreSQL is configured. |
 | Single container | `standalone` | `container` | PostgreSQL | Use mounted config, protected secrets, and a mounted writable data directory as one application unit. |
 | Cloud image/bundle | `cloud` | `container` | Managed PostgreSQL | Use orchestrator-injected config, platform secrets, managed dependencies, probes, rollout, and rollback policy. |
-| Desktop | `standalone` | `desktop` | SQLite | Initialize user config and user-data SQLite automatically. |
+| Desktop | runtime-configurable: `standalone`, `cloud` | `desktop` | SQLite for standalone-local user data; no local service database in cloud | Initialize isolated profile config; supervise the standalone gateway only when standalone-local placement is active. |
 
 Standalone server/container and cloud container deployments default to
 PostgreSQL. Desktop runtime targets default to SQLite.
@@ -223,10 +307,11 @@ orchestration is stricter: SDKWork application root `pnpm dev:browser` and
 `pnpm dev:desktop` default to PostgreSQL, `deploymentProfile = standalone`,
 and `environment = development`. Explicit SQLite or cloud development paths
 must use suffixed commands such as `pnpm dev:desktop:sqlite` or
-`pnpm dev:browser:postgres:cloud`. The PostgreSQL development
-profile belongs to dev orchestration and any launched backend service runtime;
-it must not change the installed desktop package default or the desktop user
-data location.
+`pnpm dev:browser:cloud`. Cloud development consumes deployed APIs and does not
+select a local database. The PostgreSQL development profile belongs to
+standalone dev orchestration and any launched backend service runtime; it must
+not change the installed desktop package default or the desktop user data
+location.
 
 Redis is enabled and required by default for cloud deployments and standalone
 server/container packages that declare shared runtime state. Release packages

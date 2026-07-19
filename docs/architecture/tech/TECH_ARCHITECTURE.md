@@ -2,7 +2,7 @@
 
 Status: active
 Owner: SDKWork standards maintainers
-Updated: 2026-06-23
+Updated: 2026-07-19
 Specs: ARCHITECTURE_DECISION_SPEC.md, DOCUMENTATION_SPEC.md, SDKWORK_WORKSPACE_SPEC.md, GOVERNANCE_SPEC.md
 
 ## 1. Architecture Overview
@@ -64,6 +64,8 @@ Inactive reserved directories may remain absent because this repository is a nar
 
 ## 8. Architecture Decision Index
 
+- [ADR-20260719 Process-Shared Database Pool](../decisions/ADR-20260719-process-shared-database-pool.md)
+- [ADR-20260719 Unified Development, Release, And Deployment Profiles](../decisions/ADR-20260719-unified-development-release-profiles.md)
 - Record future standards architecture changes under [../decisions/](../decisions/) as `ADR-*` documents.
 
 ## 9. Verification

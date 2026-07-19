@@ -38,6 +38,15 @@ Rules:
   represented as separate typed fields. A single `NODE_ENV`, Vite mode, Spring
   profile, Tauri target, or container image name must not be used as the whole
   runtime decision model.
+- Public development commands select normalized runtime config rather than
+  defining a parallel mode axis. `dev:standalone` materializes
+  `standalone.development`; `dev:cloud` materializes `cloud.development`.
+  Values such as `remote`, `local-api`, `saas`, or `apiMode` must not duplicate
+  `deploymentProfile`.
+- A local client using `cloud.development` reports the cloud deployment profile
+  of the API topology it consumes while preserving its own exact local
+  `runtimeTarget`. Release/package metadata remains governed by the target
+  consistency matrix and is not inferred from the development command.
 - Source/build dependency paths in package, workspace, SDK, or tool config `MUST` follow `DEPENDENCY_MANAGEMENT_SPEC.md` and must not use machine-specific absolute paths.
 
 ## 2. Standard Runtime Config
@@ -47,6 +56,15 @@ export type SdkworkEnvironment = "development" | "test" | "staging" | "productio
 export type SdkworkConfigProfile = "dev" | "test" | "staging" | "prod";
 export type SdkworkBuildMode = "development" | "test" | "staging" | "production";
 export type SdkworkDeploymentProfile = "standalone" | "cloud";
+export type SdkworkCloudIngressStrategy =
+  | "platform-collapsed"
+  | "dedicated-application"
+  | "edge-split";
+export type SdkworkGatewayPlacement =
+  | "local-child-process"
+  | "embedded"
+  | "private-host"
+  | "remote-managed";
 export type SdkworkRuntimeTarget =
   | "browser"
   | "desktop"
@@ -70,6 +88,10 @@ export interface SdkworkRuntimeConfig {
   buildMode?: SdkworkBuildMode;
   deploymentProfile: SdkworkDeploymentProfile;
   runtimeTarget: SdkworkRuntimeTarget;
+  targetPlatform?: string;
+  clientArchitecture?: string;
+  cloudIngressStrategy?: SdkworkCloudIngressStrategy;
+  gatewayPlacement?: SdkworkGatewayPlacement;
   openApiBaseUrl?: string;
   appApiBaseUrl: string;
   backendApiBaseUrl?: string;
@@ -268,8 +290,20 @@ Rules:
 - `configProfile` is a file/profile alias used by scripts and config file names. `dev` maps to `development`; `prod` maps to `production`. Application code should normalize to `environment`.
 - `buildMode` describes the bundler/build tool mode. It is useful for Vite or native package scripts, but it is not the lifecycle authority for runtime behavior.
 - `deploymentProfile` describes application deployment architecture and is only
-  `standalone` or `cloud`.
+  `standalone` or `cloud`. It is the one active API/runtime topology for this
+  runtime instance, not an artifact format or installation-location flag.
 - `runtimeTarget` describes where this config is consumed: browser renderer, desktop host, tablet host, Capacitor host, Flutter host, mini program runtime, server process, container process, or test runner.
+- `targetPlatform` records the operating or delivery platform, while
+  `clientArchitecture` records the implementation/host architecture. For
+  example, iOS may pair with `h5`, `capacitor`, `flutter`, or `ios-native`;
+  Android may pair with `h5`, `capacitor`, `flutter`, or `android-native`.
+- H5 in an iOS or Android browser remains `runtimeTarget = browser` and does
+  not imply an IPA/APK. Capacitor, Flutter, and native targets produce platform
+  binaries according to their architecture standards.
+- `cloudIngressStrategy` defaults to `platform-collapsed` for cloud HTTP
+  clients. Dedicated application and edge-split strategies require topology
+  and ADR evidence. `gatewayPlacement` is required when a standalone client
+  owns or locates the application standalone gateway.
 - `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` are resolved before SDK clients are created, but backend SDK clients may be constructed only after the SDK inventory classifies the runtime as `backend-admin`.
 - `openApiBaseUrl` is optional because not every application consumes an open-api SDK. When present for a SDKWork-owned business open-api, it `MUST` use that domain's approved non-app/non-backend prefix from `API_SPEC.md` section 4.5.1, for example `/im/v3/api`. It does not require a literal `/open` path segment. Vendor compatibility prefixes such as `/v1` are valid only for operations declared with `x-sdkwork-wire-protocol: external` per section 4.5.2.
 - `sdkBaseUrls` is the canonical SDK base URL map for bootstrap. It `SHOULD` start from one common `sdkBaseUrl` when one public SDK gateway, reverse proxy, or app edge serves all consumed SDK surfaces. `openApiBaseUrl`, `appApiBaseUrl`, `backendApiBaseUrl`, and dependency-specific entries are overrides, not a requirement to configure every SDK separately.
@@ -409,6 +443,17 @@ Rules:
 - SDK client constructors may differ by generated SDK package.
 - Service modules receive constructed clients, not constructor details.
 - Runtime config selects SDK base URLs, dependency surfaces, and credential modes. It `MUST NOT` contain live tokens, raw API keys, or per-user session credential values.
+- `cloud.development` client bootstrap `MUST` require explicit application and
+  platform Base URLs for every required surface, reject implicit standalone or
+  production fallback, and complete bounded remote health checks before
+  constructing feature services.
+- Under `platform-collapsed`, application and platform Base URLs `MAY` resolve
+  to the same `sdkwork-api-cloud-gateway` origin. Bootstrap `MUST` preserve
+  surface-specific SDK path ownership even when the origins are equal.
+- Switching deployment profile, environment, API origin, token issuer, or
+  application identity `MUST` create a distinct credential/cache/storage
+  namespace and require re-authentication. Tokens, cookies, SQLite state,
+  offline queues, and feature caches `MUST NOT` cross that boundary implicitly.
 - Runtime config `SHOULD` allow one browser-visible public SDK root, for example `PORTAL_PUBLIC_SDK_BASE_URL`, and derive standard open-api, app-api, and backend-api public runtime URLs from it. Applications `MAY` also expose per-surface or per-SDK public override keys such as `PORTAL_PUBLIC_OPEN_API_BASE_URL`, `PORTAL_PUBLIC_APP_API_BASE_URL`, `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, or dependency-specific keys.
 - Bootstrap `MUST` classify every SDK before constructing feature services: authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake. The presence of `backendApiBaseUrl` alone is not permission to construct a backend SDK client.
 - Token providers for app-api and backend-api SDKs `MUST` support both `Authorization: Bearer <JWT auth_token>` and `Access-Token: <JWT access_token>`.

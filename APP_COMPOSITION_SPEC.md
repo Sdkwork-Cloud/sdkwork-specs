@@ -13,9 +13,9 @@ This standard defines application composition without a parallel dependency mani
 | Source dependency paths and versions | Native build-tool roots (`pnpm-workspace.yaml`, Cargo workspace, etc.) |
 | Frontend SDK inventory (per surface) | `*-core/specs/component.spec.json#contracts.sdkDependencies` |
 | Permission inheritance/overrides | App-surface `specs/component.spec.json#contracts.permissionComposition` |
-| Backend/release SDK inventory | `sdkwork.app.config.json#sdkDependencies` |
+| Backend/release SDK inventory | App Standard v3 root `specs/component.spec.json#contracts.sdkDependencies`; legacy v2 `sdkwork.app.config.json#sdkDependencies` only during migration |
 | Dependency API export/runtime policy | `component.spec.json#contracts.dependencyApiExports`; runtime mount/base-url facts derived by composition resolver |
-| Integration defaults | Dependency `sdk-manifest.json`, dependency `component.spec.json#integration`, and application `sdkwork.app.config.json#sdkDependencies` |
+| Integration defaults | Dependency `sdk-manifest.json`, dependency `component.spec.json#integration`, and the consuming component's `contracts.sdkDependencies` |
 | Cross-stack resolved graph | generated `generated/composition.resolved.json#architecture` from `resolve-composition.mjs` |
 
 Rules:
@@ -75,6 +75,10 @@ Rules:
 
 - App-surface root or core-package `specs/component.spec.json` must include `contracts.permissionComposition` when HTTP `sdkDependencies` or modular permissions apply.
 - Core package `component.spec.json` must include `contracts.sdkDependencies` with explicit `surface` and `credentialMode`.
+- Backend-only App Standard v3 roots must declare release/runtime SDK inventory through root
+  `specs/component.spec.json#contracts.sdkDependencies`; they must not restore the retired top-level
+  manifest field. Legacy v2 roots may retain `sdkwork.app.config.json#sdkDependencies` only until
+  their v3 migration moves that inventory to the component contract.
 - Bootstrap runtime must derive SDK wiring from core composition and component manifests; no second handwritten inventory.
 
 ## 5. Cross-Repository Package Consumption

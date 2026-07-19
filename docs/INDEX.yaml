@@ -13,4 +13,16 @@ entries:
     path: docs/engineering/plans/PLAN-2026-0713-progressive-agent-entrypoint-migration.md
     status: in-progress
     owner: sdkwork-platform
+  - id: REQ-2026-0720
+    path: docs/product/requirements/REQ-2026-0720-unified-development-release-profiles.md
+    status: in-progress
+    owner: sdkwork-platform
+  - id: ADR-20260719-unified-development-release-profiles
+    path: docs/architecture/decisions/ADR-20260719-unified-development-release-profiles.md
+    status: accepted
+    owner: sdkwork-platform
+  - id: MIG-2026-0720
+    path: docs/migrations/MIG-2026-0720-unified-development-release-profiles.md
+    status: active
+    owner: sdkwork-platform
 domains: []

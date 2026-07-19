@@ -7,10 +7,13 @@ import { loadTopology } from './load-manifest.mjs';
 export function initDeployManifest(repoRoot) {
   const topology = loadTopology(repoRoot);
   const appId = topology.appId ?? path.basename(path.resolve(repoRoot));
-  const profile =
+  const discoveredProfile =
     topology.defaults?.productionProfileId ??
     topology.defaults?.developmentProfileId ??
     'cloud.production';
+  const profile = /\.(?:test|staging|production)$/u.test(discoveredProfile)
+    ? discoveredProfile
+    : `${discoveredProfile.startsWith('standalone.') ? 'standalone' : 'cloud'}.production`;
 
   const hasPc = surfaceExists(repoRoot, appId, 'pc');
   const hasH5 = surfaceExists(repoRoot, appId, 'h5');
@@ -19,8 +22,20 @@ export function initDeployManifest(repoRoot) {
     cloudHosts['application.public-ingress']?.httpHost ?? `${appId}.sdkwork.com`;
 
   const doc = {
-    version: 1,
+    version: 2,
     profile,
+    deployment: {
+      deploymentProfile: profile.startsWith('standalone.') ? 'standalone' : 'cloud',
+      environment: profile.split('.')[1],
+      deliveryKind: 'host-package',
+      deploymentDriver: 'nginx',
+      managementModel: 'customer-managed',
+      tenancyModel: 'single-tenant',
+      isolationModel: 'dedicated',
+      networkExposure: 'public',
+      rolloutStrategy: 'recreate',
+      availabilityMode: 'single-instance',
+    },
     install: {
       layout: 'binary-package',
     },

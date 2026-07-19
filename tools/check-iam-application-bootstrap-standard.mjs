@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { IAM_PACKAGE_PATHS } from './iam-workspace-paths.mjs';
 
 const FRAMEWORK_PACKAGE = '@sdkwork/iam-application-bootstrap';
+const EMBEDDED_RUST_FRAMEWORK_PACKAGE = 'sdkwork-iam-embedded-application-bootstrap';
 const FRAMEWORK_PACKAGE_PATHS = [
   IAM_PACKAGE_PATHS[FRAMEWORK_PACKAGE],
   'apps/sdkwork-iam-common/packages/sdkwork-iam-application-bootstrap',
@@ -82,6 +83,19 @@ function hasFrameworkDependency(packageJson) {
   return sections.some((section) => section && section[FRAMEWORK_PACKAGE]);
 }
 
+function hasEmbeddedRustFrameworkDependency(rootDir) {
+  const cargoManifests = listFiles(
+    rootDir,
+    (filePath) => path.basename(filePath) === 'Cargo.toml',
+    5,
+  );
+  const dependencyPattern = new RegExp(
+    `^\\s*(?:${EMBEDDED_RUST_FRAMEWORK_PACKAGE}|sdkwork_iam_embedded_application_bootstrap)\\s*(?:=|\\.)`,
+    'mu',
+  );
+  return cargoManifests.some((manifestPath) => dependencyPattern.test(readText(manifestPath)));
+}
+
 function validateManifestPermissions(manifestPath, failures) {
   let manifest;
   try {
@@ -126,6 +140,7 @@ export function validateIamApplicationBootstrapStandard(rootDir) {
   const hasFrameworkPackageDir = FRAMEWORK_PACKAGE_PATHS.some((relativePath) =>
     fs.existsSync(path.join(rootDir, relativePath)),
   );
+  const hasEmbeddedRustFramework = hasEmbeddedRustFrameworkDependency(rootDir);
   const frameworkPackagePath = FRAMEWORK_PACKAGE_PATHS.find((relativePath) =>
     fs.existsSync(path.join(rootDir, relativePath)),
   );
@@ -151,9 +166,14 @@ export function validateIamApplicationBootstrapStandard(rootDir) {
     validateBootstrapScript(scriptPath, failures);
   }
 
-  if ((manifests.length > 0 || bootstrapScripts.length > 0) && !hasFrameworkDependency(packageJson) && !hasFrameworkPackageDir) {
+  if (
+    (manifests.length > 0 || bootstrapScripts.length > 0)
+    && !hasFrameworkDependency(packageJson)
+    && !hasFrameworkPackageDir
+    && !hasEmbeddedRustFramework
+  ) {
     failures.push(
-      `repository declares app bootstrap surfaces but does not depend on ${FRAMEWORK_PACKAGE}; add the framework package or remove local bootstrap duplication`,
+      `repository declares app bootstrap surfaces but depends on neither ${FRAMEWORK_PACKAGE} nor ${EMBEDDED_RUST_FRAMEWORK_PACKAGE}; add the matching shared framework package or remove local bootstrap duplication`,
     );
   }
 
@@ -164,6 +184,7 @@ export function validateIamApplicationBootstrapStandard(rootDir) {
       manifests: manifests.length,
       bootstrapScripts: bootstrapScripts.length,
       hasFrameworkPackageDir,
+      hasEmbeddedRustFramework,
     },
   };
 }

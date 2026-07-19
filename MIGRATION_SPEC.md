@@ -148,6 +148,30 @@ Rules:
 - Old env/config keys must have compatibility aliases only when documented with removal dates.
 - Release plans must describe when old and new contracts are accepted.
 - Rollback must explain whether config, SDK, database, and artifacts roll back together or separately.
+- Application command migration adds `dev:standalone` and `dev:cloud` before
+  changing bare `dev` to delegate to standalone. The cloud entrypoint is not
+  accepted until `cloud.development` uses explicit deployed URLs and local API,
+  gateway, and database autostart is disabled.
+- Release/deploy command migration adds phase-first profile variants before
+  retiring profile-first or ambiguous aggregates. Side-effecting legacy
+  commands remain blocked from production once the canonical publish/apply/
+  rollback variants are available.
+- Consumer migration records must inventory package targets, workflow inputs,
+  deploy profiles, environment approvals, immutable artifact selection, and
+  per-profile rollback before validator enforcement changes from audit to
+  required.
+- Topology profile migration emits schema v5 `cloudIngress` metadata. V4 is a
+  read-only compatibility input; `platform-collapsed` is the default, while
+  existing dedicated application or edge ingress requires an explicit ADR and
+  must not be silently reclassified.
+- Client manifest/workflow migration treats an existing package
+  `deploymentProfile` as fixed. A client becomes runtime-configurable only
+  after it declares both supported profiles, target platform, client
+  architecture, isolated credential/data namespaces, and dual-topology tests.
+- Deploy manifest migration removes development targets, converts retired
+  profile ids to two segments, upgrades v1 to v2 typed dimensions, replaces
+  production `source-tree` with immutable packages unless excepted, and
+  removes apply/rollback reliance on `defaultProfile`.
 
 ## 7. Acceptance Checklist
 

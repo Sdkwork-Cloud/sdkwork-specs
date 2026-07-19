@@ -16,6 +16,7 @@ import {
   listClientAppRoots,
   normalizeSdkDependencies,
   validateCapabilitySdkImportBoundary,
+  validateBackendReleaseComposition,
   validateSdkDependenciesContract,
 } from './lib/app-composition.mjs';
 
@@ -113,6 +114,40 @@ test('renderPnpmWorkspace round-trips package list parsing', () => {
   });
   const parsed = parsePnpmWorkspacePackages(rendered);
   assert.deepEqual(parsed, ['apps/*', '../sdkwork-utils/packages/sdkwork-utils-typescript']);
+});
+
+test('backend-only App Standard v3 roots use the root component SDK inventory', () => {
+  const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-backend-v3-composition-'));
+  try {
+    writeJson(path.join(tempRoot, 'sdkwork.app.config.json'), {
+      schemaVersion: 3,
+      backend: {},
+    });
+    writeJson(path.join(tempRoot, 'specs/component.spec.json'), {
+      contracts: { sdkDependencies: [] },
+    });
+
+    assert.deepEqual(validateBackendReleaseComposition(tempRoot), []);
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test('backend-only App Standard v3 roots fail without component SDK inventory', () => {
+  const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-backend-v3-composition-'));
+  try {
+    writeJson(path.join(tempRoot, 'sdkwork.app.config.json'), {
+      schemaVersion: 3,
+      backend: {},
+    });
+
+    assert.match(
+      validateBackendReleaseComposition(tempRoot).join('\n'),
+      /component\.spec\.json#contracts\.sdkDependencies/u,
+    );
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
 });
 
 test('renderPnpmWorkspace quotes and round-trips catalog ranges containing spaces', () => {

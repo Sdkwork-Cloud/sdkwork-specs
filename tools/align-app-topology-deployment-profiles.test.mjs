@@ -112,7 +112,11 @@ test('migrates topology specs from retired serviceLayout profiles to two-segment
 
   assert.equal(result.status, 0, result.stderr);
   const topology = JSON.parse(fs.readFileSync(path.join(repoRoot, 'specs/topology.spec.json'), 'utf8'));
-  assert.equal(topology.schemaVersion, 4);
+  assert.equal(topology.schemaVersion, 5);
+  assert.deepEqual(topology.cloudIngress, {
+    strategy: 'platform-collapsed',
+    platformGateway: 'sdkwork-api-cloud-gateway',
+  });
   assert.deepEqual(topology.vocabulary.deploymentProfile.allowed, ['standalone', 'cloud']);
   assert.equal(topology.vocabulary.serviceLayout, undefined);
   assert.equal(topology.retired?.vocabulary?.serviceLayout, undefined);
@@ -128,6 +132,10 @@ test('migrates topology specs from retired serviceLayout profiles to two-segment
   assert.equal(topology.defaults.developmentProfileId, 'standalone.development');
   assert.equal(topology.defaults.productionProfileId, 'cloud.production');
   assert.ok(topology.orchestration.profiles['standalone.development']);
+  assert.equal(
+    topology.orchestration.profiles['standalone.development'].processes[0].role,
+    'standalone-gateway',
+  );
   assert.ok(topology.orchestration.profiles['cloud.production']);
   assert.equal(fs.existsSync(path.join(repoRoot, 'etc/topology/standalone.unified-process.development.env')), false);
   assert.equal(fs.existsSync(path.join(repoRoot, 'etc/topology/cloud.split-services.production.env')), false);

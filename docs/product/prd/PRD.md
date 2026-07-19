@@ -3,7 +3,7 @@
 Status: active
 Owner: SDKWork standards maintainers
 Application: n/a
-Updated: 2026-06-23
+Updated: 2026-07-19
 Specs: REQUIREMENTS_SPEC.md, DOCUMENTATION_SPEC.md, GOVERNANCE_SPEC.md
 
 ## 1. Background And Problem
@@ -55,6 +55,8 @@ Non-goals:
 
 ## 8. Linked Requirements
 
+- [REQ-2026-0719 Process-Shared Database Pools](../requirements/REQ-2026-0719-process-shared-database-pools.md)
+- [REQ-2026-0720 Unified Development, Release, And Deployment Profiles](../requirements/REQ-2026-0720-unified-development-release-profiles.md)
 - Add `REQ-*` records under [../requirements/](../requirements/) for future standards changes.
 
 ## 9. Open Questions
