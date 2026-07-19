@@ -17,6 +17,18 @@ const PROCESS_ROLES = new Set([
   'client', 'standalone-gateway', 'application-cloud-gateway', 'platform-gateway',
   'api-listener', 'database', 'redis', 'migration', 'seed', 'worker', 'tunnel',
 ]);
+const DEFAULT_CLIENT_ARCHITECTURES = Object.freeze({
+  browser: 'pc-web',
+  desktop: 'tauri',
+  'capacitor-ios': 'capacitor',
+  'capacitor-android': 'capacitor',
+  'flutter-ios': 'flutter',
+  'flutter-android': 'flutter',
+  'android-native': 'android-native',
+  'ios-native': 'ios-native',
+  'harmony-native': 'harmony-native',
+  'mini-program': 'mini-program',
+});
 
 function readEnv(file) {
   const values = new Map();
@@ -60,9 +72,14 @@ export function resolveRuntimePlan(repoRoot, options) {
   if (invalidProcesses.length > 0) {
     throw new Error(`${activeProfile} contains a process without a canonical role`);
   }
+  const clientArchitecture = options.clientArchitecture
+    ?? DEFAULT_CLIENT_ARCHITECTURES[options.runtimeTarget]
+    ?? null;
   const processes = profileProcesses.filter((process) => (
-    !Array.isArray(process.runtimeTargets)
-    || process.runtimeTargets.includes(options.runtimeTarget)
+    (!Array.isArray(process.runtimeTargets)
+      || process.runtimeTargets.includes(options.runtimeTarget))
+    && (!Array.isArray(process.clientArchitectures)
+      || process.clientArchitectures.includes(clientArchitecture))
   ));
 
   const resolvedBaseUrls = {};
@@ -112,6 +129,7 @@ export function resolveRuntimePlan(repoRoot, options) {
     deploymentProfile: options.deploymentProfile,
     environment: options.environment,
     runtimeTarget: options.runtimeTarget,
+    clientArchitecture,
     localProcesses: processes,
     localGateway: localGatewayProcesses.length === 1
       ? {
@@ -146,6 +164,7 @@ function main() {
       'deployment-profile': { type: 'string' },
       environment: { type: 'string' },
       'runtime-target': { type: 'string' },
+      'client-architecture': { type: 'string' },
       json: { type: 'boolean', default: false },
     },
   });
@@ -159,6 +178,7 @@ function main() {
     deploymentProfile: values['deployment-profile'],
     environment: values.environment,
     runtimeTarget: values['runtime-target'],
+    clientArchitecture: values['client-architecture'],
   });
   if (plan.forbiddenProcesses.length > 0) {
     throw new Error(`resolved plan contains forbidden cloud development processes: ${plan.forbiddenProcesses.join(', ')}`);

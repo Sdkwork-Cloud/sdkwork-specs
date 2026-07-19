@@ -13,6 +13,10 @@
     "deploymentProfile": { "enum": ["standalone", "cloud"] },
     "environment": { "type": "string", "minLength": 1 },
     "runtimeTarget": { "type": "string", "minLength": 1 },
+    "clientArchitecture": {
+      "type": ["string", "null"],
+      "enum": ["pc-web", "h5", "capacitor", "flutter", "tauri", "electron", "android-native", "ios-native", "harmony-native", "mini-program", null]
+    },
     "localProcesses": { "type": "array", "items": { "$ref": "#/$defs/process" } },
     "localGateway": {
       "oneOf": [
@@ -78,7 +82,16 @@
       "required": ["id", "role"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
-        "role": { "enum": ["client", "standalone-gateway", "application-cloud-gateway", "platform-gateway", "api-listener", "database", "redis", "migration", "seed", "worker", "tunnel"] }
+        "role": { "enum": ["client", "standalone-gateway", "application-cloud-gateway", "platform-gateway", "api-listener", "database", "redis", "migration", "seed", "worker", "tunnel"] },
+        "runtimeTargets": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+        "clientArchitectures": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+        "script": { "type": "string" },
+        "command": { "type": "string" },
+        "args": { "type": "array", "items": { "type": "string" } },
+        "crate": { "type": "string" },
+        "binary": { "type": "string" },
+        "cwd": { "type": "string" },
+        "required": { "type": "boolean" }
       }
     }
   }

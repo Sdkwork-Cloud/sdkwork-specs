@@ -56,6 +56,36 @@ iam.access_credentials.create
 
 Admin read permission for `tenantApplications.retrieve` reuses `iam.tenant_applications.update` so OAuth relying-party administrators can read back redacted runtime config without bootstrap-body credentials.
 
+### 2.1 Authenticated Tenant Application Administration
+
+Backend-admin browser surfaces must not collect or forward bootstrap operator credentials. Tenant
+application management in those surfaces uses a separate dual-token operation family that reuses
+the canonical tenant application domain service and permission codes:
+
+| Business step | Method | Path | operationId | Permission |
+| --- | --- | --- | --- | --- |
+| List tenant applications | `GET` | `/backend/v3/api/iam/tenants/{tenantId}/applications` | `tenantApplications.list` | `iam.tenant_applications.update` |
+| Retrieve tenant application summary | `GET` | `/backend/v3/api/iam/tenants/{tenantId}/applications/summary` | `tenantApplications.summary.retrieve` | `iam.tenant_applications.update` |
+| Provision from a registered template | `POST` | `/backend/v3/api/iam/tenants/{tenantId}/applications` | `tenantApplications.management.provision` | `iam.tenant_applications.provision` |
+| Update domain and access scope | `PATCH` | `/backend/v3/api/iam/tenants/{tenantId}/applications/{tenantApplicationId}` | `tenantApplications.management.update` | `iam.tenant_applications.update` |
+| Enable tenant application | `POST` | `/backend/v3/api/iam/tenants/{tenantId}/applications/{tenantApplicationId}/enable` | `tenantApplications.management.enable` | `iam.tenant_applications.enable` |
+| Disable tenant application | `POST` | `/backend/v3/api/iam/tenants/{tenantId}/applications/{tenantApplicationId}/disable` | `tenantApplications.management.disable` | `iam.tenant_applications.update` |
+
+Rules:
+
+- These operations require the standard backend-admin dual-token request context and tenant
+  isolation. Platform operators may target another tenant only through the governed platform
+  tenant access rule.
+- Management provisioning accepts an existing `templateId` or `appKey`; it does not register or
+  mutate a global application template.
+- Browser applications must use `tenantApplications.management.*` through the generated backend
+  SDK or approved IAM service facade. They must not call bootstrap-body operations or handle
+  bootstrap credentials.
+- List operations use standard server-side pagination and optional `q`, `status`, and
+  `environment` filters.
+- Enable and disable are explicit status transitions. Disabled tenant applications must remain
+  inoperable for authentication and token issuance.
+
 ## 3. Reusable Framework Package
 
 The canonical reusable module is:

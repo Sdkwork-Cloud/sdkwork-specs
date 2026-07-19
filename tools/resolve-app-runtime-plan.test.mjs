@@ -82,6 +82,33 @@ test('filters scoped processes by runtime target and keeps shared processes', ()
   );
 });
 
+test('filters same-runtime clients by canonical client architecture', () => {
+  const root = rootWithTopology([
+    { id: 'shared-gateway-tunnel', role: 'tunnel' },
+    { id: 'pc-web-client', role: 'client', runtimeTargets: ['browser'], clientArchitectures: ['pc-web'] },
+    { id: 'h5-client', role: 'client', runtimeTargets: ['browser'], clientArchitectures: ['h5'] },
+  ]);
+  const pcPlan = resolveRuntimePlan(root, {
+    deploymentProfile: 'cloud',
+    environment: 'development',
+    runtimeTarget: 'browser',
+  });
+  const h5Plan = resolveRuntimePlan(root, {
+    deploymentProfile: 'cloud',
+    environment: 'development',
+    runtimeTarget: 'browser',
+    clientArchitecture: 'h5',
+  });
+
+  assert.equal(pcPlan.clientArchitecture, 'pc-web');
+  assert.deepEqual(pcPlan.localProcesses.map((process) => process.id), [
+    'shared-gateway-tunnel', 'pc-web-client',
+  ]);
+  assert.deepEqual(h5Plan.localProcesses.map((process) => process.id), [
+    'shared-gateway-tunnel', 'h5-client',
+  ]);
+});
+
 test('reports forbidden cloud development process roles', () => {
   const root = rootWithTopology([{ id: 'local-api', role: 'api-listener' }]);
   const plan = resolveRuntimePlan(root, {
