@@ -1048,6 +1048,10 @@ Rules:
   application/platform API, gateway, database, Redis, migration, or seed
   process; remote required surfaces use explicit non-fallback URLs and bounded
   health checks.
+- Client surface topology tests `MUST` prove an explicit `parentTopologySpec`
+  stays inside the enclosing repository, resolves to topology v5, has no
+  competing child topology, and routes `dev:*`/`stop` to the enclosing root
+  while keeping build and verification phases child-root scoped.
 - Resolved-plan tests `MUST` prove standalone HTTP development has exactly one
   application standalone gateway and cloud development has zero local gateway,
   API, data, migration, seed, or deployed-service worker roles. The tests must

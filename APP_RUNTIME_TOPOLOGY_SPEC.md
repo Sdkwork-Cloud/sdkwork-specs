@@ -202,6 +202,14 @@ when available and falls back to those registered children plus the supervisor
 when the operating-system tree enumeration service fails. Private
 development runners must provide their own scoped `_sdkwork:stop` hook.
 
+Client app surfaces that share an enclosing application deployment unit delegate
+topology through `etc/sdkwork.deployment.config.json#parentTopologySpec` as
+defined by `SOURCE_CONFIG_SPEC.md`. Their public `dev:*` and `stop` commands
+invoke `sdkwork-app` with an explicit enclosing `--root`; surface-local
+`build`, `test`, `check`, `verify`, and `clean` remain scoped to the child root.
+Delegated surfaces do not copy parent `etc/topology` profiles, declare a second
+topology spec, or start a second standalone gateway.
+
 ## 7. Client Bootstrap
 
 - IAM login uses `platform.api-gateway` when the platform plane is external.

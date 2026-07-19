@@ -56,6 +56,13 @@ export function inspectApplicationRoot(workspace, root) {
   const packageManifestExists = fs.existsSync(packagePath);
   const packageManifest = packageManifestExists ? readJson(packagePath) : null;
   const appManifest = readJson(path.join(root, 'sdkwork.app.config.json'));
+  const deploymentConfig = readJson(path.join(root, 'etc', 'sdkwork.deployment.config.json'));
+  const parentTopologySpec = deploymentConfig?.kind === 'sdkwork.component-deployment'
+    && typeof deploymentConfig.parentTopologySpec === 'string'
+    ? path.resolve(root, 'etc', deploymentConfig.parentTopologySpec)
+    : null;
+  const ownsTopology = fs.existsSync(path.join(root, 'specs', 'topology.spec.json'));
+  const delegatesTopology = Boolean(parentTopologySpec && fs.existsSync(parentTopologySpec));
   const scripts = packageManifest?.scripts ?? {};
   const readmePath = path.join(root, 'README.md');
   const readme = fs.existsSync(readmePath) ? fs.readFileSync(readmePath, 'utf8') : '';
@@ -68,7 +75,8 @@ export function inspectApplicationRoot(workspace, root) {
     foundationDependency,
     packageManifest: packageManifestExists,
     packageManifestValid: Boolean(packageManifest),
-    topology: fs.existsSync(path.join(root, 'specs', 'topology.spec.json')),
+    topology: ownsTopology || delegatesTopology,
+    topologyOwnership: ownsTopology ? 'owned' : delegatesTopology ? 'delegated' : 'missing',
     workflow: fs.existsSync(path.join(root, 'sdkwork.workflow.json')),
     deployManifest: fs.existsSync(path.join(root, 'deployments', 'deploy.yaml')),
     lifecycleFacade: lifecycleFacadePattern.test(allScriptText),
@@ -97,6 +105,8 @@ export function inspectApplicationRoot(workspace, root) {
     entry.debt.push('private-dev-without-scoped-stop');
   }
   if (!entry.topology && !foundationDependency) entry.debt.push('missing-topology-v5-contract');
+  if (ownsTopology && deploymentConfig?.parentTopologySpec) entry.debt.push('competing-topology-authorities');
+  if (deploymentConfig?.parentTopologySpec && !delegatesTopology) entry.debt.push('invalid-parent-topology-spec');
   if (!entry.workflow && (entry.scripts.releaseCommands.length > 0 || entry.scripts.deployCommands.length > 0)) {
     entry.debt.push('lifecycle-commands-without-workflow-contract');
   }

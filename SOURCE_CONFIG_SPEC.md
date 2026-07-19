@@ -131,6 +131,12 @@ Rules:
   to the enclosing application deployment config and are injected into renderer bootstrap.
 - A shared adaptive ingress owns the public application origin. PC and H5 renderer configs `MUST NOT`
   duplicate that origin as independent authorities.
+- A client app surface that is independently built or published but shares the enclosing application's
+  runtime deployment unit `MAY` use `kind = sdkwork.component-deployment`. It `MUST` declare both
+  `parentDeploymentConfig` and `parentTopologySpec` as relative paths from
+  `etc/sdkwork.deployment.config.json`. Both targets `MUST` exist in the same repository, and the
+  topology target `MUST` be a topology v5 contract. The child `MUST NOT` copy parent profile env files
+  or own a competing `specs/topology.spec.json`.
 
 ## 5. Application Manifest Boundary
 
@@ -211,7 +217,9 @@ node <sdkwork-specs>/tools/check-agent-workflow-standard.mjs --root <repository-
 
 The source-config validator must verify deployable-root `etc/` presence, README/index discovery,
 forbidden committed secret patterns, retired `configs/` usage, manifest environment-value debt, and
-production gateway CORS invariants. During migration it must inspect gateway TOML under both `etc/`
+production gateway CORS invariants. For component deployment roots it must also verify parent
+deployment/topology delegation, topology v5, repository containment, and single topology authority.
+During migration it must inspect gateway TOML under both `etc/`
 and legacy `configs/`, so moving files cannot temporarily bypass the CORS gate.
 
 ## 10. Acceptance Checklist

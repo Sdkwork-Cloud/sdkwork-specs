@@ -96,3 +96,37 @@ allowedOrigins = ["https://*.sdkwork.com", "https://app.sdkwork.com/login"]
   const issues = checkSourceConfigStandard(root);
   assert.equal(issues.filter((issue) => issue.includes('invalid exact HTTP(S) origin')).length, 2);
 });
+
+test('accepts an app surface that delegates deployment and topology to its enclosing application', () => {
+  const repository = fixture();
+  const root = path.join(repository, 'apps', 'sdkwork-demo-pc');
+  write(root, 'sdkwork.app.config.json', '{}\n');
+  write(root, 'etc/README.md', '# Config\n');
+  write(repository, 'etc/sdkwork.deployment.config.json', '{"kind":"sdkwork.deployment-index"}\n');
+  write(repository, 'specs/topology.spec.json', '{"schemaVersion":5,"kind":"sdkwork.app.topology"}\n');
+  write(root, 'etc/sdkwork.deployment.config.json', JSON.stringify({
+    schemaVersion: 1,
+    kind: 'sdkwork.component-deployment',
+    parentDeploymentConfig: '../../../etc/sdkwork.deployment.config.json',
+    parentTopologySpec: '../../../specs/topology.spec.json',
+  }));
+  assert.deepEqual(checkSourceConfigStandard(root), []);
+});
+
+test('rejects missing or competing component topology authorities', () => {
+  const repository = fixture();
+  const root = path.join(repository, 'apps', 'sdkwork-demo-pc');
+  write(root, 'sdkwork.app.config.json', '{}\n');
+  write(root, 'etc/README.md', '# Config\n');
+  write(root, 'etc/sdkwork.deployment.config.json', JSON.stringify({
+    schemaVersion: 1,
+    kind: 'sdkwork.component-deployment',
+    parentDeploymentConfig: '../../../etc/missing.json',
+    parentTopologySpec: '../../../specs/missing.json',
+  }));
+  write(root, 'specs/topology.spec.json', '{"schemaVersion":5,"kind":"sdkwork.app.topology"}\n');
+  const issues = checkSourceConfigStandard(root);
+  assert.ok(issues.some((issue) => issue.includes('parentDeploymentConfig')));
+  assert.ok(issues.some((issue) => issue.includes('parentTopologySpec')));
+  assert.ok(issues.some((issue) => issue.includes('second topology')));
+});

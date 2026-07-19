@@ -10,6 +10,70 @@ const SECRET_KEY = /(?:password|private[_-]?key|signing[_-]?secret|access[_-]?to
 const SAFE_SECRET_REFERENCE = /(?:file|path|ref|reference)$/iu;
 const PRODUCTION_LIKE_ENVIRONMENT = /^(?:prod|production|stage|staging|live)$/iu;
 
+function findRepositoryRoot(start) {
+  let current = path.resolve(start);
+  while (true) {
+    if (fs.existsSync(path.join(current, '.git'))) return current;
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+
+function isPathInside(root, target) {
+  const relative = path.relative(root, target);
+  return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
+}
+
+function resolveParentContract(configPath, value, field, repositoryRoot, issues) {
+  if (typeof value !== 'string' || value.trim() === '' || path.isAbsolute(value)) {
+    issues.push(`etc/sdkwork.deployment.config.json#/${field}: must be a non-empty relative path`);
+    return null;
+  }
+  const resolved = path.resolve(path.dirname(configPath), value);
+  if (repositoryRoot && !isPathInside(repositoryRoot, resolved)) {
+    issues.push(`etc/sdkwork.deployment.config.json#/${field}: must stay within repository root`);
+    return null;
+  }
+  if (!fs.existsSync(resolved)) {
+    issues.push(`etc/sdkwork.deployment.config.json#/${field}: target does not exist (${value})`);
+    return null;
+  }
+  return resolved;
+}
+
+function inspectComponentDeploymentConfig(resolvedRoot, configPath, config, issues) {
+  if (config?.kind !== 'sdkwork.component-deployment') return;
+  const repositoryRoot = findRepositoryRoot(resolvedRoot);
+  resolveParentContract(
+    configPath,
+    config.parentDeploymentConfig,
+    'parentDeploymentConfig',
+    repositoryRoot,
+    issues,
+  );
+  const topologyPath = resolveParentContract(
+    configPath,
+    config.parentTopologySpec,
+    'parentTopologySpec',
+    repositoryRoot,
+    issues,
+  );
+  if (topologyPath) {
+    try {
+      const topology = JSON.parse(fs.readFileSync(topologyPath, 'utf8'));
+      if (topology.schemaVersion !== 5 || topology.kind !== 'sdkwork.app.topology') {
+        issues.push('etc/sdkwork.deployment.config.json#/parentTopologySpec: target must be a topology v5 contract');
+      }
+    } catch (error) {
+      issues.push(`etc/sdkwork.deployment.config.json#/parentTopologySpec: invalid JSON (${error.message})`);
+    }
+  }
+  if (config.parentTopologySpec && fs.existsSync(path.join(resolvedRoot, 'specs', 'topology.spec.json'))) {
+    issues.push('specs/topology.spec.json: component root must not own a second topology when parentTopologySpec is declared');
+  }
+}
+
 function walkFiles(root) {
   if (!fs.existsSync(root)) return [];
   const files = [];
@@ -115,8 +179,20 @@ export function checkSourceConfigStandard(root, { deployable } = {}) {
   if (!fs.existsSync(path.join(etcRoot, 'README.md'))) {
     issues.push('etc/README.md: source configuration discovery documentation is required');
   }
-  if (!fs.existsSync(path.join(etcRoot, 'sdkwork.deployment.config.json'))) {
+  const deploymentConfigPath = path.join(etcRoot, 'sdkwork.deployment.config.json');
+  if (!fs.existsSync(deploymentConfigPath)) {
     issues.push('etc/sdkwork.deployment.config.json: deployment profile index is required');
+  } else {
+    try {
+      inspectComponentDeploymentConfig(
+        resolvedRoot,
+        deploymentConfigPath,
+        JSON.parse(fs.readFileSync(deploymentConfigPath, 'utf8')),
+        issues,
+      );
+    } catch {
+      // The generic JSON scan below reports the parse error once.
+    }
   }
   if (fs.existsSync(path.join(resolvedRoot, 'configs'))) {
     issues.push('configs/: retired runtime/deployment config directory must be migrated to etc/');

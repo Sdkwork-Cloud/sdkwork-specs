@@ -64,3 +64,40 @@ test('records malformed application manifests as debt instead of aborting the wo
   assert.ok(report.applications[0].debt.includes('invalid-app-manifest-json'));
   assert.ok(report.applications[0].debt.includes('invalid-package-manifest-json'));
 });
+
+test('recognizes an app surface that explicitly delegates topology to its enclosing application', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-lifecycle-audit-'));
+  const repository = path.join(workspace, 'sdkwork-demo');
+  const app = path.join(repository, 'apps', 'sdkwork-demo-pc');
+  writeJson(path.join(repository, 'specs', 'topology.spec.json'), {
+    schemaVersion: 5,
+    kind: 'sdkwork.app.topology',
+  });
+  writeJson(path.join(app, 'sdkwork.app.config.json'), { app: { key: 'sdkwork-demo-pc' } });
+  writeJson(path.join(app, 'etc', 'sdkwork.deployment.config.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component-deployment',
+    parentTopologySpec: '../../../specs/topology.spec.json',
+  });
+  const facade = 'pnpm exec sdkwork-app';
+  writeJson(path.join(app, 'package.json'), {
+    scripts: {
+      dev: 'pnpm dev:standalone',
+      'dev:standalone': `${facade} dev --root ../.. --deployment-profile standalone`,
+      'dev:cloud': `${facade} dev --root ../.. --deployment-profile cloud`,
+      stop: `${facade} stop --root ../..`,
+      build: `${facade} build`,
+      test: `${facade} test`,
+      check: `${facade} check`,
+      verify: `${facade} verify`,
+      clean: `${facade} clean`,
+    },
+  });
+
+  const report = auditPnpmLifecycleWorkspace(workspace);
+  assert.equal(report.summary.applications, 1);
+  assert.equal(report.summary.topologyContracts, 1);
+  assert.equal(report.summary.debtFree, 1);
+  assert.equal(report.applications[0].topologyOwnership, 'delegated');
+  assert.equal(report.applications[0].wave, 3);
+});
