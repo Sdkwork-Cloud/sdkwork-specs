@@ -1079,7 +1079,8 @@ Rules:
   and forbidden cloud-development roles.
 - Lifecycle facade tests `MUST` include a live supervisor stop, stale-session
   rejection, Windows registered-child fallback semantics, and one composed
-  `doctor` fixture that validates topology, workflow, and deploy contracts.
+  `doctor` fixture that validates app manifest, source config, topology,
+  workflow, and deploy contracts.
 - Installed-client tests `MUST` prove profile/environment/origin switches use
   isolated token, cookie, secure-storage, cache, offline-queue, and local-data
   namespaces and require re-authentication.
