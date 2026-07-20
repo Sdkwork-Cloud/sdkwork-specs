@@ -262,6 +262,11 @@ test('replaces a legacy generated gateway bootstrap after route crates are retir
   const bootstrap = fs.readFileSync(bootstrapPath, 'utf8');
   assert.doesNotMatch(bootstrap, /sdkwork_routes_agents_app_api/u);
   assert.match(bootstrap, /router: Router::new\(\)/u);
+  const generated = fs.readFileSync(
+    path.join(root, 'crates', 'sdkwork-api-agents-assembly', 'src', 'generated.rs'),
+    'utf8',
+  );
+  assert.match(generated, /ROUTE_CRATE_PACKAGES: &\[&str\] = &\[\];/u);
 });
 
 test('API assembly includes application-code and capability-named route members together', () => {

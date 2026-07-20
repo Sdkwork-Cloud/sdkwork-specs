@@ -258,14 +258,13 @@ pub fn assembly_route_count() -> usize {
 
 function renderGeneratedRs(routeCrates) {
   const names = routeCrates.map((crate) => `    "${crate.packageName}",`).join('\n');
+  const packages = names ? `&[\n${names}\n]` : '&[]';
   return `//! Generated route inventory. Do not edit by hand; run pnpm api:assembly:materialize.
 
 pub const ROUTE_CRATE_COUNT: usize = ${routeCrates.length};
 
 #[allow(dead_code)]
-pub const ROUTE_CRATE_PACKAGES: &[&str] = &[
-${names}
-];
+pub const ROUTE_CRATE_PACKAGES: &[&str] = ${packages};
 `;
 }
 
