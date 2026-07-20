@@ -185,15 +185,17 @@ Rules:
 - `pnpm test` uses an isolated test profile and must not share development or production database/schema, Redis prefix, logs, cache, runtime, or temp directories.
 - `pnpm dev:desktop` starts the desktop host through the standard development
   orchestration profile. It defaults to PostgreSQL, standalone, and
-  development, even when the desktop process itself remains client-only behind
-  a shared gateway. Installed desktop config remains the desktop profile with
+  development, even when the desktop process itself remains client-only and
+  connects to an externally supervised application standalone gateway.
+  Installed desktop config remains the desktop profile with
   user-private SQLite by default. Tauri remains an internal runner detail;
   public pnpm commands follow `PNPM_SCRIPT_SPEC.md` action-first runtime target
   names.
 - PC roots that support cloud `MUST` expose browser and desktop cloud variants.
   They start only local renderer/desktop-host processes and consume the
-  deployed `sdkwork-api-cloud-gateway`; no local standalone gateway, API, or
-  data process is started.
+  deployed application and platform API surface URLs; no local standalone
+  gateway, API, or data process is started, and client config does not identify
+  the remote gateway implementation.
 - Desktop/browser packages may declare runtime-configurable support for both
   profiles. One active profile is selected at bootstrap and profile/origin
   switches isolate credentials, cache, offline state, and local data.
@@ -291,14 +293,14 @@ Rules:
 Examples:
 
 ```text
-sdkwork-commerce (deleted)-pc-merchandise
-sdkwork-commerce (deleted)-pc-cart
-sdkwork-commerce (deleted)-pc-orders
-sdkwork-commerce (deleted)-pc-console-settings
-sdkwork-commerce (deleted)-pc-console-settlements
-sdkwork-commerce (deleted)-pc-admin-monitor
-sdkwork-commerce (deleted)-pc-admin-inventory
-sdkwork-commerce (deleted)-pc-desktop
+sdkwork-shop-pc-merchandise
+sdkwork-shop-pc-cart
+sdkwork-shop-pc-orders
+sdkwork-shop-pc-console-settings
+sdkwork-shop-pc-console-settlements
+sdkwork-shop-pc-admin-monitor
+sdkwork-shop-pc-admin-inventory
+sdkwork-shop-pc-desktop
 ```
 
 ### 3.1 Forbidden Anti-Patterns

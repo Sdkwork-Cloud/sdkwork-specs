@@ -107,6 +107,48 @@ test('workspace discovery rejects duplicate global app keys', () => {
   assert.ok(validateAppManifestFiles(files, root).some((issue) => issue.includes('duplicates')));
 });
 
+test('workspace discovery excludes local application archives', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-app-manifest-archives-'));
+  const activeRoot = path.join(root, 'sdkwork-active');
+  const archiveRoot = path.join(root, '_sdkwork-agents-local-archive-20260718', 'sdkwork-active.bak');
+  fs.mkdirSync(activeRoot, { recursive: true });
+  fs.mkdirSync(archiveRoot, { recursive: true });
+  fs.writeFileSync(
+    path.join(activeRoot, 'sdkwork.app.config.json'),
+    JSON.stringify(validManifest()),
+  );
+  fs.writeFileSync(
+    path.join(archiveRoot, 'sdkwork.app.config.json'),
+    JSON.stringify(validManifest()),
+  );
+
+  assert.deepEqual(findAppManifests(root), [
+    path.join(activeRoot, 'sdkwork.app.config.json'),
+  ]);
+});
+
+test('workspace validation reports malformed manifests and continues checking valid files', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-invalid-app-manifests-'));
+  const invalidRoot = path.join(root, 'sdkwork-invalid');
+  const validRoot = path.join(root, 'sdkwork-valid');
+  fs.mkdirSync(invalidRoot, { recursive: true });
+  fs.mkdirSync(validRoot, { recursive: true });
+  fs.writeFileSync(path.join(invalidRoot, 'sdkwork.app.config.json'), '');
+  const manifest = validManifest();
+  manifest.legacyConfig = {};
+  fs.writeFileSync(
+    path.join(validRoot, 'sdkwork.app.config.json'),
+    JSON.stringify(manifest),
+  );
+
+  const issues = validateAppManifestFiles(findAppManifests(root), root);
+  assert.ok(issues.includes('sdkwork-invalid/sdkwork.app.config.json: invalid JSON'));
+  assert.ok(issues.some((issue) => (
+    issue.includes('sdkwork-valid/sdkwork.app.config.json')
+    && issue.includes('unknown top-level field')
+  )));
+});
+
 test('enforces store media dimensions and immutable container URLs', () => {
   const manifest = validManifest();
   manifest.publish.stores = [{ marketId: 'GOOGLE_PLAY' }];

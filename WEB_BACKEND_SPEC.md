@@ -99,7 +99,7 @@ Rules:
   `/app/v3/api/system/ready`, `/backend/v3/api/system/health`, and
   `/backend/v3/api/system/ready` are reserved for the standard health route owner. Business route
   crates and controllers must use capability-specific paths.
-- Consumer backends `MUST NOT` copy dependency-owned route paths into local controllers or route crates; they must mount the dependency route crate through gateway assembly or use an external dependency SDK/upstream declared by composition.
+- Consumer backends `MUST NOT` copy dependency-owned route paths into local controllers or route crates; they must mount the dependency route crate through API assembly or use an external dependency SDK/upstream declared by composition.
 
 ## 4. Naming Standard
 
@@ -114,8 +114,8 @@ Backends use names that expose domain intent without leaking transport details i
 | Repository | `<Aggregate>Repository` | `ProductRepository` |
 | Provider adapter | `<Provider><Capability>Adapter` | `StripePaymentAdapter` |
 | Route manifest | `<packageName>.route-manifest.json` | `sdkwork-routes-merchandise-app-api.route-manifest.json` |
-| API authority | `sdkwork-<domain>-<surface>` | `sdkwork-commerce (deleted)-app-api` |
-| SDK family | `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-sdk`, `sdkwork-<domain>-backend-sdk` | `sdkwork-commerce (deleted)-app-sdk` |
+| API authority | `sdkwork-<domain>-<surface>` | `sdkwork-shop-app-api` |
+| SDK family | `sdkwork-<domain>-sdk`, `sdkwork-<domain>-app-sdk`, `sdkwork-<domain>-backend-sdk` | `sdkwork-shop-app-sdk` |
 
 Rules:
 
@@ -177,10 +177,10 @@ Required crate families for Rust HTTP backends:
 | HTTP route/API adapter | `sdkwork-routes-<capability>-<surface>` | paths, routes, handlers, manifest, request/response mapping |
 | Business service/use case | `sdkwork-<domain>-<capability>-service` | business rules, authorization, transactions, idempotency, repository/provider ports |
 | SQL repository implementation | `sdkwork-<domain>-<capability>-repository-sqlx` | SQLx row mapping, SQL queries, tenant/data-scope-safe repository implementation |
-| Migration-only HTTP API server process | `sdkwork-<application-code>-api-server` | retired listener role; allowed only while migrating to standalone/cloud gateway |
+| Migration-only HTTP API server process | `sdkwork-<application-code>-api-server` | retired listener role; allowed only while migrating to `sdkwork-api-<application-code>-standalone-gateway` |
 | In-process service host | `sdkwork-<application-code>-service-host` | service container for standalone/native usage, no HTTP route mounting |
-| Standalone gateway/proxy | `sdkwork-<application-code>-standalone-gateway` | standalone application ingress, upstream routing, route precedence, dependency API surface proxying |
-| Cloud gateway/proxy | `sdkwork-<application-code>-cloud-gateway` | cloud application ingress, upstream routing, route precedence, dependency API surface proxying |
+| API assembly | `sdkwork-api-<application-code>-assembly` | host-neutral application route/service/repository composition |
+| Standalone gateway/proxy | `sdkwork-api-<application-code>-standalone-gateway` | standalone listener and process infrastructure for API assemblies |
 | Platform gateway | `sdkwork-api-cloud-gateway` | shared `platform.api-gateway` ingress |
 
 Required route crate shape:
@@ -247,7 +247,7 @@ Rules:
   implement.
 - SQL repository implementation crates implement service-defined repository ports and own SQLx
   mapping. They `MUST NOT` own business policy or HTTP context parsing.
-- Migration-only API server process crates construct DB pools, repositories, services, adapters, and route crates only until default public ingress moves to a standalone/cloud gateway. They `MUST NOT` own business rules, SQL query bodies, or OpenAPI authority.
+- Migration-only API server process crates construct DB pools, repositories, services, adapters, and route crates only until default public ingress moves to `sdkwork-api-<application-code>-standalone-gateway`. They `MUST NOT` own business rules, SQL query bodies, or OpenAPI authority.
 - Rust errors should map through a shared problem-detail conversion boundary. Handlers must not leak `Debug` output from database, provider, or framework errors.
 - Route crates `SHOULD` expose only package-root modules needed for router composition and manifest extraction. Generated SDK consumers and UI packages must not import them.
 - Local/private Rust implementations of appbase-owned behavior `MUST` reuse appbase Rust runtime
@@ -255,12 +255,12 @@ Rules:
 - Rust crates `MUST NOT` use generic `product`, `runtime`, `backend`, `core`, `common`, or
   `manager` suffixes for application entrypoints, service aggregation, or backend implementation.
   Use `service-host`, `native-host`, `tauri-host`, `worker`, `standalone-gateway`,
-  `cloud-gateway`, or platform `sdkwork-api-cloud-gateway` according to
+  `api-standalone-gateway`, or platform `sdkwork-api-cloud-gateway` according to
   `RUST_CODE_SPEC.md`; `api-server` is migration-only.
 
 ### 4.2.1 Gateway Mount Exports (Normative)
 
-Every Rust HTTP route crate that participates in application gateway assembly `MUST` expose two package-root symbols:
+Every Rust HTTP route crate that participates in application API assembly `MUST` expose two package-root symbols:
 
 | Export | Shape | Responsibility |
 | --- | --- | --- |
@@ -272,11 +272,11 @@ Rules:
 
 - `gateway_mount_business` `MUST` wrap existing `build_*_public_app` helpers through `sdkwork-web-framework` bootstrap helpers; it `MUST NOT` fork credential or request-context parsing.
 - `gateway_mount` `MUST` delegate to `gateway_mount_business` plus listener infrastructure when the route crate mounts probes locally, or delegate directly to `gateway_mount_business` when infrastructure is owned by the listener entrypoint.
-- Gateway assembly (`sdkwork-<application-code>-gateway-assembly`) `MUST` merge `gateway_mount_business` (not full `gateway_mount`) when two or more surfaces are composed, then mount infrastructure **once** through `sdkwork-web-bootstrap::assemble_multi_surface_router`, `mount_infra_routes`, or an approved domain wrapper such as `mount_<application-code>_infra_routes`.
-- Legacy `build_*` exports `MAY` remain for `*-service-bin` and tests during migration, but gateway assembly `MUST` call `gateway_mount_business` (or `gateway_mount` when the surface is the only HTTP plane in the process) once the export exists.
+- API assembly (`sdkwork-api-<application-code>-assembly`) `MUST` merge `gateway_mount_business` (not full `gateway_mount`) when two or more surfaces are composed, then let the host mount infrastructure **once** through `sdkwork-web-bootstrap::assemble_multi_surface_router`, `mount_infra_routes`, or an approved domain wrapper such as `mount_<application-code>_infra_routes`.
+- Legacy `build_*` exports `MAY` remain for `*-service-bin` and tests during migration, but API assembly `MUST` call `gateway_mount_business` (or `gateway_mount` when the surface is the only HTTP plane in the process) once the export exists.
 - `gateway_route_manifest` `SHOULD` delegate to the crate's `manifest.rs` authority (`open_route_manifest`, `app_route_manifest`, `backend_route_manifest`, or equivalent).
 - Route crates `MUST NOT` require gateway crates to import private modules, service internals, or handler modules directly.
-- Application gateway assembly (`sdkwork-<application-code>-gateway-assembly`) is the only place that merges multiple `gateway_mount` routers for a deployment profile. Standalone/cloud gateway crates `MUST NOT` merge sibling route crates directly.
+- Application API assembly (`sdkwork-api-<application-code>-assembly`) is the only place that merges multiple `gateway_mount` routers. Standalone and platform gateway hosts `MUST NOT` merge sibling application route crates directly.
 
 ## 4.3 Backend Anti-Patterns
 
@@ -437,7 +437,7 @@ Rules:
   bootstrap, and protected route behavior, plus generated appbase SDKs when
   Rust code calls appbase HTTP APIs directly.
 - Tauri/native commands are host adapters. They may call backend services through approved boundaries, but they must not become a parallel hidden HTTP API surface.
-- `*-service-bin`, `sdkwork-<application-code>-app-api`, `sdkwork-<application-code>-backend-api`, and `sdkwork-<application-code>-open-api` binaries are **service host packages** for cloud scale-out, packaging matrices, and CI smoke. They `MUST NOT` be the default standalone dev HTTP listeners and `MUST NOT` be started as parallel loopback HTTP sidecars when a standalone or cloud application gateway already owns `application.public-ingress`. Route crates and `*-service` libraries remain the in-process composition units consumed by gateway crates per `APPLICATION_GATEWAY_SPEC.md` §5.6.
+- `*-service-bin`, `sdkwork-<application-code>-app-api`, `sdkwork-<application-code>-backend-api`, and `sdkwork-<application-code>-open-api` binaries are **service host packages** for cloud scale-out, packaging matrices, and CI smoke. They `MUST NOT` be the default standalone dev HTTP listeners and `MUST NOT` be started as parallel loopback HTTP sidecars when the application standalone gateway owns `application.public-ingress`. Route crates and `*-service` libraries remain in-process composition units consumed through API assemblies per `API_ASSEMBLY_SPEC.md`; platform cloud exposure is selected from the platform gateway side.
 
 ## 10. Verification
 

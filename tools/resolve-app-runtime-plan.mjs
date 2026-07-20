@@ -6,16 +6,16 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const CLOUD_FORBIDDEN_ROLES = [
-  'standalone-gateway', 'application-cloud-gateway', 'platform-gateway',
-  'api-listener', 'database', 'redis', 'migration', 'seed', 'worker',
+  'api-standalone-gateway',
+  'database', 'redis', 'migration', 'seed', 'worker',
 ];
 const GATEWAY_ROLES = new Set([
-  'standalone-gateway', 'application-cloud-gateway', 'platform-gateway',
+  'api-standalone-gateway',
 ]);
 const DATA_STORE_ROLES = new Set(['database', 'redis']);
 const PROCESS_ROLES = new Set([
-  'client', 'standalone-gateway', 'application-cloud-gateway', 'platform-gateway',
-  'api-listener', 'database', 'redis', 'migration', 'seed', 'worker', 'tunnel',
+  'client', 'api-standalone-gateway',
+  'database', 'redis', 'migration', 'seed', 'worker', 'tunnel',
 ]);
 const DEFAULT_CLIENT_ARCHITECTURES = Object.freeze({
   browser: 'pc-web',
@@ -103,9 +103,9 @@ export function resolveRuntimePlan(repoRoot, options) {
     : [];
   if (options.deploymentProfile === 'standalone' && options.environment === 'development'
     && topology.surfaces?.['application.public-ingress']) {
-    const gateways = processes.filter((process) => process.role === 'standalone-gateway');
+    const gateways = processes.filter((process) => process.role === 'api-standalone-gateway');
     if (gateways.length !== 1) {
-      throw new Error(`${activeProfile} requires exactly one standalone-gateway role`);
+      throw new Error(`${activeProfile} requires exactly one api-standalone-gateway role`);
     }
   }
   if (options.deploymentProfile === 'cloud' && options.environment === 'development') {

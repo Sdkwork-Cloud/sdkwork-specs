@@ -367,7 +367,18 @@ Migration examples:
 
 Unreleased applications `MUST` delete legacy application-code-prefixed scripts rather than preserve compatibility aliases. A temporary migration branch may use `legacy:<application-code>:<command>` only when a migration plan names the removal date and validation emits a warning.
 
-## 7. Gateway Commands
+## 7. API Assembly And Gateway Commands
+
+Application API composition uses:
+
+```text
+api:assembly:materialize
+api:assembly:validate
+```
+
+These commands target `sdkwork-api-<application-code>-assembly` and follow
+`API_ASSEMBLY_SPEC.md`. Retired `gateway:assembly:*` commands are migration
+input only and are not release evidence.
 
 Gateway root scripts `MUST` use action before deployment profile:
 
@@ -383,24 +394,8 @@ gateway:plan:standalone
 gateway:build:standalone
 gateway:package:standalone
 gateway:validate:standalone
-gateway:run:cloud
-gateway:plan:cloud
-gateway:build:cloud
-gateway:validate:cloud
-gateway:package:cloud
 gateway:matrix
 gateway:matrix:standalone
-gateway:matrix:cloud
-gateway:assembly:materialize
-gateway:assembly:validate
-gateway:route-composition:audit
-```
-
-Examples:
-
-```text
-gateway:assembly:materialize
-gateway:assembly:validate
 gateway:route-composition:audit
 ```
 
@@ -409,28 +404,30 @@ Rules:
 - Use `gateway:package:cloud`, not `gateway:cloud:bundle`.
 - Use `gateway:package:standalone`, not `gateway:standalone:pack`.
 - Use `gateway:validate:<deploymentProfile>` for package/bundle validation.
-- `gateway:*:standalone` commands `MUST` target
-  `sdkwork-<application-code>-standalone-gateway` when the repository owns an application
+- Application `gateway:*:standalone` commands `MUST` target
+  `sdkwork-api-<application-code>-standalone-gateway` when the repository owns an application
   standalone gateway crate.
-- `gateway:*:cloud` commands `MUST` target `sdkwork-<application-code>-cloud-gateway` when
-  the repository owns an application cloud gateway crate.
-- Repositories that only package `platform.api-gateway` config bundles and do not own an
-  application gateway crate `MAY` expose `gateway:package:cloud` and
-  `gateway:validate:cloud` without a local gateway binary, but `MUST NOT` invent a bare
-  `sdkwork-<application-code>-gateway` crate name in scripts or docs.
+- Application roots `MUST NOT` expose `gateway:*:cloud`; those commands are
+  owned only by the `sdkwork-api-cloud-gateway` repository.
+- Platform `gateway:*:cloud` commands `MUST` target `sdkwork-api-cloud-gateway`.
 - Retired gateway script names `gateway:bundle:*` and `gateway:bundle:validate:*` `MUST` be
   renamed to `gateway:package:*` and `gateway:validate:*`.
-- `gateway:assembly:materialize` `MUST` invoke `node scripts/gateway/assembly-materialize.mjs`
-  (or an equivalent thin repo wrapper around `sdkwork-specs/tools/materialize-gateway-assembly.mjs`)
-  and regenerate `crates/sdkwork-<application-code>-gateway-assembly/` deterministically.
-- `gateway:assembly:validate` `MUST` invoke `node scripts/gateway/assembly-validate.mjs`
-  (or an equivalent thin wrapper around `sdkwork-specs/tools/validate-gateway-assembly.mjs`)
-  and fail on missing assembly crates, manifest drift, or forbidden route-crate merges in gateway mains.
+- `api:assembly:materialize` and `api:assembly:validate` `MUST` delegate to
+  the canonical tools from `API_ASSEMBLY_SPEC.md` and target
+  `crates/sdkwork-api-<application-code>-assembly/`. These two commands are an
+  explicit exception to the general thin-wrapper allowance: each command
+  `MUST` directly invoke its matching `sdkwork-specs/tools/materialize-api-assembly.mjs`
+  or `sdkwork-specs/tools/validate-api-assembly.mjs` tool with `--root .`.
+  It `MUST NOT` delegate through an application-owned script, dispatcher, shell
+  wrapper, or a different canonical tool. The bootstrap command computes the
+  correct workspace-relative path; consumers do not hand-author it.
 - Workspace roots `SHOULD` expose `gateway:route-composition:audit` through a thin wrapper around
   `sdkwork-specs/tools/audit-gateway-route-composition-workspace.mjs` to detect infrastructure probe
-  duplication, empty assemblies, and platform collapsed-ingress violations across repositories.
-- Repositories without `sdkwork-routes-<application-code>-*` workspace members `MAY` omit
-  `gateway:assembly:*` commands.
+  duplication, empty assemblies, and platform cloud-host composition violations
+  across repositories.
+- Every pnpm-based application root exposes both `api:assembly:*` commands.
+  Applications without HTTP routes materialize and validate `apiMode: none`;
+  they do not omit the assembly contract.
 
 ## 8. Release And Deployment Commands
 
@@ -568,6 +565,9 @@ pnpm script validation `MUST` check:
   command values, standard command examples, and command-bearing manifests.
 - New root scripts use allowed first segments.
 - `api:*` is preferred over new `apis:*` root scripts.
+- Application `api:assembly:materialize` and `api:assembly:validate` command
+  values exactly match the direct canonical delegation generated for that
+  application root; wrapper delegation and swapped or substitute tools fail.
 - `gateway:*` commands use action before deployment profile.
 - Release and deploy commands use phase before deployment profile, expose
   profile-paired variants for supported phases, and keep provider suffixes
@@ -631,7 +631,10 @@ Rules:
       `postgres:standalone` with `environment = development`; SQLite and cloud
       variants are explicit suffixed commands.
 - [ ] Script suffixes use canonical runtime target, database, deployment profile, and tier values.
-- [ ] Gateway commands use `gateway:<action>[:deploymentProfile]`.
+- [ ] API assembly commands use `api:assembly:materialize|validate` and directly
+      invoke their matching canonical `sdkwork-specs` tool with `--root .`.
+- [ ] Application gateway commands use `gateway:<action>:standalone`; only the
+      platform gateway repository exposes `gateway:<action>:cloud`.
 - [ ] Release commands use `release:<phase>[:runtimeTarget]:<deploymentProfile>` and deployment commands use `deploy:<phase>:<deploymentProfile>[:provider]`.
 - [ ] Publish, apply, and rollback do not infer an ambiguous deployment profile or lifecycle environment.
 - [ ] Root public scripts call a standard dispatcher or thin wrapper.

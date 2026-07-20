@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: convention-over-configuration rules for dependency integration, consumer composition, deployment wiring, permission inheritance, and composition resolver contracts
-- Related: `APP_COMPOSITION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `COMPONENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SDK_SPEC.md`, `TEST_SPEC.md`, `MIGRATION_SPEC.md`
+- Related: `APP_COMPOSITION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `API_ASSEMBLY_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `COMPONENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SDK_SPEC.md`, `TEST_SPEC.md`, `MIGRATION_SPEC.md`
 
 This standard defines how SDKWork applications integrate dependency capabilities without re-declaring API contracts, permission catalogs, or mount matrices in every consumer repository. Consumers declare **which** SDK families they compose; dependencies own **how** those capabilities behave.
 
@@ -30,7 +30,7 @@ Forbidden:
 | --- | --- | --- | --- |
 | L0 Dependency integration defaults | Dependency repository / SDK family | SDK family `sdk-manifest.json`, dependency `component.spec.json#integration`, `iam.module.manifest.json`, route `gateway_mount` exports, and application `sdkwork.app.config.json#sdkDependencies` | Nothing |
 | L1 Consumer composition | Consumer application core package | `*-core/specs/component.spec.json#contracts.sdkDependencies`, `composition.overrides` | Dependency list + optional overrides only |
-| L2 Deployment wiring | Consumer repository | `specs/topology.spec.json`, `etc/topology/*.env` | Profile, bind, public URL only |
+| L2 Deployment wiring | Consumer repository | `specs/topology.spec.json`, `etc/topology/*.env` | Profile and surface URLs; standalone bind only when locally owned |
 
 Consumer application roots should converge on three authoritative files:
 
@@ -55,20 +55,24 @@ Resolver rules:
 
 - Prefer SDK family `sdk-manifest.json#discoverySurface` over guessed prefixes.
 - Never invent `/app/v3/<domain>` prefixes for IM-style open APIs.
-- Product-owned SDK families for the consumer application use the consumer `application.public-ingress` plane unless an explicit override exists.
+- Application-owned SDK families use the consumer `application.public-ingress` plane unless an explicit override exists.
 
 ### 3.2 Runtime mode conventions
 
 | Evidence | Default runtime mode |
 | --- | --- |
-| Consumer gateway assembly links dependency route crate with public `gateway_mount` under the active `standalone` profile | `same-origin-embedded` |
-| Dependency `integration.defaultRuntimeMode=platform-gateway` | `external-via-platform-gateway` |
-| Migration-only `dependency-api-surfaces.json` entry with `runtimeIntegration.mode=external-service` and `mountCoverage.status=not-mounted` | `external-via-platform-gateway` |
+| Standalone gateway selects the dependency's canonical API assembly under the active `standalone` profile | `same-origin-embedded` |
+| Dependency `integration.defaultRuntimeMode=platform-surface` | `external-via-platform-surface` |
+| Migration-only `dependency-api-surfaces.json` entry with `runtimeIntegration.mode=external-service` and `mountCoverage.status=not-mounted` | `external-via-platform-surface` |
 | No mount export and no platform gateway serving the surface | unresolved; resolver must fail |
 
 Rules:
 
-- A consumer `same-origin-mounted` declaration wins over the dependency's default runtime mode only when Cargo contains the declared gateway assembly dependency and the declaration includes a public executable export plus non-empty coverage evidence. Dependency defaults apply when that executable mount closure is absent.
+- A migration-only consumer `same-origin-mounted` declaration resolves to
+  `same-origin-embedded` only when the standalone host links the dependency's
+  canonical API assembly and the declaration includes a public executable
+  export plus non-empty coverage evidence. Dependency defaults apply when that
+  executable assembly closure is absent.
 - `route manifest`, OpenAPI path inventory, and SDK family manifest metadata are not executable mounts.
 - Demo/mock/sample routers never satisfy `same-origin-embedded`.
 - External platform dependencies must not fall back to application same-origin base URLs.
@@ -95,15 +99,15 @@ When multiple module manifests exist, the dependency `component.spec.json#integr
 
 Rules:
 
-- Product-owned SDK base URLs come from `application.public-ingress`.
+- Application-owned SDK base URLs come from `application.public-ingress`.
 - Platform dependency SDK base URLs come from `platform.api-gateway`.
-- In browser dev, product-owned SDKs may use same-origin relative prefixes when Vite proxies to application ingress.
-- Platform dependency SDKs must use absolute platform gateway origins when `runtimeMode=external-via-platform-gateway`, even in `standalone` profiles.
+- In browser dev, application-owned SDKs may use same-origin relative prefixes when Vite proxies to application ingress.
+- Platform dependency SDKs must use absolute platform surface origins when `runtimeMode=external-via-platform-surface`, even in `standalone` profiles.
 - `composition.overrides.integrations.<sdkWorkspace>.baseUrl` is the only consumer JSON override for dependency SDK base URLs.
 
 Forbidden:
 
-- Setting `VITE_SDKWORK_APPBASE_*` from application same-origin fallbacks when IAM is `external-via-platform-gateway`.
+- Setting `VITE_SDKWORK_APPBASE_*` from application same-origin fallbacks when IAM is `external-via-platform-surface`.
 - Using retired `PORTAL_PUBLIC_SDK_BASE_URL` as the only platform root key in new work.
 
 ## 4. Consumer `composition.overrides`
@@ -151,7 +155,7 @@ Dependency SDK family or repository application components should declare defaul
 {
   "integration": {
     "defaultConnectivityPlane": "platform",
-    "defaultRuntimeMode": "platform-gateway",
+    "defaultRuntimeMode": "platform-surface",
     "permissionManifest": "specs/iam.module.manifest.json",
     "mountExport": "crates/sdkwork-routes-iam-app-api::gateway_mount"
   }
@@ -162,7 +166,8 @@ Rules:
 
 - `integration` belongs to the dependency owner, not the consumer.
 - Consumers reference the SDK family through `sdkDependencies`; they do not fork the block.
-- `mountExport` is evidence only; consumer gateway assembly still owns actual linkage.
+- `mountExport` is evidence only; actual linkage is owned by the dependency API
+  assembly selected by the standalone or platform host.
 
 ## 6. Composition Resolver
 
@@ -185,7 +190,7 @@ Resolver outputs:
   "integrations": [],
   "permissions": { "inheritedManifests": [] },
   "env": {},
-  "requiresPlatformGatewayProcess": false,
+  "requiresPlatformApiSurface": false,
   "issues": []
 }
 ```
@@ -199,13 +204,14 @@ Rules:
 
 ## 7. Assembly Introduction Workflow
 
-When a consumer adds a dependency through gateway assembly or core `sdkDependencies`:
+When a consumer adds a dependency through API assembly hosting or core `sdkDependencies`:
 
 1. Add sibling workspace path once at repository root.
 2. Add Cargo workspace dependency or pnpm `workspace:*` package dependency.
 3. Add one `sdkDependencies[]` entry on the relevant core package.
 4. Add or derive `contracts.permissionComposition` so dependency module catalogs are inherited by reference.
-5. Mount dependency route crates only through gateway assembly or an approved external platform gateway.
+5. Select the dependency's canonical API assembly only from a standalone or
+   platform host; do not copy its route crates into the consumer assembly.
 6. Run `node sdkwork-specs/tools/resolve-composition.mjs --root <repo>`.
 7. Run `node sdkwork-specs/tools/check-composition-resolver.mjs --root <repo>`.
 8. Run `node sdkwork-specs/tools/check-permission-composition.mjs --root <repo>`.

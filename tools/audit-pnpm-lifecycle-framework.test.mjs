@@ -73,10 +73,15 @@ test('recognizes an app surface that explicitly delegates topology to its enclos
     schemaVersion: 5,
     kind: 'sdkwork.app.topology',
   });
+  writeJson(path.join(repository, 'etc', 'sdkwork.deployment.config.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.deployment-config',
+  });
   writeJson(path.join(app, 'sdkwork.app.config.json'), { app: { key: 'sdkwork-demo-pc' } });
   writeJson(path.join(app, 'etc', 'sdkwork.deployment.config.json'), {
     schemaVersion: 1,
     kind: 'sdkwork.component-deployment',
+    parentDeploymentConfig: '../../../etc/sdkwork.deployment.config.json',
     parentTopologySpec: '../../../specs/topology.spec.json',
   });
   const facade = 'pnpm exec sdkwork-app';
@@ -86,11 +91,11 @@ test('recognizes an app surface that explicitly delegates topology to its enclos
       'dev:standalone': `${facade} dev --root ../.. --deployment-profile standalone`,
       'dev:cloud': `${facade} dev --root ../.. --deployment-profile cloud`,
       stop: `${facade} stop --root ../..`,
-      build: `${facade} build`,
-      test: `${facade} test`,
-      check: `${facade} check`,
-      verify: `${facade} verify`,
-      clean: `${facade} clean`,
+      build: 'vite build',
+      test: 'node --test',
+      check: 'tsc --noEmit',
+      verify: 'pnpm check && pnpm test',
+      clean: 'node scripts/clean.mjs',
     },
   });
 
@@ -100,4 +105,32 @@ test('recognizes an app surface that explicitly delegates topology to its enclos
   assert.equal(report.summary.debtFree, 1);
   assert.equal(report.applications[0].topologyOwnership, 'delegated');
   assert.equal(report.applications[0].wave, 3);
+});
+
+test('does not require pnpm lifecycle scripts for a native Flutter application root', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-lifecycle-audit-'));
+  const repository = path.join(workspace, 'sdkwork-demo');
+  const app = path.join(repository, 'apps', 'sdkwork-demo-flutter-mobile');
+  writeJson(path.join(repository, 'specs', 'topology.spec.json'), { schemaVersion: 5 });
+  writeJson(path.join(repository, 'etc', 'sdkwork.deployment.config.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.deployment-index',
+  });
+  writeJson(path.join(app, 'sdkwork.app.config.json'), {
+    app: { key: 'sdkwork-demo-flutter-mobile' },
+    runtime: { family: 'mobile', framework: 'flutter' },
+  });
+  writeJson(path.join(app, 'etc', 'sdkwork.deployment.config.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component-deployment',
+    parentDeploymentConfig: '../../../etc/sdkwork.deployment.config.json',
+    parentTopologySpec: '../../../specs/topology.spec.json',
+  });
+
+  const report = auditPnpmLifecycleWorkspace(workspace);
+
+  assert.equal(report.applications[0].pnpmManaged, false);
+  assert.equal(report.applications[0].debt.includes('missing-package-manifest'), false);
+  assert.equal(report.applications[0].debt.some((issue) => issue.startsWith('missing-script:')), false);
+  assert.equal(report.applications[0].debt.length, 0);
 });

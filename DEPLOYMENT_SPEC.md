@@ -19,8 +19,8 @@ profile value.
 
 | Profile | Architecture | Use case |
 | --- | --- | --- |
-| `standalone` | Application API topology terminates at the application's independent `sdkwork-<application-code>-standalone-gateway` | Local development, desktop-local service, customer-private gateway, appliance/server install, single-node service, single-container unit |
-| `cloud` | Application HTTP topology consumes the deployed `sdkwork-api-cloud-gateway` by default; no client-side standalone gateway is started | SDKWork hosted cloud, customer VPC/private cloud, Kubernetes or equivalent orchestration, and local clients consuming deployed cloud APIs |
+| `standalone` | Application API topology terminates at `sdkwork-api-<application-code>-standalone-gateway`, which hosts the application API assembly | Local development, desktop-local service, customer-private gateway, appliance/server install, single-node service, single-container unit |
+| `cloud` | Clients consume explicit deployed API surface URLs; the platform deployment hosts approved application API assemblies | SDKWork hosted cloud, customer VPC/private cloud, Kubernetes or equivalent orchestration, and local clients consuming deployed cloud APIs |
 
 Rules:
 
@@ -102,14 +102,11 @@ Rules:
 - Cloud release artifacts are container images, charts/manifests, deployment
   bundles, or provider-specific deployment packages with SBOM, provenance,
   checksums, signing, rollout, and rollback evidence.
-- Cloud client bootstrap defaults to `cloudIngressStrategy =
-  platform-collapsed`: public SDKWork HTTP surfaces resolve through the
-  deployed `sdkwork-api-cloud-gateway`. `dedicated-application` is permitted
-  only for an application ingress that cannot be collapsed safely, and
-  `edge-split` is permitted for non-HTTP/realtime/device planes; either
-  exception requires topology and ADR evidence.
-- Local `cloud.development` `MUST NOT` start a standalone gateway, application
-  cloud gateway, platform gateway, API listener, database, Redis, migration,
+- Cloud client bootstrap resolves surface-oriented deployed URLs and does not
+  identify or operate the remote gateway implementation. Platform assembly
+  hosting is governed outside the application repository.
+- Local `cloud.development` `MUST NOT` start a standalone gateway, platform
+  gateway, API listener, database, Redis, migration,
   seed process, or deployed-service worker. Dedicated cloud and edge ingresses
   are remote surfaces in this profile.
 

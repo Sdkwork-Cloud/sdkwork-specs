@@ -115,6 +115,13 @@ export function validateRustBackendComposition(repoRoot) {
     const rel = toPosix(path.relative(repoRoot, cargoPath));
     const role = crateRole(manifest.packageName);
 
+    if (
+      /^sdkwork-[a-z0-9-]+-cloud-gateway$/u.test(manifest.packageName ?? '')
+      && manifest.packageName !== 'sdkwork-api-cloud-gateway'
+    ) {
+      issues.push(`${rel}: generic application cloud gateway ${manifest.packageName} is retired; host the application API assembly from sdkwork-api-cloud-gateway or use an ADR-governed responsibility-specific edge ingress`);
+    }
+
     if (role === 'service') {
       for (const dep of manifest.dependencies) {
         if (/-repository-sqlx$/u.test(dep.name)) {

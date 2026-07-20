@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Validate gateway assembly parity and thin-gateway merge rules.
- * Authority: APPLICATION_GATEWAY_SPEC.md §5.7, TEST_SPEC.md
+ * Validate API assembly parity and thin-gateway merge rules.
+ * Authority: API_ASSEMBLY_SPEC.md sections 5 and 10, TEST_SPEC.md
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,7 +19,7 @@ import {
   scanForbiddenGatewayMerges,
   assemblyMountRouteCrates,
   usesKernelBridgeAssembly,
-} from './gateway-assembly-lib.mjs';
+} from './api-assembly-lib.mjs';
 import { classifyRouteRegistry } from './lib/route-registry.mjs';
 
 const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -27,10 +27,10 @@ const DEFAULT_ROOT = path.resolve(SPECS_ROOT, '..');
 
 function usage() {
   return [
-    'Usage: node tools/validate-gateway-assembly.mjs [--root <repo>] [--strict]',
+    'Usage: node tools/validate-api-assembly.mjs [--root <repo>] [--strict]',
     '',
-    'Fails when route crates exist without an assembly crate, assembly-manifest.json drifts,',
-    'or standalone/cloud gateway sources hand-merge sdkwork route crates.',
+    'Fails when an application root lacks its assembly crate, route ownership is incomplete,',
+    'assembly-manifest.json drifts, or gateway hosts hand-merge sdkwork route crates.',
   ].join('\n');
 }
 
@@ -46,18 +46,80 @@ function compareManifests(expected, actual) {
   if (actual?.packageName && actual.packageName !== expected.packageName) {
     errors.push(`assembly-manifest.json packageName mismatch: ${actual.packageName}`);
   }
+  if (actual?.applicationCode !== expected.applicationCode) {
+    errors.push(`assembly-manifest.json applicationCode mismatch: expected ${expected.applicationCode}`);
+  }
+  if (actual?.kind !== 'sdkwork.api.assembly') {
+    errors.push('assembly-manifest.json kind must be sdkwork.api.assembly');
+  }
+  if (actual?.apiMode !== expected.apiMode) {
+    errors.push(`assembly-manifest.json apiMode mismatch: expected ${expected.apiMode}`);
+  }
+  if (actual?.crateDir !== expected.crateDir) {
+    errors.push(`assembly-manifest.json crateDir mismatch: expected ${expected.crateDir}`);
+  }
+  if (Object.hasOwn(actual ?? {}, 'generatedAt')) {
+    errors.push('assembly-manifest.json must not contain nondeterministic generatedAt');
+  }
+  for (const route of actual?.routeCrates ?? []) {
+    if (!['app-api', 'backend-api', 'open-api'].includes(route.surface)) {
+      errors.push(`assembly-manifest.json invalid route surface: ${route.surface ?? '<missing>'}`);
+    }
+    for (const field of ['componentRef', 'routeManifestRef', 'sourceRef']) {
+      if (typeof route[field] !== 'string' || !route[field].trim()) {
+        errors.push(`assembly-manifest.json ${route.packageName ?? '<route>'} missing ${field}`);
+      }
+    }
+  }
+  const normalize = (value) => {
+    if (Array.isArray(value)) return value.map(normalize);
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(
+        Object.keys(value).sort().map((key) => [key, normalize(value[key])]),
+      );
+    }
+    return value;
+  };
+  if (JSON.stringify(normalize(actual)) !== JSON.stringify(normalize(expected))) {
+    errors.push('assembly-manifest.json content drift (run api:assembly:materialize)');
+  }
   return errors;
 }
 
-export function validateGatewayAssembly(root, { strict = false } = {}) {
-  const applicationCode = resolveApplicationCode(root);
+export function validateApiAssembly(root, { strict = false } = {}) {
+  const repositoryName = path.basename(path.resolve(root));
+  if (repositoryName === 'sdkwork-api-cloud-gateway') {
+    return {
+      ok: true,
+      skipped: true,
+      applicationCode: null,
+      message: 'platform cloud gateway consumes application assemblies',
+    };
+  }
+
+  let applicationCode;
+  try {
+    applicationCode = resolveApplicationCode(root);
+  } catch (error) {
+    return {
+      ok: false,
+      applicationCode: null,
+      errors: [error.message],
+      warnings: [],
+    };
+  }
   const routeCrates = discoverRouteCrates(root, applicationCode);
-  if (routeCrates.length === 0) {
+  if (routeCrates.length === 0 && !fs.existsSync(path.join(root, 'sdkwork.app.config.json'))) {
     return { ok: true, skipped: true, applicationCode, message: 'no route crates' };
   }
 
   const errors = [];
   const warnings = [];
+  for (const routeCrate of routeCrates) {
+    if (!routeCrate.hasComponentSpec) {
+      errors.push(`${routeCrate.memberDir} missing specs/component.spec.json ownership contract`);
+    }
+  }
   const crateDir = assemblyCrateDir(applicationCode);
   const crateRoot = path.join(root, crateDir);
 
@@ -68,11 +130,15 @@ export function validateGatewayAssembly(root, { strict = false } = {}) {
 
   const manifestPath = path.join(crateRoot, 'assembly-manifest.json');
   if (!fs.existsSync(manifestPath)) {
-    errors.push(`missing ${crateDir}/assembly-manifest.json (run gateway:assembly:materialize)`);
+    errors.push(`missing ${crateDir}/assembly-manifest.json (run api:assembly:materialize)`);
   } else {
     const expected = buildAssemblyManifest(root, applicationCode, routeCrates);
-    const actual = readJson(manifestPath);
-    errors.push(...compareManifests(expected, actual));
+    try {
+      const actual = readJson(manifestPath);
+      errors.push(...compareManifests(expected, actual));
+    } catch (error) {
+      errors.push(`invalid ${crateDir}/assembly-manifest.json: ${error.message}`);
+    }
   }
 
   const bootstrapPath = path.join(crateRoot, 'src', 'bootstrap.rs');
@@ -133,9 +199,9 @@ function main() {
   }
 
   const root = path.resolve(values.root);
-  const result = validateGatewayAssembly(root, { strict: values.strict });
+  const result = validateApiAssembly(root, { strict: values.strict });
   if (result.skipped) {
-    console.log(`gateway-assembly:validate skipped for ${root} (${result.message})`);
+    console.log(`api-assembly:validate skipped for ${root} (${result.message})`);
     process.exit(0);
   }
 
@@ -151,7 +217,7 @@ function main() {
   }
 
   console.log(
-    `gateway-assembly:validate passed for sdkwork-${result.applicationCode} (${result.routeCrates} route crates)`,
+    `api-assembly:validate passed for sdkwork-api-${result.applicationCode}-assembly (${result.routeCrates} route crates)`,
   );
 }
 

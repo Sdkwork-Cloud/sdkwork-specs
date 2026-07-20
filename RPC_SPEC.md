@@ -115,7 +115,7 @@ Rules:
 | --- | --- | --- |
 | Browser, H5, mini program, most mobile UI | none for discovery | Continue HTTP SDKs; do not call discovery directly. |
 | Standalone loopback dev | `static` | Fixed endpoint allowed with documented local-only policy. |
-| Unified-process local orchestration | `static-composite` | Topology manifest endpoint table. |
+| Single-process local orchestration | `static-composite` | Topology manifest endpoint table. |
 | Cloud or multi-instance production | `discovery` | Default through `sdkwork-discovery`. |
 | Migration window | `composite` | Discovery primary with temporary static fallback only when `MIGRATION_SPEC.md` records the window. |
 

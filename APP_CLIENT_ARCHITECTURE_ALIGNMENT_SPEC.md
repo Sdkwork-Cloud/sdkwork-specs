@@ -319,8 +319,9 @@ Rules:
 - Server/container config remains separate from client public runtime config.
 - Every client root supports the standard standalone/cloud bootstrap contract.
   Standalone resolves the application-owned standalone gateway; cloud resolves
-  the deployed `sdkwork-api-cloud-gateway` by default and starts no local
-  gateway/API/data process.
+  the deployed application and platform API surface URLs declared by topology
+  and starts no local gateway/API/data process. Client config does not identify
+  the remote gateway implementation.
 - A signed client artifact may support both profiles through
   `profileBinding = runtime-configurable`. Bootstrap selects one active profile,
   isolates credentials/cache/offline data by profile/environment/origin, and

@@ -33,7 +33,6 @@ document uses a retired synonym, that document is wrong.
 | `deploymentProfile` | deployment profile | `standalone`, `cloud` | Active application API/runtime topology |
 | `environment` | environment tier | `development`, `test`, `staging`, `production` | Lifecycle stage from `ENVIRONMENT_SPEC.md` |
 | `connectivityPlane` | connectivity plane | `application`, `platform`, `operations`, `edge` | Who owns the route and protocol termination |
-| `cloudIngress.strategy` | cloud ingress strategy | `platform-collapsed`, `dedicated-application`, `edge-split` | How deployed cloud public planes bind to gateway roles; not a deployment profile |
 | `orchestration.processes[].role` | process role | `client`, gateway/API/data/migration/worker roles, `tunnel` | Machine authority for local-process safety checks in topology v5 |
 
 ### Deployment Profile
@@ -41,7 +40,7 @@ document uses a retired synonym, that document is wrong.
 | Value | When to say it | Typical deployment |
 | --- | --- | --- |
 | `standalone` | APIs terminate at the application-owned standalone gateway | Local dev, desktop-local gateway, private appliance/host, single service/container |
-| `cloud` | Clients consume deployed cloud APIs, defaulting to `sdkwork-api-cloud-gateway` HTTP ingress | SDKWork hosted cloud, customer VPC/private cloud, Kubernetes, or local clients consuming cloud APIs |
+| `cloud` | Clients consume explicit deployed API surfaces without naming their remote gateway implementation | SDKWork hosted cloud, customer VPC/private cloud, Kubernetes, or local clients consuming cloud APIs |
 
 Rules:
 
@@ -116,7 +115,7 @@ Rules:
 | Plane | Owns | Example routes / protocols |
 | --- | --- | --- |
 | `application` | Application-owned APIs and application realtime | `/im/v3/api/*`, HTTP + WebSocket on same ingress |
-| `platform` | Shared SDKWork platform APIs | IAM, Drive, Notary, Agent through `sdkwork-api-cloud-gateway` or approved embedded standalone adapter |
+| `platform` | Shared SDKWork platform APIs | IAM, Drive, Notary, Agent through a deployed platform URL or approved standalone assembly host |
 | `operations` | Operator / control APIs | Governance, drain, provider registry |
 | `edge` | Device and edge protocols | Device WebSocket, MQTT bridge, UDP |
 
@@ -248,25 +247,24 @@ Rules:
 - Do not reuse `chat.sdkwork.com` for IM.
 - Platform SDKs use `api.sdkwork.com` in cloud deployments.
 
-## 10. Gateway Crate Registry
+## 10. API Assembly And Gateway Registry
 
-Gateway crate names `MUST` encode scope and deployment profile. Naming authority lives in
-`APPLICATION_GATEWAY_SPEC.md` and `NAMING_SPEC.md` section 4.3.1.
+Naming authority lives in `API_ASSEMBLY_SPEC.md`,
+`APPLICATION_GATEWAY_SPEC.md`, and `NAMING_SPEC.md` section 4.3.1.
 
-| Scope | Deployment profile | Canonical crate | Primary surface | Platform dependency |
+| Scope | Role | Canonical crate | Primary surface | Consumer |
 | --- | --- | --- | --- | --- |
-| application | `standalone` | `sdkwork-<application-code>-standalone-gateway` | `application.public-ingress` | may embed approved platform adapter |
-| application | `cloud` | `sdkwork-<application-code>-cloud-gateway` | exceptional dedicated `application.public-ingress` | uses external `sdkwork-api-cloud-gateway` for `platform.api-gateway` |
-| platform | `cloud` | `sdkwork-api-cloud-gateway` | `platform.api-gateway` plus default collapsed application HTTP | n/a |
+| application | API assembly | `sdkwork-api-<application-code>-assembly` | app/backend/open API capability | both gateway hosts |
+| application | standalone host | `sdkwork-api-<application-code>-standalone-gateway` | `application.public-ingress` | standalone runtime |
+| platform | cloud host | `sdkwork-api-cloud-gateway` | deployed application/platform HTTP | platform runtime |
 
 Rules:
 
-- Bare `sdkwork-<application-code>-gateway` is retired. The platform gateway canonical crate is
-  `sdkwork-api-cloud-gateway`; say `standalone-gateway`, `cloud-gateway`, or
-  `api-cloud-gateway` explicitly in reviews, scripts, manifests, and topology docs.
-- `gateway:run:standalone` and related `gateway:*:standalone` commands target the standalone
-  gateway crate; `gateway:run:cloud` and related `gateway:*:cloud` commands target the cloud
-  gateway crate only when an ADR-approved dedicated/edge cloud ingress exists.
+- Bare application gateways and application cloud gateways are retired.
+  Reviews and manifests distinguish API assemblies,
+  application standalone hosts, and the platform cloud host.
+- Application `gateway:*:standalone` commands target the standalone host;
+  `gateway:*:cloud` commands exist only in the platform gateway repository.
 - `sdkwork-<application-code>-api-server` is not a substitute for an application gateway crate when
   the process composes or proxies dependency/platform surfaces for a deployment profile.
 - Internal capability gateways such as `session-gateway` remain internal service names and do not
@@ -278,7 +276,9 @@ Retired crate naming:
 | Retired | Replacement |
 | --- | --- |
 | `sdkwork-api-cloud-gateway-api-server` | `sdkwork-api-cloud-gateway` |
-| `sdkwork-<application-code>-gateway` | `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` |
+| `sdkwork-<application-code>-gateway-assembly` | `sdkwork-api-<application-code>-assembly` |
+| `sdkwork-<application-code>-gateway` | `sdkwork-api-<application-code>-standalone-gateway` |
+| `sdkwork-<application-code>-cloud-gateway` | platform-hosted API assembly or protocol-specific edge ingress |
 | `gateway:bundle:*` | `gateway:package:*` |
 | `gateway:bundle:validate:*` | `gateway:validate:*` |
 

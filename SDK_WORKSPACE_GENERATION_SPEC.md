@@ -195,8 +195,8 @@ Example mapping:
 | Route crate | Aggregated API authority | SDK family | Prefix |
 | --- | --- | --- | --- |
 | `sdkwork-routes-conversation-open-api` | `sdkwork-im-open-api` | `sdkwork-im-sdk` | `/im/v3/api` |
-| `sdkwork-routes-merchandise-app-api` | `sdkwork-commerce (deleted)-app-api` | `sdkwork-commerce (deleted)-app-sdk` | `/app/v3/api` |
-| `sdkwork-routes-order-backend-api` | `sdkwork-commerce (deleted)-backend-api` | `sdkwork-commerce (deleted)-backend-sdk` | `/backend/v3/api` |
+| `sdkwork-routes-merchandise-app-api` | `sdkwork-shop-app-api` | `sdkwork-shop-app-sdk` | `/app/v3/api` |
+| `sdkwork-routes-order-backend-api` | `sdkwork-shop-backend-api` | `sdkwork-shop-backend-sdk` | `/backend/v3/api` |
 
 ### 3.1 Rust Route Crate Placement
 
@@ -236,21 +236,22 @@ Rules:
 - Route crates may depend on runtime/service traits and appbase context helpers, but they `MUST NOT` depend on generated app/backend SDKs for the same application authority. Generated SDKs call the API; route crates implement the API.
 - Route crate names should use the business capability, for example merchandise, cart, order, payment, catalog, shipment, wallet, tenant, report, or audit. The aggregated authority uses the project/domain, for example commerce.
 
-### 3.1.1 Gateway Assembly Materialization
+### 3.1.1 API Assembly Materialization
 
 Repositories that own `crates/sdkwork-routes-<application-code>-*` members `MUST` materialize
-`sdkwork-<application-code>-gateway-assembly` through `pnpm gateway:assembly:materialize`
-per `APPLICATION_GATEWAY_SPEC.md` §5.7.
+`sdkwork-api-<application-code>-assembly` through `pnpm api:assembly:materialize`
+per `API_ASSEMBLY_SPEC.md`.
 
 Rules:
 
 - Assembly materialization is a sibling pipeline to route-manifest normalization: it discovers route
   crates from Cargo workspace membership, reads `gateway_route_manifest` / `gateway_mount` exports,
   and writes deterministic `assembly-manifest.json` plus generated dependency wiring.
-- Assembly output `MUST` be checked in. CI `MUST` run `pnpm gateway:assembly:validate` to prove the
+- Assembly output `MUST` be checked in. CI `MUST` run `pnpm api:assembly:validate` to prove the
   manifest matches workspace discovery.
-- Route manifest materialization `MUST NOT` require a parallel HTTP-plane JSON catalog. Workspace
-  naming (`sdkwork-routes-<application-code>-*`) is the discovery authority.
+- Route manifest materialization `MUST NOT` require a parallel HTTP-plane JSON
+  catalog. Component specs and route manifests are ownership authority; Cargo
+  membership verifies physical inclusion and package naming is diagnostic only.
 
 ### 3.2 Route Manifest Artifact Placement
 
@@ -299,7 +300,7 @@ Rules:
 
 - Authority OpenAPI documents `MUST` use the OpenAPI 3.x profile in `API_SPEC.md`.
 - Authority OpenAPI documents may be materialized from multiple route crate manifests for the same
-  owner, domain, and API surface. For example, `sdkwork-commerce (deleted)-app-api` may aggregate
+  owner, domain, and API surface. For example, `sdkwork-shop-app-api` may aggregate
   `sdkwork-routes-merchandise-app-api`, `sdkwork-routes-cart-app-api`, `sdkwork-routes-order-app-api`,
   and `sdkwork-routes-payment-app-api`.
 - Route crate manifests `MUST` be aggregated by surface. An `app-api` authority may consume only

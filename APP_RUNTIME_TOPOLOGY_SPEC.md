@@ -47,10 +47,9 @@ Rules:
 - `standalone` means the application is shipped and operated as a
   self-contained deployment unit. It may embed application routes, dependency
   adapters, and an approved platform adapter behind one application ingress.
-- `cloud` means the application is operated through cloud release automation,
-  managed secrets, probes, rollout/rollback, and an application cloud gateway.
-  It may proxy to internal upstream services, but clients still see one
-  application ingress surface.
+- `cloud` means clients consume explicitly deployed API surfaces operated with
+  cloud release automation, managed secrets, probes, and rollout/rollback.
+  Application topology does not own or identify the remote gateway host.
 - Retired terms such as `self-hosted`, `cloud-hosted`, `saas`, `private`,
   `local`, `hosting`, `topology`, and `distribution` `MUST NOT` be used as
   active deployment profile or profile-id segments.
@@ -65,8 +64,8 @@ Rules:
 
 | Plane | Owner | Protocols | Terminated by |
 | --- | --- | --- | --- |
-| `application` | Application repository | `http`, `ws`, future `sse` | Standalone application gateway, platform-collapsed `sdkwork-api-cloud-gateway`, or an ADR-approved dedicated application cloud gateway |
-| `platform` | Shared SDKWork platform | `http` | `sdkwork-api-cloud-gateway` or an approved embedded standalone adapter |
+| `application` | Application repository | `http`, `ws`, future `sse` | Application API assembly hosted by the standalone application gateway or deployed platform gateway |
+| `platform` | Shared SDKWork platform | `http` | Platform API assemblies hosted by `sdkwork-api-cloud-gateway` or an approved standalone host |
 | `operations` | Application operator APIs | `http` | Operations control ingress |
 | `edge` | Device or edge gateway | `ws`, `mqtt`, `udp`, device `http` | Edge device ingress |
 
@@ -78,16 +77,13 @@ Rules:
 - Edge protocols `MUST NOT` be routed through `sdkwork-api-cloud-gateway` unless a
   future platform spec adds an edge tier.
 - Each plane `MUST` have distinct env keys from `APP_RUNTIME_TOPOLOGY_NAMING.md`.
-- Cloud HTTP defaults to `cloudIngress.strategy = platform-collapsed` and the
-  deployed `sdkwork-api-cloud-gateway`. In that strategy,
-  `application.public-ingress` and `platform.api-gateway` `MUST` share one origin
-  while retaining distinct logical surfaces and API path ownership.
-- `dedicated-application` requires `applicationGateway` and `decisionRef`.
-  `edge-split` requires a distinct `edgeGateway` and `decisionRef`; an
-  `applicationGateway` remains optional when application HTTP stays
-  platform-collapsed. Both exceptional strategies require explicit remote URLs
-  and a realtime/device/protocol reason. They do not authorize a local gateway
-  in `cloud.development`.
+- Application topology describes deployed surface URLs, not the implementation
+  identity of the remote platform gateway. Cloud API assembly selection
+  and rollout belong to the `sdkwork-api-cloud-gateway` repository or platform
+  deployment authority.
+- Edge/realtime/device ingress requires a protocol-specific role and ADR. It
+  does not authorize a generic application HTTP cloud gateway or a local
+  gateway in `cloud.development`.
 
 ## 4. Surfaces
 
@@ -157,24 +153,22 @@ Rules:
 - A profile id `MUST NOT` encode runtime target, database engine, process
   count, upstream count, hosting ownership, or package format.
 
-Cloud-capable topology schema v5 roots additionally declare:
+Cloud-capable topology schema v5 roots declare explicit remote surfaces:
 
 ```json
 {
-  "cloudIngress": {
-    "strategy": "platform-collapsed",
-    "platformGateway": "sdkwork-api-cloud-gateway"
+  "surfaces": {
+    "application.public-ingress": {
+      "httpUrlEnv": "SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL"
+    }
   }
 }
 ```
 
-`applicationGateway` is required for `dedicated-application`. `edge-split`
-requires `edgeGateway`; it may additionally declare `applicationGateway` only
-when application HTTP also uses dedicated ingress. Both exceptional strategies
-require `decisionRef`. The machine authority is
-`schemas/sdkwork.app.topology.schema.v5.json`. Schema v4 remains readable
-during the declared migration window, but new and aligned topology contracts
-use v5.
+The application contract does not name the remote gateway implementation.
+Protocol-specific edge/realtime ingress requires an ADR and separate topology
+surface. The machine authority is `schemas/sdkwork.app.topology.schema.v5.json`.
+Schema v4 remains readable only during the migration window.
 
 ### Repository Files
 
@@ -300,12 +294,13 @@ node ../sdkwork-specs/tools/resolve-app-runtime-plan.mjs --root . --deployment-p
 ```
 
 Topology schema v5 orchestration processes `MUST` declare one canonical
-`role`: `client`, `standalone-gateway`, `application-cloud-gateway`,
-`platform-gateway`, `api-listener`, `database`, `redis`, `migration`, `seed`,
+`role`: `client`, `api-standalone-gateway`, `database`, `redis`, `migration`, `seed`,
 `worker`, or `tunnel`. `id`, binary, or script text is not role authority.
+The retired `api-listener` role is not valid in schema v5; HTTP API processes
+must be represented by the single `api-standalone-gateway` role.
 `cloud.development` allows only `client` and explicitly configured `tunnel`
 roles. `standalone.development` may declare local dependencies, but an
-application that serves HTTP APIs has exactly one `standalone-gateway` role.
+application that serves HTTP APIs has exactly one `api-standalone-gateway` role.
 
 An orchestration process that applies only to selected runtime targets `MAY`
 declare `runtimeTargets`. The runtime plan `MUST` exclude that process unless
@@ -324,11 +319,11 @@ architecture is `pc-web` and the default desktop architecture is `tauri` for
 backward-compatible public commands; other architectures are explicit.
 
 `cloud.development` plans `MUST` report zero local standalone gateway,
-application cloud gateway, platform gateway, API listener, database, Redis,
+platform gateway, API listener, database, Redis,
 migration, seed, and deployed-service worker processes.
 `standalone.development` plans with application HTTP APIs `MUST` report exactly
 one application HTTP ingress:
-`sdkwork-<application-code>-standalone-gateway`.
+`sdkwork-api-<application-code>-standalone-gateway`.
 
 For `deploymentProfile=standalone`, orchestration `MUST` start only the
 application ingress process for application-plane HTTP APIs. Internal route
@@ -400,9 +395,9 @@ cloud-application-public-ingress
 Rules:
 
 - Surface roles may be appended for deployable config bundles.
-- Ambiguous application-code-prefixed gateway names are forbidden. Application gateway crates must
-  use `sdkwork-<application-code>-standalone-gateway` or
-  `sdkwork-<application-code>-cloud-gateway` per `NAMING_SPEC.md` section 4.3.1.
+- Application API assembly and gateway names must use
+  `sdkwork-api-<application-code>-assembly` and
+  `sdkwork-api-<application-code>-standalone-gateway` per `NAMING_SPEC.md` section 4.3.1.
 - Matrix planners must pass `SDKWORK_DEPLOYMENT_PROFILE` to lifecycle steps.
 
 ## 11. Verification
@@ -424,6 +419,8 @@ Rules:
   `node tools/check-single-http-ingress.mjs --root .` per repository and
   `node tools/audit-single-http-ingress-workspace.mjs --workspace ..` across
   SDKWork application repositories.
+- API assembly and application cloud-gateway boundary checks must pass per
+  `API_ASSEMBLY_SPEC.md`.
 
 ## 12. Retirement Policy
 

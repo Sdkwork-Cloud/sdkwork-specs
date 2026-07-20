@@ -38,7 +38,7 @@ The following artifacts `MUST` integrate `sdkwork-rpc-framework` or a language-e
 | --- | --- |
 | `sdkwork-<domain>-rpc-rust` or equivalent domain RPC server crate | Framework server pipeline, interceptor assembly, health/reflection registration |
 | `sdkwork-<application-code>-service-host` when serving RPC | Framework bootstrap, discovery registration lifecycle, drain/shutdown |
-| `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` when serving RPC alongside HTTP | Shared runtime wiring; separate listeners allowed only when topology declares them |
+| `sdkwork-api-<application-code>-standalone-gateway` when serving RPC alongside HTTP | Shared standalone runtime wiring; separate listeners allowed only when topology declares them |
 | Migration-only `sdkwork-<application-code>-api-server` when serving RPC alongside HTTP | Shared runtime wiring during listener retirement only; must migrate to service-host or gateway runtime before release |
 | Internal/backend RPC client factories in service hosts | Framework client pipeline, resolver, metadata providers, resilience profile |
 | Contract-only `apis/rpc/` sources | RPC manifests still declare `rpc_surface`, `discovery_service_name`, and `resilience_profile` when dynamic resolution is used |
@@ -147,7 +147,7 @@ Resolver behavior is governed by `DISCOVERY_SPEC.md` and selected through framew
 | Resolver | Use |
 | --- | --- |
 | `static` | Approved standalone loopback or documented fixed endpoints |
-| `static-composite` | Unified-process topology tables |
+| `static-composite` | Single-process topology tables |
 | `discovery` | Default production dynamic resolution through `sdkwork-discovery` |
 | `composite` | Discovery primary with static fallback only when migration policy allows |
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * Workspace audit for gateway route composition: infra duplication, empty assemblies,
- * and platform collapsed-ingress violations.
+ * and platform cloud-host composition violations.
  *
- * Authority: APPLICATION_GATEWAY_SPEC.md §5.7.1–§5.7.3, HEALTH_CHECK_SPEC.md
+ * Authority: API_ASSEMBLY_SPEC.md sections 4, 6, and 10; HEALTH_CHECK_SPEC.md.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,20 +19,21 @@ import {
   scanAssemblyInfraMergeViolations,
   routeCratesUseDescriptorOnlyGatewayMount,
   usesKernelBridgeAssembly,
-} from './gateway-assembly-lib.mjs';
-import { validateGatewayAssembly } from './validate-gateway-assembly.mjs';
+} from './api-assembly-lib.mjs';
+import { validateApiAssembly } from './validate-api-assembly.mjs';
 
 const INFRA_PATH_PATTERN = /["'`]\/(?:healthz|livez|readyz|metrics)["'`]/u;
 const EMPTY_ASSEMBLY_PATTERN =
-  /assemble_application_router[\s\S]{0,400}Router::new\(\)/u;
+  /assemble_api_router[\s\S]{0,400}Router::new\(\)/u;
 const PLATFORM_EMBED_INFRA_SOURCES = [
-  'services/sdkwork-im-standalone-gateway/src/embedded_dependency_routes.rs',
-  'crates/sdkwork-im-standalone-gateway/src/embedded_dependency_routes.rs',
+  'services/sdkwork-api-im-standalone-gateway/src/embedded_dependency_routes.rs',
+  'crates/sdkwork-api-im-standalone-gateway/src/embedded_dependency_routes.rs',
 ];
 
 export function scanStandaloneDoubleInfra(root, applicationCode) {
   const errors = [];
   const candidates = [
+    path.join(root, 'crates', `sdkwork-api-${applicationCode}-standalone-gateway`, 'src', 'main.rs'),
     path.join(root, 'crates', `sdkwork-${applicationCode}-standalone-gateway`, 'src', 'main.rs'),
     path.join(root, 'services', `sdkwork-${applicationCode}-standalone-gateway`, 'src', 'main.rs'),
   ];
@@ -42,16 +43,16 @@ export function scanStandaloneDoubleInfra(root, applicationCode) {
     }
     const text = readText(filePath);
     const assemblyInfra =
-      /assemble_application_router/u.test(text)
+      /assemble_api_router/u.test(text)
       && /mount_(?:drive_|[a-z0-9_]+_)?infra_routes\s*\(|assemble_multi_surface_router\s*\(/u.test(text);
     const extraInfra =
       /mount_(?:drive_|[a-z0-9_]+_)?infra_routes\s*\(|service_router\s*\(/u.test(text)
-      && !/assemble_application_router/u.test(text.split('assemble_application_router')[0] ?? '');
-    if (assemblyInfra && /mount_drive_infra_routes[\s\S]*assemble_application_router/u.test(text)) {
+      && !/assemble_api_router/u.test(text.split('assemble_api_router')[0] ?? '');
+    if (assemblyInfra && /mount_drive_infra_routes[\s\S]*assemble_api_router/u.test(text)) {
       errors.push(`${filePath}: merges standalone health_router and drive assembly infra`);
     }
     if (
-      /assemble_application_router/u.test(text)
+      /assemble_api_router/u.test(text)
       && (text.match(/mount_(?:drive_|[a-z0-9_]+_)?infra_routes\s*\(/gu) ?? []).length > 1
     ) {
       errors.push(`${filePath}: mounts infrastructure more than once around assembly`);
@@ -79,20 +80,20 @@ function scanEmptyAssembly(root, applicationCode) {
     return [];
   }
   if (
-    /assemble_application_router[\s\S]*?ApplicationAssembly\s*\{\s*router:\s*(?:axum::)?Router::new\(\)\s*,?\s*\}/u.test(
+    /assemble_api_router[\s\S]*?ApiAssembly\s*\{\s*router:\s*(?:axum::)?Router::new\(\)\s*,?\s*\}/u.test(
       combined,
     )
-    || /assemble_application_router[\s\S]*?Ok\(ApplicationAssembly[\s\S]*?router:\s*(?:axum::)?Router::new\(\)\s*,?\s*\}/u.test(
+    || /assemble_api_router[\s\S]*?Ok\(ApiAssembly[\s\S]*?router:\s*(?:axum::)?Router::new\(\)\s*,?\s*\}/u.test(
       combined,
     )
   ) {
     const hasRealBootstrap =
-      /assemble_application_business_router\s*\(/u.test(combined)
+      /assemble_api_business_router\s*\(/u.test(combined)
       || /assemble_embedded_[a-z0-9_]+/u.test(combined)
       || /gateway_mount_business\s*\(/u.test(combined)
       || usesKernelBridgeAssembly(combined);
     if (!hasRealBootstrap) {
-      return [`${assemblyCrateDir(applicationCode)} exports empty assemble_application_router`];
+      return [`${assemblyCrateDir(applicationCode)} exports empty assemble_api_router`];
     }
   }
   if (EMPTY_ASSEMBLY_PATTERN.test(bootstrapRs) && /gateway_mount\(service\)/u.test(bootstrapRs)) {
@@ -130,12 +131,12 @@ function scanPlatformCloudGatewayEmbed(workspaceRoot) {
     && /build_embedded_sdkwork_iam_app_api_router/u.test(runtimeSource)
   ) {
     warnings.push(
-      'sdkwork-api-cloud-gateway: embedded mode may only auto-wire IAM; use embedded_dependency_routes for gateway assemblies',
+      'sdkwork-api-cloud-gateway: embedded mode may only auto-wire IAM; select API assemblies through embedded_dependency_routes',
     );
   }
-  if (embedSource.trim() && !/assemble_application_business_router/u.test(embedSource)) {
+  if (embedSource.trim() && !/assemble_api_business_router/u.test(embedSource)) {
     warnings.push(
-      'sdkwork-api-cloud-gateway/crates/sdkwork-api-cloud-gateway/src/embedded_dependency_routes.rs: no gateway assembly business routers wired',
+      'sdkwork-api-cloud-gateway/crates/sdkwork-api-cloud-gateway/src/embedded_dependency_routes.rs: no API assembly business routers wired',
     );
   }
   return warnings;
@@ -151,8 +152,8 @@ function scanPlatformEmbedInfra(workspaceRoot) {
     }
     const text = readText(filePath);
     if (
-      /assemble_application_router/u.test(text)
-      && !/assemble_application_business_router|build_served_unified_business_router/u.test(text)
+      /assemble_api_router/u.test(text)
+      && !/assemble_api_business_router|build_served_unified_business_router/u.test(text)
     ) {
       warnings.push(
         `${rel}: embedded dependencies may merge domain assemblies with per-domain infra on one listener`,
@@ -171,7 +172,7 @@ export function auditGatewayRouteCompositionRepo(root) {
 
   const errors = [];
   const warnings = [];
-  const validation = validateGatewayAssembly(root);
+  const validation = validateApiAssembly(root);
   errors.push(...validation.errors);
   warnings.push(...validation.warnings);
 
@@ -256,7 +257,7 @@ function main() {
     ...scanPlatformCloudGatewayEmbed(workspaceRoot),
   ];
   if (platformWarnings.length > 0) {
-    console.log('\nPlatform collapsed-ingress warnings:');
+    console.log('\nPlatform cloud-host composition warnings:');
     for (const warning of platformWarnings) {
       console.log(`  ~ ${warning}`);
     }

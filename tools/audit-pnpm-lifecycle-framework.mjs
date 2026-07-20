@@ -41,6 +41,16 @@ function scriptNamesMatching(scripts, prefix) {
   return Object.keys(scripts).filter((name) => name.startsWith(prefix));
 }
 
+function hasDelegatedLifecycleFacade(scripts) {
+  const invokesParent = (name, command) => {
+    const value = String(command ?? '').trim();
+    return value.includes('sdkwork-app') && value.includes(` ${name}`) && /(?:^|\s)--root(?:\s|=)/u.test(value);
+  };
+  return invokesParent('dev', scripts['dev:standalone'])
+    && invokesParent('dev', scripts['dev:cloud'])
+    && invokesParent('stop', scripts.stop);
+}
+
 function waveFor(entry) {
   if (entry.foundationDependency) return 0;
   if (entry.topology && entry.workflow && entry.deployManifest) return 1;
@@ -56,13 +66,27 @@ export function inspectApplicationRoot(workspace, root) {
   const packageManifestExists = fs.existsSync(packagePath);
   const packageManifest = packageManifestExists ? readJson(packagePath) : null;
   const appManifest = readJson(path.join(root, 'sdkwork.app.config.json'));
+  const nativeFramework = String(appManifest?.runtime?.framework ?? '').toLowerCase();
+  const nativeApplication = nativeFramework === 'flutter'
+    || nativeFramework.includes('android-native')
+    || nativeFramework.includes('ios-native')
+    || nativeFramework.includes('harmony-native');
+  const pnpmManaged = packageManifestExists || !nativeApplication;
   const deploymentConfig = readJson(path.join(root, 'etc', 'sdkwork.deployment.config.json'));
   const parentTopologySpec = deploymentConfig?.kind === 'sdkwork.component-deployment'
     && typeof deploymentConfig.parentTopologySpec === 'string'
     ? path.resolve(root, 'etc', deploymentConfig.parentTopologySpec)
     : null;
+  const parentDeploymentConfig = deploymentConfig?.kind === 'sdkwork.component-deployment'
+    && typeof deploymentConfig.parentDeploymentConfig === 'string'
+    ? path.resolve(root, 'etc', deploymentConfig.parentDeploymentConfig)
+    : null;
   const ownsTopology = fs.existsSync(path.join(root, 'specs', 'topology.spec.json'));
-  const delegatesTopology = Boolean(parentTopologySpec && fs.existsSync(parentTopologySpec));
+  const parentTopologyValid = Boolean(parentTopologySpec && fs.existsSync(parentTopologySpec));
+  const parentDeploymentValid = Boolean(parentDeploymentConfig && fs.existsSync(parentDeploymentConfig));
+  const delegatesTopology = Boolean(
+    parentTopologyValid && parentDeploymentValid,
+  );
   const scripts = packageManifest?.scripts ?? {};
   const readmePath = path.join(root, 'README.md');
   const readme = fs.existsSync(readmePath) ? fs.readFileSync(readmePath, 'utf8') : '';
@@ -75,11 +99,14 @@ export function inspectApplicationRoot(workspace, root) {
     foundationDependency,
     packageManifest: packageManifestExists,
     packageManifestValid: Boolean(packageManifest),
+    pnpmManaged,
     topology: ownsTopology || delegatesTopology,
     topologyOwnership: ownsTopology ? 'owned' : delegatesTopology ? 'delegated' : 'missing',
     workflow: fs.existsSync(path.join(root, 'sdkwork.workflow.json')),
     deployManifest: fs.existsSync(path.join(root, 'deployments', 'deploy.yaml')),
-    lifecycleFacade: lifecycleFacadePattern.test(allScriptText),
+    lifecycleFacade: delegatesTopology
+      ? hasDelegatedLifecycleFacade(scripts)
+      : lifecycleFacadePattern.test(allScriptText),
     scripts: {
       required: Object.fromEntries(REQUIRED_SCRIPTS.map((name) => [name, typeof scripts[name] === 'string'])),
       devStandalone: typeof scripts['dev:standalone'] === 'string',
@@ -92,25 +119,33 @@ export function inspectApplicationRoot(workspace, root) {
   };
   if (packageManifestExists && !packageManifest) entry.debt.push('invalid-package-manifest-json');
   if (!appManifest) entry.debt.push('invalid-app-manifest-json');
-  if (!entry.packageManifest) entry.debt.push('missing-package-manifest');
-  for (const [name, present] of Object.entries(entry.scripts.required)) {
-    if (!present) entry.debt.push(`missing-script:${name}`);
-  }
-  if (!entry.scripts.devStandalone) entry.debt.push('missing-script:dev:standalone');
-  if (!entry.scripts.devCloud) entry.debt.push('missing-script:dev:cloud');
-  if (entry.scripts.required.dev && !entry.scripts.devDelegatesStandalone) {
-    entry.debt.push('dev-does-not-delegate-standalone');
+  if (pnpmManaged) {
+    if (!entry.packageManifest) entry.debt.push('missing-package-manifest');
+    for (const [name, present] of Object.entries(entry.scripts.required)) {
+      if (!present) entry.debt.push(`missing-script:${name}`);
+    }
+    if (!entry.scripts.devStandalone) entry.debt.push('missing-script:dev:standalone');
+    if (!entry.scripts.devCloud) entry.debt.push('missing-script:dev:cloud');
+    if (entry.scripts.required.dev && !entry.scripts.devDelegatesStandalone) {
+      entry.debt.push('dev-does-not-delegate-standalone');
+    }
   }
   if ((scripts['_sdkwork:dev:standalone'] || scripts['_sdkwork:dev:cloud']) && !scripts['_sdkwork:stop']) {
     entry.debt.push('private-dev-without-scoped-stop');
   }
   if (!entry.topology && !foundationDependency) entry.debt.push('missing-topology-v5-contract');
   if (ownsTopology && deploymentConfig?.parentTopologySpec) entry.debt.push('competing-topology-authorities');
-  if (deploymentConfig?.parentTopologySpec && !delegatesTopology) entry.debt.push('invalid-parent-topology-spec');
+  if (deploymentConfig?.kind === 'sdkwork.component-deployment' && !parentTopologyValid) {
+    entry.debt.push('invalid-parent-topology-spec');
+  }
+  if (deploymentConfig?.kind === 'sdkwork.component-deployment'
+    && !parentDeploymentValid) {
+    entry.debt.push('invalid-parent-deployment-config');
+  }
   if (!entry.workflow && (entry.scripts.releaseCommands.length > 0 || entry.scripts.deployCommands.length > 0)) {
     entry.debt.push('lifecycle-commands-without-workflow-contract');
   }
-  if (!entry.lifecycleFacade && packageManifest) entry.debt.push('not-using-lifecycle-facade');
+  if (pnpmManaged && !entry.lifecycleFacade && packageManifest) entry.debt.push('not-using-lifecycle-facade');
   entry.wave = waveFor(entry);
   return entry;
 }
@@ -127,11 +162,12 @@ export function auditPnpmLifecycleWorkspace(workspace) {
     summary: {
       applications: applications.length,
       packageManifests: counts((entry) => entry.packageManifest),
+      pnpmApplications: counts((entry) => entry.pnpmManaged),
       topologyContracts: counts((entry) => entry.topology),
       workflowContracts: counts((entry) => entry.workflow),
       deployManifests: counts((entry) => entry.deployManifest),
-      devProfilePairs: counts((entry) => entry.scripts.devStandalone && entry.scripts.devCloud),
-      lifecycleFacadeAdopters: counts((entry) => entry.lifecycleFacade),
+      devProfilePairs: counts((entry) => entry.pnpmManaged && entry.scripts.devStandalone && entry.scripts.devCloud),
+      lifecycleFacadeAdopters: counts((entry) => entry.pnpmManaged && entry.lifecycleFacade),
       debtFree: counts((entry) => entry.debt.length === 0),
     },
     applications,
@@ -141,7 +177,7 @@ export function auditPnpmLifecycleWorkspace(workspace) {
 function printReport(report) {
   const summary = report.summary;
   console.log(`SDKWork pnpm lifecycle audit: ${summary.applications} application roots`);
-  console.log(`package=${summary.packageManifests} topology=${summary.topologyContracts} workflow=${summary.workflowContracts} deploy=${summary.deployManifests}`);
+  console.log(`package=${summary.packageManifests} pnpm-app=${summary.pnpmApplications} topology=${summary.topologyContracts} workflow=${summary.workflowContracts} deploy=${summary.deployManifests}`);
   console.log(`dev-pair=${summary.devProfilePairs} lifecycle-facade=${summary.lifecycleFacadeAdopters} debt-free=${summary.debtFree}`);
   for (let wave = 0; wave <= 5; wave += 1) {
     const entries = report.applications.filter((entry) => entry.wave === wave);

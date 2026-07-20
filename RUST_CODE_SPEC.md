@@ -40,11 +40,11 @@ Allowed authored Rust crate families:
 | In-process service host | `sdkwork-<application-code>-service-host` | standalone/native service container, no HTTP route mounting |
 | Native/Tauri host | `sdkwork-<application-code>-native-host` or `sdkwork-<application-code>-tauri-host` | native commands, host state, platform adapters |
 | Background job process | `sdkwork-<domain>-<capability>-worker` | jobs, scheduling, queues, retries, cursors, locks |
-| API gateway/proxy (standalone deployment) | `sdkwork-<application-code>-standalone-gateway` | standalone application ingress, upstream routing, route precedence, dependency API surface proxying, optional embedded platform adapter |
-| API gateway/proxy (cloud deployment) | `sdkwork-<application-code>-cloud-gateway` | cloud application ingress, upstream routing, route precedence, dependency API surface proxying |
+| API assembly | `sdkwork-api-<application-code>-assembly` | host-neutral app-api/backend-api/open-api route and bootstrap composition |
+| API gateway/proxy (standalone deployment) | `sdkwork-api-<application-code>-standalone-gateway` | standalone application ingress, upstream routing, route precedence, dependency API surface proxying, optional embedded platform adapter |
 | Platform API gateway | `sdkwork-api-cloud-gateway` | shared `platform.api-gateway` ingress for SDKWork platform APIs |
 
-`sdkwork-<application-code>-api-server` is a migration-only listener name. New application HTTP ingress `MUST` use `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` per `APPLICATION_GATEWAY_SPEC.md`. Single-surface smoke binaries may exist only as package-local test or cloud scale-out artifacts when they do not become default dev/release public ingress.
+`sdkwork-<application-code>-api-server` is a migration-only listener name. New application HTTP ingress `MUST` use `sdkwork-api-<application-code>-assembly` and `sdkwork-api-<application-code>-standalone-gateway` per `API_ASSEMBLY_SPEC.md` and `APPLICATION_GATEWAY_SPEC.md`. Single-surface smoke binaries may exist only as package-local tests when they do not become public ingress.
 
 Forbidden Rust crate suffixes for SDKWork Rust crates:
 
@@ -67,7 +67,7 @@ state must not keep the forbidden name.
 Retired listener rule:
 
 - `sdkwork-<application-code>-api-server` `MUST NOT` be introduced as a new default application ingress listener.
-- Existing `sdkwork-<application-code>-api-server` crates are migration-only and `MUST` have a migration plan to `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway`.
+- Existing `sdkwork-<application-code>-api-server` crates are migration-only and `MUST` have a migration plan to the canonical API assembly and standalone gateway.
 - A package-local test or cloud scale-out single-surface listener `MAY` keep a narrowly documented binary only when topology, dev scripts, release manifests, and client bootstrap do not treat it as `application.public-ingress`.
 
 Standard business service crate layout:
@@ -136,7 +136,8 @@ Rust backend crates `MUST` keep business policy, HTTP adaptation, persistence, a
 | `sdkwork-<domain>-<capability>-repository-sqlx` | `backend-repository` | service-declared repository traits, SQLx, database utilities, row mappers | HTTP framework crates, route crates, business permission decisions, API DTO ownership | repository tests for tenant/data-scope predicates and query bounds |
 | `sdkwork-routes-<capability>-<surface>` | `backend-route` | service traits/structs, DTO mappers, `sdkwork-web-framework` public route helpers, route manifest types | concrete repository crates, same-authority generated SDKs, raw credential parsing, hidden route copies | route manifest tests, handler mapping tests, `check-route-path-collisions.mjs` |
 | `sdkwork-<application-code>-service-host` | `runtime-service-host` | service crates, repositories/providers, config, host adapters | HTTP listener startup, API path ownership, business rules | dependency wiring tests and no HTTP listener evidence |
-| `sdkwork-<application-code>-standalone-gateway` / `sdkwork-<application-code>-cloud-gateway` | `runtime-gateway` | gateway assembly crate, framework bootstrap, platform/dependency adapters, topology config | route crate hand-merge matrices, business rules, concrete generated SDK ownership | gateway assembly validation, route registry checks, readiness/preflight tests |
+| `sdkwork-api-<application-code>-assembly` | `api-assembly` | route, service, repository, database/cache ports, Web Framework router contributions | listener bind, process supervision, gateway identity | API assembly completeness and collision validation |
+| `sdkwork-api-<application-code>-standalone-gateway` | `runtime-gateway` | API assembly crate, framework bootstrap, topology config | route/service/repository duplication, route hand-merge matrices, business rules | API assembly, thin-host, readiness/preflight tests |
 | `sdkwork-<application-code>-native-host` / `sdkwork-<application-code>-tauri-host` | `runtime-native-host` | service-host boundary, host commands, native storage/bridge adapters | SQL ownership, HTTP route authority, copied web handlers | host adapter tests and component port declarations |
 | `sdkwork-<domain>-<capability>-worker` | `backend-provider` or `runtime-service-host` | service use cases, queue/scheduler adapters, cursors, locks | public HTTP API ownership, direct table writes that bypass services | job idempotency, retry, and service-boundary tests |
 
@@ -235,11 +236,11 @@ crates/sdkwork-<application-code>-api-server/
 
 Rules:
 
-- New application ingress crates `MUST NOT` use this layout. Use `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway`.
+- New application ingress crates `MUST NOT` use this layout. Use the canonical API assembly and `sdkwork-api-<application-code>-standalone-gateway`.
 - Existing API server crates are migration-only runnable HTTP processes. They may mount route crates, construct services, inject repository/adapters, run preflight checks, and start the listener only until the repository migrates to the standard gateway role.
 - Migration-only API server crates `MUST` assemble the HTTP runtime through `sdkwork-web-bootstrap` or an equivalent documented bootstrap API from `sdkwork-web-framework` according to `WEB_FRAMEWORK_SPEC.md`.
 - Migration-only API server crates `MUST NOT` define core business rules, SQL queries, OpenAPI authority, or generated SDK ownership.
-- Migration plans `MUST` move default dev/release public ingress from `sdkwork-<application-code>-api-server` to `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` before production release.
+- Migration plans `MUST` move default dev/release public ingress from `sdkwork-<application-code>-api-server` to the canonical API assembly and standalone gateway before production release.
 
 Standard in-process service host crate layout:
 
@@ -348,46 +349,13 @@ Rules:
 - Worker crates should call service use cases instead of bypassing service rules with direct table
   writes.
 - Worker crates `MUST NOT` expose HTTP route authority unless the HTTP surface is split into a
-  route crate mounted by a standalone/cloud gateway or another topology-approved HTTP runtime.
+  route crate mounted through an API assembly by an application standalone
+  gateway, platform cloud gateway, or another topology-approved HTTP runtime.
 
 Standard standalone application gateway crate layout:
 
 ```text
-crates/sdkwork-<application-code>-standalone-gateway/
-  Cargo.toml
-  README.md
-  specs/
-    component.spec.json
-  src/
-    main.rs
-    lib.rs
-    routing/
-      mod.rs
-      table.rs
-      precedence.rs
-      upstreams.rs
-    proxy/
-      mod.rs
-      request.rs
-      response.rs
-    auth/
-      mod.rs
-      context_forwarding.rs
-    preflight/
-      mod.rs
-      upstreams.rs
-    health.rs
-  tests/
-    route_precedence_smoke.rs
-    upstream_config_smoke.rs
-    dependency_surface_smoke.rs
-    fail_closed_smoke.rs
-```
-
-Standard cloud application gateway crate layout:
-
-```text
-crates/sdkwork-<application-code>-cloud-gateway/
+crates/sdkwork-api-<application-code>-standalone-gateway/
   Cargo.toml
   README.md
   specs/
@@ -420,11 +388,10 @@ crates/sdkwork-<application-code>-cloud-gateway/
 
 Rules:
 
-- Standalone and cloud application gateway crates own upstream routing, route precedence,
-  proxying, dependency API surface routing, and fail-closed upstream validation for their
-  declared deployment profile.
-- Application gateway crates `MUST NOT` use a bare `-gateway` suffix without `standalone` or
-  `cloud`.
+- Application standalone gateway crates own listener infrastructure and
+  assembly selection. API assemblies own application route/service/repository
+  composition.
+- Applications `MUST NOT` introduce a generic cloud gateway or bare gateway.
 - Gateway crates `MUST NOT` own business service rules, business repositories, or
   application-owned SDK generation authority.
 

@@ -11,7 +11,7 @@ import {
   discoverRouteCrates,
   readText,
   resolveApplicationCode,
-} from './gateway-assembly-lib.mjs';
+} from './api-assembly-lib.mjs';
 
 const BUILD_FN_PATTERN =
   /pub\s+(async\s+)?fn\s+(build_[a-zA-Z0-9_]+)\s*\(([^)]*)\)\s*(?:->\s*([^{;]+))?/gu;

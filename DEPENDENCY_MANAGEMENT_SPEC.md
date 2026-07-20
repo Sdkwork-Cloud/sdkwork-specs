@@ -2,7 +2,7 @@
 
 - Version: 1.2
 - Scope: native build-tool dependency management, cross-repository source paths, release dependency refs, supply-chain evidence, and dependency-owned SDK/API boundaries
-- Related: `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Related: `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `API_ASSEMBLY_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 This standard defines how SDKWork repositories depend on other SDKWork repositories without creating a second SDKWork-specific dependency system. SDKWork dependency management is build-tool-first: pnpm, Cargo, Flutter/Dart, Gradle, Maven, Python, and other package managers remain the dependency authorities for their language and runtime. SDKWork standards add cross-repository consistency, SDK/API ownership, release refs, and supply-chain evidence only where native tools do not cover SDKWork semantics.
 
@@ -291,43 +291,46 @@ Rules:
 - Lockfiles and native dependency verification files must be kept in sync with dependency changes.
 - Legacy scripts that clone or rewrite shared SDK dependencies outside native build-tool mechanisms `SHOULD` be migrated to native workspace, package-manager, or release workflow mechanisms. While retained, they must be documented and covered by verification.
 
-## 5.1 Gateway-Mediated Foundation API Integration
+## 5.1 Assembly-Mediated Foundation API Integration
 
 Shared foundation APIs such as appbase IAM, Drive, messaging, IM, RTC, Agent/Kernel, commerce,
 AIoT, Memory, Knowledgebase, News, Notes, Music, Generations, Community, Search, Voice, Image,
-Comments, Course, and other platform capabilities should be integrated once through the shared
-SDKWork API gateway when multiple applications need the same runtime surfaces.
+Comments, Course, and other platform capabilities are published through their
+own API assemblies and SDK families. The platform cloud gateway selects those
+assemblies from the platform side; application clients consume declared API
+surface URLs and generated SDKs without depending on the gateway implementation.
 
 Rules:
 
-- Rust API gateway repositories `MUST` use Cargo workspace dependencies and Cargo features as the
-  executable source/build authority for embedded foundation API integration.
-- The gateway root `Cargo.toml` `[workspace.dependencies]` table `MUST` declare each SDKWork
-  foundation runtime crate source exactly once. Gateway member crates consume those crates with
+- The platform cloud gateway repository `MUST` use Cargo workspace dependencies and Cargo
+  features as the executable source/build authority for selected API assemblies.
+- The platform cloud gateway root `Cargo.toml` `[workspace.dependencies]` table `MUST` declare each SDKWork
+  foundation runtime crate source exactly once. Platform gateway member crates consume those crates with
   `{ workspace = true }` and feature-gate optional foundation surfaces.
-- Gateway runtime features `SHOULD` use stable names such as `foundation-appbase`,
+- Platform cloud gateway runtime features `SHOULD` use stable names such as `foundation-appbase`,
   `foundation-drive`, `foundation-commerce`, `foundation-im`, `foundation-rtc`, and
-  `foundation-aiot`. Each feature activates the dependency crate that exposes the public executable
-  router/controller/service builder for that foundation surface.
-- Split gateway surfaces that proxy to an independently deployed foundation service `MUST` be
+  `foundation-aiot`. Each feature activates the dependency application's
+  canonical `sdkwork-api-<application-code>-assembly`, not its route crates or
+  private router/controller/service implementation.
+- Split platform gateway surfaces that proxy to an independently deployed foundation service `MUST` be
   declared through the existing dependency surface and upstream config fields, such as
   `requiredBaseUrlKey`. They must not invent `cargoFeature` or `cargoDependency` values unless the
-  gateway can actually compile and embed the dependency-owned executable router/controller/service.
-- A split gateway surface `MUST` have existing SDKWork semantic evidence before it becomes a
-  gateway startup dependency: an SDK family manifest or component/runtime spec that names the SDK family,
+  platform host can actually compile and embed the dependency-owned executable router/controller/service.
+- A split platform gateway surface `MUST` have existing SDKWork semantic evidence before it becomes a
+  platform host startup dependency: an SDK family manifest or component/runtime spec that names the SDK family,
   API authority, surface, and a materialized route path set with a stable prefix. The route path set
   may be proven by authority OpenAPI `paths`, derived `*.sdkgen.*` OpenAPI inputs, or normalized
   route manifest artifacts under `sdks/_route-manifests/<surface>/`. SDK family manifests that only
   declare a generic root such as `/app/v3/api` or `/backend/v3/api`, or that have no materialized
-  paths yet, are inventory candidates, not gateway dependencies.
-- A gateway `MUST` inspect OpenAPI path maps with a real parser or an equivalent detector that
+  paths yet, are inventory candidates, not platform gateway dependencies.
+- Platform cloud gateway tooling `MUST` inspect OpenAPI path maps with a real parser or an equivalent detector that
   recognizes both YAML and JSON-style YAML path keys. A path inventory that only matches one textual
   indentation style is not sufficient evidence that an SDK family has no materialized paths.
-- When one SDK family materializes paths under multiple stable prefixes, the gateway `MUST` declare
+- When one SDK family materializes paths under multiple stable prefixes, the platform cloud gateway `MUST` declare
   each prefix as its own dependency route surface while reusing the same upstream service id and
   `requiredBaseUrlKey`. Do not collapse those paths to a broad `/app/v3/api` or `/backend/v3/api`
   fallback unless the dependency is intentionally a broad fallback service.
-- When split gateway surfaces share a root prefix, the gateway `MUST` declare and test route
+- When split platform gateway surfaces share a root prefix, the platform cloud gateway `MUST` declare and test route
   precedence. Fixed dependency routes and more specific prefixes, such as appbase IAM, Drive,
   Notary, RTC, Agent/Kernel, AIoT, Memory, Knowledgebase, News, Notes, Music, Generations,
   Community, Search, Voice, Image, Comments, Course, or Messaging, resolve before broad fallback
@@ -335,50 +338,44 @@ Rules:
   fallback surfaces may cover remaining paths only after the more specific dependency surfaces have
   been evaluated.
 - `cargo metadata` is the machine-readable entrypoint for identifying which foundation crates and
-  features a Rust gateway can compile. Standards tooling `MUST` read Cargo metadata before asking
+  features the Rust platform host can compile. Standards tooling `MUST` read Cargo metadata before asking
   for any SDKWork-specific dependency catalog.
 - SDKWork semantic evidence remains in existing SDKWork files: `sdkwork.app.config.json`
   `sdkDependencies`, `specs/component.spec.json` dependency surfaces, dependency SDK family manifest
   metadata, and runtime config. Cargo proves executable linkage; SDKWork specs prove SDK family,
   API authority, surface, prefix, runtime mode, and coverage semantics.
-- A standalone gateway catalog file is forbidden when it only repeats Cargo dependency/feature data
+- A parallel platform gateway catalog file is forbidden when it only repeats Cargo dependency/feature data
   or existing SDKWork manifest/component/spec data. Adding such a file creates a parallel source of
   truth and is not an approved SDKWork dependency mechanism.
-- Application servers `MUST NOT` directly compose platform foundation API runtime crates when the
-  shared gateway provides that dependency surface. They consume the gateway as an external service
-  through a common SDK root or embed the gateway runtime through its public package exports.
-- Application dev runners and server launch scripts that need shared platform foundation APIs
-  `SHOULD` start or require the shared gateway as the managed dependency boundary. Their default
-  application-server upstream env must point at the gateway root, not at individual foundation module
-  service URLs. Dependency-specific upstream env keys are allowed as explicit split-deployment
-  overrides, and tests must make that override status visible.
-- Managed gateway startup `MUST` use the native build command for the gateway application, such as
-  `cargo run -p sdkwork-api-cloud-gateway-service --bin sdkwork-api-cloud-gateway`, from the platform
-  `sdkwork-api-cloud-gateway` workspace.
-  Application launchers must not introduce a second machine-readable gateway catalog to discover
-  foundation surfaces.
-- If the application edge server uses the gateway's standard local port, the application may choose a
-  documented app-specific managed gateway bind. The bind and the resulting common SDK root must be
-  declared in the component spec or launcher tests so the gateway target remains obvious.
-- Existing governed application-local foundation API adapters, embedded runtimes, and same-origin
-  mounts must migrate to the shared gateway path and must not be the default runtime mode when the
-  shared gateway declares that dependency surface.
+- Application servers and launchers `MUST NOT` depend on, embed, start, bind,
+  configure, or supervise `sdkwork-api-cloud-gateway`. External platform
+  dependencies resolve through surface-oriented URLs and generated SDK roots.
+- `cloud.development` application runners start no local platform gateway,
+  standalone gateway, API listener, data service, migration, seed, or deployed
+  worker. They require explicit deployed URLs with source provenance.
+- Standalone hosts that intentionally provide a dependency API on the same
+  origin select the dependency application's API assembly. They `MUST NOT`
+  copy dependency route crates into the consuming application's assembly.
+- Platform cloud gateway startup, bind configuration, feature selection, and
+  assembly registration belong only to the `sdkwork-api-cloud-gateway`
+  repository or platform deployment authority.
 - Application-owned APIs remain application-owned. If an application-owned API becomes reusable by
   other applications, the application must expose a standard SDKWork API authority, SDK family,
   component spec, and public
-  executable router/upstream entrypoint that the gateway can integrate through the same Cargo and
+  canonical API assembly that a host can integrate through the same Cargo and
   SDKWork spec rules.
 - Cargo dependencies, Cargo workspace membership, and Cargo features do not by themselves authorize
   dependency API re-export. `dependencyApiExports` and `dependencyApiSurfaces` remain required for
   API export and runtime availability semantics.
-- Platform and sibling-application consumers `MAY` resolve an application's gateway assembly crate
+- Platform and standalone-host consumers `MAY` resolve an application's API assembly crate
   by convention without new composition JSON fields:
-  `sdkwork-<domain>-app-sdk` consumer → repository `sdkwork-<domain>` →
-  `crates/sdkwork-<domain>-gateway-assembly`. Cargo path dependencies and workspace membership
-  remain the linkage authority; component/app manifests must not gain duplicate `integrationMode`,
-  `applicationBundle`, or `httpPlane` fields for this purpose.
-- Application gateway assembly crates `MUST NOT` duplicate SDK dependency catalogs already expressed in
-  `sdkwork.app.config.json` `sdkDependencies` or Cargo `[workspace.dependencies]`. Gateway assembly only
+  `sdkwork-<domain>-app-sdk` -> repository `sdkwork-<domain>` ->
+  `crates/sdkwork-api-<domain>-assembly`. Cargo path dependencies and workspace
+  membership remain the linkage authority; component/app manifests must not
+  gain duplicate `integrationMode`, `applicationBundle`, or `httpPlane` fields
+  for this purpose.
+- Application API assembly crates `MUST NOT` duplicate SDK dependency catalogs already expressed in
+  `sdkwork.app.config.json` `sdkDependencies` or Cargo `[workspace.dependencies]`. API assembly only
   merges application-owned route crates discovered in the owning repository workspace.
 
 ## 6. SDK/API Ownership
@@ -389,8 +386,8 @@ Rules:
 
 - A consuming application `MUST NOT` regenerate dependency-owned APIs into its own generated SDK families.
 - Dependency-owned APIs consumed by an app `MUST` remain in the owning dependency SDK family or an approved composed wrapper.
-- Product-owned SDK generation inputs `MUST` subtract dependency-owned routes and operations before sdkgen runs, unless the current product is the owner.
-- Rust backends integrated through a dependency library `MUST` compose the dependency runtime/backend as a dependency; they must not cause dependency-owned APIs such as appbase IAM to appear in the consuming product SDK.
+- Application-owned SDK generation inputs `MUST` subtract dependency-owned routes and operations before sdkgen runs, unless the current application is the owner.
+- Rust backends integrated through a dependency library `MUST` compose the dependency runtime/backend as a dependency; they must not cause dependency-owned APIs such as appbase IAM to appear in the consuming application SDK.
 - Appbase IAM, Drive upload, IM, commerce, media, or other dependency surfaces must be represented through `sdkDependencies`, dependency SDK base URLs, generated dependency SDK clients, or approved composed SDK facades.
 - Native build-tool dependencies and runtime API composition are separate facts. A Cargo, pnpm,
   Maven, Gradle, Flutter/Dart, Python, or other package dependency proves source/build availability
@@ -463,12 +460,12 @@ Rules:
   fails when a dependency API is treated as same-origin without executable router/controller/service
   coverage.
 - Application launch tests `MUST` verify that shared foundation API defaults use the
-  declared gateway common SDK root or managed gateway process. They must fail when an application server
+  declared `platform.api-gateway` surface. They must fail when an application server
   silently defaults to direct appbase, Drive, Notary, RTC, Agent/Kernel, AIoT, commerce, or other
-  foundation module service URLs while the shared gateway declares that surface.
-- Gateway integration tests `MUST` verify that foundation API Cargo features resolve through
+  foundation module service URLs while the platform API surface declares that dependency.
+- Platform gateway integration tests `MUST` verify that foundation API Cargo features resolve through
   `cargo metadata`, that enabled embedded surfaces have public executable exports, and that no
-  standalone gateway catalog is required to reconstruct dependency source/build facts.
+  parallel platform gateway catalog is required to reconstruct dependency source/build facts.
 - Workspace verification `MUST` fail when a multi-repository checkout root declares application
   packages from child git repositories in its own `pnpm-workspace.yaml`.
 - Import-closure verification `MUST` fail when a workspace member source file imports a non-relative
@@ -496,11 +493,11 @@ Rules:
 - [ ] Release dependencies needed for packaged artifacts are declared in `sdkwork.workflow.json`.
 - [ ] Stale release dependencies have been removed.
 - [ ] Release dependency refs are pinned or safely validated and included in release evidence.
-- [ ] Dependency-owned APIs are not regenerated into consuming product SDKs.
+- [ ] Dependency-owned APIs are not regenerated into consuming application SDKs.
 - [ ] Rust HTTP-capable repositories declare `sdkwork-web-framework` instead of vendoring or forking the HTTP interceptor/context framework locally.
 - [ ] Dependency API exports are explicit through `dependencyApiExports` and default to no export.
 - [ ] Runtime dependency API surfaces are explicit through `dependencyApiSurfaces`; build-tool
   dependencies are not treated as same-origin router coverage.
-- [ ] Shared foundation API gateway integration uses native build-tool evidence, such as Cargo
-  workspace dependencies and features, plus existing SDKWork specs instead of a parallel gateway
-  catalog.
+- [ ] Platform cloud gateway integration of API assemblies uses native
+  build-tool evidence, such as Cargo workspace dependencies and features, plus
+  existing SDKWork specs instead of a parallel host catalog.

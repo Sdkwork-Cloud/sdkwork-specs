@@ -19,10 +19,14 @@ Rules:
   consumers. Use `--json` for migration automation and `--fail-on-debt` only
   after the approved consumer wave has completed.
 - `check-topology-deployment-profiles.mjs` validates current v5 and migration
-  v4 standalone/cloud profile coverage, v5 cloud ingress strategy and canonical
-  platform gateway identity, and rejects cloud development profiles that
-  autostart local API/dependency processes, omit deployed surface URLs, use
-  placeholders, or inherit loopback URLs without an explicit tunnel/proxy.
+  v4 standalone/cloud profile coverage, rejects retired v5 `cloudIngress`
+  implementation metadata, and verifies canonical application/platform API
+  surfaces. Use `--root <application>` for one application,
+  `--workspace <path> --repo <repository-name>` for one workspace child, or
+  only `--workspace <path>` for a workspace scan. It rejects cloud
+  development profiles that autostart local API/dependency processes, omit
+  deployed surface URLs, use placeholders, or inherit loopback URLs without an
+  explicit tunnel/proxy.
 - `resolve-app-runtime-plan.mjs` resolves a v5 topology into the canonical
   runtime plan shape, including local processes, remote surfaces, URL
   provenance, data stores, health checks, and forbidden cloud-development
@@ -37,7 +41,10 @@ Rules:
 - `check-app-manifest-standard.mjs` validates the v3 app manifest identity,
   required sections, package/release references, secrets, and composes the
   deployment/profile gate. `non-deployable` test-runner evidence is excluded
-  from publication and deployment profile coverage.
+  from publication and deployment profile coverage. Workspace scans report
+  malformed manifests per file and continue validating the remaining active
+  application roots; local `_sdkwork-agents-local-archive-*` backups are not
+  application authorities.
 - `check-deploy-standard.mjs` and `deployctl.mjs` validate v1 migration or v2
   deploy manifests. V2 adds typed deployment dimensions; side-effecting apply
   requires explicit profile/environment, immutable artifact digest, verified
@@ -117,9 +124,32 @@ Rules:
 - `bootstrap-database-module.mjs` scaffolds a standard `database/` module from
   `templates/database/` using `database-module-registry.json`.
 - `check-identity-naming.mjs` validates identity lattice terminology in standards
-  (`NAMING_SPEC.md` §0–§0.2) and scans consumer repositories for retired identity
-  placeholders, commerce `product` overloads, non-canonical Rust HTTP route crate names,
-  `identity` domain packages, and related patterns. See `MIGRATION_SPEC.md` §8.
+  (`NAMING_SPEC.md` §0–§0.2), including root-level authority documents, and
+  rejects deleted example identities, ambiguous gateway roles, retired
+  placeholders, and commerce `product` overloads. Consumer mode scans
+  non-canonical Rust HTTP route crate names, `identity` domain packages, and
+  related patterns. See `MIGRATION_SPEC.md` §8.
+- `check-application-cloud-gateway-boundary.mjs` rejects application ownership,
+  operation, config, packaging, or release coupling to
+  `sdkwork-api-cloud-gateway`, generic application cloud gateway identities,
+  and the retired `integration.foundationApiGateway` parallel component
+  contract.
+- `migrate-remove-application-cloud-gateway.mjs` removes mechanically safe
+  application-owned cloud gateway scripts, topology metadata, and source
+  config, while reporting component-contract decomposition and other
+  behavior-sensitive changes for manual repair.
+- `bootstrap-api-assembly-repo.mjs --root <application>` is the canonical
+  one-time assembly onboarding command. It materializes served or `apiMode: none`
+  assemblies, adds Cargo workspace membership, writes direct canonical
+  pnpm tool delegation, validates immediately, creates no wrapper scripts, and
+  is idempotent.
+- `wire-api-assembly-host.mjs --root <application>` is a migration-only wiring
+  aid for an existing canonical standalone gateway. It requires an explicit
+  mutation scope and is never completion evidence by itself.
+- `audit-gateway-alignment-repo.mjs --root <application> --strict` is the
+  read-only application hosting readiness gate. It distinguishes assembly
+  readiness from standalone-host readiness and audits `apiMode: none`
+  applications instead of skipping them.
 - `check-iam-web-adapter-standard.mjs` scans consumer repositories for canonical IAM
   web-adapter integration (`IamWebRequestContextResolver`,
   `iam_web_request_context_resolver_from_env`) and blocks legacy resolver imports,

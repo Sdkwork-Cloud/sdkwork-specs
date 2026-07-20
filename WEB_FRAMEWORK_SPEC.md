@@ -1,7 +1,7 @@
 # SDKWork Web Framework Integration Standard
 
 - Version: 1.0
-- Scope: mandatory integration of `sdkwork-web-framework` for every SDKWork HTTP `*-api` runtime surface, including `open-api`, `app-api`, `backend-api`, Rust route crates, standalone/cloud gateways, migration-only API servers, and Java Spring parallel runtime semantics
+- Scope: mandatory integration of `sdkwork-web-framework` for every SDKWork HTTP `*-api` runtime surface, including `open-api`, `app-api`, `backend-api`, Rust route crates, application standalone gateways, platform cloud gateways, migration-only API servers, and Java Spring parallel runtime semantics
 - Related: `COMPOSABLE_ARCHITECTURE_SPEC.md`, `API_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `WEB_BACKEND_SPEC.md`, `I18N_SPEC.md`, `SECURITY_SPEC.md` section 5.1, `RUST_CODE_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `TEST_SPEC.md`, `COMPONENT_SPEC.md`, `APPLICATION_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `MIGRATION_SPEC.md`
 - Detail standard: `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md` (L1 framework repository authoritative for crate APIs, pipeline stages, extension traits, and capability matrix)
 
@@ -19,7 +19,7 @@ sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md (L1 executable profile)
        -> enforced by
 sdkwork-web-framework crates (L2 runtime)
        -> extended by
-business repositories: sdkwork-routes-* + standalone/cloud gateways + appbase/application-line adapters (L3)
+business repositories: sdkwork-routes-* + API assemblies + application standalone gateways + appbase/application-line adapters (L3)
 ```
 
 Rules:
@@ -41,10 +41,10 @@ The following artifacts `MUST` integrate `sdkwork-web-framework` or its language
 | `sdkwork-routes-<capability>-open-api` | Framework router mounting, route manifest framework metadata, and `WebRequestContext` injection |
 | `sdkwork-routes-<capability>-app-api` | Same |
 | `sdkwork-routes-<capability>-backend-api` | Same |
-| `sdkwork-<application-code>-api-server` | Migration-only framework bootstrap and route mounting until retired listener crates move to standalone/cloud gateway |
-| `sdkwork-<application-code>-standalone-gateway` | Framework pipeline for proxied, dependency, or composed HTTP `*-api` surfaces in `deploymentProfile=standalone` before proxying or dispatch |
-| `sdkwork-<application-code>-cloud-gateway` | Framework pipeline for proxied, dependency, or composed HTTP `*-api` surfaces in `deploymentProfile=cloud` before proxying or dispatch |
-| `sdkwork-api-cloud-gateway` | Framework pipeline for shared `platform.api-gateway` surfaces |
+| `sdkwork-<application-code>-api-server` | Migration-only framework bootstrap and route mounting until retired listener crates move to `sdkwork-api-<application-code>-standalone-gateway` |
+| `sdkwork-api-<application-code>-assembly` | Host-neutral composition of application-owned HTTP `*-api` surfaces |
+| `sdkwork-api-<application-code>-standalone-gateway` | Framework pipeline and listener for assembled APIs in `deploymentProfile=standalone` |
+| `sdkwork-api-cloud-gateway` | Platform-owned framework pipeline hosting approved API assemblies in cloud |
 | Java/Spring `*ApiController` module | Typed `WebRequestContext` equivalent, standard interceptor order, and OpenAPI/manifest metadata parity |
 | Contract-only `apis/` source | OpenAPI operations still declare `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface` before SDK generation |
 

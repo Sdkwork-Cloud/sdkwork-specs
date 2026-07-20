@@ -128,8 +128,8 @@ registry_dependencies:
     order: 10
     ownership: read_only
   - module_id: commerce-core
-    locator: ../sdkwork-commerce (deleted)
-    registry_path: docs/schema-registry/sdkwork-commerce (deleted).tables.yaml
+    locator: ../sdkwork-shop
+    registry_path: docs/schema-registry/sdkwork-shop.tables.yaml
     order: 20
     ownership: read_only
 ```
@@ -196,7 +196,7 @@ Routes and operations consumed through dependency SDKs `MUST` declare:
 ```yaml
 dependency_owned: true
 delivery_kind: composed_local_mount | external_service | consumer_sdk
-sdk_family: sdkwork-commerce (deleted)-app-sdk
+sdk_family: sdkwork-shop-app-sdk
 ```
 
 Rules:

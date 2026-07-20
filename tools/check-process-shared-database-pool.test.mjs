@@ -26,7 +26,7 @@ function scaffold() {
   );
   write(
     root,
-    'crates/sdkwork-demo-gateway-assembly/src/bootstrap.rs',
+    'crates/sdkwork-api-demo-assembly/src/bootstrap.rs',
     'fn assemble(pool: DatabasePool) { let _consumer = pool.clone(); }\n',
   );
   write(
@@ -53,7 +53,7 @@ function scaffold() {
         consumers: [{
           module: 'demo',
           poolMode: 'injected',
-          evidence: ['crates/sdkwork-demo-gateway-assembly/src/bootstrap.rs'],
+          evidence: ['crates/sdkwork-api-demo-assembly/src/bootstrap.rs'],
         }],
         temporaryDriverExceptions: [],
       }],

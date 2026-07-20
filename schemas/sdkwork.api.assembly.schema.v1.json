@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdkwork.com/schemas/sdkwork.api.assembly.schema.v1.json",
+  "title": "SDKWork API Assembly v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "schemaVersion",
+    "applicationCode",
+    "apiMode",
+    "packageName",
+    "crateDir",
+    "routeCrates"
+  ],
+  "properties": {
+    "kind": { "const": "sdkwork.api.assembly" },
+    "schemaVersion": { "const": 1 },
+    "applicationCode": { "type": "string", "pattern": "^(?!api-cloud-gateway$)[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "apiMode": { "enum": ["served", "none"] },
+    "packageName": { "type": "string", "pattern": "^sdkwork-api-(?!api-cloud-gateway(?:-|$))[a-z0-9]+(?:-[a-z0-9]+)*-assembly$" },
+    "crateDir": { "type": "string", "pattern": "^crates/sdkwork-api-(?!api-cloud-gateway(?:-|$))[a-z0-9]+(?:-[a-z0-9]+)*-assembly$" },
+    "routeCrates": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "packageName",
+          "memberDir",
+          "libName",
+          "surface",
+          "mountOrder",
+          "componentRef",
+          "routeManifestRef",
+          "sourceRef"
+        ],
+        "properties": {
+          "packageName": { "type": "string", "pattern": "^sdkwork-routes-[a-z0-9-]+-(app|backend|open)-api$" },
+          "memberDir": { "type": "string", "pattern": "^crates/sdkwork-routes-[a-z0-9-]+-(app|backend|open)-api$" },
+          "libName": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+          "surface": { "enum": ["app-api", "backend-api", "open-api"] },
+          "pathPrefix": { "type": ["string", "null"] },
+          "mountOrder": { "type": "integer", "minimum": 0 },
+          "componentRef": { "type": "string", "minLength": 1 },
+          "routeManifestRef": { "type": "string", "minLength": 1 },
+          "sourceRef": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "apiMode": { "const": "none" } } },
+      "then": { "properties": { "routeCrates": { "maxItems": 0 } } }
+    },
+    {
+      "if": { "properties": { "apiMode": { "const": "served" } } },
+      "then": { "properties": { "routeCrates": { "minItems": 1 } } }
+    }
+  ]
+}

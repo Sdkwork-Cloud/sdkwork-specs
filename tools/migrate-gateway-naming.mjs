@@ -57,11 +57,6 @@ const REPLACEMENTS = [
   ['sdkwork-api-gateway-observability', 'sdkwork-api-cloud-gateway-observability'],
   ['sdkwork-api-gateway-registry', 'sdkwork-api-cloud-gateway-registry'],
   ['sdkwork-api-gateway-config', 'sdkwork-api-cloud-gateway-config'],
-  ['sdkwork_im_gateway_observability', 'sdkwork_im_cloud_gateway_observability'],
-  ['sdkwork_im_gateway_config', 'sdkwork_im_cloud_gateway_config'],
-  ['sdkwork_im_gateway', 'sdkwork_im_cloud_gateway'],
-  ['sdkwork_aiot_gateway', 'sdkwork_aiot_cloud_gateway'],
-  ['sdkwork_clawrouter_gateway', 'sdkwork_clawrouter_cloud_gateway'],
   ['sdkwork_api_gateway_observability', 'sdkwork_api_cloud_gateway_observability'],
   ['sdkwork_api_gateway_registry', 'sdkwork_api_cloud_gateway_registry'],
   ['sdkwork_api_gateway_config', 'sdkwork_api_cloud_gateway_config'],
@@ -82,20 +77,6 @@ const DIR_RENAMES = [
       ['crates/sdkwork-api-gateway-registry', 'crates/sdkwork-api-cloud-gateway-registry'],
       ['crates/sdkwork-api-gateway-config', 'crates/sdkwork-api-cloud-gateway-config'],
       ['crates/sdkwork-api-gateway', 'crates/sdkwork-api-cloud-gateway'],
-    ],
-  },
-  {
-    repo: 'sdkwork-im',
-    renames: [
-      ['services/sdkwork-im-gateway', 'services/sdkwork-im-cloud-gateway'],
-      ['crates/sdkwork-im-gateway-observability', 'crates/sdkwork-im-cloud-gateway-observability'],
-      ['crates/sdkwork-im-gateway-config', 'crates/sdkwork-im-cloud-gateway-config'],
-    ],
-  },
-  {
-    repo: 'sdkwork-aiot',
-    renames: [
-      ['services/sdkwork-aiot-gateway', 'services/sdkwork-aiot-cloud-gateway'],
     ],
   },
 ];

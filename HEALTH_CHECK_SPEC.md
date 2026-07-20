@@ -1,7 +1,7 @@
 # Health Check Standard
 
 - Version: 1.0
-- Scope: infrastructure liveness, readiness, and metrics HTTP probes for every SDKWork HTTP listener, standalone/cloud gateway, platform gateway, migration-only API server, and worker with an HTTP admin surface
+- Scope: infrastructure liveness, readiness, and metrics HTTP probes for every SDKWork HTTP listener, application standalone gateway, platform cloud gateway, migration-only API server, and worker with an HTTP admin surface
 - Related: `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `OBSERVABILITY_SPEC.md`, `NGINX_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SDKWORK_DEPLOY_SPEC.md`, `SECURITY_SPEC.md`, `INTERNAL_API_SPEC.md`, `RPC_SPEC.md`
 
 This standard defines the **infrastructure** health surface. It is not the same as SDKWork business system health APIs such as `/app/v3/api/system/health`, `/app/v3/api/system/ready`, `/backend/v3/api/system/health`, domain storage-provider health checks, or MCP server health checks.
@@ -19,7 +19,9 @@ Rules:
 
 - Every SDKWork HTTP listener, `*-standalone-gateway`, `*-cloud-gateway`, platform gateway, migration-only `*-api-server`, and worker HTTP admin port `MUST` expose `/healthz` and `/readyz`.
 - `/livez` `MAY` be mounted as an alias of `/healthz` through `sdkwork-web-bootstrap::service_router`.
-- Multi-surface gateway assembly and platform collapsed ingress `MUST` mount infrastructure probes once per listener; see `APPLICATION_GATEWAY_SPEC.md` §5.7.1–§5.7.2.
+- Multi-surface API assemblies and the platform cloud gateway `MUST` mount
+  infrastructure probes once per listener; see `API_ASSEMBLY_SPEC.md` sections
+  4 and 6.
 - `/metrics` `MUST` be mounted through `sdkwork-web-bootstrap::service_router` or an approved framework metrics registry.
 - Legacy paths `/health`, `/ready`, and bare `/live` `MUST NOT` be introduced in new work.
 - Existing legacy paths `MUST` be removed during migration to this standard; do not keep parallel legacy handlers after cutover.

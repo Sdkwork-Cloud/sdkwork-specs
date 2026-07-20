@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * Retire application `*-api-server` listener crates.
- * Renames to `sdkwork-<application-code>-standalone-gateway` and rewrites references.
+ * Renames to `sdkwork-api-<application-code>-standalone-gateway` and rewrites references.
  *
- * Authority: APPLICATION_GATEWAY_SPEC.md §5.4 (retired), NAMING_SPEC.md §4.3.1
+ * Authority: APPLICATION_GATEWAY_SPEC.md section 10, NAMING_SPEC.md section 4.3.1.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { listWorkspaceRepositories } from './align-repository-docs-lib.mjs';
-import { readText, resolveApplicationCode } from './gateway-assembly-lib.mjs';
+import { readText, resolveApplicationCode } from './api-assembly-lib.mjs';
 
 const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_WORKSPACE = path.resolve(SPECS_ROOT, '..');
@@ -56,9 +56,9 @@ const TEXT_EXTENSIONS = new Set([
 
 /** Irregular crate renames (old package dir name → new package dir name). */
 const CRATE_TARGET_BY_NAME = {
-  'sdkwork-webserver-api-server': 'sdkwork-web-standalone-gateway',
-  'sdkwork-deploy-api-server': 'sdkwork-deployments-standalone-gateway',
-  'sdkwork-clawrouter-app-api-server': 'sdkwork-clawrouter-standalone-gateway',
+  'sdkwork-webserver-api-server': 'sdkwork-api-web-standalone-gateway',
+  'sdkwork-deploy-api-server': 'sdkwork-api-deployments-standalone-gateway',
+  'sdkwork-clawrouter-app-api-server': 'sdkwork-api-clawrouter-standalone-gateway',
   'sdkwork-clawrouter-admin-api-server': 'sdkwork-clawrouter-admin-gateway',
 };
 
@@ -125,7 +125,7 @@ function targetCrateName(oldCrateName, applicationCode) {
   if (oldCrateName === PLATFORM_LISTENER_CRATE) {
     return null;
   }
-  return `sdkwork-${applicationCode}-standalone-gateway`;
+  return `sdkwork-api-${applicationCode}-standalone-gateway`;
 }
 
 function findApiServerCrates(repoRoot) {

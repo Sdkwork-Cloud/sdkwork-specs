@@ -3,20 +3,19 @@
  * Workspace driver: materialize assembly, align gateway_mount exports, validate.
  */
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { listWorkspaceRepositories } from './align-repository-docs-lib.mjs';
 import { alignGatewayMountExports } from './align-gateway-mount-exports.mjs';
-import { materializeGatewayAssembly } from './materialize-gateway-assembly.mjs';
-import { validateGatewayAssembly } from './validate-gateway-assembly.mjs';
+import { materializeApiAssembly } from './materialize-api-assembly.mjs';
+import { validateApiAssembly } from './validate-api-assembly.mjs';
 
 function usage() {
   return [
-    'Usage: node tools/align-gateway-assembly-workspace.mjs --workspace <dir> [--prefix sdkwork-]',
+    'Usage: node tools/align-api-assembly-workspace.mjs --workspace <dir> [--prefix sdkwork-]',
     '',
-    'For each repository with route crates:',
-    '  1. materialize gateway assembly',
+    'For each application root or repository with route crates:',
+    '  1. materialize API assembly',
     '  2. align gateway_mount exports',
     '  3. validate assembly parity',
   ].join('\n');
@@ -36,23 +35,25 @@ if (parsed.values.help) {
   process.exit(0);
 }
 
-const workspaceRoot = path.resolve(
-  parsed.values.workspace
-  || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..'),
-);
+if (!parsed.values.workspace) {
+  console.error(usage());
+  process.exit(2);
+}
+
+const workspaceRoot = path.resolve(parsed.values.workspace);
 const repositories = listWorkspaceRepositories(workspaceRoot, { prefix: parsed.values.prefix });
 const failures = [];
 
 for (const repoRoot of repositories) {
   const repoName = path.basename(repoRoot);
-  const materialize = materializeGatewayAssembly(repoRoot);
+  const materialize = materializeApiAssembly(repoRoot);
   if (!materialize.ok) {
     continue;
   }
 
   const align = alignGatewayMountExports(repoRoot);
   const alignFailed = align.results.filter((item) => item.status === 'failed');
-  const validation = validateGatewayAssembly(repoRoot);
+  const validation = validateApiAssembly(repoRoot);
 
   if (validation.ok && alignFailed.length === 0) {
     console.log(`ok   ${repoName}`);

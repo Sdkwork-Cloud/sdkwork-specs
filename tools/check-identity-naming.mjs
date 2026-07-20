@@ -62,11 +62,18 @@ function lineNumber(text, index) {
   return text.slice(0, index).split('\n').length;
 }
 
+function isStandardsAuthority(rel) {
+  return !rel.includes('/')
+    && !rel.includes('\\')
+    && rel.endsWith('.md')
+    && !['CLAUDE.md', 'CODEX.md', 'GEMINI.md', 'MIGRATION_SPEC.md'].includes(rel);
+}
+
 function scanText(file, text, rules, root) {
   const issues = [];
   const rel = relative(root, file);
   for (const rule of rules) {
-    if (rule.onlySpecs && !rel.endsWith('_SPEC.md') && rel !== 'README.md') continue;
+    if (rule.onlySpecs && !isStandardsAuthority(rel)) continue;
     let from = 0;
     while (from < text.length) {
       const match = rule.pattern.exec(text.slice(from));
@@ -227,8 +234,8 @@ const standardsRules = [
     message: 'retired product app-api qualifier; use app-api',
   },
   {
-    pattern: /sdkwork-<application-code>-gateway(?!-(?:standalone|cloud))/gu,
-    message: 'retired bare application gateway crate sdkwork-<application-code>-gateway; use -standalone-gateway or -cloud-gateway',
+    pattern: /sdkwork-<application-code>-gateway(?!-assembly)/gu,
+    message: 'retired application gateway identity; use sdkwork-api-<application-code>-assembly or sdkwork-api-<application-code>-standalone-gateway',
     allow: (snippet, rel, line, text, index) => {
       const lineStart = text.lastIndexOf('\n', index) + 1;
       const lineEnd = text.indexOf('\n', index);
@@ -238,10 +245,9 @@ const standardsRules = [
       const context = `${prevLineText}\n${lineText}`;
       return (
         snippet.includes('sdkwork-api-cloud-gateway') ||
-        snippet.includes('-standalone-gateway') ||
-        snippet.includes('-cloud-gateway') ||
-        snippet.includes('-gateway-assembly') ||
-        lineText.includes('-gateway-assembly') ||
+        snippet.includes('sdkwork-api-<application-code>-standalone-gateway') ||
+        snippet.includes('sdkwork-api-<application-code>-assembly') ||
+        lineText.includes('sdkwork-api-<application-code>-assembly') ||
         snippet.includes('Retired') ||
         snippet.includes('retired') ||
         isLegacyTableRow(rel, line, text, index) ||
@@ -255,6 +261,35 @@ const standardsRules = [
     pattern: /shared foundation gateway/giu,
     message: 'ambiguous shared foundation gateway; use platform connectivity-plane gateway',
     allow: (snippet) => snippet.includes('platform connectivity-plane'),
+  },
+  {
+    pattern: /\bgateway assembl(?:y|ies)\b|gateway-assembly|gateway:assembly:/giu,
+    message: 'retired gateway assembly identity; use API assembly and api:assembly:*',
+    allow: (snippet, rel, line, text, index) => {
+      const lineStart = text.lastIndexOf('\n', index) + 1;
+      const lineEnd = text.indexOf('\n', index);
+      const lineText = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
+      const context = text.slice(Math.max(0, lineStart - 160), lineEnd === -1 ? text.length : lineEnd);
+      return isRetiredGatewayDocumentation(rel, lineText)
+        || /retired|migration|rejected|old identity/iu.test(context);
+    },
+    onlySpecs: true,
+  },
+  {
+    pattern: /sdkwork-commerce \(deleted\)/giu,
+    message: 'deleted repository identity in active authority; use a current example and keep deleted identities in migration history only',
+    onlySpecs: true,
+  },
+  {
+    pattern: /\b(?:shared SDKWork API gateway|SDKWork API gateway|shared gateway)\b/giu,
+    message: 'ambiguous gateway role; name application standalone gateway, platform cloud gateway, or the exact API surface',
+    allow: (snippet, rel, line, text, index) => {
+      const lineStart = text.lastIndexOf('\n', index) + 1;
+      const lineEnd = text.indexOf('\n', index);
+      const lineText = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
+      return /bare phrases|retired|MUST NOT use/iu.test(lineText);
+    },
+    onlySpecs: true,
   },
   {
     pattern: /product adapter/giu,
@@ -305,11 +340,10 @@ const consumerRules = [
   },
   {
     pattern: /name = "sdkwork-[a-z0-9]+-gateway"/gu,
-    message: 'retired bare application gateway crate; use sdkwork-<application-code>-standalone-gateway or sdkwork-<application-code>-cloud-gateway',
+    message: 'retired bare application gateway crate; use sdkwork-api-<application-code>-standalone-gateway',
     allow: (snippet) =>
       snippet.includes('sdkwork-api-cloud-gateway') ||
-      snippet.includes('-standalone-gateway') ||
-      snippet.includes('-cloud-gateway'),
+      snippet.includes('sdkwork-api-') && snippet.includes('-standalone-gateway'),
   },
 ];
 

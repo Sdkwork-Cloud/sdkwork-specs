@@ -144,8 +144,8 @@ Choose one canonical pattern per deployment and declare it in the app topology s
 Human/admin application REST planes plus separate edge device ingress; platform
 gateway when consoles use IAM. Application REST `MUST` terminate on a single
 `application.public-ingress` bind that embeds app-api and admin/backend routes
-in-process (`sdkwork-<application-code>-standalone-gateway`) or through the
-approved cloud application gateway.
+through `sdkwork-api-<application-code>-assembly` hosted in-process by
+`sdkwork-api-<application-code>-standalone-gateway` or by the deployed platform host.
 
 ### Connectivity Planes
 

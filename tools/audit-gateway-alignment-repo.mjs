@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
  * Per-repository gateway dependency-management alignment report.
- * Authority: APPLICATION_GATEWAY_SPEC.md §5.6–5.7, DEPENDENCY_MANAGEMENT_SPEC.md
+ * Authority: API_ASSEMBLY_SPEC.md and APPLICATION_GATEWAY_SPEC.md.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 
 import {
   assemblyCrateDir,
@@ -16,11 +17,8 @@ import {
   resolveApplicationCode,
   routeCrateExpectsDelegatableMount,
   scanForbiddenGatewayMerges,
-  usesKernelBridgeAssembly,
-  apiServerUsesSplitSurfaceBinsOnly,
-  isEdgeProxyStandaloneGateway,
-} from './gateway-assembly-lib.mjs';
-import { validateGatewayAssembly } from './validate-gateway-assembly.mjs';
+} from './api-assembly-lib.mjs';
+import { validateApiAssembly } from './validate-api-assembly.mjs';
 import { scanDuplicateGatewayApiDepsRepo } from './scan-duplicate-gateway-api-deps.mjs';
 
 function hasPackageScript(root, name) {
@@ -36,13 +34,6 @@ function hasPackageScript(root, name) {
   }
 }
 
-function hasGatewayScripts(root) {
-  return (
-    fs.existsSync(path.join(root, 'scripts', 'gateway', 'assembly-materialize.mjs'))
-    && fs.existsSync(path.join(root, 'scripts', 'gateway', 'assembly-validate.mjs'))
-  );
-}
-
 function hasWorkspaceMember(root, applicationCode) {
   const cargoToml = readText(path.join(root, 'Cargo.toml'));
   if (!cargoToml.includes('[workspace]')) {
@@ -51,12 +42,11 @@ function hasWorkspaceMember(root, applicationCode) {
   return cargoToml.includes(`"${assemblyCrateDir(applicationCode)}"`);
 }
 
-function hasStandaloneOrCloudGateway(root, applicationCode) {
+function findStandaloneGateways(root, applicationCode) {
   const candidates = [
+    path.join(root, 'crates', `sdkwork-api-${applicationCode}-standalone-gateway`),
     path.join(root, 'crates', `sdkwork-${applicationCode}-standalone-gateway`),
-    path.join(root, 'crates', `sdkwork-${applicationCode}-cloud-gateway`),
     path.join(root, 'services', `sdkwork-${applicationCode}-standalone-gateway`),
-    path.join(root, 'services', `sdkwork-${applicationCode}-cloud-gateway`),
   ];
   const found = {};
   for (const candidate of candidates) {
@@ -122,15 +112,38 @@ function countStubMounts(root, routeCrates) {
 }
 
 export function auditGatewayAlignmentRepo(root) {
-  const applicationCode = resolveApplicationCode(root);
+  if (path.basename(path.resolve(root)) === 'sdkwork-api-cloud-gateway') {
+    return {
+      applicationCode: null,
+      category: 'platform-cloud-host',
+      routeCrates: 0,
+      score: 'skip',
+      issues: [],
+      warnings: [],
+    };
+  }
+  let applicationCode;
+  try {
+    applicationCode = resolveApplicationCode(root);
+  } catch (error) {
+    return {
+      applicationCode: null,
+      category: 'invalid-application-root',
+      routeCrates: 0,
+      score: 'fail',
+      issues: [error.message],
+      warnings: [],
+    };
+  }
   const routeCrates = discoverRouteCrates(root, applicationCode);
   const issues = [];
   const warnings = [];
+  const isApplicationRoot = fs.existsSync(path.join(root, 'sdkwork.app.config.json'));
 
-  if (routeCrates.length === 0) {
+  if (routeCrates.length === 0 && !isApplicationRoot) {
     return {
       applicationCode,
-      category: 'no-route-crates',
+      category: 'non-application-no-route-crates',
       routeCrates: 0,
       score: 'skip',
       issues,
@@ -138,7 +151,7 @@ export function auditGatewayAlignmentRepo(root) {
     };
   }
 
-  const validation = validateGatewayAssembly(root);
+  const validation = validateApiAssembly(root);
   issues.push(...validation.errors);
   warnings.push(...validation.warnings);
 
@@ -152,20 +165,21 @@ export function auditGatewayAlignmentRepo(root) {
 
   const workspaceMember = hasWorkspaceMember(root, applicationCode);
   if (workspaceMember === false) {
-    issues.push('gateway-assembly not in Cargo workspace members');
+    issues.push('api-assembly not in Cargo workspace members');
   }
 
-  if (!hasGatewayScripts(root)) {
-    issues.push('missing scripts/gateway/assembly-*.mjs');
+  if (!hasPackageScript(root, 'api:assembly:materialize')) {
+    warnings.push('missing pnpm api:assembly:materialize');
   }
-  if (!hasPackageScript(root, 'gateway:assembly:materialize')) {
-    warnings.push('missing pnpm gateway:assembly:materialize');
-  }
-  if (!hasPackageScript(root, 'gateway:assembly:validate')) {
-    warnings.push('missing pnpm gateway:assembly:validate');
+  if (!hasPackageScript(root, 'api:assembly:validate')) {
+    warnings.push('missing pnpm api:assembly:validate');
   }
 
-  const gatewayCrates = hasStandaloneOrCloudGateway(root, applicationCode);
+  const gatewayCrates = findStandaloneGateways(root, applicationCode);
+  const canonicalGateway = `sdkwork-api-${applicationCode}-standalone-gateway`;
+  if (!gatewayCrates[canonicalGateway]) {
+    warnings.push(`missing canonical standalone gateway ${canonicalGateway}`);
+  }
   const hasAssemblyDep = Object.keys(gatewayCrates).some((name) => {
     if (!name.includes('gateway')) {
       return false;
@@ -181,13 +195,7 @@ export function auditGatewayAlignmentRepo(root) {
   });
 
   if (Object.keys(gatewayCrates).length > 0 && !hasAssemblyDep) {
-    const bootstrapPath = path.join(assemblyDir, 'src', 'bootstrap.rs');
-    const bootstrap = fs.existsSync(bootstrapPath) ? readText(bootstrapPath) : '';
-    const splitSurfaceTransitional = apiServerUsesSplitSurfaceBinsOnly(root, applicationCode);
-    const edgeProxyStandalone = isEdgeProxyStandaloneGateway(root, applicationCode);
-    if (!usesKernelBridgeAssembly(bootstrap) && !splitSurfaceTransitional && !edgeProxyStandalone) {
-      warnings.push('standalone/cloud gateway crate does not depend on gateway-assembly');
-    }
+    warnings.push('standalone gateway crate does not depend on api-assembly');
   }
 
   const mergeHits = scanForbiddenGatewayMerges(
@@ -207,7 +215,7 @@ export function auditGatewayAlignmentRepo(root) {
   if (fs.existsSync(bootstrapPath)) {
     const bootstrap = readText(bootstrapPath);
     if (bootstrapHasTodoMacro(bootstrap)) {
-      issues.push('gateway-assembly bootstrap.rs still contains todo!()');
+      issues.push('api-assembly bootstrap.rs still contains todo!()');
     }
   } else if (routeCrates.some((crate) => crate.hasGatewayMount)) {
     const allStub = stubCount === routeCrates.length;
@@ -222,26 +230,49 @@ export function auditGatewayAlignmentRepo(root) {
   issues.push(...duplicateReport.issues);
   warnings.push(...duplicateReport.warnings);
 
-  const score = issues.length === 0
-    ? (warnings.length === 0 ? 'perfect' : 'warn')
+  const uniqueIssues = [...new Set(issues)];
+  const uniqueWarnings = [...new Set(warnings)];
+  const score = uniqueIssues.length === 0
+    ? (uniqueWarnings.length === 0 ? 'perfect' : 'warn')
     : 'fail';
 
   return {
     applicationCode,
-    category: 'route-crates',
+    category: routeCrates.length > 0 ? 'route-crates' : 'application-api-mode-none',
     routeCrates: routeCrates.length,
     gatewayCrates: Object.keys(gatewayCrates),
     score,
-    issues,
-    warnings,
+    issues: uniqueIssues,
+    warnings: uniqueWarnings,
   };
 }
 
 function main() {
-  const root = path.resolve(process.argv[2] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..'));
+  const { values, positionals } = parseArgs({
+    options: {
+      root: { type: 'string' },
+      strict: { type: 'boolean', default: false },
+      help: { type: 'boolean', short: 'h', default: false },
+    },
+    allowPositionals: true,
+  });
+  if (values.help) {
+    console.log('Usage: node tools/audit-gateway-alignment-repo.mjs [--root <application>] [--strict]');
+    return;
+  }
+  if (values.root && positionals.length > 0) {
+    console.error('Use either --root <application> or one legacy positional root, not both');
+    process.exitCode = 2;
+    return;
+  }
+  const root = path.resolve(
+    values.root
+    || positionals[0]
+    || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..'),
+  );
   const report = auditGatewayAlignmentRepo(root);
   console.log(JSON.stringify(report, null, 2));
-  if (report.score === 'fail') {
+  if (report.score === 'fail' || (values.strict && report.score === 'warn')) {
     process.exit(1);
   }
 }

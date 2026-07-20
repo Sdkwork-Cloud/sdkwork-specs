@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Verify single HTTP ingress rules from APPLICATION_GATEWAY_SPEC.md §5.6 and
+ * Verify single HTTP ingress rules from APPLICATION_GATEWAY_SPEC.md section 5 and
  * APP_RUNTIME_TOPOLOGY_SPEC.md §8.
  */
 import fs from 'node:fs';
@@ -55,7 +55,7 @@ const GATEWAY_INGRESS_SURFACE_IDS = new Set([
   'platform.standalone-gateway',
 ]);
 
-const GATEWAY_BINARY_PATTERN = /(?:^|-)(?:standalone-gateway|cloud-gateway|api-cloud-gateway|sdkwork-im-server)$/u;
+const GATEWAY_BINARY_PATTERN = /(?:^|-)(?:standalone-gateway|api-cloud-gateway|sdkwork-im-server)$/u;
 
 const DECOMPOSED_HTTP_BINARY_PATTERN = /(?:^|-)(?:app-api|backend-api|open-api|admin-api|api-server)$/u;
 
@@ -284,7 +284,7 @@ function checkTopologySpec(repoRoot, errors, warnings) {
     for (const processEntry of processes) {
       if (isGatewayMigrationWarning(processEntry)) {
         warnings.push(
-          `${rel}: ${profileId} uses ${processEntry.binary} on application.public-ingress; migrate to sdkwork-*-standalone-gateway or sdkwork-*-cloud-gateway`,
+          `${rel}: ${profileId} uses ${processEntry.binary} on application.public-ingress; migrate to sdkwork-api-<application-code>-standalone-gateway`,
         );
       }
     }

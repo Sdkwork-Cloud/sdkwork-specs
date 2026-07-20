@@ -2,7 +2,16 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+
+import { isApplicationCloudGatewayScript } from './lib/application-cloud-gateway.mjs';
+
+const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const API_ASSEMBLY_SCRIPT_TOOLS = new Map([
+  ['api:assembly:materialize', 'materialize-api-assembly.mjs'],
+  ['api:assembly:validate', 'validate-api-assembly.mjs'],
+]);
 
 const REQUIRED_ROOT_SCRIPTS = [
   'dev',
@@ -160,6 +169,7 @@ const PNPM_NATIVE_COMMANDS = new Set([
   'patch',
   'publish',
   'remove',
+  'run',
   'setup',
   'store',
   'unlink',
@@ -170,10 +180,24 @@ const PNPM_PROSE_WORDS = new Set([
   'command',
   'commands',
   'child-process',
+  'catalog',
+  'dependency',
+  'global',
+  'lockfile',
+  'modules',
+  'package',
+  'packagemanager',
   'script',
   'scripts',
+  'standard',
+  'tab',
   'workspace',
   'workspaces',
+]);
+const NPM_LIFECYCLE_HOOK_PATTERN = /^(?:pre|post)(?:dev|start|stop|preview|build|test|check|verify|clean|typecheck|lint|format|pack|publish|install)$/u;
+const NPM_LIFECYCLE_HOOKS = new Set([
+  'prepare',
+  'prepublishOnly',
 ]);
 const IGNORED_DIRS = new Set([
   '.git',
@@ -190,6 +214,7 @@ const IGNORED_DIRS = new Set([
 ]);
 const IGNORED_DOCUMENT_PATH_PARTS = new Set([
   'artifacts',
+  'docs/archive',
   'docs/release',
   'docs/review',
   'docs/superpowers',
@@ -207,6 +232,48 @@ function usage() {
 function readJson(file) {
   const text = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/u, '');
   return JSON.parse(text);
+}
+
+function isApplicationRepositoryRoot(root) {
+  const componentPath = path.join(root, 'specs', 'component.spec.json');
+  const component = fs.existsSync(componentPath) ? readJson(componentPath) : null;
+  const componentType = String(component?.component?.type ?? '').trim().toLowerCase();
+  if (new Set(['domain-library', 'node-package']).has(componentType)) return false;
+
+  const appPath = path.join(root, 'sdkwork.app.config.json');
+  const app = fs.existsSync(appPath) ? readJson(appPath) : null;
+  return String(app?.runtime?.family ?? '').trim().toLowerCase() !== 'library';
+}
+
+function isDelegatedApplicationSurface(root) {
+  const deploymentPath = path.join(root, 'etc', 'sdkwork.deployment.config.json');
+  if (!fs.existsSync(deploymentPath)) return false;
+  return readJson(deploymentPath)?.kind === 'sdkwork.component-deployment';
+}
+
+function canonicalApiAssemblyCommand(root, toolName) {
+  const toolPath = path.join(SPECS_ROOT, 'tools', toolName);
+  const relative = path.relative(root, toolPath).replaceAll('\\', '/');
+  const commandPath = path.isAbsolute(relative) || /^[a-z]:\//iu.test(relative)
+    ? relative
+    : relative.startsWith('.') ? relative : `./${relative}`;
+  return `node ${commandPath} --root .`;
+}
+
+function pushApiAssemblyCommandIssues(root, scripts, issues) {
+  for (const [scriptName, toolName] of API_ASSEMBLY_SCRIPT_TOOLS) {
+    if (!scripts[scriptName]) {
+      issues.push(`missing required API assembly script "${scriptName}"`);
+      continue;
+    }
+
+    const expected = canonicalApiAssemblyCommand(root, toolName);
+    if (String(scripts[scriptName]).trim() !== expected) {
+      issues.push(
+        `${scriptName}: must directly invoke the canonical sdkwork-specs tool as "${expected}"; application-owned wrappers are forbidden`,
+      );
+    }
+  }
 }
 
 function splitCsv(value) {
@@ -414,7 +481,8 @@ function resolvedProfileState(scriptName, scripts) {
     commandText,
     hasCloud: scriptNames.some((name) => scriptNameHasSegment(name, 'cloud'))
       || commandHasFlagValue(commandText, 'deployment-profile', 'cloud'),
-    hasDevelopment: commandHasFlagValue(commandText, 'environment', 'development'),
+    hasDevelopment: commandHasFlagValue(commandText, 'environment', 'development')
+      || /(?:^|\s)sdkwork-app\s+dev(?:\s|$)/mu.test(commandText),
     hasPostgres: scriptNames.some((name) => scriptNameHasSegment(name, 'postgres'))
       || commandHasFlagValue(commandText, 'database', 'postgres'),
     hasSqlite: scriptNames.some((name) => scriptNameHasSegment(name, 'sqlite'))
@@ -456,7 +524,25 @@ function pushProfileDevelopmentEntrypointIssues(scripts, issues) {
   }
 }
 
-function pushPairedLifecycleProfileIssues(scripts, issues) {
+function workflowReleaseProfiles(root) {
+  const workflowPath = path.join(root, 'sdkwork.workflow.json');
+  if (!fs.existsSync(workflowPath)) return new Set(['standalone', 'cloud']);
+  const workflow = readJson(workflowPath);
+  if (!Array.isArray(workflow?.targets) || workflow.targets.length === 0) {
+    return new Set(['standalone', 'cloud']);
+  }
+  const profiles = new Set();
+  for (const target of workflow.targets) {
+    if (target?.profileBinding === 'runtime-configurable') {
+      for (const profile of target.supportedDeploymentProfiles ?? ['standalone', 'cloud']) profiles.add(profile);
+    } else if (target?.deploymentProfile === 'standalone' || target?.deploymentProfile === 'cloud') {
+      profiles.add(target.deploymentProfile);
+    }
+  }
+  return profiles.size > 0 ? profiles : new Set(['standalone', 'cloud']);
+}
+
+function pushPairedLifecycleProfileIssues(root, scripts, issues) {
   const names = Object.keys(scripts);
   for (const [namespace, phases] of [
     ['release', RELEASE_PHASES],
@@ -472,10 +558,13 @@ function pushPairedLifecycleProfileIssues(scripts, issues) {
       const hasRuntimeConfigurable = namespace === 'release'
         && exposed.some((name) => scriptNameHasSegment(name, 'runtime-configurable'));
       if (hasRuntimeConfigurable) continue;
-      if (!hasStandalone) {
+      const requiredProfiles = namespace === 'release'
+        ? workflowReleaseProfiles(root)
+        : new Set(['standalone', 'cloud']);
+      if (requiredProfiles.has('standalone') && !hasStandalone) {
         issues.push(`${phasePrefix}: exposed lifecycle phase must provide a standalone profile variant`);
       }
-      if (!hasCloud) {
+      if (requiredProfiles.has('cloud') && !hasCloud) {
         issues.push(`${phasePrefix}: exposed lifecycle phase must provide a cloud profile variant`);
       }
     }
@@ -528,6 +617,9 @@ function pushCommandNameIssues(
   prefix = '',
   productPrefixMessage = 'application-code-prefixed public root scripts are forbidden',
 ) {
+  if (NPM_LIFECYCLE_HOOKS.has(scriptName) || NPM_LIFECYCLE_HOOK_PATTERN.test(scriptName)) {
+    return;
+  }
   if (scriptName.startsWith('_sdkwork:')) {
     if (!/^_sdkwork:(dev:(standalone|cloud)|stop|build|test|check|verify|clean|release:[a-z0-9:-]+|deploy:[a-z0-9:-]+|client(?::[a-z0-9-]+)*|gateway(?::[a-z0-9-]+)*)$/u.test(scriptName)) {
       issues.push(`${prefix}${scriptName}: private SDKWork hooks must use an approved _sdkwork lifecycle or topology namespace`);
@@ -563,15 +655,30 @@ function validateRootScripts(root, productPrefixes) {
   const scripts = manifest.scripts || {};
   const scriptNames = Object.keys(scripts).sort();
   const issues = [];
+  const applicationRepository = isApplicationRepositoryRoot(root);
+  const delegatedSurface = isDelegatedApplicationSurface(root);
+  const independentApplicationRoot = applicationRepository && !delegatedSurface;
 
-  for (const required of REQUIRED_ROOT_SCRIPTS) {
-    if (!scripts[required]) {
-      issues.push(`missing required root script "${required}"`);
+  if (independentApplicationRoot) {
+    for (const required of REQUIRED_ROOT_SCRIPTS) {
+      if (!scripts[required]) {
+        issues.push(`missing required root script "${required}"`);
+      }
     }
-  }
 
-  if (scripts.dev && !scripts.stop) {
-    issues.push('stop: repository roots with dev must expose a scoped stop command');
+    if (scripts.dev && !scripts.stop) {
+      issues.push('stop: repository roots with dev must expose a scoped stop command');
+    }
+  } else if (delegatedSurface) {
+    for (const required of ['dev', 'dev:standalone', 'dev:cloud', 'stop']) {
+      if (!scripts[required]) {
+        issues.push(`missing required delegated surface script "${required}"`);
+      }
+    }
+
+    if (scripts.dev && !scripts.stop) {
+      issues.push('stop: delegated surfaces with dev must expose a parent-scoped stop command');
+    }
   }
 
   for (const scriptName of scriptNames) {
@@ -580,9 +687,33 @@ function validateRootScripts(root, productPrefixes) {
       pushRetiredCommandValueIssues(scriptName, String(scripts[scriptName]), issues);
     }
   }
-  pushDefaultDevelopmentRuntimeIssues(scripts, issues);
-  pushProfileDevelopmentEntrypointIssues(scripts, issues);
-  pushPairedLifecycleProfileIssues(scripts, issues);
+  const isPlatformCloudGateway = path.basename(path.resolve(root)) === 'sdkwork-api-cloud-gateway';
+  if (!isPlatformCloudGateway) {
+    for (const scriptName of scriptNames) {
+      if (isApplicationCloudGatewayScript(scriptName)) {
+        issues.push(`${scriptName}: application roots must not expose platform cloud gateway commands`);
+      }
+      if (scriptName.startsWith('gateway:assembly:')) {
+        issues.push(`${scriptName}: use api:assembly:materialize or api:assembly:validate`);
+      }
+    }
+    const cargo = fs.existsSync(path.join(root, 'Cargo.toml'))
+      ? fs.readFileSync(path.join(root, 'Cargo.toml'), 'utf8')
+      : '';
+    const ownsHttpRoutes = /crates\/sdkwork-routes-[^"\s]+-(?:app|backend|open)-api/u.test(cargo)
+      || fs.existsSync(path.join(root, 'crates'))
+        && fs.readdirSync(path.join(root, 'crates')).some((name) => /^sdkwork-api-[a-z0-9-]+-assembly$/u.test(name));
+    const isApplicationRoot = independentApplicationRoot
+      && fs.existsSync(path.join(root, 'sdkwork.app.config.json'));
+    if (ownsHttpRoutes || isApplicationRoot) {
+      pushApiAssemblyCommandIssues(root, scripts, issues);
+    }
+  }
+  if (independentApplicationRoot || delegatedSurface) {
+    pushDefaultDevelopmentRuntimeIssues(scripts, issues);
+    pushProfileDevelopmentEntrypointIssues(scripts, issues);
+  }
+  pushPairedLifecycleProfileIssues(root, scripts, issues);
 
   if (issues.length > 0) {
     fail(`${path.relative(process.cwd(), packagePath)} is not compliant`, issues);

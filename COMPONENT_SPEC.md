@@ -155,8 +155,8 @@ Rules:
 | `react-app`, `react-tauri-app`, `pc-app`, `h5-app`, `flutter-app`, `mini-program-app`, `android-native-app`, `ios-native-app`, `harmony-native-app`, `app` | Application shell or client app root | `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` for client roots, matching root architecture spec, architecture UI spec when applicable, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md` |
 | `react-package`, `react-tauri-package`, `flutter-package`, `dart-package`, `android-native-package`, `ios-native-package`, `harmony-native-package`, `node-package` | Frontend or reusable UI/service package | `MODULE_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, architecture UI spec when UI is present, `SDK_SPEC.md`, `I18N_SPEC.md` when user-facing |
 | `rust-route-crate` | Rust HTTP route/path source package named `sdkwork-routes-<capability>-<surface>` | `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `SDK_SPEC.md`, `DOMAIN_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md` |
-| `rust-standalone-gateway` | Rust standalone application ingress crate named `sdkwork-<application-code>-standalone-gateway` | `APPLICATION_GATEWAY_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `TEST_SPEC.md` |
-| `rust-cloud-gateway` | Rust cloud application ingress crate named `sdkwork-<application-code>-cloud-gateway` | `APPLICATION_GATEWAY_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `TEST_SPEC.md` |
+| `rust-api-assembly` | Host-neutral application API assembly named `sdkwork-api-<application-code>-assembly` | `API_ASSEMBLY_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `TEST_SPEC.md` |
+| `rust-api-standalone-gateway` | Rust standalone application ingress crate named `sdkwork-api-<application-code>-standalone-gateway` | `API_ASSEMBLY_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `TEST_SPEC.md` |
 | `rust-platform-cloud-gateway` | Rust platform cloud ingress crate named `sdkwork-api-cloud-gateway` | `APPLICATION_GATEWAY_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `TEST_SPEC.md` |
 | `web-backend-service` | Java/Rust HTTP backend service, controller module, handler/service/repository package, or runtime API composition unit | `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `DOMAIN_SPEC.md`, `SECURITY_SPEC.md`, `DATABASE_SPEC.md` when persistent, `SDK_SPEC.md`, `TEST_SPEC.md` |
 | `rust-crate`, `tauri-host`, `go-module`, `java-module`, `python-package`, `csharp-project`, `swift-package` | Language-native runtime, service, SDK, or host unit | `MODULE_SPEC.md`, `CONFIG_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md` |
@@ -232,20 +232,20 @@ Rules:
   generated SDK clients in `contracts.sdkClients`.
 - A `rust-route-crate` component manifest `MUST` include `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`,
   `SDK_WORKSPACE_GENERATION_SPEC.md`, and `TEST_SPEC.md` in `canonicalSpecs`.
-- A `rust-standalone-gateway` component `MUST` use component and Cargo package name
-  `sdkwork-<application-code>-standalone-gateway`, live under
-  `crates/sdkwork-<application-code>-standalone-gateway/`, and declare
+- A `rust-api-assembly` component `MUST` use component and Cargo package name
+  `sdkwork-api-<application-code>-assembly`, live under
+  `crates/sdkwork-api-<application-code>-assembly/`, declare
+  `component.surface: "api-assembly"`, and own `assembly-manifest.json`.
+- A `rust-api-standalone-gateway` component `MUST` use component and Cargo package name
+  `sdkwork-api-<application-code>-standalone-gateway`, live under
+  `crates/sdkwork-api-<application-code>-standalone-gateway/`, and declare
   `component.surface: "gateway-api"`.
-- A `rust-cloud-gateway` component `MUST` use component and Cargo package name
-  `sdkwork-<application-code>-cloud-gateway`, live under
-  `crates/sdkwork-<application-code>-cloud-gateway/`, and declare
-  `component.surface: "gateway-api"`.
-- A `rust-standalone-gateway` or `rust-cloud-gateway` component manifest `MUST` include
-  `APPLICATION_GATEWAY_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`,
+- A `rust-api-assembly` or `rust-api-standalone-gateway` component manifest `MUST` include
+  `API_ASSEMBLY_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`,
   `RUST_CODE_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, and `TEST_SPEC.md` in `canonicalSpecs`.
-- A `rust-standalone-gateway` or `rust-cloud-gateway` component `MUST` declare
-  `contracts.dependencyApiSurfaces` for every dependency or platform HTTP surface it composes or
-  proxies.
+- A `rust-api-assembly` component declares its complete route inventory. A
+  `rust-api-standalone-gateway` declares every API assembly it hosts and must
+  not duplicate their route/service/repository dependencies.
 - A `rust-platform-cloud-gateway` component `MUST` use component and Cargo package name
   `sdkwork-api-cloud-gateway`, live under `crates/sdkwork-api-cloud-gateway/`, and declare
   `component.domain: "platform"`.
@@ -275,30 +275,30 @@ Rules:
   Course, and Messaging ahead of broad app/backend fallback surfaces. Split-only upstream surfaces
   must not declare `cargoFeature`,
   `cargoDependency`, or `embeddedExecutableExport` until a compatible executable integration exists.
-- A shared API gateway component `MUST` add a split-only dependency surface only from existing
+- A platform cloud gateway component `MUST` add a split-only dependency surface only from existing
   SDKWork semantic evidence: SDK family or component/runtime manifest metadata plus materialized
   OpenAPI paths, derived SDK generation inputs, or normalized route manifests that prove a stable
   route prefix. Empty SDK manifests and generic-only API roots are inventory candidates and must
   not become required gateway startup upstreams.
-- If one dependency SDK family owns multiple stable route prefixes, the gateway component `MUST`
+- If one dependency SDK family owns multiple stable route prefixes, the platform cloud gateway component `MUST`
   list each prefix under `apiSurfaces` while keeping the same dependency service id and upstream
   base URL key. Component specs may summarize those prefixes on the service dependency entry with
   an `apiPrefixes` array, but must not invent prefix-specific service ids that do not correspond to
   a real upstream service boundary.
-- Application component specs that consume shared platform foundation APIs through a gateway `MUST`
-  identify the gateway application, target mode, common SDK root env key, gateway base URL or bind
-  env keys when applicable, and any governed application-local aggregation components pending removal.
-  Local launch scripts must be covered by tests that prove the default dependency upstream points to
-  the shared gateway root or a managed gateway process; direct dependency module URLs are split-mode
-  overrides, not the application integration standard.
-- Application component specs `MUST` distinguish application-owned API roots from dependency
-  SDK roots. A `foundationApiGateway` declaration describes **platform connectivity-plane ingress**
-  for shared foundation dependency SDKs (IAM, Drive, messaging, etc.). It is not domain `platform`
-  bounded-context ownership and does not rename application-owned `app-api`, `backend-api`, or
-  `open-api` surfaces unless those surfaces are explicitly declared as gateway dependency exports.
-- Existing governed application-local foundation adapters in component specs `MUST` be marked as
-  removal-bound exceptions and must not be declared as default same-origin dependency surface
-  coverage when the shared gateway is the target runtime.
+- Application component specs that consume platform foundation APIs `MUST`
+  declare those SDKs through `contracts.sdkDependencies` and their runtime
+  availability through `dependencyApiSurfaces`. The application topology owns
+  `platform.api-gateway` URL/env provenance; component specs do not identify a
+  platform gateway process, repository, bind key, or autostart behavior.
+- `integration.foundationApiGateway` is a retired parallel contract. New or
+  aligned component specs `MUST NOT` declare it. Existing values must be
+  decomposed into topology surface provenance, `sdkDependencies`,
+  `dependencyApiSurfaces`, and explicit per-SDK overrides before the legacy
+  field is removed; no replacement gateway-identity field is introduced.
+- Existing governed application-local foundation adapters in component specs
+  `MUST` be marked as removal-bound exceptions and must not be declared as
+  default same-origin dependency surface coverage when the platform API
+  surface is the target runtime.
 
 ## 5. Discovery Rules
 

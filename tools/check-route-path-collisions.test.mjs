@@ -9,8 +9,8 @@ import {
   normalizeRoutePath,
 } from './lib/route-registry.mjs';
 import {
-  validateGatewayAssembly,
-} from './validate-gateway-assembly.mjs';
+  validateApiAssembly,
+} from './validate-api-assembly.mjs';
 
 const CHECKER = path.resolve(import.meta.dirname, 'check-route-path-collisions.mjs');
 
@@ -535,8 +535,10 @@ test('checker reconciles dependency-owned operations declared by dependency-api-
   assert.equal(result.status, 0, result.stderr);
 });
 
-test('validateGatewayAssembly includes route path collision validation', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-gateway-route-collision-'));
+test('validateApiAssembly includes route path collision validation', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-gateway-route-collision-'));
+  const root = path.join(workspace, 'sdkwork-shop');
+  fs.mkdirSync(root, { recursive: true });
   writeJson(path.join(root, 'sdkwork.app.config.json'), {
     backend: { appId: 'sdkwork-shop' },
   });
@@ -546,7 +548,7 @@ test('validateGatewayAssembly includes route path collision validation', () => {
       '[workspace]',
       'members = [',
       '  "crates/sdkwork-routes-shop-app-api",',
-      '  "crates/sdkwork-shop-gateway-assembly"',
+      '  "crates/sdkwork-api-shop-assembly"',
       ']',
       '',
     ].join('\n'),
@@ -564,11 +566,11 @@ test('validateGatewayAssembly includes route path collision validation', () => {
       '',
     ].join('\n'),
   );
-  writeJson(path.join(root, 'crates/sdkwork-shop-gateway-assembly/assembly-manifest.json'), {
-    kind: 'sdkwork.gateway.assembly',
+  writeJson(path.join(root, 'crates/sdkwork-api-shop-assembly/assembly-manifest.json'), {
+    kind: 'sdkwork.api.assembly',
     schemaVersion: 1,
     applicationCode: 'shop',
-    packageName: 'sdkwork-shop-gateway-assembly',
+    packageName: 'sdkwork-api-shop-assembly',
     routeCrates: [{ packageName: 'sdkwork-routes-shop-app-api' }],
   });
   writeJson(
@@ -588,7 +590,7 @@ test('validateGatewayAssembly includes route path collision validation', () => {
     }),
   );
 
-  const result = validateGatewayAssembly(root);
+  const result = validateApiAssembly(root);
 
   assert.equal(result.ok, false);
   assert.ok(result.errors.some((error) => error.includes('duplicate-route-path')));

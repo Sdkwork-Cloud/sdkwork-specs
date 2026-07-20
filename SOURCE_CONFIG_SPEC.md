@@ -121,8 +121,8 @@ Rules:
   remote health checks without declaring those services as local processes.
 - Client source config may describe both supported deployment profiles, but
   materialized runtime config contains exactly one active profile. Cloud
-  source config defaults to `platform-collapsed` and a deployed
-  `sdkwork-api-cloud-gateway` origin; standalone source config identifies the
+  source config uses explicit surface-oriented deployed URLs without naming
+  the remote gateway implementation; standalone source config identifies the
   application-owned standalone gateway placement and URL.
 - Profile/environment/endpoint switches `MUST` use distinct credential,
   cache, offline-state, and user-data namespaces. Source config never copies

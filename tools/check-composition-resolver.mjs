@@ -33,10 +33,9 @@ function main() {
   const resolution = resolveComposition(args.root);
   const issues = [...resolution.issues];
 
-  if (resolution.integrations.some((entry) => entry.forbidProductSameOriginFallback)) {
-    const legacyPath = path.join(args.root, 'specs', 'dependency-api-surfaces.json');
-    if (!resolution.requiresPlatformGatewayProcess) {
-      issues.push('platform external dependencies require requiresPlatformGatewayProcess=true');
+  if (resolution.integrations.some((entry) => entry.forbidApplicationSameOriginFallback)) {
+    if (!resolution.requiresPlatformApiSurface) {
+      issues.push('platform external dependencies require requiresPlatformApiSurface=true');
     }
   }
 

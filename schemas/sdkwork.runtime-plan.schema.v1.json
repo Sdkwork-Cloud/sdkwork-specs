@@ -27,7 +27,7 @@
           "required": ["id", "role", "binary"],
           "properties": {
             "id": { "type": "string", "minLength": 1 },
-            "role": { "enum": ["standalone-gateway", "application-cloud-gateway", "platform-gateway"] },
+            "role": { "const": "api-standalone-gateway" },
             "binary": { "type": ["string", "null"] }
           }
         }
@@ -82,7 +82,7 @@
       "required": ["id", "role"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
-        "role": { "enum": ["client", "standalone-gateway", "application-cloud-gateway", "platform-gateway", "api-listener", "database", "redis", "migration", "seed", "worker", "tunnel"] },
+        "role": { "enum": ["client", "api-standalone-gateway", "database", "redis", "migration", "seed", "worker", "tunnel"] },
         "runtimeTargets": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
         "clientArchitectures": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
         "script": { "type": "string" },

@@ -172,12 +172,11 @@ Rules:
 
 Frontend route classification and admin menus **should** filter using inherited permission codes:
 
-```text
-effectiveRoutePermission =
-  routePermissionHints.overrides[routeId]
-  ?? OpenAPI x-sdkwork-permission for owned route
-  ?? module manifest binding for reusable module route
-```
+Permission resolution uses the first available source in this exact order:
+
+1. `routePermissionHints.overrides[routeId]`;
+2. owned-route OpenAPI `x-sdkwork-permission`;
+3. reusable-module route binding from the module manifest.
 
 Rules:
 

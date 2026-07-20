@@ -1,13 +1,16 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { wireHostFrameworkMain } from './wire-gateway-api-server-assembly.mjs';
+import { wireHostFrameworkMain } from './wire-api-assembly-host.mjs';
 
-test('gateway assembly keeps Web Framework as the single CORS authority', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-gateway-assembly-'));
+const WIRE = path.resolve('tools/wire-api-assembly-host.mjs');
+
+test('API assembly keeps Web Framework as the single CORS authority', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-'));
   const mainPath = path.join(root, 'main.rs');
   fs.writeFileSync(mainPath, `use axum::Router;
 use sdkwork_routes_example_app_api::build_example_app_router_with_framework;
@@ -27,9 +30,25 @@ async fn main() {
   try {
     assert.equal(wireHostFrameworkMain(mainPath, 'example'), true);
     const updated = fs.readFileSync(mainPath, 'utf8');
-    assert.match(updated, /assemble_application_router\(host\)\.await\.router;/u);
+    assert.match(updated, /assemble_api_router\(host\)\.await\.router;/u);
     assert.doesNotMatch(updated, /application_cors_layer_from_env|CorsLayer/u);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('requires one explicit mutation scope', () => {
+  const missing = spawnSync(process.execPath, [WIRE], {
+    cwd: path.resolve('.'),
+    encoding: 'utf8',
+  });
+  const conflicting = spawnSync(
+    process.execPath,
+    [WIRE, '--root', '.', '--workspace', '..'],
+    { cwd: path.resolve('.'), encoding: 'utf8' },
+  );
+
+  assert.equal(missing.status, 2);
+  assert.equal(conflicting.status, 2);
+  assert.match(missing.stdout, /--root <application> \| --workspace <workspace>/u);
 });

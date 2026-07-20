@@ -86,8 +86,13 @@ Release gate evidence should include:
   runtime targets.
 - immutable artifact identity and independent publish/deploy/rollback evidence
   for every selected standalone or cloud release lane.
-- topology v5 cloud ingress evidence proving platform-collapsed routes use
-  `sdkwork-api-cloud-gateway`, or a dedicated/edge strategy has an approved ADR.
+- API assembly evidence proving every application-owned app/backend/open route
+  is assembled exactly once, gateway hosts are thin, and application roots
+  have zero `sdkwork-api-cloud-gateway` ownership/operation findings and zero
+  `integration.foundationApiGateway` parallel contracts.
+- API hosting integration evidence includes
+  `audit-gateway-alignment-repo.mjs --root . --strict`; successful assembly
+  bootstrap alone is not standalone-host or cloud-composition completion.
 - shared lifecycle framework evidence proving public pnpm scripts are thin
   aliases, application-specific work is isolated under `_sdkwork:*` hooks, and
   `sdkwork-app-topology`, `sdkwork-github-workflow`, and `deployctl` versions are

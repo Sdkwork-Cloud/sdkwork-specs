@@ -262,7 +262,12 @@ export function findAppManifests(root) {
       if (entry.isSymbolicLink()) continue;
       const full = path.join(directory, entry.name);
       if (entry.isDirectory()) {
-        if (!ignored.has(entry.name)) walk(full);
+        if (
+          !ignored.has(entry.name)
+          && !entry.name.startsWith('_sdkwork-agents-local-archive')
+        ) {
+          walk(full);
+        }
       } else if (entry.name === 'sdkwork.app.config.json') {
         files.push(full);
       }
@@ -277,7 +282,13 @@ export function validateAppManifestFiles(files, root) {
   const keys = new Map();
   for (const file of files) {
     const label = path.relative(root, file).replaceAll('\\', '/');
-    const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    let manifest;
+    try {
+      manifest = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/u, ''));
+    } catch {
+      issues.push(`${label}: invalid JSON`);
+      continue;
+    }
     issues.push(...validateAppManifest(manifest, label));
     if (typeof manifest.app?.key === 'string') {
       const previous = keys.get(manifest.app.key);

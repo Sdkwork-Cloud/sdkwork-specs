@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
  * Align topology application.public-ingress to sdkwork-*-standalone-gateway binaries.
- * Authority: APPLICATION_GATEWAY_SPEC.md §5.6, APP_RUNTIME_TOPOLOGY_SPEC.md §8
+ * Authority: APPLICATION_GATEWAY_SPEC.md section 5, APP_RUNTIME_TOPOLOGY_SPEC.md section 8.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
-import { readText } from './gateway-assembly-lib.mjs';
+import { readText } from './api-assembly-lib.mjs';
 import { validateRepository } from './check-single-http-ingress.mjs';
 
 const DECOMPOSED_INGRESS_BINARY =
@@ -17,10 +17,9 @@ const DECOMPOSED_INGRESS_BINARY =
 function findGatewayCrateDir(repoRoot, appId) {
   const appCode = appId.replace(/^sdkwork-/u, '');
   const preferred = [
+    path.join(repoRoot, 'crates', `sdkwork-api-${appCode}-standalone-gateway`),
     path.join(repoRoot, 'crates', `sdkwork-${appCode}-standalone-gateway`),
     path.join(repoRoot, 'services', `sdkwork-${appCode}-standalone-gateway`),
-    path.join(repoRoot, 'crates', `sdkwork-${appCode}-cloud-gateway`),
-    path.join(repoRoot, 'services', `sdkwork-${appCode}-cloud-gateway`),
   ];
   for (const candidate of preferred) {
     if (fs.existsSync(path.join(candidate, 'Cargo.toml'))) {
@@ -43,7 +42,7 @@ function findGatewayCrateDir(repoRoot, appId) {
 }
 
 function standaloneGatewayBinary(appId) {
-  return `${appId}-standalone-gateway`;
+  return `sdkwork-api-${appId.replace(/^sdkwork-/u, '')}-standalone-gateway`;
 }
 
 function ensureStandaloneBinAlias(gatewayCrateDir, standaloneBinary) {
@@ -63,7 +62,7 @@ function shouldMigrateIngressBinary(binary) {
   if (!binary) {
     return false;
   }
-  if (/(?:^|-)(?:standalone-gateway|cloud-gateway)$/u.test(binary)) {
+  if (/-standalone-gateway$/u.test(binary)) {
     return false;
   }
   return DECOMPOSED_INGRESS_BINARY.test(binary) || /-app-api$/u.test(binary);

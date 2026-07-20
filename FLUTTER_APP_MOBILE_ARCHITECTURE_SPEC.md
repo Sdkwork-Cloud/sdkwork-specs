@@ -284,8 +284,9 @@ Rules:
 
 - Build commands must run config and manifest preflight before production packaging.
 - Standalone variants consume the application-owned standalone gateway at its
-  declared local/private endpoint. Cloud variants consume the deployed
-  `sdkwork-api-cloud-gateway` and start no local gateway or data service.
+  declared local/private endpoint. Cloud variants consume deployed application
+  and platform API surface URLs, start no local gateway or data service, and
+  do not identify the remote gateway implementation.
 - One signed Flutter package should declare runtime-configurable dual-profile
   support when endpoint selection occurs safely at bootstrap; endpoint changes
   alone do not justify duplicate IPA/AAB artifacts.

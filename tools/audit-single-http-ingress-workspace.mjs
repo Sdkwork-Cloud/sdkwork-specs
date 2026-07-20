@@ -82,6 +82,6 @@ console.log(`Errors: ${failures.length}`);
 console.log(`Warnings: ${warnings.length}`);
 
 if (failures.length > 0 || (parsed.values.strict && warnings.length > 0)) {
-  console.error('\nSee APPLICATION_GATEWAY_SPEC.md §5.6 and APP_RUNTIME_TOPOLOGY_SPEC.md §8.');
+  console.error('\nSee APPLICATION_GATEWAY_SPEC.md section 5 and APP_RUNTIME_TOPOLOGY_SPEC.md section 8.');
   process.exit(1);
 }

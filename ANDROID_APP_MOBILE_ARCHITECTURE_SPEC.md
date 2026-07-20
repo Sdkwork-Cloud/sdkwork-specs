@@ -310,8 +310,9 @@ Rules:
 - Production build commands must run config, SDK boundary, manifest, media, signing-reference, and secret preflight before packaging.
 - Standalone variants consume the application-owned standalone gateway at its
   declared private/LAN/appliance endpoint; Android clients do not implicitly
-  launch an on-device gateway. Cloud variants use the deployed
-  `sdkwork-api-cloud-gateway` and start no local gateway or data service.
+  launch an on-device gateway. Cloud variants use deployed application and
+  platform API surface URLs, start no local gateway or data service, and do
+  not identify the remote gateway implementation.
 - Runtime-configurable AAB/APK packages may support both profiles with isolated
   credentials and endpoint namespaces. Endpoint selection alone must not
   produce duplicate signed binaries.

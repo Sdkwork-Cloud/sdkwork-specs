@@ -216,8 +216,8 @@ Recommended initial skeleton:
     sdkwork-<application-code>-native-host/
     sdkwork-<application-code>-tauri-host/
     sdkwork-<domain>-<capability>-worker/
-    sdkwork-<application-code>-standalone-gateway/
-    sdkwork-<application-code>-cloud-gateway/
+    sdkwork-api-<application-code>-assembly/
+    sdkwork-api-<application-code>-standalone-gateway/
   sdks/
     README.md
     sdkwork-<domain>-sdk/
@@ -543,7 +543,8 @@ Rules for `<domain-multi-surface-repository>`:
   crates/sdkwork-routes-<capability>-app-api/
   crates/sdkwork-<domain>-<capability>-service/
   crates/sdkwork-<domain>-<capability>-repository-sqlx/
-  crates/sdkwork-<application-code>-standalone-gateway/
+  crates/sdkwork-api-<application-code>-assembly/
+  crates/sdkwork-api-<application-code>-standalone-gateway/
   crates/sdkwork-<application-code>-service-host/
   crates/sdkwork-<domain>-<capability>-worker/
   sdks/sdkwork-<domain>-app-sdk/

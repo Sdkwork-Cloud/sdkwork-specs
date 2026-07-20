@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Wire standalone/cloud gateway crates to sdkwork-<application-code>-gateway-assembly.
- * Authority: APPLICATION_GATEWAY_SPEC.md §5.7
+ * Wire an application standalone gateway to its canonical API assembly.
+ * Authority: API_ASSEMBLY_SPEC.md section 6 and APPLICATION_GATEWAY_SPEC.md.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,7 +12,7 @@ import {
   assemblyPackageName,
   readText,
   resolveApplicationCode,
-} from './gateway-assembly-lib.mjs';
+} from './api-assembly-lib.mjs';
 import { auditGatewayAlignmentRepo } from './audit-gateway-alignment-repo.mjs';
 
 const HOST_FRAMEWORK_PATTERN =
@@ -20,8 +20,7 @@ const HOST_FRAMEWORK_PATTERN =
 
 function findGatewayCargoPath(root, applicationCode) {
   const names = [
-    `sdkwork-${applicationCode}-standalone-gateway`,
-    `sdkwork-${applicationCode}-cloud-gateway`,
+    `sdkwork-api-${applicationCode}-standalone-gateway`,
   ];
   for (const base of ['crates', 'services']) {
     for (const name of names) {
@@ -110,7 +109,7 @@ function ensureWorkspaceWebBootstrapDependency(root) {
 
 export function wireHostFrameworkMain(mainPath, applicationCode) {
   const source = readText(mainPath);
-  if (source.includes('gateway_assembly::assemble_application_router')) {
+  if (source.includes('api_assembly::assemble_api_router')) {
     return false;
   }
   const match = HOST_FRAMEWORK_PATTERN.exec(source);
@@ -128,10 +127,10 @@ export function wireHostFrameworkMain(mainPath, applicationCode) {
     /^use axum::Router;\n/u,
     'use axum::Router;\n',
   );
-  if (!updated.includes(`use ${libName}::assemble_application_router`)) {
+  if (!updated.includes(`use ${libName}::assemble_api_router`)) {
     updated = updated.replace(
       /^(use axum::Router;\n)/u,
-      `$1use ${libName}::assemble_application_router;\n`,
+      `$1use ${libName}::assemble_api_router;\n`,
     );
   }
   const businessBlock = /let business = Router::new\(\)[\s\S]*?\.layer\(CorsLayer::permissive\(\)\);/u.exec(updated);
@@ -140,14 +139,28 @@ export function wireHostFrameworkMain(mainPath, applicationCode) {
   }
   updated = updated.replace(
     businessBlock[0],
-    `let business = assemble_application_router(${hostVar}).await.router;`,
+    `let business = assemble_api_router(${hostVar}).await.router;`,
   );
   fs.writeFileSync(mainPath, updated, 'utf8');
   return true;
 }
 
 function wireRepo(root) {
-  const applicationCode = resolveApplicationCode(root);
+  if (path.basename(path.resolve(root)) === 'sdkwork-api-cloud-gateway') {
+    return { repo: 'sdkwork-api-cloud-gateway', changed: false, score: 'skip' };
+  }
+  let applicationCode;
+  try {
+    applicationCode = resolveApplicationCode(root);
+  } catch (error) {
+    return {
+      repo: path.basename(root),
+      applicationCode: null,
+      changed: false,
+      score: 'fail',
+      warnings: [error.message],
+    };
+  }
   const auditBefore = auditGatewayAlignmentRepo(root);
   if (auditBefore.score === 'skip' || auditBefore.score === 'perfect') {
     return { repo: path.basename(root), changed: false, score: auditBefore.score };
@@ -190,21 +203,24 @@ function discoverRepos(workspaceRoot) {
 function main() {
   const { values } = parseArgs({
     options: {
-      workspace: { type: 'string', default: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..') },
+      workspace: { type: 'string' },
       root: { type: 'string' },
       help: { type: 'boolean', short: 'h', default: false },
     },
   });
-  if (values.help) {
-    console.log('Usage: node tools/wire-gateway-api-server-assembly.mjs [--workspace <path>] [--root <repo>]');
-    process.exit(0);
+  if (values.help || Boolean(values.root) === Boolean(values.workspace)) {
+    console.log('Usage: node tools/wire-api-assembly-host.mjs (--root <application> | --workspace <workspace>)');
+    if (!values.help) process.exitCode = 2;
+    return;
   }
 
-  const targets = values.root ? [path.resolve(values.root)] : discoverRepos(values.workspace);
+  const targets = values.root
+    ? [path.resolve(values.root)]
+    : discoverRepos(path.resolve(values.workspace));
   const results = targets.map((repoRoot) => wireRepo(repoRoot));
   const improved = results.filter((item) => item.score === 'perfect');
   const changed = results.filter((item) => item.changed);
-  console.log(`wire-gateway-api-server-assembly: ${changed.length} repos changed, ${improved.length} perfect`);
+  console.log(`wire-api-assembly-host: ${changed.length} repos changed, ${improved.length} perfect`);
   for (const item of results.filter((entry) => entry.score === 'warn' || entry.score === 'fail')) {
     if (item.warnings?.length) {
       console.log(`warn ${item.repo}: ${item.warnings.join('; ')}`);

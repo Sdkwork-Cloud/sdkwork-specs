@@ -75,7 +75,7 @@ Rules:
 - Desktop/Tauri development commands that start the product service runtime
   `MUST` use the server PostgreSQL development profile for the service/backend
   process. Applications whose default desktop development commands are
-  gateway-backed client commands, such as SDKWork Claw Router `pnpm dev:desktop`,
+  API-surface-backed client commands, such as SDKWork Claw Router `pnpm dev:desktop`,
   must keep product server startup on explicit server commands.
 - The desktop shell must not infer that the service database is SQLite just
   because the runtime target is `desktop`. The deployment profile remains
@@ -298,15 +298,16 @@ Command rules:
 
 - `dev:desktop` uses the default desktop development orchestration profile and
   must resolve to PostgreSQL, standalone, and development by default. It may
-  remain client-only when the application standard assigns default API serving
-  to a shared gateway, but the selected dev topology/database profile is still
-  `postgres:standalone`.
+  remain client-only when default API serving is assigned to an externally
+  supervised application standalone gateway, but the selected dev
+  topology/database profile is still `postgres:standalone`.
 - `dev:desktop:standalone` starts or locates the application-owned standalone
   gateway according to typed `gatewayPlacement`; local ownership uses a
   scoped desktop supervisor and exactly one application HTTP ingress.
 - `dev:desktop:cloud` starts the renderer/native host only, resolves the
-  deployed `sdkwork-api-cloud-gateway`, and starts no local gateway, API,
-  database, Redis, migration, or seed process.
+  deployed application and platform API surface URLs, and starts no local
+  gateway, API, database, Redis, migration, or seed process. Desktop client
+  config does not identify the remote gateway implementation.
 - `dev:server:standalone` or an equivalent explicit server command makes the backend
   service profile explicit when contributors need to debug the desktop plus
   service integration path.

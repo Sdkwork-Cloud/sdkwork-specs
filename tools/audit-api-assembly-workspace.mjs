@@ -1,23 +1,23 @@
 #!/usr/bin/env node
 /**
- * Workspace audit for gateway assembly alignment.
+ * Workspace audit for API assembly alignment.
  *
  * Authority:
- * - APPLICATION_GATEWAY_SPEC.md §5.7
- * - TEST_SPEC.md (gateway assembly checks)
+ * - API_ASSEMBLY_SPEC.md sections 3 and 10
+ * - TEST_SPEC.md (API assembly checks)
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { listWorkspaceRepositories } from './align-repository-docs-lib.mjs';
-import { validateGatewayAssembly } from './validate-gateway-assembly.mjs';
+import { validateApiAssembly } from './validate-api-assembly.mjs';
 
 function usage() {
   return [
-    'Usage: node tools/audit-gateway-assembly-workspace.mjs --workspace <dir> [--prefix sdkwork-] [--strict]',
+    'Usage: node tools/audit-api-assembly-workspace.mjs --workspace <dir> [--prefix sdkwork-] [--strict]',
     '',
-    'Reports gateway assembly compliance for repositories that own route crates.',
+    'Reports API assembly compliance for every application root and any repository that owns route crates.',
     'Fails on assembly errors; prints missing gateway_mount warnings unless --strict.',
   ].join('\n');
 }
@@ -50,7 +50,16 @@ let skipped = 0;
 for (const repoRoot of repositories) {
   checked += 1;
   const repoName = path.basename(repoRoot);
-  const result = validateGatewayAssembly(repoRoot, { strict: parsed.values.strict });
+  let result;
+  try {
+    result = validateApiAssembly(repoRoot, { strict: parsed.values.strict });
+  } catch (error) {
+    result = {
+      ok: false,
+      errors: [`validation failed without completing: ${error.message}`],
+      warnings: [],
+    };
+  }
 
   if (result.skipped) {
     skipped += 1;
@@ -83,12 +92,11 @@ for (const repoRoot of repositories) {
 }
 
 console.log(`\nRepositories checked: ${checked}`);
-console.log(`Repositories skipped (no route crates): ${skipped}`);
+console.log(`Repositories skipped (non-application, no route crates): ${skipped}`);
 console.log(`Errors: ${failures.length}`);
 console.log(`Warnings: ${warnings.length}`);
 
 if (failures.length > 0 || (parsed.values.strict && warnings.length > 0)) {
-  console.error('\nSee APPLICATION_GATEWAY_SPEC.md §5.7.');
+  console.error('\nSee API_ASSEMBLY_SPEC.md sections 3 and 10.');
   process.exit(1);
 }
-

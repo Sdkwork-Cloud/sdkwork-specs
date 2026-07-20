@@ -308,8 +308,9 @@ Rules:
 
 - Production build commands must run config, SDK boundary, manifest, media, signing-reference, and secret preflight before packaging.
 - Standalone variants consume the application-owned standalone gateway at its
-  declared private endpoint; cloud variants use the deployed
-  `sdkwork-api-cloud-gateway` and start no local gateway or data service.
+  declared private endpoint; cloud variants use deployed application and
+  platform API surface URLs, start no local gateway or data service, and do
+  not identify the remote gateway implementation.
 - Harmony builds require DevEco Studio or compatible HarmonyOS SDK/hvigor/ohpm tooling and a documented signing/release profile.
 - Package-level commands should allow focused tests/static checks for changed modules.
 

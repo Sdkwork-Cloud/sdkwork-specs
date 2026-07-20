@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { readText } from './gateway-assembly-lib.mjs';
+import { readText } from './api-assembly-lib.mjs';
 
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -26,7 +26,7 @@ let fixed = 0;
 for (const cargoPath of discoverCargoFiles(workspaceRoot)) {
   let cargo = readText(cargoPath);
   const updated = cargo.replace(
-    /path\s*=\s*"\.\.\/[^"]*\\(sdkwork-[^"]+-gateway-assembly)"/gu,
+    /path\s*=\s*"\.\.\/[^"]*\\(sdkwork-[^"]+-api-assembly)"/gu,
     'path = "../$1"',
   );
   if (updated !== cargo) {
@@ -35,4 +35,4 @@ for (const cargoPath of discoverCargoFiles(workspaceRoot)) {
     console.log(`fixed ${path.relative(workspaceRoot, cargoPath)}`);
   }
 }
-console.log(`fix-gateway-assembly-cargo-paths: ${fixed} files`);
+console.log(`fix-api-assembly-cargo-paths: ${fixed} files`);

@@ -160,10 +160,10 @@ Rules:
   deploy profiles, environment approvals, immutable artifact selection, and
   per-profile rollback before validator enforcement changes from audit to
   required.
-- Topology profile migration emits schema v5 `cloudIngress` metadata. V4 is a
-  read-only compatibility input; `platform-collapsed` is the default, while
-  existing dedicated application or edge ingress requires an explicit ADR and
-  must not be silently reclassified.
+- Topology profile migration removes application-owned cloud gateway identity,
+  process, config, and packaging metadata. V4 and earlier cloud-ingress fields
+  are read-only compatibility inputs; new v5 application topology emits only
+  surface-oriented remote URLs. Protocol-specific edge ingress requires an ADR.
 - Client manifest/workflow migration treats an existing package
   `deploymentProfile` as fixed. A client becomes runtime-configurable only
   after it declares both supported profiles, target platform, client
@@ -207,11 +207,16 @@ Public naming migrations for application identity and commerce capabilities foll
 | `product copy` (i18n/config) | `L1 brand/store copy` or `message-catalog content` | not merchandise |
 | `product OpenAPI` | `application-owned OpenAPI` | authority ownership |
 | `shared foundation gateway` (without plane) | `platform connectivity-plane gateway` | domain `platform` |
-| `sdkwork-<application-code>-gateway` | `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` | application gateway crate; see `APPLICATION_GATEWAY_SPEC.md` and `NAMING_SPEC.md` §4.3.1 |
-| `sdkwork-api-cloud-gateway` | `sdkwork-api-cloud-gateway` | platform gateway crate and repository; see `APPLICATION_GATEWAY_SPEC.md` |
+| `sdkwork-<application-code>-gateway` | `sdkwork-api-<application-code>-standalone-gateway` | application gateway crate; see `APPLICATION_GATEWAY_SPEC.md` and `NAMING_SPEC.md` section 4.3.1 |
+| `sdkwork-<application-code>-gateway-assembly` | `sdkwork-api-<application-code>-assembly` | host-neutral application API composition |
+| `sdkwork-<application-code>-standalone-gateway` | `sdkwork-api-<application-code>-standalone-gateway` | standalone application HTTP host |
+| `sdkwork-<application-code>-cloud-gateway` | platform-hosted assembly or responsibility-specific edge ingress | generic application HTTP cloud gateway is retired |
+| `gateway:assembly:*` | `api:assembly:*` | API composition is not gateway-owned |
+| `external-via-platform-gateway` | `external-via-platform-surface` | clients resolve a surface URL, not a gateway implementation |
+| `requiresPlatformGatewayProcess` | `requiresPlatformApiSurface` | composition output must not request a local platform gateway process |
+| `integration.foundationApiGateway` | topology `platform.api-gateway` plus `sdkDependencies` and `dependencyApiSurfaces` | decompose URL provenance, SDK ownership, and runtime availability; do not introduce another gateway identity field |
 | `sdkwork-api-cloud-gateway-api-server` listener crate | `sdkwork-api-cloud-gateway` | retired platform listener folds into the canonical platform gateway crate |
-| `sdkwork-api-cloud-gateway-*` support crates | `sdkwork-api-cloud-gateway-*` | platform gateway config, registry, observability, and approved support roles |
-| bare `gateway` in crate/script names | `standalone-gateway`, `cloud-gateway`, or `api-cloud-gateway` | deployment-profile-qualified gateway ingress |
+| bare `gateway` in crate/script names | `api-standalone-gateway`, platform `api-cloud-gateway`, or responsibility-specific edge ingress | name the owner and responsibility |
 | bare `catalog` (i18n normative) | `message catalog` / `i18n catalog fragment` | commerce `catalog` capability |
 | `identity` domain packages | `iam` | identity projection headers |
 | `PRODUCT_OR_PLATFORM` env formula | `PLATFORM_OR_APPLICATION_CODE` or `SDKWORK_<APPLICATION_CODE>_` | — |

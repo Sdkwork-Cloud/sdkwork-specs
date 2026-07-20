@@ -30,12 +30,12 @@ import { loadDiscoverySurfaceForWorkspaceConsumer } from './sdk-manifest-standar
 const APP_API_PREFIX = '/app/v3/api';
 const BACKEND_API_PREFIX = '/backend/v3/api';
 
-const PLATFORM_GATEWAY_DOMAINS = new Set(['iam', 'appbase']);
+const PLATFORM_SURFACE_DOMAINS = new Set(['iam', 'appbase']);
 const SKIP_ARCHITECTURE_DIRS = new Set(['.git', 'node_modules', 'target', 'dist', 'build']);
 
 export const RUNTIME_MODES = new Set([
   'same-origin-embedded',
-  'external-via-platform-gateway',
+  'external-via-platform-surface',
   'external-via-declared-upstream',
 ]);
 
@@ -72,7 +72,7 @@ function defaultPrefix(surface, manifestDiscovery) {
 }
 
 function defaultConnectivityPlane(domain, surface) {
-  if (domain && PLATFORM_GATEWAY_DOMAINS.has(domain) && surface !== 'open-api') {
+  if (domain && PLATFORM_SURFACE_DOMAINS.has(domain) && surface !== 'open-api') {
     return 'platform';
   }
   return 'application';
@@ -144,7 +144,7 @@ function mapLegacyRuntimeMode(legacySurface) {
   const runtime = legacySurface?.runtimeIntegration;
   if (!runtime) return null;
   if (runtime.mode === 'same-origin-mounted') return 'same-origin-embedded';
-  if (runtime.mode === 'external-service') return 'external-via-platform-gateway';
+  if (runtime.mode === 'external-service') return 'external-via-platform-surface';
   return null;
 }
 
@@ -153,21 +153,33 @@ function resolveRuntimeMode({
   legacySurface,
   connectivityPlane,
 }) {
-  const override = dependencyIntegration?.defaultRuntimeMode;
-  if (override === 'platform-gateway') return 'external-via-platform-gateway';
-  if (override === 'same-origin-embedded') return 'same-origin-embedded';
+  const override = normalizeDeclaredRuntimeMode(dependencyIntegration?.defaultRuntimeMode);
+  if (override) return override;
 
   const legacyMode = mapLegacyRuntimeMode(legacySurface);
   if (legacyMode) {
     const mountStatus = legacySurface?.runtimeIntegration?.mountCoverage?.status;
     if (legacyMode === 'same-origin-embedded' && mountStatus !== 'verified') {
-      return 'external-via-platform-gateway';
+      return 'external-via-platform-surface';
     }
     return legacyMode;
   }
 
-  if (connectivityPlane === 'platform') return 'external-via-platform-gateway';
+  if (connectivityPlane === 'platform') return 'external-via-platform-surface';
   return 'same-origin-embedded';
+}
+
+function normalizeDeclaredRuntimeMode(mode) {
+  if (!mode) return null;
+  if (
+    mode === 'platform-gateway'
+    || mode === 'platform-surface'
+    || mode === 'external-via-platform-gateway'
+  ) {
+    return 'external-via-platform-surface';
+  }
+  if (mode === 'same-origin-mounted') return 'same-origin-embedded';
+  return mode;
 }
 
 function baseUrlEnvKey(workspace) {
@@ -366,7 +378,7 @@ export function resolveComposition(repoRoot, options = {}) {
   const integrations = [];
   const inheritedManifests = [];
   const env = {};
-  let requiresPlatformGatewayProcess = false;
+  let requiresPlatformApiSurface = false;
 
   const sdkDependencies = collectConsumerSdkDependencies(repoRoot);
   const overridesByCore = loadCompositionOverrides(repoRoot);
@@ -387,10 +399,13 @@ export function resolveComposition(repoRoot, options = {}) {
       ? 'application'
       : dependencyIntegration?.defaultConnectivityPlane
         ?? defaultConnectivityPlane(domain, surface);
-    const runtimeMode = integrationOverride?.runtimeMode
+    const runtimeMode = normalizeDeclaredRuntimeMode(integrationOverride?.runtimeMode)
       ?? (embeddedSurface
         ? 'same-origin-embedded'
         : resolveRuntimeMode({ dependencyIntegration, legacySurface, connectivityPlane }));
+    if (!RUNTIME_MODES.has(runtimeMode)) {
+      issues.push(`${workspace}: unsupported runtimeMode ${runtimeMode}`);
+    }
     const permissionManifestRef = resolvePermissionManifestRef(
       repoRoot,
       workspace,
@@ -409,15 +424,15 @@ export function resolveComposition(repoRoot, options = {}) {
     const mountStatus = embeddedSurface
       ? 'verified'
       : legacySurface?.runtimeIntegration?.mountCoverage?.status ?? null;
-    const forbidProductSameOriginFallback = runtimeMode === 'external-via-platform-gateway'
+    const forbidApplicationSameOriginFallback = runtimeMode === 'external-via-platform-surface'
       && connectivityPlane === 'platform'
       && mountStatus === 'not-mounted';
 
-    if (runtimeMode === 'external-via-platform-gateway') {
-      requiresPlatformGatewayProcess = true;
+    if (runtimeMode === 'external-via-platform-surface') {
+      requiresPlatformApiSurface = true;
     }
 
-    if (forbidProductSameOriginFallback) {
+    if (forbidApplicationSameOriginFallback) {
       integrations.push({
         workspace,
         surface,
@@ -426,7 +441,7 @@ export function resolveComposition(repoRoot, options = {}) {
         runtimeMode,
         mountStatus,
         envKey,
-        forbidProductSameOriginFallback: true,
+        forbidApplicationSameOriginFallback: true,
         corePackage: dep.corePackage,
         source: dep.source,
       });
@@ -441,7 +456,7 @@ export function resolveComposition(repoRoot, options = {}) {
       runtimeMode,
       mountStatus,
       envKey,
-      forbidProductSameOriginFallback: false,
+      forbidApplicationSameOriginFallback: false,
       corePackage: dep.corePackage,
       source: dep.source,
     });
@@ -463,7 +478,7 @@ export function resolveComposition(repoRoot, options = {}) {
   }
 
   for (const integration of integrations) {
-    if (integration.forbidProductSameOriginFallback && !integration.envKey) {
+    if (integration.forbidApplicationSameOriginFallback && !integration.envKey) {
       issues.push(`${integration.workspace}: external platform dependency missing env key convention`);
     }
   }
@@ -479,7 +494,7 @@ export function resolveComposition(repoRoot, options = {}) {
     },
     architecture,
     env,
-    requiresPlatformGatewayProcess,
+    requiresPlatformApiSurface,
     issues,
     meta: {
       resolver: 'sdkwork-specs/tools/lib/composition-resolver.mjs',
@@ -495,22 +510,22 @@ export function resolveComposition(repoRoot, options = {}) {
 
 export function validateCompositionResolution(resolution, {
   observedEnv = {},
-  productAppApiBaseUrl,
+  applicationAppApiBaseUrl,
 } = {}) {
   const issues = [];
 
   for (const integration of resolution.integrations ?? []) {
-    if (!integration.forbidProductSameOriginFallback || !integration.envKey) continue;
+    if (!integration.forbidApplicationSameOriginFallback || !integration.envKey) continue;
     const observed = observedEnv[integration.envKey];
     if (!observed) continue;
-    if (productAppApiBaseUrl && observed === productAppApiBaseUrl) {
+    if (applicationAppApiBaseUrl && observed === applicationAppApiBaseUrl) {
       issues.push(
-        `${integration.envKey} must not fall back to product same-origin base URL (${productAppApiBaseUrl}); use platform.api-gateway for ${integration.workspace}`,
+        `${integration.envKey} must not fall back to application same-origin base URL (${applicationAppApiBaseUrl}); use the declared platform API surface for ${integration.workspace}`,
       );
     }
     if (observed === '/app/v3/api' && integration.connectivityPlane === 'platform') {
       issues.push(
-        `${integration.envKey} must not use product relative same-origin path for platform dependency ${integration.workspace}`,
+        `${integration.envKey} must not use application relative same-origin path for platform dependency ${integration.workspace}`,
       );
     }
   }
@@ -519,27 +534,27 @@ export function validateCompositionResolution(resolution, {
 }
 
 export function deriveFoundationEnvFromResolution(resolution, {
-  platformGatewayOrigin,
-  productAppApiBaseUrl,
-  productBackendApiBaseUrl,
+  platformApiOrigin,
+  applicationAppApiBaseUrl,
+  applicationBackendApiBaseUrl,
 }) {
   const env = { ...(resolution.env ?? {}) };
 
   for (const integration of resolution.integrations ?? []) {
     if (!integration.envKey || env[integration.envKey]) continue;
 
-    if (integration.runtimeMode === 'external-via-platform-gateway') {
+    if (integration.runtimeMode === 'external-via-platform-surface') {
       const prefix = integration.apiPrefix ?? APP_API_PREFIX;
-      env[integration.envKey] = `${String(platformGatewayOrigin).replace(/\/+$/u, '')}${prefix}`;
+      env[integration.envKey] = `${String(platformApiOrigin).replace(/\/+$/u, '')}${prefix}`;
       continue;
     }
 
     if (integration.surface === 'backend-api') {
-      env[integration.envKey] = productBackendApiBaseUrl;
+      env[integration.envKey] = applicationBackendApiBaseUrl;
       continue;
     }
 
-    env[integration.envKey] = productAppApiBaseUrl;
+    env[integration.envKey] = applicationAppApiBaseUrl;
   }
 
   return env;

@@ -266,13 +266,13 @@ Rules:
 Examples:
 
 ```text
-sdkwork-commerce (deleted)-h5-merchandise
-sdkwork-commerce (deleted)-h5-cart
-sdkwork-commerce (deleted)-h5-orders
-sdkwork-commerce (deleted)-h5-console-settings
-sdkwork-commerce (deleted)-h5-console-settlements
-sdkwork-commerce (deleted)-h5-admin-monitor
-sdkwork-commerce (deleted)-h5-capacitor
+sdkwork-shop-h5-merchandise
+sdkwork-shop-h5-cart
+sdkwork-shop-h5-orders
+sdkwork-shop-h5-console-settings
+sdkwork-shop-h5-console-settlements
+sdkwork-shop-h5-admin-monitor
+sdkwork-shop-h5-capacitor
 ```
 
 ## 4. App, Console, And Admin Surface Rules
@@ -546,8 +546,9 @@ Rules:
 - `pnpm dev` delegates to `dev:standalone` and starts the H5 mobile renderer
   plus the standalone topology selected by the root dispatcher.
 - Cloud variants start only the renderer/host/simulator and resolve the
-  deployed `sdkwork-api-cloud-gateway`; they start no local gateway or data
-  service.
+  deployed application and platform API surface URLs; they start no local
+  gateway or data service and do not identify the remote gateway
+  implementation.
 - Capacitor synchronization/copy/open commands remain internal runner details
   behind action-first public commands and use the same renderer output.
 - Production browser and Capacitor builds must run release preflight for

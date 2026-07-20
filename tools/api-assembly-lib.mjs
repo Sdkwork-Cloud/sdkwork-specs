@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 /**
- * Shared discovery helpers for gateway assembly materialize/validate tooling.
- * Authority: APPLICATION_GATEWAY_SPEC.md §5.7, WEB_BACKEND_SPEC.md §4.2.1
+ * Shared discovery helpers for API assembly materialize/validate tooling.
+ * Authority: API_ASSEMBLY_SPEC.md, WEB_BACKEND_SPEC.md section 4.2.1.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 
-const ROUTE_CRATE_DIR_PATTERN = /^crates\/sdkwork-routes-([a-z0-9-]+)-/u;
 const GATEWAY_MOUNT_PATTERN = /pub\s+(?:async\s+)?fn\s+gateway_mount\b/u;
 const GATEWAY_MOUNT_BUSINESS_PATTERN = /pub\s+(?:async\s+)?fn\s+gateway_mount_business\b/u;
 const GATEWAY_MANIFEST_PATTERN =
@@ -30,7 +29,7 @@ export function readJson(filePath) {
   if (!text.trim()) {
     return null;
   }
-  return JSON.parse(text);
+  return JSON.parse(text.replace(/^\uFEFF/u, ''));
 }
 
 export function resolveApplicationCode(root) {
@@ -39,23 +38,20 @@ export function resolveApplicationCode(root) {
   if (match) {
     return match[1];
   }
-  const appConfig = readJson(path.join(root, 'sdkwork.app.config.json'));
-  const backendAppId = appConfig?.backend?.appId;
-  if (typeof backendAppId === 'string') {
-    const appIdMatch = /^sdkwork-([a-z0-9-]+)/u.exec(backendAppId);
-    if (appIdMatch) {
-      return appIdMatch[1];
-    }
+  if (fs.existsSync(path.join(root, 'sdkwork.app.config.json'))) {
+    throw new Error(
+      `application root directory must be sdkwork-<application-code>; cannot derive API assembly identity from ${base}`,
+    );
   }
   return base.replace(/[^a-z0-9-]/gu, '-');
 }
 
 export function assemblyCrateDir(applicationCode) {
-  return `crates/sdkwork-${applicationCode}-gateway-assembly`;
+  return `crates/sdkwork-api-${applicationCode}-assembly`;
 }
 
 export function assemblyPackageName(applicationCode) {
-  return `sdkwork-${applicationCode}-gateway-assembly`;
+  return `sdkwork-api-${applicationCode}-assembly`;
 }
 
 export function parseCargoWorkspaceMembers(root) {
@@ -67,8 +63,7 @@ export function parseCargoWorkspaceMembers(root) {
   }
   const body = membersMatch[1];
   for (const line of body.split('\n')) {
-    const quoted = /"([^"]+)"/u.exec(line);
-    if (quoted) {
+    for (const quoted of line.matchAll(/"([^"]+)"/gu)) {
       members.push(quoted[1].replace(/\\/gu, '/'));
     }
   }
@@ -77,23 +72,11 @@ export function parseCargoWorkspaceMembers(root) {
 
 export function discoverRouteCrates(root, applicationCode) {
   const members = [...new Set(parseCargoWorkspaceMembers(root))];
-  const prefix = `crates/sdkwork-routes-${applicationCode}-`;
-  const applicationRouteMembers = members
-    .filter((member) => member.startsWith(prefix))
+  const routeMembers = members
+    .filter((member) => /^crates\/sdkwork-routes-[a-z0-9-]+-(?:app|backend|open)-api$/u.test(member))
+    .filter((member) => !/^sdkwork-routes-health-/u.test(path.basename(member)))
     .filter((member) => !/-common$/u.test(path.basename(member)))
     .sort((a, b) => a.localeCompare(b));
-
-  // Aggregate applications may keep route crates named after owned subdomains
-  // (for example deploy, match, or webserver). Cargo membership remains the
-  // authority; use this fallback only when the canonical app-code prefix finds
-  // nothing so unrelated support crates cannot leak into a normal assembly.
-  const routeMembers = applicationRouteMembers.length > 0
-    ? applicationRouteMembers
-    : members
-        .filter((member) => /^crates\/sdkwork-routes-[a-z0-9-]+-(?:app|backend|open)-api$/u.test(member))
-        .filter((member) => !/^sdkwork-routes-health-/u.test(path.basename(member)))
-        .filter((member) => !/-common$/u.test(path.basename(member)))
-        .sort((a, b) => a.localeCompare(b));
 
   return routeMembers.map((memberDir) => {
     const crateRoot = path.join(root, memberDir);
@@ -106,14 +89,27 @@ export function discoverRouteCrates(root, applicationCode) {
       readText(path.join(crateRoot, 'src', 'routes.rs')),
     ].join('\n');
     const manifestRs = readText(path.join(crateRoot, 'src', 'manifest.rs'));
+    const componentRef = `${memberDir}/specs/component.spec.json`;
+    const componentPath = path.join(root, componentRef);
+    const component = readJson(componentPath);
+    const routeManifest = component?.contracts?.routeManifest;
     const pathPrefix = extractPathPrefix(libRs, manifestRs);
-    const surface = extractSurface(packageName);
+    const declaredSurface = component?.component?.surface;
+    const surface = ['app-api', 'backend-api', 'open-api'].includes(declaredSurface)
+      ? declaredSurface
+      : extractSurface(packageName);
     return {
       memberDir,
       packageName,
       libName,
       pathPrefix,
       surface,
+      hasComponentSpec: fs.existsSync(componentPath),
+      componentRef,
+      routeManifestRef: typeof routeManifest === 'string' && routeManifest.trim()
+        ? `${memberDir}/${routeManifest.replace(/^\.\//u, '')}`
+        : `${componentRef}#contracts.routeManifest`,
+      sourceRef: `${memberDir}/Cargo.toml`,
       hasGatewayMount: GATEWAY_MOUNT_PATTERN.test(libRs),
       hasGatewayMountBusiness: GATEWAY_MOUNT_BUSINESS_PATTERN.test(libRs),
       hasGatewayRouteManifest: GATEWAY_MANIFEST_PATTERN.test(libRs),
@@ -158,12 +154,12 @@ export function usesKernelBridgeAssembly(bootstrapSource) {
 
 export function buildAssemblyManifest(root, applicationCode, routeCrates) {
   return {
-    kind: 'sdkwork.gateway.assembly',
+    kind: 'sdkwork.api.assembly',
     schemaVersion: 1,
     applicationCode,
+    apiMode: routeCrates.length > 0 ? 'served' : 'none',
     packageName: assemblyPackageName(applicationCode),
     crateDir: assemblyCrateDir(applicationCode),
-    generatedAt: new Date().toISOString(),
     routeCrates: routeCrates.map((crate, index) => ({
       packageName: crate.packageName,
       memberDir: crate.memberDir,
@@ -171,8 +167,9 @@ export function buildAssemblyManifest(root, applicationCode, routeCrates) {
       surface: crate.surface,
       pathPrefix: crate.pathPrefix,
       mountOrder: index,
-      hasGatewayMount: crate.hasGatewayMount,
-      hasGatewayRouteManifest: crate.hasGatewayRouteManifest,
+      componentRef: crate.componentRef,
+      routeManifestRef: crate.routeManifestRef,
+      sourceRef: crate.sourceRef,
     })),
   };
 }
@@ -197,29 +194,9 @@ export function routeCratesUseDescriptorOnlyGatewayMount(root, applicationCode) 
   return routeCrates.length > 0;
 }
 
-export function isEdgeProxyStandaloneGateway(root, applicationCode) {
-  if (applicationCode !== 'clawrouter') {
-    return false;
-  }
-  const cargoPaths = [
-    path.join(root, 'crates', `sdkwork-${applicationCode}-standalone-gateway`, 'Cargo.toml'),
-    path.join(root, 'crates', `sdkwork-${applicationCode}-standalone-gateway-lib`, 'Cargo.toml'),
-    path.join(root, 'services', `sdkwork-${applicationCode}-standalone-gateway`, 'Cargo.toml'),
-  ];
-  for (const cargoPath of cargoPaths) {
-    if (!fs.existsSync(cargoPath)) {
-      continue;
-    }
-    const cargo = readText(cargoPath);
-    if (cargo.includes('sdkwork-clawrouter-cloud-gateway')) {
-      return true;
-    }
-  }
-  return false;
-}
-
 export function findGatewaySourceFiles(root, applicationCode) {
   const candidates = [
+    path.join(root, 'crates', `sdkwork-api-${applicationCode}-standalone-gateway`, 'src'),
     path.join(root, 'crates', `sdkwork-${applicationCode}-standalone-gateway`, 'src'),
     path.join(root, 'crates', `sdkwork-${applicationCode}-cloud-gateway`, 'src'),
     path.join(root, 'services', `sdkwork-${applicationCode}-standalone-gateway`, 'src'),
@@ -251,28 +228,11 @@ export function isApplicationOwnedRouteDep(depName, applicationCode) {
   return new RegExp(`^sdkwork-routes-${applicationCode}-`, 'u').test(normalized);
 }
 
-export function isAllowedHostRouteDep(depName, applicationCode) {
-  const normalized = depName.replace(/_/g, '-');
-  if (normalized.startsWith('sdkwork-routes-iam-')) {
-    return true;
-  }
-  if (/-(?:support|http-shared)$/u.test(normalized)) {
-    return true;
-  }
-  if (applicationCode === 'im' && normalized.startsWith('sdkwork-routes-im-')) {
-    return true;
-  }
-  if (
-    applicationCode === 'drive'
-    && normalized === 'sdkwork-routes-storage-backend-api'
-  ) {
-    return true;
-  }
-  return false;
-}
-
 export function standaloneGatewayUsesSplitSurfaceBinsOnly(root, applicationCode) {
-  const cargoPath = path.join(root, 'crates', `sdkwork-${applicationCode}-standalone-gateway`, 'Cargo.toml');
+  let cargoPath = path.join(root, 'crates', `sdkwork-api-${applicationCode}-standalone-gateway`, 'Cargo.toml');
+  if (!fs.existsSync(cargoPath)) {
+    cargoPath = path.join(root, 'crates', `sdkwork-${applicationCode}-standalone-gateway`, 'Cargo.toml');
+  }
   if (!fs.existsSync(cargoPath)) {
     const legacyPath = path.join(root, 'crates', `sdkwork-${applicationCode}-api-server`, 'Cargo.toml');
     if (!fs.existsSync(legacyPath)) {
@@ -297,6 +257,7 @@ function splitSurfaceBinsInCargo(cargo, applicationCode) {
   }
   const hasUnifiedGateway = binNames.some(
     (name) =>
+      name === `sdkwork-api-${applicationCode}-standalone-gateway` ||
       name === `sdkwork-${applicationCode}-standalone-gateway` ||
       name === `sdkwork-${applicationCode}-api-server`,
   );

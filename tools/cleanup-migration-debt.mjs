@@ -3,7 +3,7 @@
  * Cleanup remaining migration debt across all sdkwork-* projects:
  *
  * 1. Consolidate database/ddl/migrations/ SQL into baseline DDL (if not already present)
- * 2. Delete all crate-local migration SQL files (crates/*/migrations/**/*.sql)
+ * 2. Delete all crate-local migration SQL files under crates/<crate>/migrations/
  * 3. Delete specs/database/migrations/ SQL files (if content already in baseline)
  * 4. Delete database/ddl/migrations/ directories after consolidation
  * 5. Keep DEPRECATED.md and README.md files

@@ -31,6 +31,14 @@ function runChecker(workspace, repo = 'sdkwork-demo') {
   );
 }
 
+function runRootChecker(root) {
+  return spawnSync(
+    process.execPath,
+    [CHECKER, '--root', root],
+    { cwd: path.resolve('.'), encoding: 'utf8' },
+  );
+}
+
 function standardTopology() {
   return {
     schemaVersion: 4,
@@ -47,16 +55,12 @@ function standardTopology() {
     },
     surfaces: {
       'application.public-ingress': {
+        protocols: ['http'],
         httpUrlEnv: 'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL',
       },
       'platform.api-gateway': {
+        protocols: ['http'],
         httpUrlEnv: 'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL',
-        autostartEnv: 'SDKWORK_DEMO_PLATFORM_API_GATEWAY_AUTOSTART',
-      },
-    },
-    components: {
-      cloudGateway: {
-        configGlob: 'etc/sdkwork-api-cloud-gateway.demo.{profile}.toml',
       },
     },
     orchestration: {
@@ -92,6 +96,72 @@ test('accepts standalone and cloud two-segment topology profiles', () => {
   const result = runChecker(workspace);
 
   assert.equal(result.status, 0, result.stderr);
+});
+
+test('accepts the canonical --root single-application interface', () => {
+  const { repoRoot } = makeWorkspace('sdkwork-demo', standardTopology(), {
+    'etc/topology/standalone.development.env': '',
+    'etc/topology/cloud.development.env': [
+      'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL=https://demo.dev.sdkwork.com',
+      'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=https://api.dev.sdkwork.com',
+      '',
+    ].join('\n'),
+    'etc/topology/cloud.production.env': '',
+  });
+
+  const result = runRootChecker(repoRoot);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1 repositories scanned/u);
+});
+
+test('does not require an HTTP URL for a gRPC-only public ingress', () => {
+  const topology = standardTopology();
+  topology.surfaces['application.public-ingress'] = {
+    protocols: ['grpc'],
+    grpcUrlEnv: 'SDKWORK_DEMO_APPLICATION_PUBLIC_GRPC_URL',
+  };
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, {
+    'etc/topology/standalone.development.env': '',
+    'etc/topology/cloud.development.env': [
+      'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=https://api.dev.sdkwork.com',
+      'SDKWORK_DEMO_PLATFORM_API_GATEWAY_AUTOSTART=false',
+      '',
+    ].join('\n'),
+    'etc/topology/cloud.production.env': '',
+    'etc/sdkwork-api-cloud-gateway.demo.development.toml': '',
+    'etc/sdkwork-api-cloud-gateway.demo.production.toml': '',
+    'package.json': JSON.stringify({
+      scripts: { 'gateway:package:cloud': 'node scripts/package.mjs' },
+    }),
+  });
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('rejects a required standalone HTTP health surface without a concrete URL', () => {
+  const topology = standardTopology();
+  topology.orchestration.profiles['standalone.development'].healthSurfaces = ['application.public-ingress'];
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, {
+    'etc/topology/standalone.development.env': '',
+    'etc/topology/cloud.development.env': [
+      'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL=https://demo.dev.sdkwork.com',
+      'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=https://api.dev.sdkwork.com',
+      'SDKWORK_DEMO_PLATFORM_API_GATEWAY_AUTOSTART=false',
+      '',
+    ].join('\n'),
+    'etc/topology/cloud.production.env': '',
+    'etc/sdkwork-api-cloud-gateway.demo.development.toml': '',
+    'etc/sdkwork-api-cloud-gateway.demo.production.toml': '',
+    'package.json': JSON.stringify({ scripts: { 'gateway:package:cloud': 'node scripts/package.mjs' } }),
+  });
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /required health surface application\.public-ingress/u);
 });
 
 test('rejects retired serviceLayout vocabulary and three-segment profile ids', () => {
@@ -142,16 +212,12 @@ test('rejects pre-v4 topology specs', () => {
   assert.match(result.stderr, /schemaVersion must be 4 \(migration\) or 5/);
 });
 
-test('schema v5 requires the canonical platform cloud gateway', () => {
+test('schema v5 accepts explicit remote surfaces without gateway implementation metadata', () => {
   const topology = standardTopology();
   topology.schemaVersion = 5;
   topology.orchestration.profiles['standalone.development'].processes = [
-    { id: 'standalone-gateway', role: 'standalone-gateway' },
+    { id: 'standalone-gateway', role: 'api-standalone-gateway' },
   ];
-  topology.cloudIngress = {
-    strategy: 'platform-collapsed',
-    platformGateway: 'sdkwork-api-cloud-gateway',
-  };
   const { workspace } = makeWorkspace('sdkwork-demo', topology, {
     'etc/topology/standalone.development.env': '',
     'etc/topology/cloud.development.env': [
@@ -173,12 +239,8 @@ test('schema v5 requires the canonical platform cloud gateway', () => {
 test('schema v5 uses process roles instead of process-name heuristics', () => {
   const topology = standardTopology();
   topology.schemaVersion = 5;
-  topology.cloudIngress = {
-    strategy: 'platform-collapsed',
-    platformGateway: 'sdkwork-api-cloud-gateway',
-  };
   topology.orchestration.profiles['standalone.development'].processes = [
-    { id: 'standalone-gateway', role: 'standalone-gateway' },
+    { id: 'standalone-gateway', role: 'api-standalone-gateway' },
   ];
   topology.orchestration.profiles['cloud.development'].processes = [
     { id: 'api-client', role: 'client' },
@@ -201,15 +263,11 @@ test('schema v5 uses process roles instead of process-name heuristics', () => {
   assert.equal(result.status, 0, result.stderr);
 });
 
-test('schema v5 rejects different origins for platform-collapsed cloud surfaces', () => {
+test('schema v5 allows application and platform surfaces to use different deployed origins', () => {
   const topology = standardTopology();
   topology.schemaVersion = 5;
-  topology.cloudIngress = {
-    strategy: 'platform-collapsed',
-    platformGateway: 'sdkwork-api-cloud-gateway',
-  };
   topology.orchestration.profiles['standalone.development'].processes = [
-    { id: 'standalone-gateway', role: 'standalone-gateway' },
+    { id: 'standalone-gateway', role: 'api-standalone-gateway' },
   ];
   const { workspace } = makeWorkspace('sdkwork-demo', topology, {
     'etc/topology/standalone.development.env': '',
@@ -226,11 +284,10 @@ test('schema v5 rejects different origins for platform-collapsed cloud surfaces'
   });
 
   const result = runChecker(workspace);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /must use the same URL origin/u);
+  assert.equal(result.status, 0, result.stderr);
 });
 
-test('schema v5 edge-split requires an edge gateway but not an application gateway', () => {
+test('schema v5 rejects retired cloud ingress implementation metadata', () => {
   const topology = standardTopology();
   topology.schemaVersion = 5;
   topology.cloudIngress = {
@@ -240,7 +297,7 @@ test('schema v5 edge-split requires an edge gateway but not an application gatew
     decisionRef: 'ADR-20260719-demo-edge-ingress',
   };
   topology.orchestration.profiles['standalone.development'].processes = [
-    { id: 'standalone-gateway', role: 'standalone-gateway' },
+    { id: 'standalone-gateway', role: 'api-standalone-gateway' },
   ];
   const { workspace } = makeWorkspace('sdkwork-demo', topology, {
     'etc/topology/standalone.development.env': '',
@@ -257,14 +314,15 @@ test('schema v5 edge-split requires an edge gateway but not an application gatew
   });
 
   const result = runChecker(workspace);
-  assert.equal(result.status, 0, result.stderr);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must not declare retired cloudIngress/u);
 });
 
-test('schema v5 rejects an ungoverned dedicated cloud ingress', () => {
+test('schema v5 rejects retired dedicated application cloud ingress metadata', () => {
   const topology = standardTopology();
   topology.schemaVersion = 5;
   topology.orchestration.profiles['standalone.development'].processes = [
-    { id: 'standalone-gateway', role: 'standalone-gateway' },
+    { id: 'standalone-gateway', role: 'api-standalone-gateway' },
   ];
   topology.cloudIngress = {
     strategy: 'dedicated-application',
@@ -286,19 +344,14 @@ test('schema v5 rejects an ungoverned dedicated cloud ingress', () => {
 
   const result = runChecker(workspace);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /platformGateway must be sdkwork-api-cloud-gateway/);
-  assert.match(result.stderr, /requires applicationGateway and decisionRef/);
+  assert.match(result.stderr, /must not declare retired cloudIngress/u);
 });
 
 test('schema v5 rejects role-less processes and cloud backend roles', () => {
   const topology = standardTopology();
   topology.schemaVersion = 5;
-  topology.cloudIngress = {
-    strategy: 'platform-collapsed',
-    platformGateway: 'sdkwork-api-cloud-gateway',
-  };
   topology.orchestration.profiles['standalone.development'].processes = [
-    { id: 'standalone-gateway' },
+    { name: 'legacy-standalone-gateway' },
   ];
   topology.orchestration.profiles['cloud.development'].processes = [
     { id: 'remote-api-helper', role: 'api-listener' },
@@ -319,12 +372,28 @@ test('schema v5 rejects role-less processes and cloud backend roles', () => {
 
   const result = runChecker(workspace);
   assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /process id is required/);
   assert.match(result.stderr, /requires a canonical role/);
-  assert.match(result.stderr, /cloud\.development forbids local process role api-listener/);
-  assert.match(result.stderr, /requires exactly one standalone-gateway role; found 0/);
+  assert.match(result.stderr, /remote-api-helper requires a canonical role/);
+  assert.match(result.stderr, /requires exactly one api-standalone-gateway role; found 0/);
 });
 
-test('rejects cloud development that autostarts local API and gateway processes', () => {
+test('topology schema v5 forbids cloudIngress and the retired api-listener role', () => {
+  const schema = JSON.parse(
+    fs.readFileSync(
+      path.resolve(import.meta.dirname, '..', 'schemas', 'sdkwork.app.topology.schema.v5.json'),
+      'utf8',
+    ),
+  );
+  assert.deepEqual(schema.not, { required: ['cloudIngress'] });
+  const roles = schema.properties.orchestration.properties.profiles.patternProperties[
+    '^(standalone|cloud)\\.[a-z0-9-]+$'
+  ].properties.processes.items.properties.role.enum;
+  assert.equal(roles.includes('api-listener'), false);
+  assert.equal(roles.includes('api-standalone-gateway'), true);
+});
+
+test('rejects cloud development that starts local API and gateway processes', () => {
   const topology = standardTopology();
   topology.orchestration.profiles['cloud.development'].processes = [
     { id: 'application.public-ingress', required: true },
@@ -350,7 +419,32 @@ test('rejects cloud development that autostarts local API and gateway processes'
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /cloud\.development must not autostart local API\/dependency process application\.public-ingress/);
-  assert.match(result.stderr, /PLATFORM_API_GATEWAY_AUTOSTART must disable remote surface autostart/);
+  assert.match(result.stderr, /cloud\.development must not autostart local API\/dependency process platform\.api-gateway/);
+});
+
+test('rejects application-owned platform cloud gateway implementation details', () => {
+  const topology = standardTopology();
+  topology.schemaVersion = 5;
+  topology.orchestration.profiles['standalone.development'].processes = [
+    { id: 'standalone-gateway', role: 'api-standalone-gateway' },
+  ];
+  topology.components = {
+    cloudGateway: { crate: 'sdkwork-api-cloud-gateway' },
+  };
+  topology.surfaces['platform.api-gateway'].autostartEnv = 'SDKWORK_DEMO_PLATFORM_API_GATEWAY_AUTOSTART';
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, {
+    'etc/topology/standalone.development.env': '',
+    'etc/topology/cloud.development.env': [
+      'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL=https://demo.dev.sdkwork.com',
+      'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=https://api.dev.sdkwork.com',
+      '',
+    ].join('\n'),
+    'etc/topology/cloud.production.env': '',
+  });
+
+  const result = runChecker(workspace);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must not declare platform cloud gateway implementation details/u);
 });
 
 test('rejects cloud development loopback URLs without an explicit tunnel', () => {

@@ -126,9 +126,9 @@ When changing HTTP input/output rules, first update `API_SPEC.md` section 4.5 an
 
 The task-specific sections below are not startup requirements. Read only the matching section after the task category is known. Their canonical excerpts remain discoverable under `AGENTS_SPEC.md`; do not create independent or divergent copies of the underlying global rules.
 
-rmission Composition And Route Registry
+## Permission Composition And Route Registry
 
-When a task changes SDK dependency integration, permission catalogs, route manifests, OpenAPI authorities, or gateway assembly, load `APP_PERMISSION_COMPOSITION_SPEC.md`, `PERMISSION_STANDARD_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `API_SPEC.md`, and the relevant `TEST_SPEC.md` sections. Before completion, run:
+When a task changes SDK dependency integration, permission catalogs, route manifests, OpenAPI authorities, or API assembly, load `APP_PERMISSION_COMPOSITION_SPEC.md`, `PERMISSION_STANDARD_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `API_ASSEMBLY_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `API_SPEC.md`, and the relevant `TEST_SPEC.md` sections. Before completion, run:
 
 ```bash
 node <sdkwork-specs>/tools/check-permission-composition.mjs --workspace <workspace-root>

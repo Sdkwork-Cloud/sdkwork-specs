@@ -77,9 +77,9 @@ are identical.
 7. Classify client packages as fixed or runtime-configurable. Runtime-configurable
    clients declare both supported profiles, target platform, client architecture,
    isolated endpoint/credential namespaces, and `dual` package ids.
-8. Upgrade topology to v5 and declare `platform-collapsed`,
-   `dedicated-application`, or `edge-split`. Dedicated/edge strategies require
-   application gateway identity and ADR reference.
+8. Upgrade topology to v5, remove application cloud-gateway identity, and
+   declare explicit remote API surfaces. API host migration follows
+   `MIG-2026-0720-api-assembly-gateway-hosting`.
 9. Upgrade production deploy manifests to v2 typed deployment dimensions;
    remove development profiles and production source-tree installs unless an
    approved exception exists.

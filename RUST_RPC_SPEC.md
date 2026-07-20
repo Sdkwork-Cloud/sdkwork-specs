@@ -106,7 +106,7 @@ crates/sdkwork-iam-rpc-proto-rust/
   build.rs
   src/lib.rs
 
-crates/sdkwork-commerce (deleted)-rpc-proto-rust/
+crates/sdkwork-shop-rpc-proto-rust/
   Cargo.toml
   build.rs
   src/lib.rs
@@ -151,7 +151,7 @@ crates/sdkwork-iam-rpc-rust/
   src/backend/
   tests/iam_rpc_contract.rs
 
-crates/sdkwork-commerce (deleted)-rpc-rust/
+crates/sdkwork-shop-rpc-rust/
   Cargo.toml
   src/lib.rs
   src/server.rs
@@ -256,8 +256,8 @@ Rules:
 | `sdkwork-rpc-core-rust` | `sdkwork_rpc_core` | `sdkwork_rpc_core` |
 | `sdkwork-iam-rpc-proto-rust` | `sdkwork_iam_rpc_proto` | `sdkwork_iam_rpc_proto` |
 | `sdkwork-iam-rpc-rust` | `sdkwork_iam_rpc` | `sdkwork_iam_rpc` |
-| `sdkwork-commerce (deleted)-rpc-proto-rust` | `sdkwork_commerce_rpc_proto` | `sdkwork_commerce_rpc_proto` |
-| `sdkwork-commerce (deleted)-rpc-rust` | `sdkwork_commerce_rpc` | `sdkwork_commerce_rpc` |
+| `sdkwork-shop-rpc-proto-rust` | `sdkwork_shop_rpc_proto` | `sdkwork_shop_rpc_proto` |
+| `sdkwork-shop-rpc-rust` | `sdkwork_shop_rpc` | `sdkwork_shop_rpc` |
 
 Rules:
 
@@ -308,11 +308,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_client(true)
         .compile_protos(
             &[
-                "../../../../../common/commerce/sdkwork-commerce (deleted)-rpc-contracts/proto/sdkwork/commerce/app/v3/checkout_service.proto",
+                "../../../../../common/shop/sdkwork-shop-rpc-contracts/proto/sdkwork/shop/app/v3/checkout_service.proto",
             ],
             &[
                 "../../../../../common/rpc/sdkwork-rpc-contracts/proto",
-                "../../../../../common/commerce/sdkwork-commerce (deleted)-rpc-contracts/proto",
+                "../../../../../common/shop/sdkwork-shop-rpc-contracts/proto",
             ],
         )?;
 
@@ -485,7 +485,7 @@ Example commands:
 
 ```text
 cargo test -p sdkwork-iam-rpc-rust
-cargo test -p sdkwork-commerce (deleted)-rpc-rust
+cargo test -p sdkwork-shop-rpc-rust
 ```
 
 ## 14. Environment And Deployment

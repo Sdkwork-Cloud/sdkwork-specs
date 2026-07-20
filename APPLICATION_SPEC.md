@@ -169,8 +169,8 @@ Aggregated authority and SDK examples:
 sdkwork-routes-merchandise-app-api
 sdkwork-routes-cart-app-api
 sdkwork-routes-order-app-api
-  -> sdkwork-commerce (deleted)-app-api
-  -> sdkwork-commerce (deleted)-app-sdk
+  -> sdkwork-shop-app-api
+  -> sdkwork-shop-app-sdk
 ```
 
 Rules:
@@ -180,8 +180,8 @@ Rules:
 - Web backend implementation layers, including controller/router, handler, service/use-case, repository, provider adapter, request context, and route materialization boundaries, `MUST` follow `WEB_BACKEND_SPEC.md`.
 - Every API operation exposed by an application module `MUST` consume or project `WebRequestContext`: route manifests declare `requestContext: WebRequestContext` and `apiSurface`, materialized OpenAPI declares `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface`, and handlers/controllers consume the typed context before service code.
 - Route crates own route/path configuration for one capability and one API surface. They do not own SDK package names, generated SDK output, frontend service ports, or final OpenAPI authority names.
-- The application or backend shell owns route aggregation. It combines same-surface, same-owner route manifests into the project/domain authority such as `sdkwork-commerce (deleted)-app-api` or `sdkwork-commerce (deleted)-backend-api`.
-- Applications consume generated application-owned SDK families such as `sdkwork-commerce (deleted)-app-sdk` and `sdkwork-commerce (deleted)-backend-sdk`. UI and service modules `MUST NOT` import route crates or build requests from route constants.
+- The application or backend shell owns route aggregation. It combines same-surface, same-owner route manifests into the project/domain authority such as `sdkwork-shop-app-api` or `sdkwork-shop-backend-api`.
+- Applications consume generated application-owned SDK families such as `sdkwork-shop-app-sdk` and `sdkwork-shop-backend-sdk`. UI and service modules `MUST NOT` import route crates or build requests from route constants.
 - App-api is for application development and user-facing app clients through app SDKs. Backend-api is for `backend-admin` and operator clients through backend SDKs. Open-api is for external/public integration through open-api/domain SDKs.
 - Route aggregation `MUST` subtract dependency-owned routes before SDK generation. Appbase, Drive, provider, and other dependency-owned routes remain dependency SDKs or approved composed wrappers.
 - Route crate capability names should be small business units such as merchandise, cart, order, payment, catalog, shipment, wallet, tenant, report, or audit. Aggregated authorities use the broader project/domain such as commerce.

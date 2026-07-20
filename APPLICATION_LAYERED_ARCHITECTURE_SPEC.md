@@ -83,8 +83,8 @@ Rust backend applications `MUST` use responsibility-specific crate families from
 | In-process service host | `sdkwork-<application-code>-service-host` | L5 |
 | Native/Tauri host | `sdkwork-<application-code>-native-host` or `sdkwork-<application-code>-tauri-host` | L5 |
 | Worker | `sdkwork-<domain>-<capability>-worker` | L2/L4/L5 by component contract |
-| Standalone gateway | `sdkwork-<application-code>-standalone-gateway` | L5/L6 |
-| Cloud gateway | `sdkwork-<application-code>-cloud-gateway` | L5/L6 |
+| API assembly | `sdkwork-api-<application-code>-assembly` | L5/L6 composition |
+| Standalone gateway | `sdkwork-api-<application-code>-standalone-gateway` | L5/L6 host |
 | Platform gateway | `sdkwork-api-cloud-gateway` | L5/L6 platform ingress |
 
 Rules:

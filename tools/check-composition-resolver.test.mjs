@@ -33,16 +33,18 @@ test('resolveComposition derives platform IAM integration from clawrouter sdkDep
   const iam = resolution.integrations.find((entry) => entry.workspace === 'sdkwork-iam-app-sdk');
   assert.ok(iam, 'expected sdkwork-iam-app-sdk integration');
   assert.equal(iam.connectivityPlane, 'platform');
-  assert.equal(iam.runtimeMode, 'external-via-platform-gateway');
-  assert.equal(iam.forbidProductSameOriginFallback, true);
-  assert.equal(resolution.requiresPlatformGatewayProcess, true);
+  assert.equal(iam.runtimeMode, 'external-via-platform-surface');
+  assert.equal(iam.forbidApplicationSameOriginFallback, true);
+  assert.equal(resolution.requiresPlatformApiSurface, true);
+  assert.equal(Object.hasOwn(resolution, 'requiresPlatformGatewayProcess'), false);
+  assert.doesNotMatch(JSON.stringify(resolution), /external-via-platform-gateway/u);
   assert.ok(
     resolution.permissions.inheritedManifests.some((entry) => entry.workspace === 'sdkwork-iam-app-sdk'),
     'expected IAM permission manifest inheritance',
   );
 });
 
-test('validateCompositionResolution rejects platform IAM falling back to product same-origin URL', () => {
+test('validateCompositionResolution rejects platform IAM falling back to application same-origin URL', () => {
   const resolution = {
     issues: [],
     integrations: [
@@ -50,7 +52,7 @@ test('validateCompositionResolution rejects platform IAM falling back to product
         workspace: 'sdkwork-iam-app-sdk',
         envKey: 'VITE_SDKWORK_APPBASE_APP_API_BASE_URL',
         connectivityPlane: 'platform',
-        forbidProductSameOriginFallback: true,
+        forbidApplicationSameOriginFallback: true,
       },
     ],
   };
@@ -59,43 +61,43 @@ test('validateCompositionResolution rejects platform IAM falling back to product
     observedEnv: {
       VITE_SDKWORK_APPBASE_APP_API_BASE_URL: '/app/v3/api',
     },
-    productAppApiBaseUrl: '/app/v3/api',
+    applicationAppApiBaseUrl: '/app/v3/api',
   });
 
   assert.ok(issues.length >= 1);
-  assert.match(issues[0], /must not fall back to product same-origin/u);
+  assert.match(issues[0], /must not fall back to application same-origin/u);
 });
 
-test('deriveFoundationEnvFromResolution maps platform dependencies to gateway origin', () => {
+test('deriveFoundationEnvFromResolution maps platform dependencies to surface origin', () => {
   const resolution = {
     env: {},
     integrations: [
       {
         workspace: 'sdkwork-iam-app-sdk',
         envKey: 'VITE_SDKWORK_APPBASE_APP_API_BASE_URL',
-        runtimeMode: 'external-via-platform-gateway',
+        runtimeMode: 'external-via-platform-surface',
         apiPrefix: '/app/v3/api',
       },
       {
         workspace: 'sdkwork-drive-app-sdk',
         envKey: 'VITE_SDKWORK_DRIVE_APP_API_BASE_URL',
-        runtimeMode: 'external-via-platform-gateway',
+        runtimeMode: 'external-via-platform-surface',
         apiPrefix: '/app/v3/api',
       },
     ],
   };
 
   const env = deriveFoundationEnvFromResolution(resolution, {
-    platformGatewayOrigin: 'http://127.0.0.1:3902',
-    productAppApiBaseUrl: '/app/v3/api',
-    productBackendApiBaseUrl: 'http://127.0.0.1:3900/backend/v3/api',
+    platformApiOrigin: 'http://127.0.0.1:3902',
+    applicationAppApiBaseUrl: '/app/v3/api',
+    applicationBackendApiBaseUrl: 'http://127.0.0.1:3900/backend/v3/api',
   });
 
   assert.equal(env.VITE_SDKWORK_APPBASE_APP_API_BASE_URL, 'http://127.0.0.1:3902/app/v3/api');
   assert.equal(env.VITE_SDKWORK_DRIVE_APP_API_BASE_URL, 'http://127.0.0.1:3902/app/v3/api');
 });
 
-test('resolveComposition prefers verified Rust assembly mounts over dependency gateway defaults', () => {
+test('resolveComposition prefers verified standalone-host assembly mounts over dependency surface defaults', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-composition-embedded-iam-'));
   const appRoot = path.join(root, 'apps/sdkwork-demo-pc');
   writeJson(path.join(appRoot, 'sdkwork.app.config.json'), {
@@ -122,7 +124,7 @@ test('resolveComposition prefers verified Rust assembly mounts over dependency g
       ],
     },
   });
-  writeJson(path.join(root, 'crates/sdkwork-demo-standalone-gateway/specs/component.spec.json'), {
+  writeJson(path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/specs/component.spec.json'), {
     component: {
       name: 'sdkwork-demo-standalone-gateway',
       type: 'rust-crate',
@@ -136,22 +138,22 @@ test('resolveComposition prefers verified Rust assembly mounts over dependency g
           surface: 'app-api',
           apiPrefix: '/app/v3/api',
           runtimeMode: 'same-origin-mounted',
-          cargoDependency: 'sdkwork_iam_gateway_assembly',
-          embeddedExecutableExport: 'sdkwork_iam_gateway_assembly::assemble_application_business_router',
-          coverageEvidence: ['../sdkwork-demo-gateway-assembly/src/bootstrap.rs#assemble_application_router'],
+          cargoDependency: 'sdkwork_api_iam_assembly',
+          embeddedExecutableExport: 'sdkwork_api_iam_assembly::assemble_api_business_router',
+          coverageEvidence: ['src/main.rs#assemble_api_router'],
         },
       ],
     },
   });
   writeText(
-    path.join(root, 'crates/sdkwork-demo-gateway-assembly/Cargo.toml'),
+    path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/Cargo.toml'),
     [
       '[package]',
-      'name = "sdkwork-demo-gateway-assembly"',
+      'name = "sdkwork-api-demo-standalone-gateway"',
       'version = "0.0.0"',
       '',
       '[dependencies]',
-      'sdkwork_iam_gateway_assembly.workspace = true',
+      'sdkwork_api_iam_assembly.workspace = true',
       '',
     ].join('\n'),
   );
@@ -164,7 +166,7 @@ test('resolveComposition prefers verified Rust assembly mounts over dependency g
   assert.equal(iam.connectivityPlane, 'application');
   assert.equal(iam.mountStatus, 'verified');
   assert.equal(iam.envKey, null);
-  assert.equal(resolution.requiresPlatformGatewayProcess, false);
+  assert.equal(resolution.requiresPlatformApiSurface, false);
 });
 
 test('resolveComposition includes cross-stack architecture summary', () => {

@@ -157,9 +157,10 @@ deployment architectures the app supports:
 standalone, cloud
 ```
 
-`runtime.defaultDeploymentProfile` selects the default profile used by local
-tooling, package generation, and latest-download resolution when a caller does
-not request one explicitly.
+`runtime.defaultDeploymentProfile` selects a discovery, package-generation, or
+latest-download default when a caller does not request one explicitly. It does
+not select local development; `pnpm dev` always selects
+`standalone.development` through `PNPM_SCRIPT_SPEC.md`.
 
 Client runtime metadata may additionally declare:
 
@@ -194,8 +195,9 @@ Rules:
   permitted by section 10.1, but the enclosing application release matrix must
   provide the other lane when the product claims dual-profile support.
 - `runtime.defaultDeploymentProfile` is a discovery/default-selection hint. It
-  `MUST NOT` authorize `release:publish`, `deploy:apply`, or `deploy:rollback`
-  to infer a side-effecting target.
+  `MUST NOT` change `pnpm dev`, start a gateway, or authorize
+  `release:publish`, `deploy:apply`, or `deploy:rollback` to infer a
+  side-effecting target.
 - App manifests `MUST NOT` use `saas`, `private`, `local`, `test`, `server`,
   `container`, `desktop`, `web`, `self-hosted`, or `cloud-hosted` as deployment
   profile values. `server`, `container`, `desktop`, browser, mobile, tablet,

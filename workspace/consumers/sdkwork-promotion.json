@@ -9,6 +9,7 @@
       "../sdkwork-membership/apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-membership",
       "../sdkwork-membership/apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-subscription",
       "../sdkwork-membership/sdks/sdkwork-membership-app-sdk/sdkwork-membership-app-sdk-typescript",
+      "../sdkwork-membership/sdks/sdkwork-membership-backend-sdk/sdkwork-membership-backend-sdk-typescript",
       "../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript",
       "../sdkwork-payment/apps/sdkwork-payment-common/packages/*",
       "../sdkwork-payment/apps/sdkwork-payment-pc/packages/sdkwork-payment-pc-payment"

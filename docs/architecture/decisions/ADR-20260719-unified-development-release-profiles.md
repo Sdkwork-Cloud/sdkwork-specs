@@ -26,10 +26,10 @@ format, provider, ownership, and rollout are separate dimensions.
   application deployment unit.
 - `dev:cloud` selects `cloud.development`, starts only local developer-facing
   client surfaces, and consumes already deployed application/platform APIs.
-- Standalone application HTTP uses
-  `sdkwork-<application-code>-standalone-gateway`. Cloud HTTP defaults to
-  `sdkwork-api-cloud-gateway` with `platform-collapsed` ingress. Dedicated
-  application and edge-split cloud ingress require ADR evidence.
+- Standalone application HTTP uses the application API assembly and
+  `sdkwork-api-<application-code>-standalone-gateway`. Cloud clients consume
+  explicit deployed surface URLs. API assembly and cloud host ownership are
+  superseded by `ADR-20260720-api-assembly-gateway-hosting`.
 - Runtime instances select one profile. Runtime-configurable signed clients may
   declare `supportedDeploymentProfiles = [standalone, cloud]`; fixed service,
   gateway, worker, and container artifacts bind one profile.
@@ -106,4 +106,5 @@ for language- and toolchain-specific commands.
 
 ## Supersedes / Superseded By
 
-None.
+Gateway composition and host-ownership clauses are superseded by
+`ADR-20260720-api-assembly-gateway-hosting`; lifecycle and release decisions remain active.

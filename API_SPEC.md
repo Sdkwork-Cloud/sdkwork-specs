@@ -8,7 +8,7 @@
 
 This document defines the API contract standard for SDKWork applications. It is intentionally independent of Java, Rust, TypeScript, Tauri, React, mobile, standalone, cloud, or deployment ownership choices. API contracts must be stable enough to generate SDKs, switch between standalone and cloud deployment profiles, and compose shared application modules without duplicating business logic.
 
-For repository/application root directory placement, use `SDKWORK_WORKSPACE_SPEC.md`: `apis/` is the standard project-root directory for authored API contracts and API materialization inputs across API kinds. For data persistence and database naming rules, use `DATABASE_SPEC.md`. For cross-layer pagination contract, implementation prohibition (no in-process pagination), and verification gates, use `PAGINATION_SPEC.md`. For canonical domain names, use `DOMAIN_SPEC.md`. For file storage, upload sessions, download grants, object-storage providers, Drive spaces/nodes, and SDKWork-owned file lifecycle, use `DRIVE_SPEC.md`. For media representation, generated asset DTOs, and bare URL cleanup, use `MEDIA_RESOURCE_SPEC.md`. For cross-stack locale, localized problem metadata, and message-key rules, use `I18N_SPEC.md`. For mandatory `sdkwork-web-framework` integration on every SDKWork HTTP `*-api` surface, including open-api, app-api, backend-api, route manifests, standalone/cloud gateways, migration-only API servers, and Java/Spring parity, use `WEB_FRAMEWORK_SPEC.md`; the framework repository L1 detail standard is `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`. For web backend implementation layering, Java controller/Rust route crate boundaries, handler/service/repository naming, request context consumption, and route materialization responsibilities, use `WEB_BACKEND_SPEC.md`. For SDK naming semantics, generated client behavior, auth integration, and frontend service boundaries, use `SDK_SPEC.md`, `MODULE_SPEC.md`, and `FRONTEND_SPEC.md`; for application-root `sdks/` workspace generation, OpenAPI authority/derived input placement, and generated artifact placement, use `SDK_WORKSPACE_GENERATION_SPEC.md` as the subordinate detail standard under `SDK_SPEC.md`. For IAM login/session integration, appbase auth UI/runtime, logout clearing, and Rust AppContext validation, use `IAM_LOGIN_INTEGRATION_SPEC.md`. For gRPC/protobuf contracts, use `RPC_SPEC.md` and `RUST_RPC_SPEC.md`. HTTP API contracts and RPC contracts must preserve shared operation semantics, but neither document replaces the other.
+For repository/application root directory placement, use `SDKWORK_WORKSPACE_SPEC.md`: `apis/` is the standard project-root directory for authored API contracts and API materialization inputs across API kinds. For data persistence and database naming rules, use `DATABASE_SPEC.md`. For cross-layer pagination contract, implementation prohibition (no in-process pagination), and verification gates, use `PAGINATION_SPEC.md`. For canonical domain names, use `DOMAIN_SPEC.md`. For file storage, upload sessions, download grants, object-storage providers, Drive spaces/nodes, and SDKWork-owned file lifecycle, use `DRIVE_SPEC.md`. For media representation, generated asset DTOs, and bare URL cleanup, use `MEDIA_RESOURCE_SPEC.md`. For cross-stack locale, localized problem metadata, and message-key rules, use `I18N_SPEC.md`. For mandatory `sdkwork-web-framework` integration on every SDKWork HTTP `*-api` surface, including open-api, app-api, backend-api, route manifests, application standalone gateways, platform cloud gateways, migration-only API servers, and Java/Spring parity, use `WEB_FRAMEWORK_SPEC.md`; the framework repository L1 detail standard is `../sdkwork-web-framework/specs/WEB_FRAMEWORK_STANDARD.md`. For web backend implementation layering, Java controller/Rust route crate boundaries, handler/service/repository naming, request context consumption, and route materialization responsibilities, use `WEB_BACKEND_SPEC.md`. For SDK naming semantics, generated client behavior, auth integration, and frontend service boundaries, use `SDK_SPEC.md`, `MODULE_SPEC.md`, and `FRONTEND_SPEC.md`; for application-root `sdks/` workspace generation, OpenAPI authority/derived input placement, and generated artifact placement, use `SDK_WORKSPACE_GENERATION_SPEC.md` as the subordinate detail standard under `SDK_SPEC.md`. For IAM login/session integration, appbase auth UI/runtime, logout clearing, and Rust AppContext validation, use `IAM_LOGIN_INTEGRATION_SPEC.md`. For gRPC/protobuf contracts, use `RPC_SPEC.md` and `RUST_RPC_SPEC.md`. HTTP API contracts and RPC contracts must preserve shared operation semantics, but neither document replaces the other.
 
 ## 1. Normative Language
 
@@ -220,7 +220,7 @@ Rules:
 - Route crates `MUST` use lowercase kebab-case package names. The Rust crate import may use snake case, for example package `sdkwork-routes-merchandise-app-api` imports as `sdkwork_routes_merchandise_app_api`.
 - Route crates may be split by business capability for maintainability, for example merchandise, cart, order, payment, catalog, shipment, tenant, and report. They `MUST` still preserve the canonical domain names from `DOMAIN_SPEC.md` in tags, operationIds, schemas, and route manifests.
 - Route crates `MUST` produce or feed a route manifest that can be materialized into an owner-only OpenAPI authority. Java controller mappings and Rust route crates are implementation inputs; the aggregated OpenAPI authority remains the HTTP contract source of truth for SDK generation.
-- Route manifests and OpenAPI authorities `MUST` pass normalized route registry collision validation before gateway assembly or SDK generation. The collision key is `(surface, method, normalizedPath)`; `{id}`, `:id`, and `<id>` normalize to `{param}`.
+- Route manifests and OpenAPI authorities `MUST` pass normalized route registry collision validation before API assembly or SDK generation. The collision key is `(surface, method, normalizedPath)`; `{id}`, `:id`, and `<id>` normalize to `{param}`.
 - A route crate `MUST NOT` copy appbase-owned routes. If a route is owned by `sdkwork-appbase`, the consuming application uses the appbase Rust crate or appbase SDK dependency instead of creating `sdkwork-routes-<capability>-app-api` for that route.
 
 ### 4.2.1 Route Manifest Shape
@@ -234,11 +234,11 @@ schemaVersion: 1
 kind: sdkwork.route.manifest
 packageName: sdkwork-routes-merchandise-app-api
 surface: app-api
-owner: sdkwork-commerce (deleted)
+owner: sdkwork-shop
 domain: commerce
 capability: merchandise
-apiAuthority: sdkwork-commerce (deleted)-app-api
-sdkFamily: sdkwork-commerce (deleted)-app-sdk
+apiAuthority: sdkwork-shop-app-api
+sdkFamily: sdkwork-shop-app-sdk
 prefix: /app/v3/api
 source:
   crateRoot: crates/sdkwork-routes-merchandise-app-api
@@ -264,8 +264,8 @@ routes:
       response: ProductListResponse
       problem: ProblemDetail
     ownership:
-      owner: sdkwork-commerce (deleted)
-      apiAuthority: sdkwork-commerce (deleted)-app-api
+      owner: sdkwork-shop
+      apiAuthority: sdkwork-shop-app-api
     source:
       file: src/routes.rs
       line: 42
@@ -282,8 +282,8 @@ Required top-level fields:
 | `owner` | SDK generation owner, materialized to `x-sdkwork-owner`. |
 | `domain` | Canonical domain from `DOMAIN_SPEC.md`. |
 | `capability` | Business capability encoded in the route crate name. |
-| `apiAuthority` | Aggregated API authority name, for example `sdkwork-commerce (deleted)-app-api`. |
-| `sdkFamily` | SDK family generated from the authority, for example `sdkwork-commerce (deleted)-app-sdk`. |
+| `apiAuthority` | Aggregated API authority name, for example `sdkwork-shop-app-api`. |
+| `sdkFamily` | SDK family generated from the authority, for example `sdkwork-shop-app-sdk`. |
 | `prefix` | Canonical path prefix for the surface/domain. |
 | `routes` | Non-empty list of route entries. |
 
@@ -342,15 +342,15 @@ sdkwork-routes-merchandise-app-api
 sdkwork-routes-cart-app-api
 sdkwork-routes-order-app-api
 sdkwork-routes-payment-app-api
-  -> sdkwork-commerce (deleted)-app-api
-  -> sdkwork-commerce (deleted)-app-sdk
+  -> sdkwork-shop-app-api
+  -> sdkwork-shop-app-sdk
 ```
 
 Rules:
 
-- `sdkwork-commerce (deleted)-app-api` is the aggregated app-api authority for the commerce project. It may aggregate commerce-owned route crates such as `sdkwork-routes-merchandise-app-api`, `sdkwork-routes-cart-app-api`, `sdkwork-routes-order-app-api`, and `sdkwork-routes-payment-app-api`.
-- `sdkwork-commerce (deleted)-app-api` `MUST` contain only commerce-owned app-api operations after dependency-owned routes are subtracted. Appbase, Drive, provider, or other dependency-owned operations remain dependency SDKs.
-- `sdkwork-commerce (deleted)-app-sdk` is the generated SDK family produced from `sdkwork-commerce (deleted)-app-api`. Application packages consume the SDK family or approved composed wrappers, not the route crates.
+- `sdkwork-shop-app-api` is the aggregated app-api authority for the shop application. It may aggregate shop-owned route crates such as `sdkwork-routes-merchandise-app-api`, `sdkwork-routes-cart-app-api`, and `sdkwork-routes-checkout-app-api`.
+- `sdkwork-shop-app-api` `MUST` contain only shop-owned app-api operations after dependency-owned routes are subtracted. Appbase, Drive, provider, or other dependency-owned operations remain dependency SDKs.
+- `sdkwork-shop-app-sdk` is the generated SDK family produced from `sdkwork-shop-app-api`. Application packages consume the SDK family or approved composed wrappers, not the route crates.
 - The same mapping applies to open-api and backend-api: `sdkwork-routes-<capability>-open-api` aggregates into `sdkwork-<domain>-open-api` and generates `sdkwork-<domain>-sdk`; `sdkwork-routes-<capability>-backend-api` aggregates into `sdkwork-<domain>-backend-api` and generates `sdkwork-<domain>-backend-sdk`.
 - Route manifest inputs `MUST` be grouped by `owner`, `domain`, `surface`, `apiAuthority`, `sdkFamily`, and `prefix`. A materializer `MUST NOT` merge manifests that disagree on any of those fields.
 - Materialization `MUST` reject mixed surfaces, mismatched prefixes, missing owner/domain/capability, missing or mismatched route framework metadata, a route crate package name that does not match `sdkwork-routes-<capability>-<surface>`, operationId/tag/domain mismatch, duplicate method/path pairs, and dependency-owned operations in a consuming app authority.
@@ -363,7 +363,7 @@ Every SDKWork HTTP API contract for open-api, app-api, backend-api, or any SDKWo
 
 Rules:
 
-- All SDKWork HTTP API runtime implementations `MUST` integrate `sdkwork-web-framework` for Rust route crates, standalone/cloud gateways, migration-only API servers, and any Rust-backed application module that owns, serves, proxies, or composes an HTTP `*-api` surface according to `WEB_FRAMEWORK_SPEC.md`.
+- All SDKWork HTTP API runtime implementations `MUST` integrate `sdkwork-web-framework` for Rust route crates, application standalone gateways, platform cloud gateways, migration-only API servers, and any Rust-backed application module that owns, serves, proxies, or composes an HTTP `*-api` surface according to `WEB_FRAMEWORK_SPEC.md`.
 - API contracts `MUST NOT` require clients to choose the current tenant, organization, user, app, or permission scope through path, query, header, cookie, or client-writable body fields when token or API-key context already defines that scope.
 - Contract authors `MUST` design operations assuming handlers consume `WebRequestContext` injected by the framework. Handlers `MUST NOT` reparse `Authorization`, `Access-Token`, `X-API-Key`, or SDKWork identity projection headers.
 - Rust route crates, gateways, and migration-only API servers `MUST NOT` bypass the framework to assemble ad hoc Axum/Tower security chains, custom credential parsers, or parallel request-context types.

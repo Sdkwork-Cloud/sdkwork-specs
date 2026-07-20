@@ -197,8 +197,8 @@ Definitions:
   derives open-api, app-api, backend-api, and dependency SDK surface URLs by appending each surface's
   standard prefix. It is the recommended default for simple deployments, while per-surface and
   per-SDK base URL overrides remain available for multi-host deployments and dependency services.
-- A gateway-backed common SDK base URL is valid only when the gateway runtime contract proves that
-  it serves the dependency surface. For Rust gateways, executable integration evidence starts from
+- A common API edge origin is valid only when topology proves that edge serves
+  the dependency surface. For Rust gateway hosts, executable integration evidence starts from
   Cargo workspace dependencies, Cargo features, and public router/controller/service exports; SDKWork
   app manifest, component spec, and SDK family manifest metadata provide the API authority, SDK family, prefix,
   surface, runtime mode, and coverage semantics.
@@ -265,8 +265,8 @@ Rules:
   `dependencyApiSurfaces` manifest or equivalent component/runtime manifest entry for each
   `sdkDependencies` item. The declaration records dependency workspace, consuming SDK family,
   surface, `apiPrefix`, runtime mode, required base URL config, Rust route contract crate when
-  present, executable router export when present, native gateway integration evidence such as
-  `cargoFeature` and `cargoDependency` when a Rust gateway owns the mount, and mount coverage
+  present, executable router export when present, native host integration evidence such as
+  `cargoFeature` and `cargoDependency` when a gateway host owns the mount, and mount coverage
   evidence.
 - Dependency API authorities remain separate exports by surface: open-api, app-api, and backend-api
   are distinct even when they share an origin or a versioned path prefix. Importing
@@ -282,28 +282,30 @@ Rules:
   sample, local-only, fixture, mock, hard-coded tenant/user/organization/API-key data, or seeded fake
   responses `MUST NOT` satisfy `dependencyApiSurfaces` same-origin coverage in development, test,
   staging, or production.
-- Dependency SDK base URLs may use a configured common SDK base URL when that root is documented as
-  a gateway serving the dependency surface. They may use an application's same-origin
+- Dependency SDK base URLs may use a configured platform API surface or common
+  API edge origin when topology proves it serves the dependency surface. They
+  may use an application's same-origin
   app/backend default only
   when `dependencyApiSurfaces` declares `same-origin` runtime mode and mount coverage has verified
   every dependency-owned method/path the SDK can call on that surface.
-- A Rust SDKWork API gateway `MUST NOT` introduce a standalone gateway catalog as the primary
-  source of dependency surface facts. Validators must reconstruct gateway executable integration
+- A Rust gateway host `MUST NOT` introduce a parallel host catalog as the
+  primary source of dependency surface facts. Validators must reconstruct host executable integration
   from `cargo metadata`, root `[workspace.dependencies]`, runtime Cargo features, and public
   executable exports, then compare those facts with `sdkwork.app.config.json`,
   `specs/component.spec.json`, and SDK family manifest metadata.
-- Rust gateway surfaces that proxy split upstream services are dependency surface facts, not
+- Platform cloud gateway surfaces that proxy split upstream services are dependency surface facts, not
   executable Cargo facts. They must be validated through their `requiredBaseUrlKey`, upstream
   config, API authority, SDK family, prefix, and runtime mode, and must not carry fake
   `cargoFeature` or `cargoDependency` values.
-- Rust gateway surfaces with overlapping prefixes `MUST` declare route precedence and test runtime
+- Platform cloud gateway surfaces with overlapping prefixes `MUST` declare route precedence and test runtime
   resolution. Fixed IAM/provider routes and more specific dependency prefixes resolve before broad
   fallback dependency prefixes. A broad fallback surface does not prove that every dependency-owned
   operation at the shared root is served unless route coverage verifies the owning authority,
   normalized path template, and method.
-- When mount coverage is not verified, dependency SDK clients `MUST` use an explicit dependency SDK
-  base URL keyed by SDK family or dependency app code, or a configured common SDK base URL that is
-  declared to serve that dependency surface, and `MUST` fail fast when neither is available.
+- When mount coverage is not verified, dependency SDK clients `MUST` use an
+  explicit dependency SDK base URL keyed by SDK family or dependency app code,
+  or the declared platform API surface, and `MUST` fail fast when neither is
+  available.
   Dependency SDK clients MUST NOT silently inherit the application-owned app SDK or backend SDK base URL.
 - `backend-admin` dependency SDKs, especially appbase IAM backend management, `MUST NOT` default to a
   application `/backend/v3/api` base URL unless the application runtime has verified the dependency backend
@@ -328,7 +330,7 @@ Rules:
   coverage evidence, or when an external-service declaration still falls back to an application-owned
   base URL. A configured common SDK base URL counts only when the runtime contract states that the
   common root serves that dependency surface.
-- Standards checks for Rust gateways `MUST` compare `dependencyApiSurfaces[].cargoFeature` and
+- Standards checks for Rust gateway hosts `MUST` compare `dependencyApiSurfaces[].cargoFeature` and
   `dependencyApiSurfaces[].cargoDependency` or their manifest equivalents against `cargo metadata`.
   A dependency surface is not embedded-capable when the Cargo feature is missing, the dependency
   crate is absent from workspace dependencies, or the declared executable export is not public.
@@ -365,8 +367,8 @@ These names have different meanings:
 - `sdkwork-<domain>-open-api`, `sdkwork-<domain>-app-api`, `sdkwork-<domain>-backend-api`, and `sdkwork-<domain>-internal-api` are never SDK family names.
 - The SDK family generated from an `open-api` authority is `sdkwork-<domain>-sdk`, not `sdkwork-<domain>-open-api` and not `sdkwork-<domain>-open-sdk`.
 - `sdkwork-routes-merchandise-app-api` means merchandise-related app-api route/path configuration. It does not mean the merchandise SDK, and it does not mean the final app-api authority for the whole project.
-- `sdkwork-commerce (deleted)-app-api` means the aggregated commerce app-api authority. It may aggregate multiple commerce-owned route crates such as `sdkwork-routes-merchandise-app-api`, `sdkwork-routes-cart-app-api`, and `sdkwork-routes-order-app-api`.
-- `sdkwork-commerce (deleted)-app-sdk` means the generated SDK family produced from `sdkwork-commerce (deleted)-app-api`.
+- `sdkwork-shop-app-api` means the aggregated shop app-api authority. It may aggregate multiple shop-owned route crates such as `sdkwork-routes-merchandise-app-api`, `sdkwork-routes-cart-app-api`, and `sdkwork-routes-checkout-app-api`.
+- `sdkwork-shop-app-sdk` means the generated SDK family produced from `sdkwork-shop-app-api`.
 
 | Surface | Package pattern |
 | --- | --- |
@@ -719,7 +721,7 @@ Every SDK generation flow `MUST` verify:
   enabled; dependency capabilities appear only in the dependency SDK or approved authored facade.
 - [ ] Runtime-required dependency API exports have matching `dependencyApiSurfaces` evidence or an
   explicit dependency SDK base URL requirement so missing mounts fail before runtime `502` or `404`.
-- [ ] Rust gateway dependency surfaces, when present, declare native integration evidence such as
+- [ ] Rust gateway-host dependency surfaces, when present, declare native integration evidence such as
   `cargoFeature`, `cargoDependency`, and executable export metadata that resolves through
   `cargo metadata` and does not require a separate gateway catalog.
 - [ ] Generated transport output, generated documentation, generated manifests, and generated package/build metadata do not reference package names declared in `sdkDependencies[].packageByLanguage`.
@@ -734,8 +736,8 @@ Every SDK generation flow `MUST` verify:
   name, capability, surface, API authority, SDK family, prefix, auth mode, ownership, and duplicate
   route rules, and materialize source traceability into OpenAPI extensions.
 - [ ] The route crate -> aggregated API authority -> generated SDK family mapping is explicit, for
-  example `sdkwork-routes-merchandise-app-api` -> `sdkwork-commerce (deleted)-app-api` ->
-  `sdkwork-commerce (deleted)-app-sdk`.
+  example `sdkwork-routes-merchandise-app-api` -> `sdkwork-shop-app-api` ->
+  `sdkwork-shop-app-sdk`.
 - [ ] Application-root `sdks/` family layout, OpenAPI authority file placement, derived generator inputs, and generated-output placement follow `SDK_WORKSPACE_GENERATION_SPEC.md`.
 - [ ] Strict SDKWork v3 profile passes for new contracts.
 - [ ] Generated TypeScript compiles.

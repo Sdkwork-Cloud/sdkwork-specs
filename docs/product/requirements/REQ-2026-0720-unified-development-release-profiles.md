@@ -27,10 +27,11 @@ rollback behavior.
 - Application manifests, workflow matrices, topology profiles, package ids,
   release evidence, and deployment plans carry one normalized fixed profile or
   an explicit runtime-configurable supported-profile binding as appropriate.
-- `standalone` resolves application APIs through each application's independent
-  `sdkwork-<application-code>-standalone-gateway`.
-- Cloud HTTP defaults to the deployed `sdkwork-api-cloud-gateway`; local cloud
-  development starts no standalone/application/platform gateway.
+- `standalone` resolves application APIs through
+  `sdkwork-api-<application-code>-standalone-gateway` and the corresponding API assembly.
+- Cloud development consumes explicit deployed surface URLs and starts no
+  standalone or platform gateway. Cloud host implementation is outside the
+  application topology contract.
 - Browser, desktop, tablet, H5/Capacitor, Flutter, native Android/iOS/Harmony,
   and mini-program artifacts can represent fixed or runtime-configurable
   profile support without creating duplicate deployment modes.
@@ -40,7 +41,7 @@ rollback behavior.
 - The lifecycle is implemented as reusable framework components: topology and
   local development in `sdkwork-app-topology`, packaging and publication in
   `sdkwork-github-workflow`, and deployment apply/rollback in `deployctl`.
-- Application roots expose only thin public pnpm aliases; product-specific
+- Application roots expose only thin public pnpm aliases; application-specific
   commands remain private `_sdkwork:*` hooks and are never a second public
   lifecycle vocabulary.
 
@@ -67,8 +68,8 @@ rollback behavior.
   defines canonical release/deploy profile command order.
 - `APP_RUNTIME_TOPOLOGY_SPEC.md` defines `cloud.development` as remote API
   consumption with no local API-plane autostart.
-- Topology schema v5 declares `platform-collapsed` as the default cloud HTTP
-  strategy and requires ADR evidence for dedicated application or edge ingress.
+- Topology schema v5 declares explicit remote cloud surfaces without embedding
+  platform gateway implementation identity; edge ingress requires ADR evidence.
 - `SOURCE_CONFIG_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, and
   `DEPLOYMENT_SPEC.md` keep profile, environment, runtime target, and Base URL
   selection separate.
@@ -134,6 +135,7 @@ Specs:
 Decision:
 
 - `ADR-20260719-unified-development-release-profiles`
+- Gateway composition supersession: `ADR-20260720-api-assembly-gateway-hosting`
 
 ## Verification
 

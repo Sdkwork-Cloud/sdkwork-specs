@@ -255,7 +255,7 @@ Resolver profiles:
 | Profile | When |
 | --- | --- |
 | `static` | Approved standalone loopback or fixed topology tables in development |
-| `static-composite` | Unified-process local orchestration with topology manifest endpoints |
+| `static-composite` | Single-process local orchestration with topology manifest endpoints |
 | `discovery` | Default for cloud and multi-instance production |
 | `composite` | Static fallback plus discovery primary with documented precedence |
 

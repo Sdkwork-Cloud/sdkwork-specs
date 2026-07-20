@@ -3,16 +3,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { materializeGatewayAssembly } from './materialize-gateway-assembly.mjs';
+import { materializeApiAssembly } from './materialize-api-assembly.mjs';
 
 function writeText(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, value, 'utf8');
 }
 
-test('gateway assembly Cargo dependencies use workspace declarations when root owns route crates', () => {
+test('API assembly Cargo dependencies use workspace declarations when root owns route crates', () => {
   const root = path.join(
-    fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-gateway-assembly-')),
+    fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-')),
     'sdkwork-agents',
   );
   writeText(
@@ -57,33 +57,39 @@ test('gateway assembly Cargo dependencies use workspace declarations when root o
     'pub const ROUTE_MANIFEST_KIND: &str = "sdkwork.route.manifest";\n',
   );
 
-  const result = materializeGatewayAssembly(root);
+  const result = materializeApiAssembly(root);
 
   assert.equal(result.ok, true);
   const cargoToml = fs.readFileSync(
-    path.join(root, 'crates/sdkwork-agents-gateway-assembly/Cargo.toml'),
+    path.join(root, 'crates/sdkwork-api-agents-assembly/Cargo.toml'),
     'utf8',
   );
   assert.match(cargoToml, /^tokio\.workspace = true$/mu);
   assert.match(cargoToml, /^edition = "2021"$/mu);
   assert.match(cargoToml, /^version = "0\.1\.0"$/mu);
   assert.match(cargoToml, /^sdkwork-routes-agents-app-api\.workspace = true$/mu);
-  assert.match(cargoToml, /^sdkwork-routes-agents-http-shared\.workspace = true$/mu);
+  assert.doesNotMatch(cargoToml, /^sdkwork-routes-agents-http-shared(?:\.workspace)?\s*=/mu);
   assert.doesNotMatch(cargoToml, /sdkwork_routes_agents_app_api\s*=/u);
   assert.doesNotMatch(cargoToml, /sdkwork_routes_agents_http_shared\s*=/u);
   assert.doesNotMatch(cargoToml, /package = "sdkwork-routes-agents-app-api"/u);
   assert.doesNotMatch(cargoToml, /package = "sdkwork-routes-agents-http-shared"/u);
   assert.equal(
     fs.existsSync(
-      path.join(root, 'crates/sdkwork-agents-gateway-assembly/specs/component.spec.json'),
+      path.join(root, 'crates/sdkwork-api-agents-assembly/specs/component.spec.json'),
     ),
     true,
   );
+  const libRs = fs.readFileSync(
+    path.join(root, 'crates/sdkwork-api-agents-assembly/src/lib.rs'),
+    'utf8',
+  );
+  assert.match(libRs, /^mod bootstrap;$/mu);
+  assert.doesNotMatch(libRs, /router\.merge\(sdkwork_routes_/u);
 });
 
-test('gateway assembly discovers aggregate subdomain routes when app-code routes are absent', () => {
+test('API assembly discovers aggregate subdomain routes when app-code routes are absent', () => {
   const root = path.join(
-    fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-gateway-assembly-')),
+    fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-')),
     'sdkwork-deployments',
   );
   writeText(
@@ -128,13 +134,13 @@ test('gateway assembly discovers aggregate subdomain routes when app-code routes
     );
   }
 
-  const result = materializeGatewayAssembly(root);
+  const result = materializeApiAssembly(root);
 
   assert.equal(result.ok, true);
   assert.equal(result.routeCrates, 2);
   const manifest = JSON.parse(
     fs.readFileSync(
-      path.join(root, 'crates/sdkwork-deployments-gateway-assembly/assembly-manifest.json'),
+      path.join(root, 'crates/sdkwork-api-deployments-assembly/assembly-manifest.json'),
       'utf8',
     ),
   );
@@ -143,10 +149,10 @@ test('gateway assembly discovers aggregate subdomain routes when app-code routes
     ['sdkwork-routes-deploy-app-api', 'sdkwork-routes-deploy-backend-api'],
   );
 
-  const secondResult = materializeGatewayAssembly(root);
+  const secondResult = materializeApiAssembly(root);
   assert.equal(secondResult.ok, true);
   const cargoToml = fs.readFileSync(
-    path.join(root, 'crates/sdkwork-deployments-gateway-assembly/Cargo.toml'),
+    path.join(root, 'crates/sdkwork-api-deployments-assembly/Cargo.toml'),
     'utf8',
   );
   assert.equal(
@@ -159,9 +165,9 @@ test('gateway assembly discovers aggregate subdomain routes when app-code routes
   );
 });
 
-test('gateway assembly dependency rendering deduplicates preserved Cargo keys', () => {
+test('API assembly dependency rendering deduplicates preserved Cargo keys', () => {
   const root = path.join(
-    fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-gateway-assembly-')),
+    fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-')),
     'sdkwork-agents',
   );
   writeText(
@@ -193,10 +199,10 @@ test('gateway assembly dependency rendering deduplicates preserved Cargo keys', 
     'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\n',
   );
   writeText(
-    path.join(root, 'crates/sdkwork-agents-gateway-assembly/Cargo.toml'),
+    path.join(root, 'crates/sdkwork-api-agents-assembly/Cargo.toml'),
     [
       '[package]',
-      'name = "sdkwork-agents-gateway-assembly"',
+      'name = "sdkwork-api-agents-assembly"',
       'version = "0.1.0"',
       'edition = "2021"',
       '',
@@ -208,13 +214,72 @@ test('gateway assembly dependency rendering deduplicates preserved Cargo keys', 
     ].join('\n'),
   );
 
-  const result = materializeGatewayAssembly(root);
+  const result = materializeApiAssembly(root);
   assert.equal(result.ok, true);
   const cargoToml = fs.readFileSync(
-    path.join(root, 'crates/sdkwork-agents-gateway-assembly/Cargo.toml'),
+    path.join(root, 'crates/sdkwork-api-agents-assembly/Cargo.toml'),
     'utf8',
   );
   assert.equal((cargoToml.match(/^axum(?:\.workspace)?\s*=/gmu) ?? []).length, 1);
   assert.equal((cargoToml.match(/^tokio(?:\.workspace)?\s*=/gmu) ?? []).length, 1);
   assert.equal((cargoToml.match(/^serde(?:\.workspace)?\s*=/gmu) ?? []).length, 1);
+});
+
+test('API assembly materializer never writes an assembly for the platform cloud gateway', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-'));
+  const root = path.join(workspace, 'sdkwork-api-cloud-gateway');
+  writeText(path.join(root, 'sdkwork.app.config.json'), '{}\n');
+
+  const result = materializeApiAssembly(root);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.skipped, true);
+  assert.equal(
+    fs.existsSync(path.join(root, 'crates', 'sdkwork-api-api-cloud-gateway-assembly')),
+    false,
+  );
+});
+
+test('API assembly includes application-code and capability-named route members together', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-'));
+  const root = path.join(workspace, 'sdkwork-demo');
+  writeText(path.join(root, 'sdkwork.app.config.json'), '{}\n');
+  writeText(
+    path.join(root, 'Cargo.toml'),
+    [
+      '[workspace]',
+      'members = [',
+      '  "crates/sdkwork-routes-demo-app-api",',
+      '  "crates/sdkwork-routes-membership-backend-api"',
+      ']',
+      '',
+    ].join('\n'),
+  );
+  for (const packageName of [
+    'sdkwork-routes-demo-app-api',
+    'sdkwork-routes-membership-backend-api',
+  ]) {
+    writeText(
+      path.join(root, 'crates', packageName, 'Cargo.toml'),
+      `[package]\nname = "${packageName}"\nversion = "0.0.0"\n`,
+    );
+    writeText(
+      path.join(root, 'crates', packageName, 'src', 'lib.rs'),
+      'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\n',
+    );
+  }
+
+  const result = materializeApiAssembly(root);
+  const manifest = JSON.parse(
+    fs.readFileSync(
+      path.join(root, 'crates', 'sdkwork-api-demo-assembly', 'assembly-manifest.json'),
+      'utf8',
+    ),
+  );
+
+  assert.equal(result.routeCrates, 2);
+  assert.deepEqual(
+    manifest.routeCrates.map((route) => route.packageName),
+    ['sdkwork-routes-demo-app-api', 'sdkwork-routes-membership-backend-api'],
+  );
 });

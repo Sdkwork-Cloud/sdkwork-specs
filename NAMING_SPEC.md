@@ -17,10 +17,10 @@ SDKWork names use a fixed identity lattice. Do not collapse these layers into on
 | L3 process name | process name | `<process-name>` | `clawrouter` | application code |
 | L4 manifest key | `app.key` | (manifest field, not a path placeholder) | `commerce-pc` | application code alone |
 | L5 repository stem | SDKWork repository | `sdkwork-<application-code>` when they match | `sdkwork-drive` | guaranteed equal to L2 |
-| L6 client architecture | client-arch | `<client-arch>` | `pc`, `h5`, `flutter-mobile` | ??|
+| L6 client architecture | client-arch | `<client-arch>` | `pc`, `h5`, `flutter-mobile` | business capability or deployment profile |
 | L7 domain | domain | `<domain>` | `commerce`, `iam` | product name |
 | L8 capability | capability | `<capability>` | `cart`, `merchandise` | `product`, `common`, `manager` |
-| L9 API owner | owner code | `<owner-code>` | `sdkwork-commerce (deleted)` | SDK family name |
+| L9 API owner | owner code | `<owner-code>` | `sdkwork-shop` | SDK family name |
 
 Rules:
 
@@ -28,7 +28,7 @@ Rules:
 - `app` in SDKWork already means application root, `app-api`, `app.key`, app/user surface, `apps/`, or platform_app registration. Do not use bare `<app>` as a naming placeholder.
 - `product` is retired as a naming placeholder. It remains valid only as L1 **product name** in prose, or in the forbidden generic suffix `sdkwork-<application-code>-product`.
 - Commerce sellable-item work uses capability token **`merchandise`**. Public catalog browsing uses **`catalog`**. Shop configuration uses **`shop`**. See `DOMAIN_SPEC.md`.
-- Retired synonyms: `<product>` ??`<application-code>`; use `application-specific` instead of retired `product-specific`; use `application-code-prefix` / `application-code-prefixed` instead of retired pnpm prefix terms.
+- Retired synonyms: `<product>` -> `<application-code>`; use `application-specific` instead of retired `product-specific`; use `application-code-prefix` / `application-code-prefixed` instead of retired pnpm prefix terms.
 
 ### 0.1 Naming Formula Summary
 
@@ -37,7 +37,9 @@ apps/sdkwork-<application-code>-<client-arch>/
 sdkwork-<application-code>-<client-arch>-<capability>
 sdkwork_<application_code>_<client_arch>_<capability>    # Dart only
 
-sdkwork-<application-code>-standalone-gateway | -cloud-gateway | -service-host | -native-host | -tauri-host
+sdkwork-api-<application-code>-assembly
+sdkwork-api-<application-code>-standalone-gateway
+sdkwork-<application-code>-service-host | -native-host | -tauri-host
 sdkwork-api-cloud-gateway                                              # platform `api-cloud-gateway` plane only
 sdkwork-<domain>-<capability>-service
 sdkwork-routes-<capability>-<surface>
@@ -61,24 +63,24 @@ After `product`, these words are the most common sources of naming drift. Each r
 | `app` | `app-api` surface, `app.key`, app/user UI surface, `apps/` directory, platform_app registration, prose "application root" | bare placeholder `<app>`; path/env token for L2 | `<application-code>` / `application code` |
 | `application` | application root, application-owned API ingress, application packages | shortening L2 to just "application" in package tokens | `application code` for L2; `application-owned` for ingress |
 | `catalog` | commerce browse/category capability; i18n **message catalog**; permission/route **metadata catalog**; DB **catalog** name | generic folder name `catalog/` without domain | `i18n catalog`, `message catalog`, commerce `catalog` capability |
-| `console` | user-facing **management console** package role (`*-console-*`) | company-internal operator UI; `backend-admin`; capability token | `*-console-*` + app-api; internal ops ??`*-admin-*` + `backend-admin` |
+| `console` | user-facing **management console** package role (`*-console-*`) | company-internal operator UI; `backend-admin`; capability token | `*-console-*` + app-api; internal ops -> `*-admin-*` + `backend-admin` |
 | `admin` | package role segment only when paired with `backend-admin` surface rules | bare capability token `admin`; synonym for console | `*-admin-*` packages + `backend-admin` API/SDK |
 | `backend` | `backend-api` surface; `backend-admin` surface; Rust crate suffix only in forbidden list context | vague crate suffix `sdkwork-<application-code>-backend`; capability token | `backend-api`, `backend-admin`, or `sdkwork-<domain>-<capability>-service` |
 | `service` | business **service crate** `sdkwork-<domain>-<capability>-service`; OS/service manager prose | package profile alias for `server`; pnpm `service:*` namespace | package profile `server`; action-first `dev:server` |
 | `server` | `runtimeTarget=server`; package profile `server`; retired `*-api-server` migrated to `*-standalone-gateway` | deployment profile; domain name; generic "backend" | `deploymentProfile`, `runtimeTarget`, `standalone-gateway` |
-| `platform` | domain `platform`; connectivity plane `platform`; OS platform in package ids | application line name; product name | domain `platform` or plane `platform` ??state which |
+| `platform` | domain `platform`; connectivity plane `platform`; OS platform in package ids | application line name; product name | domain `platform` or connectivity plane `platform`; state the axis |
 | `profile` | full topology profile id; **config profile alias** `dev`/`prod`; GitHub package **profile** segment | lifecycle environment alone; deployment profile alone | `environment`, `deploymentProfile`, `configProfile`, or full profile id |
 | `region` | SDKWork market/compliance partition `regionCode`; cloud `providerRegion`; Drive `storageRegion` | bare field `region`; cloud id in `regionCode`; AZ in `regionCode` | `regionCode`, `providerRegion`, `storageRegion` per `REGION_SPEC.md` |
 | `runtime` | `runtimeTarget`; forbidden crate suffix `*-runtime` | synonym for application or environment | `runtimeTarget`, `environment`, or responsibility-specific crate |
-| `gateway` | application `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway`; platform `sdkwork-api-cloud-gateway`; `gateway:*` pnpm namespace | bare `sdkwork-<application-code>-gateway`; retired `*-api-server`; SDK family name; prose that says only "gateway" without scope or plane | `standalone-gateway` vs `cloud-gateway` vs `api-cloud-gateway` vs `platform.api-gateway` — pick one role |
+| `gateway` | application `sdkwork-api-<application-code>-standalone-gateway`; platform `sdkwork-api-cloud-gateway`; `gateway:*` pnpm namespace | bare application gateway; application `*-cloud-gateway`; retired `*-api-server`; SDK family name | `api-standalone-gateway` vs platform `api-cloud-gateway` |
 | `foundation` | shared foundation **domain/module** tier (L3); foundation dependency SDKs | package name `foundation` without domain | `sdkwork-<domain>-*` or `shared foundation module` |
 | `portal` | browser **portal** public config (`PORTAL_PUBLIC_*`, `[portal.public]`); static portal assets | application code; IAM domain | `PORTAL_PUBLIC_*`, `browser public runtime` |
 | `identity` | prose "identity projection" in HTTP headers | domain name instead of `iam` | domain `iam` |
 | `core` | reserved package role `*-core` (runtime/bootstrap) | business capability token; forbidden `sdkwork-<application-code>-core` crate | `*-core` role or `sdkwork-<domain>-<capability>-service` |
-| `common` / `manager` | ??| capability or crate catch-alls | concrete domain capability |
+| `common` / `manager` | prose adjective or responsibility-specific type suffix only | capability or crate catch-alls | concrete domain capability |
 | `open` | approved **open-api** prefix/path; `open-api` surface | shorthand package name `open` | `open-api`, `sdkwork-<domain>-open-api` |
-| `domain` (L7) | bounded context `commerce`, `iam`, ??| application code; repository stem | `<domain>` vs `<application-code>` ??commerce can be both; document which axis |
-| `owner-code` (L9) | API aggregation owner `sdkwork-commerce (deleted)` | SDK family; application code when they differ | `owner` in route manifest; not `sdkFamily` |
+| `domain` (L7) | bounded context `commerce`, `iam`, `platform` | application code; repository stem | `<domain>` vs `<application-code>`; one token may occupy both axes only when declared |
+| `owner-code` (L9) | API aggregation owner `sdkwork-shop` | SDK family; application code when they differ | `owner` in route manifest; not `sdkFamily` |
 | `routes` | Rust HTTP route crate prefix `sdkwork-routes-<capability>-<surface>` | gateway upstream routing; framework router mount | encode capability and surface explicitly |
 | `shell` / `workspace` / `command` | appbase foundation PC React capability tokens in `sdkwork-<foundation>-pc-react` | Rust HTTP route crates; gateway routing | `sdkwork-shell-pc-react`, `sdkwork-workspace-pc-react`, `sdkwork-command-pc-react` |
 | `sdk-family-stem` | generated SDK workspace stem `im`, `commerce` | route crate name; API authority directory; application code | `sdkwork-<sdk-family-stem>-app-sdk` family table |
@@ -89,7 +91,7 @@ After `product`, these words are the most common sources of naming drift. Each r
 Rules:
 
 - When two columns in this table could both apply, the name must encode the axis explicitly (`pc-console-order` = console role, not domain).
-- Specs that still use retired overloads must be updated or listed in `MIGRATION_SPEC.md` ?8.
+- Specs that still use retired overloads must be updated or listed in `MIGRATION_SPEC.md` section 8.
 - `tools/check-identity-naming.mjs` enforces the highest-risk retired patterns; this table is the human-readable authority for the rest.
 
 ## 1. General Rules
@@ -107,42 +109,42 @@ Rules:
 | Concept | Pattern | Example |
 | --- | --- | --- |
 | SDKWork repository | `sdkwork-<application-code>` | `sdkwork-drive` |
-| PC app root | `apps/sdkwork-<application-code>-pc/` | `apps/sdkwork-commerce (deleted)-pc/` |
-| H5 app root | `apps/sdkwork-<application-code>-h5/` | `apps/sdkwork-commerce (deleted)-h5/` |
-| Flutter mobile app root | `apps/sdkwork-<application-code>-flutter-mobile/` | `apps/sdkwork-commerce (deleted)-flutter-mobile/` |
-| Mini program app root | `apps/sdkwork-<application-code>-mini-program/` | `apps/sdkwork-commerce (deleted)-mini-program/` |
-| Android native app root | `apps/sdkwork-<application-code>-android-mobile/` | `apps/sdkwork-commerce (deleted)-android-mobile/` |
-| iOS native app root | `apps/sdkwork-<application-code>-ios-mobile/` | `apps/sdkwork-commerce (deleted)-ios-mobile/` |
-| Harmony native app root | `apps/sdkwork-<application-code>-harmony-mobile/` | `apps/sdkwork-commerce (deleted)-harmony-mobile/` |
-| PC app package | `sdkwork-<application-code>-pc-<capability>` | `sdkwork-commerce (deleted)-pc-merchandise` |
-| PC user console package | `sdkwork-<application-code>-pc-console-<capability>` | `sdkwork-commerce (deleted)-pc-console-order` |
-| PC internal admin package | `sdkwork-<application-code>-pc-admin-<capability>` | `sdkwork-commerce (deleted)-pc-admin-audit` |
-| H5 mobile app package | `sdkwork-<application-code>-h5-<capability>` | `sdkwork-commerce (deleted)-h5-order` |
-| H5 mobile user console package | `sdkwork-<application-code>-h5-console-<capability>` | `sdkwork-commerce (deleted)-h5-console-order` |
-| H5 mobile internal admin package | `sdkwork-<application-code>-h5-admin-<capability>` | `sdkwork-commerce (deleted)-h5-admin-audit` |
-| H5 mobile Capacitor host package | `sdkwork-<application-code>-h5-capacitor` | `sdkwork-commerce (deleted)-h5-capacitor` |
+| PC app root | `apps/sdkwork-<application-code>-pc/` | `apps/sdkwork-shop-pc/` |
+| H5 app root | `apps/sdkwork-<application-code>-h5/` | `apps/sdkwork-shop-h5/` |
+| Flutter mobile app root | `apps/sdkwork-<application-code>-flutter-mobile/` | `apps/sdkwork-shop-flutter-mobile/` |
+| Mini program app root | `apps/sdkwork-<application-code>-mini-program/` | `apps/sdkwork-shop-mini-program/` |
+| Android native app root | `apps/sdkwork-<application-code>-android-mobile/` | `apps/sdkwork-shop-android-mobile/` |
+| iOS native app root | `apps/sdkwork-<application-code>-ios-mobile/` | `apps/sdkwork-shop-ios-mobile/` |
+| Harmony native app root | `apps/sdkwork-<application-code>-harmony-mobile/` | `apps/sdkwork-shop-harmony-mobile/` |
+| PC app package | `sdkwork-<application-code>-pc-<capability>` | `sdkwork-shop-pc-merchandise` |
+| PC user console package | `sdkwork-<application-code>-pc-console-<capability>` | `sdkwork-shop-pc-console-order` |
+| PC internal admin package | `sdkwork-<application-code>-pc-admin-<capability>` | `sdkwork-shop-pc-admin-audit` |
+| H5 mobile app package | `sdkwork-<application-code>-h5-<capability>` | `sdkwork-shop-h5-order` |
+| H5 mobile user console package | `sdkwork-<application-code>-h5-console-<capability>` | `sdkwork-shop-h5-console-order` |
+| H5 mobile internal admin package | `sdkwork-<application-code>-h5-admin-<capability>` | `sdkwork-shop-h5-admin-audit` |
+| H5 mobile Capacitor host package | `sdkwork-<application-code>-h5-capacitor` | `sdkwork-shop-h5-capacitor` |
 | Flutter mobile Dart package | `sdkwork_<application_code>_flutter_mobile_<capability>` | `sdkwork_commerce_flutter_mobile_order` |
 | Flutter mobile user console Dart package | `sdkwork_<application_code>_flutter_mobile_console_<capability>` | `sdkwork_commerce_flutter_mobile_console_order` |
 | Flutter mobile internal admin Dart package | `sdkwork_<application_code>_flutter_mobile_admin_<capability>` | `sdkwork_commerce_flutter_mobile_admin_audit` |
-| Mini program source package | `sdkwork-<application-code>-mp-<capability>` | `sdkwork-commerce (deleted)-mp-order` |
-| Mini program user console package | `sdkwork-<application-code>-mp-console-<capability>` | `sdkwork-commerce (deleted)-mp-console-order` |
-| Mini program internal admin package | `sdkwork-<application-code>-mp-admin-<capability>` | `sdkwork-commerce (deleted)-mp-admin-audit` |
-| Mini program host package | `sdkwork-<application-code>-mp-host` | `sdkwork-commerce (deleted)-mp-host` |
+| Mini program source package | `sdkwork-<application-code>-mp-<capability>` | `sdkwork-shop-mp-order` |
+| Mini program user console package | `sdkwork-<application-code>-mp-console-<capability>` | `sdkwork-shop-mp-console-order` |
+| Mini program internal admin package | `sdkwork-<application-code>-mp-admin-<capability>` | `sdkwork-shop-mp-admin-audit` |
+| Mini program host package | `sdkwork-<application-code>-mp-host` | `sdkwork-shop-mp-host` |
 | Shared mini program package | `sdkwork-<capability>-mini-program` | `sdkwork-order-mini-program` |
-| Android native app package | `sdkwork-<application-code>-android-mobile-<capability>` | `sdkwork-commerce (deleted)-android-mobile-order` |
-| Android native user console package | `sdkwork-<application-code>-android-mobile-console-<capability>` | `sdkwork-commerce (deleted)-android-mobile-console-order` |
-| Android native internal admin package | `sdkwork-<application-code>-android-mobile-admin-<capability>` | `sdkwork-commerce (deleted)-android-mobile-admin-audit` |
-| Android native host package | `sdkwork-<application-code>-android-mobile-host` | `sdkwork-commerce (deleted)-android-mobile-host` |
+| Android native app package | `sdkwork-<application-code>-android-mobile-<capability>` | `sdkwork-shop-android-mobile-order` |
+| Android native user console package | `sdkwork-<application-code>-android-mobile-console-<capability>` | `sdkwork-shop-android-mobile-console-order` |
+| Android native internal admin package | `sdkwork-<application-code>-android-mobile-admin-<capability>` | `sdkwork-shop-android-mobile-admin-audit` |
+| Android native host package | `sdkwork-<application-code>-android-mobile-host` | `sdkwork-shop-android-mobile-host` |
 | Shared Android native package | `sdkwork-<capability>-android-native` | `sdkwork-order-android-native` |
-| iOS native app package | `sdkwork-<application-code>-ios-mobile-<capability>` | `sdkwork-commerce (deleted)-ios-mobile-order` |
-| iOS native user console package | `sdkwork-<application-code>-ios-mobile-console-<capability>` | `sdkwork-commerce (deleted)-ios-mobile-console-order` |
-| iOS native internal admin package | `sdkwork-<application-code>-ios-mobile-admin-<capability>` | `sdkwork-commerce (deleted)-ios-mobile-admin-audit` |
-| iOS native host package | `sdkwork-<application-code>-ios-mobile-host` | `sdkwork-commerce (deleted)-ios-mobile-host` |
+| iOS native app package | `sdkwork-<application-code>-ios-mobile-<capability>` | `sdkwork-shop-ios-mobile-order` |
+| iOS native user console package | `sdkwork-<application-code>-ios-mobile-console-<capability>` | `sdkwork-shop-ios-mobile-console-order` |
+| iOS native internal admin package | `sdkwork-<application-code>-ios-mobile-admin-<capability>` | `sdkwork-shop-ios-mobile-admin-audit` |
+| iOS native host package | `sdkwork-<application-code>-ios-mobile-host` | `sdkwork-shop-ios-mobile-host` |
 | Shared iOS native package | `sdkwork-<capability>-ios-native` | `sdkwork-order-ios-native` |
-| Harmony native app package | `sdkwork-<application-code>-harmony-mobile-<capability>` | `sdkwork-commerce (deleted)-harmony-mobile-order` |
-| Harmony native user console package | `sdkwork-<application-code>-harmony-mobile-console-<capability>` | `sdkwork-commerce (deleted)-harmony-mobile-console-order` |
-| Harmony native internal admin package | `sdkwork-<application-code>-harmony-mobile-admin-<capability>` | `sdkwork-commerce (deleted)-harmony-mobile-admin-audit` |
-| Harmony native host package | `sdkwork-<application-code>-harmony-mobile-host` | `sdkwork-commerce (deleted)-harmony-mobile-host` |
+| Harmony native app package | `sdkwork-<application-code>-harmony-mobile-<capability>` | `sdkwork-shop-harmony-mobile-order` |
+| Harmony native user console package | `sdkwork-<application-code>-harmony-mobile-console-<capability>` | `sdkwork-shop-harmony-mobile-console-order` |
+| Harmony native internal admin package | `sdkwork-<application-code>-harmony-mobile-admin-<capability>` | `sdkwork-shop-harmony-mobile-admin-audit` |
+| Harmony native host package | `sdkwork-<application-code>-harmony-mobile-host` | `sdkwork-shop-harmony-mobile-host` |
 | Shared Harmony native package | `sdkwork-<capability>-harmony-native` | `sdkwork-order-harmony-native` |
 | Backend/admin React package | `@sdkwork/react-backend-<domain>` | `@sdkwork/react-backend-commerce` |
 | Appbase foundation PC React package | `sdkwork-<foundation>-pc-react` | `sdkwork-shell-pc-react`, `sdkwork-workspace-pc-react` |
@@ -155,13 +157,13 @@ Rules:
 | Rust service host crate | `sdkwork-<application-code>-service-host` | `sdkwork-drive-service-host` |
 | Rust native host crate | `sdkwork-<application-code>-native-host` or `sdkwork-<application-code>-tauri-host` | `sdkwork-drive-native-host` |
 | Rust worker crate | `sdkwork-<domain>-<capability>-worker` | `sdkwork-drive-maintenance-worker` |
-| Rust standalone application gateway crate (application HTTP listener) | `sdkwork-<application-code>-standalone-gateway` | `sdkwork-drive-standalone-gateway` |
-| Rust cloud application gateway crate | `sdkwork-<application-code>-cloud-gateway` | `sdkwork-im-cloud-gateway` |
+| Rust API assembly crate | `sdkwork-api-<application-code>-assembly` | `sdkwork-api-drive-assembly` |
+| Rust standalone application gateway crate (application HTTP listener) | `sdkwork-api-<application-code>-standalone-gateway` | `sdkwork-api-drive-standalone-gateway` |
 | Rust platform gateway crate | `sdkwork-api-cloud-gateway` | `sdkwork-api-cloud-gateway` |
 | Retired Rust listener crate | `sdkwork-<application-code>-api-server` | **forbidden for new/default ingress** — existing listeners migrate to `*-standalone-gateway` |
 | Open API authority | `sdkwork-<domain>-open-api` | `sdkwork-im-open-api` |
-| App API authority | `sdkwork-<domain>-app-api` | `sdkwork-commerce (deleted)-app-api` |
-| Backend API authority | `sdkwork-<domain>-backend-api` | `sdkwork-commerce (deleted)-backend-api` |
+| App API authority | `sdkwork-<domain>-app-api` | `sdkwork-shop-app-api` |
+| Backend API authority | `sdkwork-<domain>-backend-api` | `sdkwork-shop-backend-api` |
 | Public SDK family | `sdkwork-<sdk-family-stem>-sdk` | `sdkwork-im-sdk` |
 | App SDK family | `sdkwork-<sdk-family-stem>-app-sdk` | `sdkwork-im-app-sdk` |
 | Backend SDK family | `sdkwork-<sdk-family-stem>-backend-sdk` | `sdkwork-im-backend-sdk` |
@@ -239,7 +241,7 @@ Examples:
 | IM internal RPC discovery name | `sdkwork-communication-internal-rpc` |
 | Game internal RPC discovery name | `sdkwork-game-internal-rpc` |
 | Discovery control plane registry | `sdkwork-discovery-internal-registry` |
-| Commerce app RPC discovery name | `sdkwork-commerce (deleted)-app-rpc` |
+| Shop app RPC discovery name | `sdkwork-shop-app-rpc` |
 
 Rules:
 
@@ -372,33 +374,27 @@ Rules:
 - `sdkwork-web-<capability>` owns HTTP framework integration code only and lives in the
   `sdkwork-web-framework` repository. Business repositories must not create local `sdkwork-web-*`
   crates.
-- `sdkwork-<application-code>-standalone-gateway` owns the standalone application HTTP listener: mounts gateway assembly, optional platform/dependency adapters, and process infra.
+- `sdkwork-api-<application-code>-assembly` owns host-neutral application API composition.
+- `sdkwork-api-<application-code>-standalone-gateway` owns the standalone application HTTP listener and mounts API assemblies plus process infrastructure.
 - `sdkwork-<application-code>-service-host` owns an in-process service container and must not mount HTTP routes.
 - `sdkwork-<application-code>-native-host` and `sdkwork-<application-code>-tauri-host` own native/Tauri command and platform
   adapter boundaries.
 - `sdkwork-<domain>-<capability>-worker` owns background jobs, schedulers, queues, maintenance
   loops, retries, locks, and cursors.
-- Application gateway crates `MUST` encode the deployment profile they serve. Use
-  `sdkwork-<application-code>-standalone-gateway` for `deploymentProfile=standalone`
-  application ingress, and `sdkwork-<application-code>-cloud-gateway` for
-  `deploymentProfile=cloud` application ingress. Bare
-  `sdkwork-<application-code>-gateway` is retired.
+- Application HTTP gateway crates `MUST` use
+  `sdkwork-api-<application-code>-standalone-gateway`. Generic application
+  cloud gateways and bare application gateways are retired.
 - `sdkwork-api-cloud-gateway` is the platform-plane gateway for `platform.api-gateway`.
   It uses scope token `api` and deployment qualifier `cloud`; this exact crate and repository
   name is canonical for the platform `api-cloud-gateway` role.
 - Platform gateway support crates `MUST` mirror the parent family:
   `sdkwork-api-cloud-gateway-config`, `sdkwork-api-cloud-gateway-registry`, and
   `sdkwork-api-cloud-gateway-observability`.
-- Standalone and cloud application gateway crates own upstream routing, route
-  precedence, proxy behavior, dependency API surface aggregation, and
-  fail-closed upstream validation for their deployment profile.
-- An application repository `MAY` own both gateway crate families when it ships
-  both standalone and cloud deployment profiles.
-- Gateway support crates `MUST` mirror the parent gateway family:
-  `sdkwork-<application-code>-standalone-gateway-config`,
-  `sdkwork-<application-code>-standalone-gateway-observability`,
-  `sdkwork-<application-code>-cloud-gateway-config`, and
-  `sdkwork-<application-code>-cloud-gateway-observability`.
+- API assemblies own route/service/repository composition. Gateway hosts own
+  listener and process infrastructure only.
+- Application gateway support crates, when necessary, mirror
+  `sdkwork-api-<application-code>-standalone-gateway` and must not introduce a
+  cloud gateway family.
 - Gateway crates `MUST` live under `crates/`, not `services/` or other ad hoc
   process directories.
 - The following Rust crate names are forbidden and are not compatibility exceptions:
@@ -412,28 +408,24 @@ Rules:
 - Repositories must not preserve forbidden Rust crate names through wrapper crates, package aliases,
   feature aliases, or public re-export aliases.
 
-### 4.3.1 Gateway Deployment Qualifiers
+### 4.3.1 API Assembly And Gateway Identities
 
-Normative gateway structure, topology binding, component contracts, and verification live in
-`APPLICATION_GATEWAY_SPEC.md`. Every gateway crate `MUST` follow
-`sdkwork-<scope>-<deploymentProfile>-gateway`. Application scope uses
-`<application-code>`; platform scope uses `api`, and the canonical platform gateway
-is `sdkwork-api-cloud-gateway`.
+Normative API composition lives in `API_ASSEMBLY_SPEC.md`; gateway hosting
+lives in `APPLICATION_GATEWAY_SPEC.md`.
 
 | Crate family | `deploymentProfile` | Primary surface | When to use |
 | --- | --- | --- | --- |
-| `sdkwork-<application-code>-standalone-gateway` | `standalone` | `application.public-ingress` | Local dev, desktop/private appliance, single-container, or other self-contained application ingress that may embed an approved platform adapter |
-| `sdkwork-<application-code>-cloud-gateway` | `cloud` | `application.public-ingress` | Cloud release, scale-out, or private-cloud application ingress that may proxy to internal upstream services |
+| `sdkwork-api-<application-code>-assembly` | host-neutral | application API capability | All application-owned app/backend/open API composition |
+| `sdkwork-api-<application-code>-standalone-gateway` | `standalone` | `application.public-ingress` | Local dev, private appliance, or standalone server/container host |
 | `sdkwork-api-cloud-gateway` | platform | `platform.api-gateway` | Shared SDKWork platform APIs such as IAM, Drive, and Notary |
 
 Rules:
 
-- Retired `sdkwork-<application-code>-api-server` listener crates `MUST` migrate to `sdkwork-<application-code>-standalone-gateway` or `sdkwork-<application-code>-cloud-gateway` according to the deployment profile.
+- Retired `sdkwork-<application-code>-api-server` listener crates `MUST` migrate to `sdkwork-api-<application-code>-standalone-gateway`.
 - `gateway:run:standalone`, `gateway:build:standalone`, `gateway:package:standalone`, and
   `gateway:validate:standalone` `MUST` target
-  `sdkwork-<application-code>-standalone-gateway`.
-- `gateway:run:cloud`, `gateway:build:cloud`, `gateway:package:cloud`, and
-  `gateway:validate:cloud` `MUST` target `sdkwork-<application-code>-cloud-gateway`.
+  `sdkwork-api-<application-code>-standalone-gateway`.
+- `gateway:*:cloud` commands belong only to the `sdkwork-api-cloud-gateway` repository.
 - Retired application gateway crate name: `sdkwork-<application-code>-gateway`. Platform gateway
   code uses the canonical `sdkwork-api-cloud-gateway` crate and repository name. Migration mapping
   follows `MIGRATION_SPEC.md` section 8.
@@ -443,12 +435,11 @@ Rules:
 
 Examples:
 
-| Application | Standalone gateway | Cloud gateway | Platform gateway |
+| Application | API assembly | Standalone gateway | Platform cloud host |
 | --- | --- | --- | --- |
-| `drive` | `sdkwork-drive-standalone-gateway` | optional when cloud split ingress exists | consumes `sdkwork-api-cloud-gateway` |
-| `im` | `sdkwork-im-standalone-gateway` | `sdkwork-im-cloud-gateway` | consumes `sdkwork-api-cloud-gateway` |
-| `clawrouter` | optional when standalone ingress exists | `sdkwork-clawrouter-cloud-gateway` | consumes `sdkwork-api-cloud-gateway` |
-| `aiot` | optional when standalone ingress exists | `sdkwork-aiot-cloud-gateway` | consumes `sdkwork-api-cloud-gateway` |
+| `drive` | `sdkwork-api-drive-assembly` | `sdkwork-api-drive-standalone-gateway` | consumes assembly |
+| `im` | `sdkwork-api-im-assembly` | `sdkwork-api-im-standalone-gateway` | consumes assembly |
+| `birdcoder` | `sdkwork-api-birdcoder-assembly` | `sdkwork-api-birdcoder-standalone-gateway` | consumes assembly |
 
 ## 5. Component Naming
 
@@ -473,8 +464,9 @@ Rules:
 
 - [ ] Domain and capability names are canonical.
 - [ ] Package, route crate, SDK family, and API authority names follow the required patterns.
-- [ ] Application gateway crates use `sdkwork-<application-code>-standalone-gateway` or
-      `sdkwork-<application-code>-cloud-gateway`; bare `sdkwork-<application-code>-gateway` is not used.
+- [ ] Application API composition uses `sdkwork-api-<application-code>-assembly`.
+- [ ] Application gateway crates use `sdkwork-api-<application-code>-standalone-gateway`;
+      application cloud gateways and bare gateway names are not used.
 - [ ] Platform gateway uses `sdkwork-api-cloud-gateway` for the `platform.api-gateway` role.
 - [ ] Rust crate names use responsibility-specific families and do not use forbidden generic
       `product`, `runtime`, `backend`, `core`, `common`, or `manager` suffixes on application-code crates.

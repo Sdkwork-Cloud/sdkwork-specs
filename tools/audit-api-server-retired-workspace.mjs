@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Fail when retired *-api-server listener crates or binaries remain.
- * Authority: APPLICATION_GATEWAY_SPEC.md §5.4 (retired)
+ * Authority: APPLICATION_GATEWAY_SPEC.md section 10 (retired listeners).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { listWorkspaceRepositories } from './align-repository-docs-lib.mjs';
-import { readText } from './gateway-assembly-lib.mjs';
+import { readText } from './api-assembly-lib.mjs';
 
 const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_WORKSPACE = path.resolve(SPECS_ROOT, '..');

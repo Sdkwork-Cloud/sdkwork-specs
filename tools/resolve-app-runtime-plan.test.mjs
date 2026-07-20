@@ -110,7 +110,7 @@ test('filters same-runtime clients by canonical client architecture', () => {
 });
 
 test('reports forbidden cloud development process roles', () => {
-  const root = rootWithTopology([{ id: 'local-api', role: 'api-listener' }]);
+  const root = rootWithTopology([{ id: 'local-api', role: 'api-standalone-gateway' }]);
   const plan = resolveRuntimePlan(root, {
     deploymentProfile: 'cloud',
     environment: 'development',
@@ -127,6 +127,6 @@ test('fails closed when a standalone HTTP plan has no gateway', () => {
       environment: 'development',
       runtimeTarget: 'browser',
     }),
-    /exactly one standalone-gateway/u,
+    /exactly one api-standalone-gateway/u,
   );
 });

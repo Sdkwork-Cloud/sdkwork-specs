@@ -56,7 +56,7 @@ function auditRepo(repo, options) {
       clientRoots: 0,
       issues: [],
       integrationCount: 0,
-      requiresPlatformGatewayProcess: false,
+      requiresPlatformApiSurface: false,
     };
   }
 
@@ -86,8 +86,8 @@ function auditRepo(repo, options) {
     clientRoots: clientRoots.length,
     issues,
     integrationCount: resolution.integrations.length,
-    requiresPlatformGatewayProcess: resolution.requiresPlatformGatewayProcess,
-    externalPlatform: resolution.integrations.filter((entry) => entry.forbidProductSameOriginFallback).length,
+    requiresPlatformApiSurface: resolution.requiresPlatformApiSurface,
+    externalPlatform: resolution.integrations.filter((entry) => entry.forbidApplicationSameOriginFallback).length,
     permissions: resolution.permissions.inheritedManifests.length,
   };
 }
@@ -117,7 +117,7 @@ console.log('');
 for (const entry of results.filter((item) => item.status !== 'skip')) {
   const flags = [
     `integrations=${entry.integrationCount}`,
-    entry.requiresPlatformGatewayProcess ? 'platform-gateway=required' : 'platform-gateway=no',
+    entry.requiresPlatformApiSurface ? 'platform-api-surface=required' : 'platform-api-surface=no',
     `permissions=${entry.permissions}`,
   ].join(', ');
   console.log(`${entry.status === 'pass' ? 'OK' : 'FAIL'} ${entry.repo} (${flags})`);

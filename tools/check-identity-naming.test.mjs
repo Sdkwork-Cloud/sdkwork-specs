@@ -70,7 +70,7 @@ describe('check-identity-naming route crate prefix', () => {
     assert.match(result.stderr, /sdkwork-shell-pc-react|sdkwork-workspace-pc-react/);
   });
 
-  it('accepts gateway assembly crate names in standards mode', () => {
+  it('accepts API assembly crate names in standards mode', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-identity-standards-'));
     writeFileSync(path.join(root, 'README.md'), '# Standards\nrepository-kind: standards\n');
     writeFileSync(
@@ -78,7 +78,7 @@ describe('check-identity-naming route crate prefix', () => {
       [
         '# Application Gateway Standard',
         '',
-        'Gateway assembly crates use `sdkwork-<application-code>-gateway-assembly`.',
+        'API assembly crates use `sdkwork-api-<application-code>-assembly`.',
         '',
       ].join('\n'),
     );
@@ -86,5 +86,47 @@ describe('check-identity-naming route crate prefix', () => {
     const result = runChecker(root, 'standards');
 
     assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('rejects active gateway assembly terminology in standards mode', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-identity-standards-'));
+    writeFileSync(path.join(root, 'README.md'), '# Standards\nrepository-kind: standards\n');
+    writeFileSync(
+      path.join(root, 'APPLICATION_GATEWAY_SPEC.md'),
+      '# Gateway\n\nEvery application uses a gateway assembly for route composition.\n',
+    );
+
+    const result = runChecker(root, 'standards');
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /retired gateway assembly identity/u);
+  });
+
+  it('rejects deleted repository identities in active standards examples', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-identity-standards-'));
+    writeFileSync(path.join(root, 'README.md'), '# Standards\nrepository-kind: standards\n');
+    writeFileSync(
+      path.join(root, 'NAMING_SPEC.md'),
+      '# Naming\n\nExample: `sdkwork-commerce (deleted)-app-api`.\n',
+    );
+
+    const result = runChecker(root, 'standards');
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /deleted repository identity/u);
+  });
+
+  it('rejects an unqualified shared gateway in root authority documents', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-identity-standards-'));
+    writeFileSync(path.join(root, 'README.md'), '# Standards\nrepository-kind: standards\n');
+    writeFileSync(
+      path.join(root, 'APP_INTEGRATION_CONVENTIONS.md'),
+      '# Integration\n\nApplications connect to the shared gateway.\n',
+    );
+
+    const result = runChecker(root, 'standards');
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /ambiguous gateway role/u);
   });
 });

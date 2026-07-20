@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Validates SDKWork route registry uniqueness across OpenAPI authorities and route manifests.
- * See APPLICATION_GATEWAY_SPEC.md section 5.7.3 and TEST_SPEC.md section 2.1.
+ * See API_ASSEMBLY_SPEC.md sections 3 and 10 and TEST_SPEC.md section 2.1.
  */
 import fs from 'node:fs';
 import path from 'node:path';

@@ -12,8 +12,8 @@ const DEFAULT_WORKSPACE = path.resolve(SPECS_ROOT, '..');
 const RETIRED_PROFILE_TOKENS = new Set(['unified-process', 'split-services']);
 const LOCAL_CLOUD_PROCESS_PATTERN = /(?:api(?:-server)?|gateway|public-ingress|database|postgres|redis|migrat|seed)/iu;
 const PROCESS_ROLES = new Set([
-  'client', 'standalone-gateway', 'application-cloud-gateway',
-  'platform-gateway', 'api-listener', 'database', 'redis', 'migration',
+  'client', 'api-standalone-gateway',
+  'database', 'redis', 'migration',
   'seed', 'worker', 'tunnel',
 ]);
 
@@ -47,15 +47,6 @@ function isPlaceholderUrl(value) {
       || hostname.endsWith('.example.com');
   } catch {
     return true;
-  }
-}
-
-function normalizedOrigin(value) {
-  try {
-    const url = new URL(value);
-    return url.origin.toLowerCase();
-  } catch {
-    return null;
   }
 }
 
@@ -153,33 +144,21 @@ function checkSpec(repoRoot, specPath) {
     issues.push(`${rel}: retired hosting deployment values remain in vocabulary`);
   }
 
-  if (spec.schemaVersion === 5 && profiles.includes('cloud')) {
-    const cloudIngress = spec.cloudIngress;
-    if (!cloudIngress || typeof cloudIngress !== 'object') {
-      issues.push(`${rel}: schema v5 cloud topology requires cloudIngress`);
-    } else {
-      const strategies = ['platform-collapsed', 'dedicated-application', 'edge-split'];
-      if (!strategies.includes(cloudIngress.strategy)) {
-        issues.push(`${rel}: cloudIngress.strategy must be ${strategies.join(', ')}`);
-      }
-      if (cloudIngress.platformGateway !== 'sdkwork-api-cloud-gateway') {
-        issues.push(`${rel}: cloudIngress.platformGateway must be sdkwork-api-cloud-gateway`);
-      }
-      if (cloudIngress.strategy === 'platform-collapsed' && cloudIngress.applicationGateway) {
-        issues.push(`${rel}: platform-collapsed cloud ingress forbids applicationGateway`);
-      }
-      if (cloudIngress.strategy === 'dedicated-application'
-        && (!cloudIngress.applicationGateway || !cloudIngress.decisionRef)) {
-        issues.push(`${rel}: dedicated-application requires applicationGateway and decisionRef`);
-      }
-      if (cloudIngress.strategy === 'edge-split'
-        && (!cloudIngress.edgeGateway || !cloudIngress.decisionRef)) {
-        issues.push(`${rel}: edge-split requires edgeGateway and decisionRef`);
-      }
-      if (cloudIngress.strategy === 'edge-split' && cloudIngress.edgeGateway === 'sdkwork-api-cloud-gateway') {
-        issues.push(`${rel}: edge-split edgeGateway must be an application/edge gateway, not the platform gateway`);
-      }
-    }
+  if (spec.schemaVersion === 5 && spec.cloudIngress) {
+    issues.push(`${rel}: schema v5 application topology must not declare retired cloudIngress implementation metadata`);
+  }
+
+  const platformSurface = spec.surfaces?.['platform.api-gateway'];
+  if (spec.schemaVersion === 5 && (
+    spec.components?.cloudGateway
+    || spec.envKeys?.cloudGatewayBind
+    || spec.envKeys?.cloudGatewayConfig
+    || spec.envKeys?.gatewayAutostart
+    || platformSurface?.owner
+    || platformSurface?.bindEnv
+    || platformSurface?.autostartEnv
+  )) {
+    issues.push(`${rel}: application topology must not declare platform cloud gateway implementation details`);
   }
 
   for (const profileId of Object.keys(spec.profileFiles ?? {})) {
@@ -227,6 +206,9 @@ function checkSpec(repoRoot, specPath) {
   if (spec.schemaVersion === 5) {
     for (const [profileId, orchestration] of Object.entries(spec.orchestration?.profiles ?? {})) {
       for (const process of orchestration.processes ?? []) {
+        if (!String(process.id ?? '').trim()) {
+          issues.push(`${rel}: ${profileId} process id is required`);
+        }
         if (!PROCESS_ROLES.has(process.role)) {
           issues.push(`${rel}: ${profileId} process ${process.id ?? '<unknown>'} requires a canonical role`);
         }
@@ -235,9 +217,27 @@ function checkSpec(repoRoot, specPath) {
     const standaloneDev = spec.orchestration?.profiles?.['standalone.development'];
     if (standaloneDev && spec.surfaces?.['application.public-ingress']) {
       const gatewayCount = (standaloneDev.processes ?? [])
-        .filter((process) => process.role === 'standalone-gateway').length;
+        .filter((process) => process.role === 'api-standalone-gateway').length;
       if (gatewayCount !== 1) {
-        issues.push(`${rel}: standalone.development requires exactly one standalone-gateway role; found ${gatewayCount}`);
+        issues.push(`${rel}: standalone.development requires exactly one api-standalone-gateway role; found ${gatewayCount}`);
+      }
+    }
+  }
+
+  const standaloneDevPath = spec.profileFiles?.['standalone.development'];
+  const standaloneDev = spec.orchestration?.profiles?.['standalone.development'];
+  if (standaloneDevPath && fs.existsSync(path.join(repoRoot, standaloneDevPath))) {
+    const standaloneEnv = readEnv(path.join(repoRoot, standaloneDevPath));
+    for (const surfaceId of standaloneDev?.healthSurfaces ?? []) {
+      const surface = spec.surfaces?.[surfaceId];
+      if (!surface?.protocols?.includes('http')) continue;
+      if (!surface.httpUrlEnv) {
+        issues.push(`${rel}: ${surfaceId} must declare httpUrlEnv for standalone.development health checks`);
+        continue;
+      }
+      const value = standaloneEnv.get(surface.httpUrlEnv);
+      if (!value || isPlaceholderUrl(value)) {
+        issues.push(`${rel}: standalone.development required health surface ${surfaceId} must resolve ${surface.httpUrlEnv} to a concrete URL`);
       }
     }
   }
@@ -246,7 +246,7 @@ function checkSpec(repoRoot, specPath) {
   if (cloudDevPath && fs.existsSync(path.join(repoRoot, cloudDevPath))) {
     const cloudDevEnv = readEnv(path.join(repoRoot, cloudDevPath));
     const requiredSurfaceIds = ['application.public-ingress', 'platform.api-gateway']
-      .filter((surfaceId) => spec.surfaces?.[surfaceId]);
+      .filter((surfaceId) => spec.surfaces?.[surfaceId]?.protocols?.includes('http'));
     const hasExplicitTunnel = (cloudDev?.processes ?? []).some((process) =>
       /(?:tunnel|proxy)/iu.test(String(process.id ?? process.name ?? process.binary ?? '')),
     );
@@ -271,39 +271,6 @@ function checkSpec(repoRoot, specPath) {
         issues.push(`${rel}: cloud.development ${surface.autostartEnv} must disable remote surface autostart`);
       }
     }
-    if (spec.schemaVersion === 5 && spec.cloudIngress?.strategy === 'platform-collapsed') {
-      const application = spec.surfaces?.['application.public-ingress'];
-      const platform = spec.surfaces?.['platform.api-gateway'];
-      const applicationUrl = application?.httpUrlEnv ? cloudDevEnv.get(application.httpUrlEnv) : null;
-      const platformUrl = platform?.httpUrlEnv ? cloudDevEnv.get(platform.httpUrlEnv) : null;
-      if (applicationUrl && platformUrl && normalizedOrigin(applicationUrl) !== normalizedOrigin(platformUrl)) {
-        issues.push(`${rel}: platform-collapsed cloud surfaces must use the same URL origin`);
-      }
-    }
-  }
-
-  if (spec.surfaces?.['platform.api-gateway']) {
-    const slugMatch = /sdkwork-api-cloud-gateway\.([^.]+)\.\{profile\}/.exec(
-      spec.components?.cloudGateway?.configGlob ?? '',
-    );
-    const slug = slugMatch?.[1] ?? (spec.appId ?? '').replace(/^sdkwork-/, '');
-    const devConfig = path.join(repoRoot, 'etc', `sdkwork-api-cloud-gateway.${slug}.development.toml`);
-    const prodConfig = path.join(repoRoot, 'etc', `sdkwork-api-cloud-gateway.${slug}.production.toml`);
-    if (!fs.existsSync(devConfig)) {
-      issues.push(`${rel}: missing cloud gateway config ${path.relative(repoRoot, devConfig)}`);
-    }
-    if (!fs.existsSync(prodConfig)) {
-      issues.push(`${rel}: missing cloud gateway config ${path.relative(repoRoot, prodConfig)}`);
-    }
-    const pkgPath = path.join(repoRoot, 'package.json');
-    if (fs.existsSync(pkgPath)) {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-      const scripts = pkg.scripts ?? {};
-    if (!scripts['gateway:package:cloud'] && !scripts['gateway:validate:cloud'] &&
-        !scripts['gateway:package:platform-config'] && !scripts['gateway:validate:platform-config']) {
-      issues.push(`${rel}: missing gateway cloud packaging script`);
-    }
-    }
   }
 
   const orch = spec.orchestration?.profiles ?? {};
@@ -326,20 +293,28 @@ function checkSpec(repoRoot, specPath) {
 function main() {
   const { values } = parseArgs({
     options: {
+      root: { type: 'string' },
       workspace: { type: 'string', default: DEFAULT_WORKSPACE },
       repo: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
   });
   if (values.help) {
-    console.log('Usage: node tools/check-topology-deployment-profiles.mjs [--workspace <path>] [--repo <name>]');
+    console.log('Usage: node tools/check-topology-deployment-profiles.mjs [--root <application> | --workspace <path> [--repo <name>]]');
+    return;
+  }
+  if (values.root && values.repo) {
+    console.error('--root and --repo are mutually exclusive');
+    process.exitCode = 2;
     return;
   }
 
   const workspace = path.resolve(values.workspace);
-  const repos = values.repo
-    ? [path.join(workspace, values.repo)]
-    : fs
+  const repos = values.root
+    ? [path.resolve(values.root)]
+    : values.repo
+      ? [path.join(workspace, values.repo)]
+      : fs
         .readdirSync(workspace)
         .filter((name) => name.startsWith('sdkwork-'))
         .map((name) => path.join(workspace, name))
@@ -351,7 +326,8 @@ function main() {
   for (const repoRoot of repos) {
     const name = path.basename(repoRoot);
     if (name === 'sdkwork-deployments' || name === 'sdkwork-api-cloud-gateway') continue;
-    allIssues.push(...checkSpec(repoRoot, path.join(repoRoot, 'specs/topology.spec.json')));
+    const issues = checkSpec(repoRoot, path.join(repoRoot, 'specs/topology.spec.json'));
+    allIssues.push(...issues.map((issue) => values.root || values.repo ? issue : `${name}/${issue}`));
   }
 
   if (allIssues.length > 0) fail(`found ${allIssues.length} issue(s)`, allIssues);

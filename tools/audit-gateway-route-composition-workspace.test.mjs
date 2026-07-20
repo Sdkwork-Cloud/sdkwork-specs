@@ -24,7 +24,7 @@ test('standalone infra scan ignores imports and accepts one mount call', () => {
   const root = createSettingsRepo([
     'use sdkwork_settings_web_bootstrap::mount_settings_infra_routes;',
     'async fn main() {',
-    '    let assembly = assemble_application_router(state).await;',
+    '    let assembly = assemble_api_router(state).await;',
     '    let router = mount_settings_infra_routes(assembly.router, config);',
     '}',
     '',
@@ -36,7 +36,7 @@ test('standalone infra scan ignores imports and accepts one mount call', () => {
 test('standalone infra scan rejects two mount calls around assembly', () => {
   const root = createSettingsRepo([
     'async fn main() {',
-    '    let assembly = assemble_application_router(state).await;',
+    '    let assembly = assemble_api_router(state).await;',
     '    let router = mount_settings_infra_routes(assembly.router, config);',
     '    let router = mount_settings_infra_routes(router, config);',
     '}',

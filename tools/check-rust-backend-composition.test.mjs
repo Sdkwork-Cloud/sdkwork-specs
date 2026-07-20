@@ -23,11 +23,11 @@ test('Cargo parser includes dotted workspace dependency shorthand', () => {
     cargoPath,
     [
       '[package]',
-      'name = "sdkwork-demo-gateway-assembly"',
+      'name = "sdkwork-api-demo-assembly"',
       'version = "0.0.0"',
       '',
       '[dependencies]',
-      'sdkwork_iam_gateway_assembly.workspace = true',
+      'sdkwork_api_iam_assembly.workspace = true',
       '',
     ].join('\n'),
   );
@@ -36,7 +36,7 @@ test('Cargo parser includes dotted workspace dependency shorthand', () => {
 
   assert.deepEqual(
     manifest.dependencies.map((dependency) => dependency.name),
-    ['sdkwork-iam-gateway-assembly'],
+    ['sdkwork-api-iam-assembly'],
   );
 });
 
@@ -120,6 +120,18 @@ test('member Cargo manifests must not declare direct sibling SDKWork path depend
   const issues = validateRustBackendComposition(root);
 
   assert.ok(issues.some((issue) => issue.includes('member Cargo dependency sdkwork-utils must use workspace = true')));
+});
+
+test('generic application cloud gateway crates are retired', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-rust-cloud-gateway-'));
+  writeText(
+    path.join(root, 'crates/sdkwork-demo-cloud-gateway/Cargo.toml'),
+    '[package]\nname = "sdkwork-demo-cloud-gateway"\nversion = "0.0.0"\n',
+  );
+
+  const issues = validateRustBackendComposition(root);
+
+  assert.ok(issues.some((issue) => issue.includes('generic application cloud gateway')));
 });
 
 test('CLI reports Rust backend composition violations', () => {

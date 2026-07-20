@@ -161,9 +161,9 @@ node scripts/print-package-matrix.mjs --deployment-profile cloud
 
 | Repo | Required status |
 | --- | --- |
-| `sdkwork-drive` | v5 target, standalone plus platform-collapsed cloud profiles |
-| `sdkwork-im` | v5 target, realtime standalone plus governed dedicated cloud ingress |
-| `sdkwork-aiot` | v5 target, standalone plus governed edge-split cloud profiles |
+| `sdkwork-drive` | v5 target, API assembly plus standalone and explicit remote cloud surfaces |
+| `sdkwork-im` | v5 target, API assembly plus standalone and governed realtime ingress |
+| `sdkwork-aiot` | v5 target, API assembly plus standalone and governed edge ingress |
 | `sdkwork-app-topology` | v5 schema/runtime, v4 migration reader, resolved-plan and surface helpers |
 
 ## 10. Retirement Checklist
@@ -178,32 +178,30 @@ When migrating an application, delete and do not alias:
 - Hardcoded ports in Rust `default_*_upstreams()`; load from spec/profile.
 
 Migration tools may read retired values only long enough to emit v5
-`deploymentProfile`, `runtimeTarget`, `environment`, profile id, and
-`cloudIngress` outputs. An existing application cloud gateway must be reviewed
-and assigned an ADR-backed dedicated/edge strategy or collapsed into
-`sdkwork-api-cloud-gateway`; the aligner must not silently change live routing.
+`deploymentProfile`, `runtimeTarget`, `environment`, profile id, and explicit
+surface URLs. Existing application cloud gateway metadata is removed after
+the API assembly is registered from the platform side; protocol-specific edge
+or realtime ingress requires a separate ADR.
 The aligner may infer canonical v5 process roles only from unambiguous gateway,
 client, database, cache, migration, seed, tunnel, or worker identities;
 unclassified processes remain validator failures for human review.
 
 ## 11. Single HTTP Ingress Migration
 
-Normative rules: `APPLICATION_GATEWAY_SPEC.md` section 5.6 and
+Normative rules: `API_ASSEMBLY_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md` section 5 and
 `APP_RUNTIME_TOPOLOGY_SPEC.md` section 8.
 
 Every application migration must:
 
 1. Point `standalone.*` orchestration at
-   `sdkwork-<application-code>-standalone-gateway`. A single existing listener
+   `sdkwork-api-<application-code>-standalone-gateway`. A single existing listener
    that already mounts every application HTTP surface on one bind is
    migration-only evidence and must be renamed to the standalone gateway before
    release.
-2. Embed route crates and service libraries in the gateway router instead of
-   starting extra application HTTP listeners in dev.
-3. Point `cloud.*` dev orchestration at
-   `sdkwork-<application-code>-cloud-gateway` plus optional
-   `sdkwork-api-cloud-gateway`; internal service binaries stay behind the
-   gateway and must not become client bootstrap URLs.
+2. Materialize `sdkwork-api-<application-code>-assembly` and make the
+   standalone gateway depend on it instead of route crates.
+3. Point `cloud.*` development at explicit deployed surface URLs and remove
+   all local cloud gateway processes, configs, and repository dependencies.
 4. Delete dev sidecar hooks, reserved loopback port matrices, and contract
    tests that assume multi-port local HTTP API startup.
 5. Verify with `node ../sdkwork-specs/tools/check-single-http-ingress.mjs --root .`.
@@ -226,10 +224,10 @@ repository-specific rows in this standard:
   plane.
 - gateway warnings: a single listener exists but `application.public-ingress`
   still points at a retired ingress name.
-- assembly warnings: gateway crates still hand-merge route crates instead of
-  using `sdkwork-<application-code>-gateway-assembly`.
-- clean: `application.public-ingress` points at the canonical standalone or
-  cloud gateway and route composition evidence is present.
+- assembly warnings: gateway hosts still hand-merge route crates instead of
+  using `sdkwork-api-<application-code>-assembly`.
+- clean: `application.public-ingress` points at the canonical standalone host,
+  cloud development uses explicit remote URLs, and assembly evidence is present.
 
 Run:
 

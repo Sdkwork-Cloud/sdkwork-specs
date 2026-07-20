@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
@@ -35,6 +35,29 @@ function runChecker(root, productPrefix = 'demo') {
   );
 }
 
+function canonicalAssemblyCommand(root, toolName) {
+  const toolPath = path.resolve('tools', toolName);
+  const relative = path.relative(root, toolPath).replaceAll('\\', '/');
+  const commandPath = path.isAbsolute(relative) || /^[a-z]:\//iu.test(relative)
+    ? relative
+    : relative.startsWith('.') ? relative : `./${relative}`;
+  return `node ${commandPath} --root .`;
+}
+
+function writeApplicationManifest(root) {
+  writeFileSync(path.join(root, 'sdkwork.app.config.json'), '{}\n');
+}
+
+function writeAssemblyScripts(root, commands = {}) {
+  const packagePath = path.join(root, 'package.json');
+  const manifest = JSON.parse(readFileSync(packagePath, 'utf8'));
+  manifest.scripts['api:assembly:materialize'] = commands.materialize
+    ?? canonicalAssemblyCommand(root, 'materialize-api-assembly.mjs');
+  manifest.scripts['api:assembly:validate'] = commands.validate
+    ?? canonicalAssemblyCommand(root, 'validate-api-assembly.mjs');
+  writeFileSync(packagePath, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
 describe('check-pnpm-script-standard', () => {
   it('rejects a development root without a scoped stop command', () => {
     const root = makeRepo({
@@ -65,7 +88,6 @@ describe('check-pnpm-script-standard', () => {
         check: 'node scripts/sdkwork-command.mjs check',
         verify: 'node scripts/sdkwork-command.mjs verify',
         clean: 'node scripts/sdkwork-command.mjs clean',
-        'gateway:package:cloud': 'node scripts/sdkwork-command.mjs gateway package --deployment-profile cloud',
       },
     });
 
@@ -73,6 +95,193 @@ describe('check-pnpm-script-standard', () => {
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /pnpm script standard ok/);
+  });
+
+  it('accepts standard npm lifecycle hooks without treating them as public namespaces', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'node scripts/sdkwork-command.mjs dev',
+        predev: 'node scripts/preflight.mjs',
+        build: 'node scripts/sdkwork-command.mjs build',
+        prebuild: 'node scripts/preflight.mjs',
+        test: 'node scripts/sdkwork-command.mjs test',
+        pretest: 'node scripts/generate.mjs',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+        prepublishOnly: 'pnpm verify',
+      },
+    });
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('does not impose application runtime commands on a declared node package root', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        build: 'tsc',
+        test: 'node --test',
+      },
+    }, { normalizeDevProfiles: false });
+    mkdirSync(path.join(root, 'specs'));
+    writeFileSync(path.join(root, 'specs', 'component.spec.json'), JSON.stringify({
+      kind: 'sdkwork.component.spec',
+      component: { type: 'node-package' },
+    }));
+    writeFileSync(path.join(root, 'sdkwork.app.config.json'), JSON.stringify({
+      kind: 'sdkwork.app',
+      runtime: { family: 'web' },
+    }));
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('requires API assembly commands for an application root without HTTP routes', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'node scripts/sdkwork-command.mjs dev',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+      },
+    });
+    writeFileSync(path.join(root, 'sdkwork.app.config.json'), '{}\n');
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /missing required API assembly script "api:assembly:materialize"/u);
+    assert.match(result.stderr, /missing required API assembly script "api:assembly:validate"/u);
+  });
+
+  it('accepts direct canonical API assembly commands for an application root', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'node scripts/sdkwork-command.mjs dev',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+      },
+    });
+    writeApplicationManifest(root);
+    writeAssemblyScripts(root);
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('rejects application-owned API assembly wrappers', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'node scripts/sdkwork-command.mjs dev',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+      },
+    });
+    writeApplicationManifest(root);
+    writeAssemblyScripts(root, {
+      materialize: 'node scripts/gateway/assembly-materialize.mjs',
+      validate: 'node scripts/gateway/assembly-validate.mjs',
+    });
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /api:assembly:materialize: must directly invoke the canonical sdkwork-specs tool/u);
+    assert.match(result.stderr, /api:assembly:validate: must directly invoke the canonical sdkwork-specs tool/u);
+    assert.match(result.stderr, /application-owned wrappers are forbidden/u);
+  });
+
+  it('rejects API assembly commands that invoke the wrong canonical tool', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'node scripts/sdkwork-command.mjs dev',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+      },
+    });
+    writeApplicationManifest(root);
+    writeAssemblyScripts(root, {
+      materialize: canonicalAssemblyCommand(root, 'validate-api-assembly.mjs'),
+      validate: canonicalAssemblyCommand(root, 'materialize-api-assembly.mjs'),
+    });
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /api:assembly:materialize: must directly invoke the canonical sdkwork-specs tool/u);
+    assert.match(result.stderr, /api:assembly:validate: must directly invoke the canonical sdkwork-specs tool/u);
+  });
+
+  it('treats a component deployment as a delegated app surface instead of an independent API root', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo-pc',
+      scripts: {
+        dev: 'pnpm dev:standalone',
+        'dev:standalone': 'pnpm exec sdkwork-app dev --root ../.. --deployment-profile standalone',
+        'dev:cloud': 'pnpm exec sdkwork-app dev --root ../.. --deployment-profile cloud',
+        stop: 'pnpm exec sdkwork-app stop --root ../..',
+      },
+    }, { normalizeDevProfiles: false });
+    mkdirSync(path.join(root, 'etc'), { recursive: true });
+    writeFileSync(path.join(root, 'sdkwork.app.config.json'), JSON.stringify({
+      kind: 'sdkwork.app',
+      runtime: { family: 'desktop' },
+    }));
+    writeFileSync(path.join(root, 'etc', 'sdkwork.deployment.config.json'), JSON.stringify({
+      kind: 'sdkwork.component-deployment',
+      parentDeploymentConfig: '../../../etc/sdkwork.deployment.config.json',
+      parentTopologySpec: '../../../specs/topology.spec.json',
+    }));
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stderr, /API assembly/u);
+  });
+
+  it('rejects platform cloud gateway commands in application roots', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'node scripts/sdkwork-command.mjs dev',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+        'gateway:package:cloud': 'node scripts/sdkwork-command.mjs gateway package --deployment-profile cloud',
+        'gateway:cloud:bundle': 'node scripts/sdkwork-command.mjs gateway bundle --deployment-profile cloud',
+        'gateway:package:platform-config': 'node scripts/sdkwork-command.mjs gateway package --deployment-profile cloud',
+      },
+    });
+
+    const result = runChecker(root);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /application roots must not expose platform cloud gateway commands/u);
+    assert.match(result.stderr, /gateway:cloud:bundle/u);
+    assert.match(result.stderr, /gateway:package:platform-config/u);
   });
 
   it('accepts deterministic standalone/cloud development and paired release/deploy phases', () => {
@@ -99,13 +308,37 @@ describe('check-pnpm-script-standard', () => {
     assert.equal(result.status, 0, result.stderr);
   });
 
+  it('requires only release profiles declared by fixed workflow targets', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'pnpm dev:standalone',
+        'dev:standalone': 'node scripts/sdkwork-command.mjs dev --deployment-profile standalone --environment development',
+        'dev:cloud': 'node scripts/sdkwork-command.mjs dev --deployment-profile cloud --environment development',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+        'release:package:cloud': 'pnpm exec sdkwork-app release:package --deployment-profile cloud',
+      },
+    });
+    writeFileSync(path.join(root, 'sdkwork.workflow.json'), JSON.stringify({
+      targets: [{ deploymentProfile: 'cloud' }],
+    }));
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
   it('accepts private SDKWork lifecycle hooks behind the canonical public facade', () => {
     const root = makeRepo({
       name: 'sdkwork-demo',
       scripts: {
         dev: 'pnpm dev:standalone',
-        'dev:standalone': 'pnpm exec sdkwork-app dev --deployment-profile standalone --environment development',
-        'dev:cloud': 'pnpm exec sdkwork-app dev --deployment-profile cloud --environment development',
+        'dev:standalone': 'pnpm exec sdkwork-app dev --deployment-profile standalone',
+        'dev:cloud': 'pnpm exec sdkwork-app dev --deployment-profile cloud',
         build: 'pnpm exec sdkwork-app build',
         test: 'pnpm exec sdkwork-app test',
         check: 'pnpm exec sdkwork-app check',
@@ -885,6 +1118,8 @@ describe('check-pnpm-script-standard', () => {
         check: 'node scripts/sdkwork-command.mjs check',
         verify: 'node scripts/sdkwork-command.mjs verify',
         clean: 'node scripts/sdkwork-command.mjs clean',
+        'api:assembly:materialize': 'node tools/materialize.mjs',
+        'api:assembly:validate': 'node tools/validate.mjs',
       },
     });
     writeFileSync(
@@ -897,6 +1132,7 @@ describe('check-pnpm-script-standard', () => {
       path.join(specsDir, 'topology.spec.json'),
       `${JSON.stringify({ scripts: { pnpm: { portal: { script: 'pnpm browser:dev' } } } }, null, 2)}\n`,
     );
+    writeAssemblyScripts(root);
 
     const result = runChecker(root, 'demo');
 
@@ -1066,5 +1302,31 @@ describe('check-pnpm-script-standard', () => {
     const result = runChecker(root, 'demo');
 
     assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('rejects application cloud gateway commands and requires API assembly commands for route owners', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'pnpm dev:standalone',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+        'gateway:run:cloud': 'cargo run -p sdkwork-api-cloud-gateway',
+      },
+    });
+    writeFileSync(
+      path.join(root, 'Cargo.toml'),
+      '[workspace]\nmembers = ["crates/sdkwork-routes-demo-app-api"]\n',
+    );
+
+    const result = runChecker(root, 'demo');
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /must not expose platform cloud gateway commands/u);
+    assert.match(result.stderr, /missing required API assembly script "api:assembly:materialize"/u);
+    assert.match(result.stderr, /missing required API assembly script "api:assembly:validate"/u);
   });
 });

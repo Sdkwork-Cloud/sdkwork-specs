@@ -56,10 +56,6 @@ export type SdkworkEnvironment = "development" | "test" | "staging" | "productio
 export type SdkworkConfigProfile = "dev" | "test" | "staging" | "prod";
 export type SdkworkBuildMode = "development" | "test" | "staging" | "production";
 export type SdkworkDeploymentProfile = "standalone" | "cloud";
-export type SdkworkCloudIngressStrategy =
-  | "platform-collapsed"
-  | "dedicated-application"
-  | "edge-split";
 export type SdkworkGatewayPlacement =
   | "local-child-process"
   | "embedded"
@@ -90,7 +86,6 @@ export interface SdkworkRuntimeConfig {
   runtimeTarget: SdkworkRuntimeTarget;
   targetPlatform?: string;
   clientArchitecture?: string;
-  cloudIngressStrategy?: SdkworkCloudIngressStrategy;
   gatewayPlacement?: SdkworkGatewayPlacement;
   openApiBaseUrl?: string;
   appApiBaseUrl: string;
@@ -300,27 +295,34 @@ Rules:
 - H5 in an iOS or Android browser remains `runtimeTarget = browser` and does
   not imply an IPA/APK. Capacitor, Flutter, and native targets produce platform
   binaries according to their architecture standards.
-- `cloudIngressStrategy` defaults to `platform-collapsed` for cloud HTTP
-  clients. Dedicated application and edge-split strategies require topology
-  and ADR evidence. `gatewayPlacement` is required when a standalone client
-  owns or locates the application standalone gateway.
+- Application runtime config does not carry a cloud gateway strategy or
+  implementation identity. `gatewayPlacement` is required only when a
+  standalone client owns or locates its application standalone gateway.
 - `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` are resolved before SDK clients are created, but backend SDK clients may be constructed only after the SDK inventory classifies the runtime as `backend-admin`.
 - `openApiBaseUrl` is optional because not every application consumes an open-api SDK. When present for a SDKWork-owned business open-api, it `MUST` use that domain's approved non-app/non-backend prefix from `API_SPEC.md` section 4.5.1, for example `/im/v3/api`. It does not require a literal `/open` path segment. Vendor compatibility prefixes such as `/v1` are valid only for operations declared with `x-sdkwork-wire-protocol: external` per section 4.5.2.
-- `sdkBaseUrls` is the canonical SDK base URL map for bootstrap. It `SHOULD` start from one common `sdkBaseUrl` when one public SDK gateway, reverse proxy, or app edge serves all consumed SDK surfaces. `openApiBaseUrl`, `appApiBaseUrl`, `backendApiBaseUrl`, and dependency-specific entries are overrides, not a requirement to configure every SDK separately.
-- A common `sdkBaseUrl` is a root, origin, or deployment path prefix. Bootstrap derives surface URLs by appending the standard API prefixes, for example `/v1`, `/app/v3/api`, and `/backend/v3/api`. It `MUST NOT` treat a surface URL such as `/v1` as the common SDK root for other surfaces.
+- `sdkBaseUrls` is the canonical SDK base URL map for bootstrap. It `MAY` use
+  one common `sdkBaseUrl` only when topology proves one API edge serves all
+  consumed SDK surfaces. Otherwise `openApiBaseUrl`, `appApiBaseUrl`,
+  `backendApiBaseUrl`, and dependency-specific entries resolve from their
+  declared application/platform surfaces.
+- A common `sdkBaseUrl` represents a topology-proven API edge origin or
+  deployment path prefix. Bootstrap derives surface URLs by appending the
+  standard API prefixes, for example `/v1`, `/app/v3/api`, and
+  `/backend/v3/api`. It `MUST NOT` treat a resolved surface URL such as `/v1`
+  as the origin for other surfaces.
 - Per-surface and per-SDK overrides win over the common `sdkBaseUrl`. This keeps the simple one-base-url deployment path while still allowing external upstream services, private dependency hosts, and tenant-specific SDK routing.
 - `sdkBaseUrls.dependencySdkBaseUrls` owns override base URLs for dependency SDK families such as appbase, Drive, IM, or another application. It must be keyed by stable SDK family id, not by ad hoc host names.
 - `dependencyApiSurfaces` records which dependency-owned HTTP API surfaces are available through
   the current runtime, which are external services, and which are intentionally not mounted. It
   `MUST` match component/runtime manifests and the dependency surface rules in `SDK_SPEC.md`.
-- Rust gateway runtimes may record `cargoFeature` and `cargoDependency` on dependency API surface
+- Application standalone and platform cloud gateway runtimes may record `cargoFeature` and `cargoDependency` on dependency API surface
   entries. These values are pointers into native Cargo metadata, not a replacement catalog; tooling
   must verify them with `cargo metadata`, `[workspace.dependencies]`, and the runtime crate's
   feature table.
-- Rust gateway dependency surfaces that proxy to external upstreams `MUST` use `runtimeMode:
-  "external-service"` or the gateway's equivalent external-upstream runtime mode plus `requiredBaseUrlKey` or
+- Platform cloud gateway dependency surfaces that proxy to external upstreams `MUST` use `runtimeMode:
+  "external-service"` or the platform host's equivalent external-upstream runtime mode plus `requiredBaseUrlKey` or
   dependency SDK base URL config. They `MUST NOT` set `cargoFeature` or `cargoDependency` unless an
-  embedded executable dependency is actually compiled into the gateway.
+  embedded executable dependency is actually compiled into that host.
 - `dependencyApiExports` records which dependency-owned API capabilities this application or
   component intentionally exposes through authored public integration surfaces. It `MUST` default to
   `[]`; dependency APIs are not exported by a consuming app merely because dependency SDK clients
@@ -447,9 +449,9 @@ Rules:
   platform Base URLs for every required surface, reject implicit standalone or
   production fallback, and complete bounded remote health checks before
   constructing feature services.
-- Under `platform-collapsed`, application and platform Base URLs `MAY` resolve
-  to the same `sdkwork-api-cloud-gateway` origin. Bootstrap `MUST` preserve
-  surface-specific SDK path ownership even when the origins are equal.
+- Application and platform Base URLs `MAY` resolve to the same deployed origin.
+  Bootstrap `MUST` preserve surface-specific SDK path ownership without
+  inferring the remote gateway implementation.
 - Switching deployment profile, environment, API origin, token issuer, or
   application identity `MUST` create a distinct credential/cache/storage
   namespace and require re-authentication. Tokens, cookies, SQLite state,
@@ -467,23 +469,29 @@ Rules:
 - `Access-Token` is the canonical access isolation header. Generated SDKs, runtime adapters, server guards, and tests must not introduce aliases such as `X-Access-Token`, `access_token` query parameters, or application-specific access headers.
 - Bootstrap may expose `getAuthHeaders()` only for approved runtime bridges, local service calls, or tests. UI components and feature service facades must call SDK methods instead of assembling headers.
 - Open-api credential providers for protected open-api SDKs `MUST` be separate from the app login token manager. API key and OAuth bearer secrets `MUST NOT` be stored in browser runtime env, app manifests, generated SDK docs, frontend bundles, logs, screenshots, or telemetry. Browser-facing open-api usage must be public, session-mediated, or backed by an approved short-lived credential flow.
-- Dependency SDK base URLs `MUST` be configured explicitly when they do not inherit the application common SDK root or an application's verified same-origin defaults. Dependency-owned SDKs must not be regenerated or hard-coded into application-owned SDK base URLs.
-- Dependency SDK base URLs may inherit the common `sdkBaseUrl` when that base URL is documented as a gateway/root that serves the dependency surface, or they may inherit an application same-origin app/backend default only when the
+- Dependency SDK base URLs `MUST` be configured explicitly when they do not
+  resolve from `platform.api-gateway`, a topology-proven common API edge
+  origin, or an application's verified same-origin embedding. Dependency-owned
+  SDKs must not be regenerated or hard-coded into application-owned SDK base
+  URLs.
+- Dependency SDK base URLs may inherit the common `sdkBaseUrl` when topology
+  documents that origin as serving the dependency surface, or they may inherit
+  an application same-origin app/backend default only when the
   application runtime declares `dependencyApiSurfaces` mount coverage for that dependency SDK
   family, surface, and prefix. A route contract or `sdkDependencies` entry alone is not enough.
 - `dependencyApiSurfaces` entries with `runtimeMode: "same-origin"` `MUST` set
   `sameOriginAllowed: true`, name the executable router/controller/service export or equivalent
   runtime adapter, and record `coverage: "verified"` before SDK clients may inherit the application
   same-origin `appApiBaseUrl` or `backendApiBaseUrl`.
-- When a shared Rust gateway provides the same-origin or embedded dependency surface,
+- When an application standalone gateway provides the same-origin or embedded dependency surface,
   `dependencyApiSurfaces` `SHOULD` also name the Cargo feature and Cargo dependency that activate
   that executable integration. The feature/dependency evidence must resolve through Cargo metadata;
   a separate gateway catalog file is not accepted as the source of these facts.
-- When a shared Rust gateway only proxies an external upstream dependency service, the dependency
+- When the platform cloud gateway proxies an external upstream dependency service, the dependency
   surface names the upstream/base-url config instead of Cargo feature/dependency evidence. Split
   proxy coverage proves gateway routing and upstream configuration; it does not prove same-process
   embedded router availability.
-- A shared gateway external-upstream proxy surface `MUST NOT` be created from SDK family name alone. The
+- A platform cloud gateway external-upstream proxy surface `MUST NOT` be created from SDK family name alone. The
   existing SDK family manifest, component spec, or runtime manifest must also prove a materialized route
   path set with a stable route prefix. Acceptable materialized evidence includes authority OpenAPI
   `paths`, derived `*.sdkgen.*` OpenAPI inputs, or normalized route manifests under
@@ -493,28 +501,28 @@ Rules:
   owning both `/app/v3/api/comments` and `/app/v3/api/engagement`. Runtime config `MUST` declare
   each prefix as a separate dependency API surface while sharing the same service id and
   `requiredBaseUrlKey`, so route matching stays precise without broad fallback ownership.
-- Application runtime config that consumes a shared **platform connectivity-plane gateway**
-  (`APP_RUNTIME_TOPOLOGY_NAMING.md` plane `platform`, surface `platform.api-gateway`) `SHOULD` use one
-  common gateway root as the default dependency base URL source. Application-local server env such as a
-  web gateway upstream must default to that common gateway root for platform foundation dependency
-  surfaces; direct dependency module URLs are per-surface overrides for explicit multi-host deployments and must not be
-  hidden as the default.
-- A common dependency gateway root does not collapse application-owned SDK roots. Application-owned
-  `openApiBaseUrl`, `appApiBaseUrl`, and `backendApiBaseUrl` may remain same-origin or otherwise
-  application-owned while dependency SDK base URLs derive from the shared gateway root.
+- Application runtime config that consumes the platform connectivity plane
+  (`APP_RUNTIME_TOPOLOGY_NAMING.md` surface `platform.api-gateway`) `SHOULD`
+  use that surface origin as the default platform dependency base URL source.
+  Direct dependency module URLs are per-surface overrides for explicit
+  multi-host deployments and must not be hidden as the default.
+- The platform API surface origin does not collapse application-owned SDK
+  roots. Application-owned `openApiBaseUrl`, `appApiBaseUrl`, and
+  `backendApiBaseUrl` remain bound to `application.public-ingress` unless
+  topology explicitly proves one API edge serves both surface sets.
 - Application-local runtime env `MUST NOT` materialize per-module foundation upstream defaults beside a
-  configured shared gateway root. Appbase, Drive, commerce, search, voice, image, comments, course,
+  configured platform API surface origin. Appbase, Drive, commerce, search, voice, image, comments, course,
   messaging, or other foundation module URLs are explicit upstream overrides only.
-- Launch/config tests for applications that consume a shared platform connectivity-plane gateway `MUST` prove dependency
-  SDK defaults derive from the gateway root while application-owned app/backend/open SDK base URLs remain
+- Launch/config tests for applications that consume `platform.api-gateway`
+  `MUST` prove dependency SDK defaults derive from that surface while application-owned app/backend/open SDK base URLs remain
   application-owned.
 - When dependency API surfaces overlap by prefix, runtime config or the component spec `MUST`
-  describe the route precedence that the gateway enforces. Specific dependency patterns and fixed
+  describe the route precedence that the selected host routing contract enforces. Specific dependency patterns and fixed
   IAM/provider routes resolve before broad fallback prefixes. Foundation prefixes such as Drive,
   Notary, RTC, Agent/Kernel, AIoT, Memory, Knowledgebase, News, Notes, Music, Generations,
   Community, Search, Voice, Image, Comments, Course, and Messaging must resolve before broad
   app/backend fallback surfaces. Broad external upstream surfaces
-  may inherit a common SDK root only when tests prove they do not shadow more specific dependency
+  may inherit a common API edge origin only when tests prove they do not shadow more specific dependency
   surfaces.
 - Same-origin dependency surface config `MUST` name only production-capable routers, controllers,
   service adapters, or upstreams as verified coverage. Demo routers, mock servers, fixture stores,
@@ -528,19 +536,20 @@ Rules:
   unless a feature/config path explicitly changes the runtime mode.
 - If `dependencyApiSurfaces` marks a dependency SDK surface as external-service, not-mounted, or
   unverified, SDK client bootstrap `MUST` require the dependency-specific base URL from
-  `sdkBaseUrls.dependencySdkBaseUrls`, a common `sdkBaseUrl` that explicitly represents a gateway
-  serving that dependency surface, or an equivalent env/runtime config key and must fail fast before
+  `sdkBaseUrls.dependencySdkBaseUrls`, the declared platform API surface, or a
+  common `sdkBaseUrl` whose topology coverage includes that dependency surface,
+  and must fail fast before
   constructing a client with the application-owned base URL.
 - Runtime bootstrap `MUST` compare `dependencyApiExports` with `dependencyApiSurfaces`. Any export
   with `runtimeRequired: true` must have either verified same-origin coverage or a configured
   dependency-specific base URL before feature services are constructed.
 - `backend-admin` dependency SDKs `MUST` not inherit a browser-visible application backend base URL unless
   the `backend-admin` UI is allowed to call that surface and runtime mount coverage proves every
-  dependency-owned method/path is served at that same origin. They `MAY` use a common SDK root only
-  when that root is explicitly configured as a gateway serving the dependency backend surface, not
+  dependency-owned method/path is served at that same origin. They `MAY` use the platform API surface only
+  when it explicitly serves the dependency backend surface, not
   merely because the application-owned backend SDK has a default `/backend/v3/api` URL.
 - For appbase backend-admin IAM, `PORTAL_PUBLIC_SDK_BASE_URL` may derive
-  `PORTAL_PUBLIC_APPBASE_BACKEND_API_BASE_URL` only when it is a gateway that serves
+  `PORTAL_PUBLIC_APPBASE_BACKEND_API_BASE_URL` only when topology proves that origin serves
   `/backend/v3/api/iam/*`. An application backend default such as
   `PORTAL_PUBLIC_BACKEND_API_BASE_URL` or `VITE_CLAWROUTER_BACKEND_API_BASE_URL` may be used for
   `@sdkwork/iam-backend-sdk` only when `dependencyApiSurfaces` records verified same-origin
@@ -708,10 +717,10 @@ Rules:
   dependency SDK base URL config before feature services are constructed.
 - [ ] Same-origin dependency API surfaces name an executable router/controller/service export and
   have verified coverage before dependency SDK clients inherit application app/backend base URLs.
-- [ ] Rust gateway dependency API surfaces, when used, name Cargo feature/dependency evidence that
-  resolves through Cargo metadata instead of a separate gateway catalog.
-- [ ] Application runtime defaults route shared foundation API upstreams through the declared gateway
-  common SDK root or managed gateway process; direct dependency module URLs are explicit overrides.
+- [ ] Gateway-host dependency API surfaces, when used, name Cargo feature/dependency evidence that
+  resolves through Cargo metadata instead of a separate host catalog.
+- [ ] Application runtime defaults resolve shared foundation APIs through the
+  declared platform API surface; direct dependency module URLs are explicit overrides.
 - [ ] Deployment profile and environment are explicit.
 - [ ] Desktop installed config defaults to user-private SQLite, while desktop-started backend service config uses the server PostgreSQL dev profile unless an explicit SQLite profile is selected.
 - [ ] Test config isolates database/schema, Redis key prefix, logs, cache, and temp directories from development and production.

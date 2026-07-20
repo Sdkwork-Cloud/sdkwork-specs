@@ -57,6 +57,116 @@ function writeJson(file, value, dryRun) {
   fs.writeFileSync(file, text, 'utf8');
 }
 
+function isDeclaredLibraryOnlyLegacyTopology(spec) {
+  if (Number(spec?.schemaVersion ?? 0) >= 5) return false;
+  if (!/\bdomain library\b/iu.test(String(spec?.retired?.notes ?? ''))) return false;
+  const components = Object.values(spec?.components ?? {});
+  const hasLibraryComponent = components.some((component) => Boolean(component?.library));
+  const hasApplicationBinary = components.some((component) => (
+    Boolean(component?.binary) && component.binary !== 'sdkwork-api-cloud-gateway'
+  ));
+  const standaloneProcesses = Object.entries(spec?.orchestration?.profiles ?? {})
+    .filter(([profileId]) => profileId.startsWith('standalone.'))
+    .flatMap(([, profile]) => profile?.processes ?? []);
+  return hasLibraryComponent && !hasApplicationBinary && standaloneProcesses.length === 0;
+}
+
+function replaceEnvValue(content, key, value) {
+  const line = `${key}=${value}`;
+  const pattern = new RegExp(`^${key.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}=.*$`, 'mu');
+  if (pattern.test(content)) return content.replace(pattern, line);
+  return `${content.trimEnd()}\n${line}\n`;
+}
+
+function alignRemoteEnvValue(content, key, fallbackValue) {
+  const pattern = new RegExp(`^${key.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}=(.*)$`, 'mu');
+  const current = pattern.exec(content)?.[1]?.trim();
+  if (current) {
+    try {
+      const url = new URL(current);
+      if (
+        !['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(url.hostname)
+        && !url.hostname.endsWith('.example')
+      ) {
+        return content;
+      }
+    } catch {
+      // Invalid and placeholder values are replaced by the contract-derived fallback.
+    }
+  }
+  return replaceEnvValue(content, key, fallbackValue);
+}
+
+function cloudSurfaceUrl(spec, surfaceId) {
+  const host = String(spec.cloudPublicHosts?.[surfaceId]?.httpHost ?? '').trim();
+  return host ? `https://${host}` : null;
+}
+
+function alignCloudDevelopmentEnv(spec, repoRoot, dryRun, actions) {
+  const relativePath = spec.profileFiles?.['cloud.development'];
+  if (!relativePath) return;
+  const abs = path.join(repoRoot, relativePath);
+  if (!fs.existsSync(abs)) return;
+
+  let content = fs.readFileSync(abs, 'utf8');
+  const original = content;
+  for (const surfaceId of Object.keys(spec.surfaces ?? {})) {
+    const surface = spec.surfaces?.[surfaceId];
+    const url = cloudSurfaceUrl(spec, surfaceId);
+    if (!surface || !url) continue;
+    if (surface.httpUrlEnv) content = alignRemoteEnvValue(content, surface.httpUrlEnv, url);
+    if (surface.clientHttpEnv) content = alignRemoteEnvValue(content, surface.clientHttpEnv, url);
+    if (surface.autostartEnv) content = replaceEnvValue(content, surface.autostartEnv, 'false');
+  }
+
+  if (content === original) return;
+  actions.push(`align ${relativePath} remote cloud URLs`);
+  if (!dryRun) fs.writeFileSync(abs, content, 'utf8');
+}
+
+function loopbackUrlFromBind(bind) {
+  const value = String(bind ?? '').trim();
+  const match = /^(?:\[?[^\]]+\]?):(\d+)$/u.exec(value);
+  return match ? `http://127.0.0.1:${match[1]}` : null;
+}
+
+function alignStandaloneDevelopmentEnv(spec, repoRoot, dryRun, actions) {
+  const relativePath = spec.profileFiles?.['standalone.development'];
+  if (!relativePath) return;
+  const abs = path.join(repoRoot, relativePath);
+  if (!fs.existsSync(abs)) return;
+  let content = fs.readFileSync(abs, 'utf8');
+  const original = content;
+  const env = new Map();
+  for (const line of content.split(/\r?\n/u)) {
+    const match = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/u.exec(line.trim());
+    if (match) env.set(match[1], match[2].trim());
+  }
+  const healthSurfaces = spec.orchestration?.profiles?.['standalone.development']?.healthSurfaces ?? [];
+  for (const surfaceId of healthSurfaces) {
+    const surface = spec.surfaces?.[surfaceId];
+    if (!surface?.protocols?.includes('http') || !surface.httpUrlEnv) continue;
+    if (env.get(surface.httpUrlEnv)) continue;
+    const bind = (surface.bindEnv ? env.get(surface.bindEnv) : null)
+      ?? (surfaceId === 'application.public-ingress' ? spec.defaults?.gatewayBind : null);
+    const url = loopbackUrlFromBind(bind);
+    if (!url) continue;
+    if (surface.bindEnv && !env.get(surface.bindEnv)) {
+      content = replaceEnvValue(content, surface.bindEnv, bind);
+      env.set(surface.bindEnv, bind);
+    }
+    content = replaceEnvValue(content, surface.httpUrlEnv, url);
+    env.set(surface.httpUrlEnv, url);
+    if (surface.clientHttpEnv && !env.get(surface.clientHttpEnv)) {
+      content = replaceEnvValue(content, surface.clientHttpEnv, url);
+      env.set(surface.clientHttpEnv, url);
+    }
+  }
+  if (content === original) return;
+  actions.push(`align ${relativePath} standalone health URLs`);
+  if (!dryRun) fs.writeFileSync(abs, content, 'utf8');
+}
+
 function migrateProfileId(profileId) {
   const parts = profileId.split('.');
   if (parts.length === 3) {
@@ -100,11 +210,13 @@ function clientPrefixFromSpec(spec, appPrefix) {
 function migrateEnvFileContent(content, spec, oldProfileId, newProfileId) {
   const appPrefix = appPrefixFromSpec(spec);
   const clientPrefix = clientPrefixFromSpec(spec, appPrefix);
-  let out = content;
+  let out = content.replace(/\r\n?/gu, '\n');
   out = out.replaceAll(oldProfileId, newProfileId);
   out = out.replaceAll('self-hosted', 'standalone');
   out = out.replaceAll('cloud-hosted', 'cloud');
   out = out.replace(/^\s*[A-Z0-9_]*SERVICE_LAYOUT=.*(?:\r?\n)?/gmu, '');
+  out = out.replace(/^\s*SDKWORK_API_CLOUD_GATEWAY_(?:BIND|CONFIG)=.*(?:\r?\n)?/gmu, '');
+  out = out.replace(/^\s*[A-Z0-9_]+_PLATFORM_API_GATEWAY_AUTOSTART=.*(?:\r?\n)?/gmu, '');
   out = out.replace(/^#.*(?:serviceLayout|service layout|unified-process|split-services).*(?:\r?\n)?/gimu, '');
   out = out.replace(
     new RegExp(`${appPrefix}_HOSTING=`, 'g'),
@@ -130,22 +242,41 @@ function renameKeyObject(obj) {
 }
 
 function inferProcessRole(process) {
-  const identity = [process.id, process.name, process.crate, process.binary]
+  const identity = [
+    process.id,
+    process.name,
+    process.crate,
+    process.binary,
+    process.command,
+    process.package,
+    process.script,
+  ]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
-  if (/standalone-gateway/u.test(identity)) return 'standalone-gateway';
-  if (/sdkwork-api-cloud-gateway|platform-api-cloud-gateway/u.test(identity)) return 'platform-gateway';
-  if (/cloud-gateway/u.test(identity)) return 'application-cloud-gateway';
+  if (/standalone-gateway/u.test(identity)) return 'api-standalone-gateway';
   if (/migrat/u.test(identity)) return 'migration';
   if (/seed/u.test(identity)) return 'seed';
   if (/postgres|database/u.test(identity)) return 'database';
   if (/redis/u.test(identity)) return 'redis';
   if (/tunnel|local-proxy/u.test(identity)) return 'tunnel';
-  if (/api-server|api-listener|public-ingress/u.test(identity)) return 'api-listener';
+  if (/api-server|api-listener|public-ingress/u.test(identity)) return 'api-standalone-gateway';
+  if (/runtime-node/u.test(identity)) return 'worker';
   if (/vite|renderer|desktop|browser|\bh5\b|flutter|android|ios|harmony|mini-program/u.test(identity)) return 'client';
   if (/worker/u.test(identity)) return 'worker';
   return undefined;
+}
+
+function normalizeProcessInvocation(process) {
+  if (typeof process.command !== 'string' || process.args) return process;
+  const cargoRun = /^cargo\s+run\s+-p\s+(\S+)(?:\s+--bin\s+(\S+))?$/u.exec(
+    process.command.trim(),
+  );
+  if (!cargoRun) return process;
+  process.crate = cargoRun[1];
+  if (cargoRun[2]) process.binary = cargoRun[2];
+  delete process.command;
+  return process;
 }
 
 function ensureDeploymentVocabulary(spec) {
@@ -164,23 +295,13 @@ function ensureDeploymentVocabulary(spec) {
       allowed: ['standalone', 'cloud'],
     };
   }
-  if (!spec.cloudIngress) {
-    const applicationGateway = spec.components?.cloudGateway?.crate
-      ?? spec.components?.cloudGateway?.binary;
-    const isPlatformGateway = applicationGateway === 'sdkwork-api-cloud-gateway';
-    spec.cloudIngress = applicationGateway && !isPlatformGateway
-      ? {
-          strategy: 'dedicated-application',
-          platformGateway: 'sdkwork-api-cloud-gateway',
-          applicationGateway,
-        }
-      : {
-          strategy: 'platform-collapsed',
-          platformGateway: 'sdkwork-api-cloud-gateway',
-        };
-  }
+  delete spec.cloudIngress;
   for (const orchestration of Object.values(spec.orchestration?.profiles ?? {})) {
     for (const process of orchestration.processes ?? []) {
+      normalizeProcessInvocation(process);
+      if (process.role === 'standalone-gateway' || process.role === 'api-listener') {
+        process.role = 'api-standalone-gateway';
+      }
       const inferredRole = inferProcessRole(process);
       if (!process.role && inferredRole) process.role = inferredRole;
     }
@@ -242,13 +363,14 @@ function ensurePlatformSurface(spec) {
     spec.surfaces['platform.api-gateway'] = {
       connectivityPlane: 'platform',
       protocols: ['http'],
-      owner: 'sdkwork-api-cloud-gateway',
-      bindEnv: 'SDKWORK_API_CLOUD_GATEWAY_BIND',
       httpUrlEnv: `${appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
       clientHttpEnv: `${clientPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
-      autostartEnv: `${appPrefix}_PLATFORM_API_GATEWAY_AUTOSTART`,
     };
   }
+  const platformSurface = spec.surfaces['platform.api-gateway'];
+  delete platformSurface.owner;
+  delete platformSurface.bindEnv;
+  delete platformSurface.autostartEnv;
   spec.cloudPublicHosts ??= {};
   if (!spec.cloudPublicHosts['platform.api-gateway']) {
     spec.cloudPublicHosts['platform.api-gateway'] = { httpHost: 'api.sdkwork.com' };
@@ -256,16 +378,37 @@ function ensurePlatformSurface(spec) {
   return spec;
 }
 
-function ensureCloudGatewayComponent(spec) {
-  spec.components ??= {};
-  if (spec.components.cloudGateway) return spec;
-  const appSlug = (spec.appId ?? 'app').replace(/^sdkwork-/, '');
-  spec.components.cloudGateway = {
-    crate: 'sdkwork-api-cloud-gateway',
-    binary: 'sdkwork-api-cloud-gateway',
-    repository: 'sdkwork-api-cloud-gateway',
-    configGlob: `etc/sdkwork-api-cloud-gateway.${appSlug}.{profile}.toml`,
+function ensurePublicIngressCloudHost(spec) {
+  if (!spec.surfaces?.['application.public-ingress']) return spec;
+
+  if (spec.cloudPublicHosts?.['application.public-ingress']?.httpHost) return spec;
+
+  const preferredSurfaceIds = [
+    'application.app-http',
+    'application.open-http',
+    'application.web',
+  ];
+  const candidateSurfaceId = preferredSurfaceIds.find(
+    (surfaceId) => spec.cloudPublicHosts?.[surfaceId]?.httpHost,
+  ) ?? Object.keys(spec.cloudPublicHosts ?? {}).find((surfaceId) => (
+    surfaceId.startsWith('application.')
+    && !/(?:admin|backend|internal)/iu.test(surfaceId)
+    && spec.cloudPublicHosts?.[surfaceId]?.httpHost
+  ));
+  if (!candidateSurfaceId) return spec;
+
+  spec.cloudPublicHosts['application.public-ingress'] = {
+    httpHost: spec.cloudPublicHosts[candidateSurfaceId].httpHost,
   };
+  return spec;
+}
+
+function removeApplicationCloudGatewayImplementation(spec) {
+  spec.components ??= {};
+  delete spec.components.cloudGateway;
+  delete spec.envKeys?.gatewayAutostart;
+  delete spec.envKeys?.cloudGatewayBind;
+  delete spec.envKeys?.cloudGatewayConfig;
   return spec;
 }
 
@@ -288,17 +431,8 @@ function primaryApiProcess(spec) {
 function cloneOrchestrationForCloud(spec, standaloneProfileId, cloudProfileId) {
   const standalone = spec.orchestration?.profiles?.[standaloneProfileId];
   if (!standalone) return null;
-  const processes = JSON.parse(JSON.stringify(standalone.processes ?? []));
-  const hasPlatform = processes.some((p) => p.id === 'platform.api-gateway');
-  if (!hasPlatform) {
-    processes.unshift({
-      id: 'platform.api-gateway',
-      crate: 'sdkwork-api-cloud-gateway',
-      binary: 'sdkwork-api-cloud-gateway',
-      repository: 'sdkwork-api-cloud-gateway',
-      required: false,
-    });
-  }
+  const processes = JSON.parse(JSON.stringify(standalone.processes ?? []))
+    .filter((process) => process.role === 'client' || process.role === 'tunnel');
   const health = new Set(standalone.healthSurfaces ?? ['application.public-ingress']);
   health.add('platform.api-gateway');
   return { processes, healthSurfaces: [...health] };
@@ -337,6 +471,7 @@ function ensureOrchestrationProfiles(spec) {
   if (spec.profileFiles?.['cloud.development']) {
     const current = spec.orchestration.profiles['cloud.development'] ?? {};
     const localClientOrTunnelProcesses = (current.processes ?? []).filter((process) => {
+      if (process.role === 'client' || process.role === 'tunnel') return true;
       const id = String(process.id ?? process.name ?? process.binary ?? '');
       return /(?:client|browser|desktop|vite|tunnel|proxy)/iu.test(id)
         && !/(?:api(?:-server)?|gateway|public-ingress|database|postgres|redis|migrat|seed)/iu.test(id);
@@ -366,6 +501,28 @@ function ensureOrchestrationProfiles(spec) {
       spec.orchestration.profiles[profileId] = JSON.parse(
         JSON.stringify(spec.orchestration.profiles['standalone.development']),
       );
+    }
+  }
+
+  const standaloneDevelopment = spec.orchestration.profiles['standalone.development'];
+  if (spec.surfaces?.['application.public-ingress'] && standaloneDevelopment) {
+    const processes = standaloneDevelopment.processes ?? [];
+    const standaloneGateways = processes.filter(
+      (process) => process.role === 'api-standalone-gateway',
+    );
+    const publicIngressProcesses = processes.filter(
+      (process) => process.id === 'application.public-ingress',
+    );
+    const requiredProcesses = processes.filter((process) => process.required === true);
+    const ingressCandidates = publicIngressProcesses.length > 0
+      ? publicIngressProcesses
+      : requiredProcesses.length === 1
+        ? requiredProcesses
+        : processes.length === 1
+          ? processes
+          : [];
+    if (standaloneGateways.length === 0 && ingressCandidates.length === 1) {
+      ingressCandidates[0].role = 'api-standalone-gateway';
     }
   }
 
@@ -433,9 +590,7 @@ function createMissingEnvFiles(spec, repoRoot, dryRun, actions) {
         `${appPrefix}_ENVIRONMENT=${environment}`,
         `${appPrefix}_PROFILE_ID=${profileId}`,
         '',
-        `SDKWORK_API_CLOUD_GATEWAY_BIND=127.0.0.1:3900`,
         `${appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL=http://127.0.0.1:3900`,
-        `${appPrefix}_PLATFORM_API_GATEWAY_AUTOSTART=false`,
         '',
       ].join('\n');
     }
@@ -570,10 +725,6 @@ function ensurePackageScripts(repoRoot, dryRun, actions) {
       actions.push('delegate package.json script dev to dev:standalone');
     }
   }
-  if (fs.existsSync(path.join(repoRoot, 'scripts/gateway-cloud-bundle.mjs'))) {
-    additions['gateway:package:cloud'] = 'node scripts/gateway-cloud-bundle.mjs bundle';
-    additions['gateway:validate:cloud'] = 'node scripts/gateway-cloud-bundle.mjs validate';
-  }
   for (const [key, value] of Object.entries(additions)) {
     if (pkg.scripts[key]) continue;
     pkg.scripts[key] = value;
@@ -607,10 +758,10 @@ function findApiServer(repoRoot) {
   const members = [];
   const text = fs.readFileSync(cargoPath, 'utf8');
   for (const line of text.split('\n')) {
-    const match = /^\s*"([^"]*api-server[^"]*)"/.exec(line);
+    const match = /^\s*"([^"]*(?:api-server|standalone-gateway)[^"]*)"/.exec(line);
     if (match) members.push(match[1]);
   }
-  if (members.length === 0) return null;
+  if (members.length !== 1) return null;
   const member = members[0];
   const crateToml = path.join(repoRoot, member, 'Cargo.toml');
   if (!fs.existsSync(crateToml)) return { crate: path.basename(member) };
@@ -642,10 +793,6 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
       deploymentProfile: { allowed: ['standalone', 'cloud'] },
       environment: { allowed: ['development', 'production'] },
     },
-    cloudIngress: {
-      strategy: 'platform-collapsed',
-      platformGateway: 'sdkwork-api-cloud-gateway',
-    },
     defaults: {
       developmentProfileId: 'standalone.development',
       productionProfileId: 'cloud.production',
@@ -658,10 +805,7 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
       environment: `${meta.appPrefix}_ENVIRONMENT`,
       profileId: `${meta.appPrefix}_PROFILE_ID`,
       clientDeploymentProfile: `VITE_${meta.appPrefix}_DEPLOYMENT_PROFILE`,
-      gatewayAutostart: `${meta.appPrefix}_PLATFORM_API_GATEWAY_AUTOSTART`,
       standaloneGatewayBind: `${meta.appPrefix}_APPLICATION_PUBLIC_INGRESS_BIND`,
-      cloudGatewayBind: 'SDKWORK_API_CLOUD_GATEWAY_BIND',
-      cloudGatewayConfig: 'SDKWORK_API_CLOUD_GATEWAY_CONFIG',
       clientApiGatewayBaseUrl: `VITE_${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
       apiGatewayBaseUrl: `${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
     },
@@ -676,11 +820,8 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
       'platform.api-gateway': {
         connectivityPlane: 'platform',
         protocols: ['http'],
-        owner: 'sdkwork-api-cloud-gateway',
-        bindEnv: 'SDKWORK_API_CLOUD_GATEWAY_BIND',
         httpUrlEnv: `${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
         clientHttpEnv: `VITE_${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
-        autostartEnv: `${meta.appPrefix}_PLATFORM_API_GATEWAY_AUTOSTART`,
       },
     },
     cloudPublicHosts: {
@@ -690,12 +831,6 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
     database: { appPrefix: meta.appPrefix },
     components: {
       applicationServer: { crate: api.crate, binary: api.binary },
-      cloudGateway: {
-        crate: 'sdkwork-api-cloud-gateway',
-        binary: 'sdkwork-api-cloud-gateway',
-        repository: 'sdkwork-api-cloud-gateway',
-        configGlob: `etc/sdkwork-api-cloud-gateway.${appSlug}.{profile}.toml`,
-      },
     },
     orchestration: { profiles: {} },
   };
@@ -710,8 +845,10 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
 function alignRepo(repoRoot, dryRun) {
   const actions = [];
   const specPath = path.join(repoRoot, 'specs/topology.spec.json');
+  const originalSpecText = fs.existsSync(specPath) ? fs.readFileSync(specPath, 'utf8') : null;
   let spec = fs.existsSync(specPath) ? readJson(specPath) : bootstrapTopology(repoRoot, dryRun, actions);
   if (!spec) return actions;
+  if (isDeclaredLibraryOnlyLegacyTopology(spec)) return actions;
 
   spec = ensureDeploymentVocabulary(spec);
   spec = migrateEnvKeys(spec);
@@ -720,18 +857,24 @@ function alignRepo(repoRoot, dryRun) {
   spec = migrateProfileFilesKeys(spec);
   spec = migrateOrchestrationKeys(spec);
   spec = ensurePlatformSurface(spec);
-  spec = ensureCloudGatewayComponent(spec);
+  spec = ensurePublicIngressCloudHost(spec);
+  spec = removeApplicationCloudGatewayImplementation(spec);
   spec = ensureProfileFiles(spec, repoRoot);
   spec = ensureOrchestrationProfiles(spec);
 
   createMissingEnvFiles(spec, repoRoot, dryRun, actions);
+  alignStandaloneDevelopmentEnv(spec, repoRoot, dryRun, actions);
+  alignCloudDevelopmentEnv(spec, repoRoot, dryRun, actions);
   const meta = deriveAppMeta(repoRoot);
   if (meta) ensureRootAppConfig(repoRoot, meta, dryRun, actions);
   updateAppConfig(repoRoot, dryRun, actions);
   ensurePackageScripts(repoRoot, dryRun, actions);
 
-  actions.push('write specs/topology.spec.json');
-  if (!dryRun) writeJson(specPath, spec, false);
+  const nextSpecText = `${JSON.stringify(spec, null, 2)}\n`;
+  if (originalSpecText !== nextSpecText) {
+    actions.push('write specs/topology.spec.json');
+    if (!dryRun) writeJson(specPath, spec, false);
+  }
   return actions;
 }
 

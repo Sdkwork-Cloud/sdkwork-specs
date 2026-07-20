@@ -114,7 +114,8 @@ Rules:
   or API key, or synthetic success handler. Verified mount coverage must exercise real
   stores/services/upstreams or explicitly prove that unimplemented commands fail closed.
 - Appbase backend IAM dependency tests `MUST` prove that backend-admin consumers of
-  `@sdkwork/iam-backend-sdk` either receive an explicit appbase backend/gateway base URL that
+  `@sdkwork/iam-backend-sdk` either receive an explicit appbase backend API or
+  platform API surface URL that
   serves `/backend/v3/api/iam/*` or inherit the application backend base URL only after a
   production-capable appbase backend IAM router/controller/service adapter is verified in
   `dependencyApiSurfaces`. The tests must also prove appbase app SDK integration alone is not
@@ -363,16 +364,17 @@ Rules:
   `sdkwork-<domain>-<capability>-repository-sqlx`, `sdkwork-routes-<capability>-<surface>`,
   `sdkwork-<application-code>-service-host`,
   `sdkwork-<application-code>-native-host`, `sdkwork-<application-code>-tauri-host`,
-  `sdkwork-<domain>-<capability>-worker`, `sdkwork-<application-code>-standalone-gateway`,
-  `sdkwork-<application-code>-cloud-gateway`, or platform `sdkwork-api-cloud-gateway` as the
+  `sdkwork-<domain>-<capability>-worker`, `sdkwork-api-<application-code>-assembly`,
+  `sdkwork-api-<application-code>-standalone-gateway`, or platform `sdkwork-api-cloud-gateway` as the
   platform `api-cloud-gateway`.
 - Rust crate naming scans `MUST` fail on bare application gateway crate names such as
   `sdkwork-<application-code>-gateway` without a `standalone` or `cloud` qualifier.
 - Rust crate naming scans `MUST` fail on retired platform listener crate names such as
   `sdkwork-api-cloud-gateway-api-server`; the canonical platform gateway crate is
   `sdkwork-api-cloud-gateway`.
-- Application gateway crate scans `MUST` verify gateway crates live under `crates/` and declare
-  `component.type` of `rust-standalone-gateway` or `rust-cloud-gateway` per `APPLICATION_GATEWAY_SPEC.md`.
+- Application API host scans `MUST` verify assembly/gateway crates live under
+  `crates/` and declare `rust-api-assembly` or
+  `rust-api-standalone-gateway`; application `rust-cloud-gateway` is forbidden.
 - Rust HTTP route crate naming scans `MUST` verify Cargo package names follow
   `sdkwork-routes-<capability>-<surface>` per `API_SPEC.md` §4.2.
 - Rust crate naming scans `MUST` fail on forbidden generic crate names such as
@@ -747,10 +749,12 @@ Rules:
 - Config tests `MUST` prove PC roots separate browser public runtime config, desktop user runtime config, desktop-started server config, container config, and Tauri platform config.
 - Profile tests `MUST` prove `dev` normalizes to `development`, `prod` normalizes to `production`, unknown profile aliases fail, and Vite/Tauri/Spring build modes do not replace the SDKWork runtime environment model.
 - SDK base URL tests `MUST` prove private env, browser public runtime env, and Vite dev env resolve independent open-api, app-api, backend-api, and dependency SDK base URLs without falling back to one ambiguous global URL.
-- Shared gateway launch tests `MUST` prove foundation dependency SDK defaults use the declared
-  common gateway root or managed `sdkwork-api-cloud-gateway` process, application-owned app/backend/open
-  API base URLs remain application-owned, and per-module foundation upstream env vars are explicit
-  overrides rather than default materialized config.
+- Platform surface resolution tests `MUST` prove foundation dependency SDK
+  defaults use declared platform API surface URLs, application-owned
+  app/backend/open API base URLs remain application-owned, and no application
+  runner starts, configures, or identifies a managed
+  `sdkwork-api-cloud-gateway` process. Per-module foundation upstream env vars
+  remain explicit overrides rather than default materialized config.
 - Credential config tests `MUST` prove private bootstrap `SDKWORK_ACCESS_TOKEN` is documented for application roots that call protected APIs, is rejected from `VITE_*` and `PORTAL_PUBLIC_*`, and is superseded by appbase session tokens after login. `AUTH_TOKEN`, `REFRESH_TOKEN`, `API_KEY`, `VITE_*_TOKEN`, and `PORTAL_PUBLIC_*_TOKEN` remain rejected in environment configuration outside explicitly marked test fixtures.
 - Access token header tests `MUST` prove SDKWork v3 app-api/backend-api clients use `Access-Token` exactly, send JWT compact serialization values, reject aliases such as `X-Access-Token` or query-string access tokens, reject semicolon claim-string access tokens, and reject auth/access JWTs missing `token_version` or carrying obsolete/future versions outside the configured upgrade window.
 - Test-profile tests `MUST` prove database/schema, Redis key prefix, logs, cache, runtime, and temp directories are isolated from development and production.
@@ -792,6 +796,11 @@ Rules:
 - Workspace verification `MUST` include `node tools/verify-repo.mjs --root <repo-root>` and repo-root `pnpm-workspace.yaml` must be synchronized via `node tools/sync-workspace.mjs --repo <repo-name> --root <repo-root>`.
 - Composition resolver verification `MUST` include `node tools/resolve-composition.mjs --root <repo-root> --write` and `node tools/check-composition-resolver.mjs --root <repo-root>` for client application repositories with `sdkDependencies`.
 - Composition resolver tests `MUST` fail when generated `generated/composition.resolved.json#architecture` is missing component layer roles, frontend package role graph, Rust crate graph summary, route manifest inventory, runtime dependency API surfaces, or inherited permission refs required by declared SDK dependencies.
+- Composition resolver tests `MUST` prove external platform dependencies emit
+  `runtimeMode: external-via-platform-surface` and
+  `requiresPlatformApiSurface: true`. Generated output `MUST NOT` contain the
+  retired `external-via-platform-gateway` or
+  `requiresPlatformGatewayProcess` fields.
 - Permission composition verification `MUST` include `node tools/check-permission-composition.mjs --root <repo-root>` for client application repositories with HTTP `sdkDependencies`.
 - Permission composition tests `MUST` fail when HTTP `sdkDependencies` have no `contracts.permissionComposition`, when dependency SDKs lack inherited module catalog refs, or when OpenAPI `x-sdkwork-permission` codes are absent from inherited or application-owned catalogs.
 
@@ -971,25 +980,47 @@ Rules:
 - Workspace topology parity checks `MUST` run
   `node tools/check-topology-deployment-profiles.mjs --workspace ..` and pass
   for every application repository with `specs/topology.spec.json`.
+- A single application may run
+  `node tools/check-topology-deployment-profiles.mjs --root .`; the checker
+  `MUST` support both root and workspace verification without changing rules.
 - Single HTTP ingress checks `MUST` run
   `node tools/check-single-http-ingress.mjs --root .` for repositories with
   topology specs or dev orchestration scripts, and
   `node tools/audit-single-http-ingress-workspace.mjs --workspace ..` across
-  SDKWork application repositories per `APPLICATION_GATEWAY_SPEC.md` §5.6 and
+  SDKWork application repositories per `APPLICATION_GATEWAY_SPEC.md` section 5 and
   `APP_RUNTIME_TOPOLOGY_SPEC.md` §8. Workspace audit `MUST` pass with zero
   multi-listener orchestration errors; gateway crate migration warnings may
   remain until `--strict` is enabled repository-wide.
-- Gateway assembly checks `MUST` run
-  `node tools/validate-gateway-assembly.mjs --root .` for repositories that own
-  `crates/sdkwork-routes-<application-code>-*` members, and `MUST` fail when
-  `sdkwork-<application-code>-gateway-assembly` is missing, `assembly-manifest.json`
-  drifts from workspace discovery, or standalone/cloud gateway sources hand-merge
+- API assembly checks `MUST` run
+  `node tools/validate-api-assembly.mjs --root .` for every application root,
+  including applications with capability-named routes or `apiMode: none`, and
+  `MUST` fail when
+  `sdkwork-api-<application-code>-assembly` is missing, `assembly-manifest.json`
+  drifts from component/route/Cargo discovery, or standalone/platform gateway sources hand-merge
   `sdkwork_routes_*` / `sdkwork-routes-*` routers.
-- Workspace gateway assembly audits `MUST` run
-  `node tools/audit-gateway-assembly-workspace.mjs --workspace ..` and pass with
-  zero errors and zero warnings before claiming gateway assembly alignment is complete.
-- Repositories with assembly crates `MUST` run `pnpm gateway:assembly:validate` in CI
+- Workspace API assembly audits `MUST` run
+  `node tools/audit-api-assembly-workspace.mjs --workspace ..` and pass with
+  zero errors and zero warnings before claiming API assembly alignment is complete.
+- Repositories with assembly crates `MUST` run `pnpm api:assembly:validate` in CI
   or root `pnpm verify` when gateway crates or route crates change.
+- Application cloud-gateway boundary checks `MUST` run
+  `node tools/check-application-cloud-gateway-boundary.mjs --root .` and fail
+  on application Cargo/pnpm dependencies, startup scripts, source config,
+  topology ownership, deployment bundles, or release assets that identify or
+  operate `sdkwork-api-cloud-gateway`. They also `MUST` fail on the retired
+  component `integration.foundationApiGateway` parallel contract.
+- API assembly manifest tests `MUST` prove deterministic materialization,
+  canonical `sdkwork.api.assembly` identity, complete app/backend/open route
+  coverage, source references, and rejection of `generatedAt`.
+- API assembly bootstrap tests `MUST` prove one command supports both
+  `apiMode: served` and `apiMode: none`, discovers capability-named routes,
+  handles single-line and multiline Cargo workspace members, directly
+  delegates pnpm scripts to canonical tools, creates no
+  `scripts/gateway/assembly-*` wrappers, is idempotent, skips the platform
+  cloud gateway, and requires an explicit mutation scope.
+- Gateway readiness audit tests `MUST` distinguish assembly readiness from
+  standalone-host readiness, inspect `apiMode: none` applications instead of
+  skipping them, and make warnings fail under `--strict`.
 - Workspace hosting-debt checks `MUST` run
   `node tools/check-app-runtime-hosting-debt.mjs --workspace ..` and pass for
   every application repository with active dev scripts, packaging targets, or
@@ -1060,10 +1091,10 @@ Rules:
 - Resolved-plan tests `MUST` prove clients that share a runtime target are
   filtered by canonical `clientArchitecture`, including `pc-web` versus `h5`
   on `browser`, without inventing an H5 deployment profile or runtime target.
-- Default cloud HTTP tests `MUST` prove `platform-collapsed` resolves
-  application and platform SDK surfaces through the deployed
-  `sdkwork-api-cloud-gateway`. Dedicated application/edge strategies require
-  an ADR and explicit remote URLs.
+- Cloud HTTP tests `MUST` prove application clients resolve explicit deployed
+  surface URLs without starting or identifying a local platform gateway.
+  Platform gateway tests independently prove approved API assemblies are
+  selected and collision-free.
 - Release matrix tests `MUST` prove dual-profile application authorities plan
   at least one valid standalone and one valid cloud target without cloning an
   invalid runtime-target/profile combination.
@@ -1176,7 +1207,7 @@ Rules:
 - SDK workspace tests `MUST` verify authored API contracts under `apis/` trace to the materialized
   authority OpenAPI under the owning `sdks/` SDK family when `apis/` is used as the source contract
   location.
-- SDK workspace tests `MUST` verify route crate -> aggregated API authority -> generated SDK family mappings when Rust route crates participate in API generation, for example `sdkwork-routes-merchandise-app-api` -> `sdkwork-commerce (deleted)-app-api` -> `sdkwork-commerce (deleted)-app-sdk`.
+- SDK workspace tests `MUST` verify route crate -> aggregated API authority -> generated SDK family mappings when Rust route crates participate in API generation, for example `sdkwork-routes-merchandise-app-api` -> `sdkwork-shop-app-api` -> `sdkwork-shop-app-sdk`.
 - Observability tests `MUST` prove logs, metrics, traces, health checks, and
   dashboard projections use `deployment_profile` and exact
   `CONFIG_SPEC.md` `runtime_target` label values without introducing

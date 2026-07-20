@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Materialize sdkwork-<application-code>-gateway-assembly from workspace discovery.
- * Authority: APPLICATION_GATEWAY_SPEC.md §5.7
+ * Materialize sdkwork-api-<application-code>-assembly from workspace discovery.
+ * Authority: API_ASSEMBLY_SPEC.md sections 4-7.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,17 +16,18 @@ import {
   discoverRouteCrates,
   readText,
   resolveApplicationCode,
-} from './gateway-assembly-lib.mjs';
+} from './api-assembly-lib.mjs';
 
 const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_ROOT = path.resolve(SPECS_ROOT, '..');
 
 function usage() {
   return [
-    'Usage: node tools/materialize-gateway-assembly.mjs [--root <repo>]',
+    'Usage: node tools/materialize-api-assembly.mjs [--root <repo>]',
     '',
-    'Discovers crates/sdkwork-routes-<application-code>-* workspace members and writes',
-    'crates/sdkwork-<application-code>-gateway-assembly/assembly-manifest.json plus',
+    'Discovers every application-owned app/backend/open route crate from component ownership',
+    'and Cargo workspace evidence, including capability-named route crates, then writes',
+    'crates/sdkwork-api-<application-code>-assembly/assembly-manifest.json plus',
     'generated Cargo.toml when the assembly crate does not yet exist.',
   ].join('\n');
 }
@@ -183,7 +184,7 @@ function renderCargoToml(
 name = "${packageName}"
 ${editionLine}
 ${licenseLine}${versionLine}
-description = "Generated gateway assembly for sdkwork-${applicationCode} application HTTP plane."
+description = "Generated API assembly for sdkwork-${applicationCode} application HTTP plane."
 
 [lib]
 name = "${packageName.replace(/-/gu, '_')}"
@@ -196,12 +197,12 @@ ${dependencyLines}${preservedBuildDeps ? `\n\n[build-dependencies]\n${preservedB
 
 function renderLibRs(applicationCode, routeCrates, bootstrapExists, bootstrapSource = '') {
   if (bootstrapExists) {
-    const exports = /pub\s+(?:async\s+)?fn\s+assemble_application_business_router\b/u.test(
+    const exports = /pub\s+(?:async\s+)?fn\s+assemble_api_business_router\b/u.test(
       bootstrapSource,
     )
-      ? 'assemble_application_business_router, assemble_application_router, ApplicationAssembly'
-      : 'assemble_application_router, ApplicationAssembly';
-    return `//! Gateway assembly for sdkwork-${applicationCode}.
+      ? 'assemble_api_business_router, assemble_api_router, ApiAssembly'
+      : 'assemble_api_router, ApiAssembly';
+    return `//! API assembly for sdkwork-${applicationCode}.
 //! Application bootstrap lives in \`bootstrap.rs\`; route inventory is in \`assembly-manifest.json\`.
 
 mod bootstrap;
@@ -221,18 +222,18 @@ pub fn assembly_route_count() -> usize {
     .join('\n');
 
   if (mountLines) {
-    return `//! Generated gateway assembly for sdkwork-${applicationCode}.
+    return `//! Generated API assembly for sdkwork-${applicationCode}.
 
 mod generated;
 
-pub struct ApplicationAssembly {
+pub struct ApiAssembly {
     pub router: axum::Router,
 }
 
-pub async fn assemble_application_router() -> ApplicationAssembly {
+pub async fn assemble_api_router() -> ApiAssembly {
     let mut router = axum::Router::new();
 ${mountLines}
-    ApplicationAssembly { router }
+    ApiAssembly { router }
 }
 
 pub fn assembly_route_count() -> usize {
@@ -241,13 +242,13 @@ pub fn assembly_route_count() -> usize {
 `;
   }
 
-  return `//! Gateway assembly scaffold for sdkwork-${applicationCode}.
+  return `//! API assembly scaffold for sdkwork-${applicationCode}.
 //! Implement \`bootstrap.rs\` with application-specific service wiring until every route crate exports \`gateway_mount\`.
 
 mod bootstrap;
 mod generated;
 
-pub use bootstrap::{assemble_application_router, ApplicationAssembly};
+pub use bootstrap::{assemble_api_router, ApiAssembly};
 
 pub fn assembly_route_count() -> usize {
     generated::ROUTE_CRATE_COUNT
@@ -257,7 +258,7 @@ pub fn assembly_route_count() -> usize {
 
 function renderGeneratedRs(routeCrates) {
   const names = routeCrates.map((crate) => `    "${crate.packageName}",`).join('\n');
-  return `//! Generated route inventory. Do not edit by hand; run pnpm gateway:assembly:materialize.
+  return `//! Generated route inventory. Do not edit by hand; run pnpm api:assembly:materialize.
 
 pub const ROUTE_CRATE_COUNT: usize = ${routeCrates.length};
 
@@ -281,22 +282,27 @@ function ensureAssemblyComponentSpecs(root, applicationCode) {
       kind: 'sdkwork.component.spec',
       component: {
         name: packageName,
-        displayName: `SDKWork ${applicationCode} Gateway Assembly`,
+        displayName: `SDKWork ${applicationCode} API Assembly`,
         version: '0.1.0',
-        type: 'rust-crate',
+        type: 'rust-api-assembly',
         root: `${path.basename(root)}/${crateDir}`,
         domain: 'application',
-        capability: `${applicationCode}-gateway-assembly`,
-        surface: 'assembly',
+        capability: 'api-assembly',
+        surface: 'api-assembly',
         languages: ['rust'],
         generated: false,
         manifests: ['Cargo.toml', 'assembly-manifest.json'],
       },
       canonicalSpecs: [
         {
+          file: 'API_ASSEMBLY_SPEC.md',
+          path: '../../../sdkwork-specs/API_ASSEMBLY_SPEC.md',
+          purpose: 'API ownership, host-neutral composition, and verification rules.',
+        },
+        {
           file: 'APPLICATION_GATEWAY_SPEC.md',
           path: '../../../sdkwork-specs/APPLICATION_GATEWAY_SPEC.md',
-          purpose: 'Gateway assembly discovery, business-only mounting, and verification rules.',
+          purpose: 'Standalone and cloud gateway host boundaries.',
         },
         {
           file: 'WEB_FRAMEWORK_SPEC.md',
@@ -322,7 +328,7 @@ function ensureAssemblyComponentSpecs(root, applicationCode) {
       },
       verification: {
         commands: [
-          'pnpm run gateway:assembly:validate',
+          'pnpm run api:assembly:validate',
           `cargo check -p ${packageName}`,
         ],
       },
@@ -333,7 +339,7 @@ function ensureAssemblyComponentSpecs(root, applicationCode) {
   if (!fs.existsSync(readmePath)) {
     writeFileEnsuringDir(
       readmePath,
-      `# ${packageName} Specs\n\nComponent root: \`${crateDir}\`\n\nGateway assembly manifest, business-router composition, and verification contract.\n`,
+      `# ${packageName} Specs\n\nComponent root: \`${crateDir}\`\n\nAPI assembly manifest, business-router composition, and verification contract.\n`,
     );
   }
 }
@@ -357,10 +363,10 @@ function bootstrapNeedsRegeneration(bootstrapSource) {
   if (!bootstrapSource.trim() || bootstrapHasTodoMacro(bootstrapSource)) {
     return true;
   }
-  if (!/Generated gateway bootstrap/u.test(bootstrapSource)) {
+  if (!/Generated (?:gateway|API assembly) bootstrap/u.test(bootstrapSource)) {
     return false;
   }
-  const signatureMatch = /fn\s+assemble_application_router\s*\(([^)]*)\)/u.exec(bootstrapSource);
+  const signatureMatch = /fn\s+assemble_api_router\s*\(([^)]*)\)/u.exec(bootstrapSource);
   const signatureParams = signatureMatch
     ? signatureMatch[1]
         .split(',')
@@ -490,50 +496,63 @@ function renderBootstrapRs(applicationCode, mounts, root, routeCrates) {
   const fnKeyword = needsAsync ? 'pub async fn' : 'pub fn';
   const extraUseBlock = [...extraUses].sort().join('\n');
 
-  return `//! Generated gateway bootstrap for sdkwork-${applicationCode}.
-//! Regenerated by pnpm gateway:assembly:materialize.
+  return `//! Generated API assembly bootstrap for sdkwork-${applicationCode}.
+//! Regenerated by pnpm api:assembly:materialize.
 //!
 //! Multi-surface merges mount shared infrastructure routes once at the assembly layer
 //! so \`/healthz\`, \`/livez\`, \`/readyz\`, and \`/metrics\` are not duplicated per surface.
 
 use axum::Router;
 ${extraUseBlock ? `${extraUseBlock}\n` : ''}
-pub struct ApplicationAssembly {
+pub struct ApiAssembly {
     pub router: Router,
 }
 
-${fnKeyword} assemble_application_router(${fnSigParams}) -> ApplicationAssembly {
+${fnKeyword} assemble_api_router(${fnSigParams}) -> ApiAssembly {
 ${useBusinessMounts && businessMounts.length > 0 ? '' : '    let mut router = Router::new();\n'}${bodyLines.join('\n')}
-    ApplicationAssembly { router }
+    ApiAssembly { router }
 }
 `;
 }
 
 function renderBootstrapEmpty(applicationCode) {
-  return `//! Gateway bootstrap for sdkwork-${applicationCode}.
+  return `//! API assembly bootstrap for sdkwork-${applicationCode}.
 
 use axum::Router;
 
-pub struct ApplicationAssembly {
+pub struct ApiAssembly {
     pub router: Router,
 }
 
-pub fn assemble_application_router() -> ApplicationAssembly {
-    ApplicationAssembly {
+pub fn assemble_api_router() -> ApiAssembly {
+    ApiAssembly {
         router: Router::new(),
     }
 }
 `;
 }
 
-export function materializeGatewayAssembly(root) {
-  const applicationCode = resolveApplicationCode(root);
+export function materializeApiAssembly(root) {
+  if (path.basename(path.resolve(root)) === 'sdkwork-api-cloud-gateway') {
+    return {
+      ok: false,
+      skipped: true,
+      applicationCode: null,
+      message: 'platform cloud gateway consumes application assemblies',
+    };
+  }
+  let applicationCode;
+  try {
+    applicationCode = resolveApplicationCode(root);
+  } catch (error) {
+    return { ok: false, applicationCode: null, message: error.message };
+  }
   const routeCrates = discoverRouteCrates(root, applicationCode);
-  if (routeCrates.length === 0) {
+  if (routeCrates.length === 0 && !fs.existsSync(path.join(root, 'sdkwork.app.config.json'))) {
     return {
       ok: false,
       applicationCode,
-      message: `no crates/sdkwork-routes-${applicationCode}-* workspace members found`,
+      message: 'not an application root and no HTTP route crates found',
     };
   }
 
@@ -567,9 +586,13 @@ export function materializeGatewayAssembly(root) {
   );
   writeFileEnsuringDir(path.join(crateDir, 'src', 'generated.rs'), renderGeneratedRs(routeCrates));
   ensureAssemblyComponentSpecs(root, applicationCode);
-  const bootstrapSource = readText(bootstrapPath);
+  const authoredBootstrapSource = readText(bootstrapPath);
+  const generatedBootstrapSource = preserveBootstrap
+    ? null
+    : renderBootstrapRs(applicationCode, mounts, root, routeCrates);
+  const bootstrapSource = generatedBootstrapSource ?? authoredBootstrapSource;
   const bootstrapReady =
-    fs.existsSync(bootstrapPath) && !bootstrapNeedsRegeneration(bootstrapSource);
+    bootstrapSource.trim().length > 0 && !bootstrapNeedsRegeneration(bootstrapSource);
   const libPath = path.join(crateDir, 'src', 'lib.rs');
   const existingLib = readText(libPath);
   const preserveAuthoredLib = existingLib.includes('SDKWORK-ASSEMBLY-LIB-CUSTOM');
@@ -580,8 +603,8 @@ export function materializeGatewayAssembly(root) {
       : renderLibRs(applicationCode, routeCrates, bootstrapReady, bootstrapSource),
   );
 
-  if (!preserveBootstrap) {
-    writeFileEnsuringDir(bootstrapPath, renderBootstrapRs(applicationCode, mounts, root, routeCrates));
+  if (generatedBootstrapSource !== null) {
+    writeFileEnsuringDir(bootstrapPath, generatedBootstrapSource);
   }
 
   return {
@@ -607,14 +630,14 @@ function main() {
   }
 
   const root = path.resolve(values.root);
-  const result = materializeGatewayAssembly(root);
+  const result = materializeApiAssembly(root);
   if (!result.ok) {
-    console.error(`gateway-assembly:materialize skipped for ${root}: ${result.message}`);
+    console.error(`api-assembly:materialize skipped for ${root}: ${result.message}`);
     process.exit(0);
   }
 
   console.log(
-    `gateway-assembly:materialize wrote ${result.crateDir} (${result.routeCrates} route crates${
+    `api-assembly:materialize wrote ${result.crateDir} (${result.routeCrates} route crates${
       result.bootstrapPreserved ? ', bootstrap preserved' : ''
     })`,
   );
