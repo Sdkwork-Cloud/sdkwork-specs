@@ -116,8 +116,14 @@ export function inspectApplicationRoot(workspace, root) {
     ? path.resolve(root, 'etc', deploymentConfig.parentDeploymentConfig)
     : null;
   const delegatedSurface = deploymentConfig?.kind === 'sdkwork.component-deployment';
-  const ownsTopology = fs.existsSync(path.join(root, 'specs', 'topology.spec.json'));
-  const parentTopologyValid = Boolean(parentTopologySpec && fs.existsSync(parentTopologySpec));
+  const topologyPath = path.join(root, 'specs', 'topology.spec.json');
+  const topologyFileExists = fs.existsSync(topologyPath);
+  const topologyManifest = topologyFileExists ? readJson(topologyPath) : null;
+  const ownsTopology = topologyManifest?.schemaVersion === 5;
+  const parentTopologyManifest = parentTopologySpec && fs.existsSync(parentTopologySpec)
+    ? readJson(parentTopologySpec)
+    : null;
+  const parentTopologyValid = parentTopologyManifest?.schemaVersion === 5;
   const parentDeploymentValid = Boolean(parentDeploymentConfig && fs.existsSync(parentDeploymentConfig));
   const delegatesTopology = Boolean(
     parentTopologyValid && parentDeploymentValid,
@@ -139,7 +145,13 @@ export function inspectApplicationRoot(workspace, root) {
     packageManifestValid: Boolean(packageManifest),
     pnpmManaged,
     topology: ownsTopology || delegatesTopology,
-    topologyOwnership: ownsTopology ? 'owned' : delegatesTopology ? 'delegated' : 'missing',
+    topologyOwnership: ownsTopology
+      ? 'owned'
+      : delegatesTopology
+        ? 'delegated'
+        : topologyFileExists
+          ? 'invalid'
+          : 'missing',
     workflow: fs.existsSync(workflowPath),
     deployManifest: fs.existsSync(path.join(root, 'deployments', 'deploy.yaml')),
     lifecycleFacade: delegatesTopology
@@ -170,8 +182,13 @@ export function inspectApplicationRoot(workspace, root) {
     }
   }
   if (scripts['_sdkwork:stop']) entry.debt.push('private-stop-bypasses-framework');
-  if (!entry.topology && !foundationDependency) entry.debt.push('missing-topology-v5-contract');
-  if (ownsTopology && deploymentConfig?.parentTopologySpec) entry.debt.push('competing-topology-authorities');
+  if (topologyFileExists && !ownsTopology) entry.debt.push('invalid-topology-v5-contract');
+  if (!topologyFileExists && !entry.topology && !foundationDependency) {
+    entry.debt.push('missing-topology-v5-contract');
+  }
+  if (topologyFileExists && deploymentConfig?.parentTopologySpec) {
+    entry.debt.push('competing-topology-authorities');
+  }
   if (deploymentConfig?.kind === 'sdkwork.component-deployment' && !parentTopologyValid) {
     entry.debt.push('invalid-parent-topology-spec');
   }

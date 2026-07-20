@@ -52,6 +52,21 @@ test('reports missing cloud development and facade debt', () => {
   assert.equal(report.applications[0].wave, 4);
 });
 
+test('distinguishes an invalid topology contract from a missing topology contract', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-lifecycle-audit-'));
+  const app = path.join(workspace, 'sdkwork-demo');
+  writeJson(path.join(app, 'sdkwork.app.config.json'), { app: { key: 'sdkwork-demo' } });
+  writeJson(path.join(app, 'specs', 'topology.spec.json'), { schemaVersion: 4 });
+  writeJson(path.join(app, 'package.json'), { scripts: {} });
+
+  const report = auditPnpmLifecycleWorkspace(workspace);
+
+  assert.equal(report.summary.topologyContracts, 0);
+  assert.equal(report.applications[0].topologyOwnership, 'invalid');
+  assert.ok(report.applications[0].debt.includes('invalid-topology-v5-contract'));
+  assert.equal(report.applications[0].debt.includes('missing-topology-v5-contract'), false);
+});
+
 test('reports public release phases that bypass the shared workflow facade', () => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-lifecycle-audit-'));
   const app = path.join(workspace, 'sdkwork-demo');
