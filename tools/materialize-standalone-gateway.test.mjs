@@ -136,12 +136,16 @@ test('refuses to guess application-specific assembly context parameters', () => 
   );
 });
 
-test('refuses non-Cargo application roots instead of inventing a Rust host', () => {
+test('skips non-Cargo application roots instead of inventing a Rust host', () => {
   const root = fixture();
   fs.writeFileSync(path.join(root, 'Cargo.toml'), '[package]\nname = "sdkwork-demo"\nversion = "0.1.0"\n');
 
-  assert.throws(
-    () => materializeStandaloneGateway(root, { write: true }),
-    /not a Cargo workspace/u,
+  const result = materializeStandaloneGateway(root, { write: true });
+
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, 'non-cargo-application');
+  assert.equal(
+    fs.existsSync(path.join(root, 'crates', 'sdkwork-api-demo-standalone-gateway')),
+    false,
   );
 });

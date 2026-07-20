@@ -163,9 +163,13 @@ export function materializeStandaloneGateway(root, { write = false } = {}) {
   const applicationCode = resolveApplicationCode(resolved);
   const rootCargo = readText(path.join(resolved, 'Cargo.toml'));
   if (!rootCargo.includes('[workspace]') || !rootCargo.includes('[workspace.package]')) {
-    throw new Error(
-      'application root is not a Cargo workspace; use its declared runtime family host instead of materializing a Rust standalone gateway',
-    );
+    return {
+      root: resolved,
+      applicationCode,
+      skipped: true,
+      reason: 'non-cargo-application',
+      actions: [],
+    };
   }
   const packageName = `sdkwork-api-${applicationCode}-standalone-gateway`;
   const member = `crates/${packageName}`;

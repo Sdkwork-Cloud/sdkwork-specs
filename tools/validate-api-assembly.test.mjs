@@ -195,6 +195,47 @@ test('accepts apiMode none when Rust routing evidence exists only in test fixtur
   assert.equal(result.ok, true, result.errors?.join('\n'));
 });
 
+test('accepts apiMode none for canonical process infrastructure routes only', () => {
+  const root = fixture();
+  fs.rmSync(path.join(root, 'crates', 'sdkwork-routes-demo-app-api'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'Cargo.toml'),
+    '[workspace]\nmembers = []\nresolver = "2"\n\n[workspace.package]\nedition = "2021"\nversion = "0.1.0"\nlicense = "MIT"\n',
+  );
+  const serviceSource = path.join(root, 'services', 'demo', 'src');
+  fs.mkdirSync(serviceSource, { recursive: true });
+  fs.writeFileSync(
+    path.join(serviceSource, 'probe.rs'),
+    'use axum::{routing::get, Router};\nuse sdkwork_web_bootstrap::{mount_infra_routes, ServiceRouterConfig};\n\npub fn probe_router() -> Router {\n    mount_infra_routes(Router::new(), ServiceRouterConfig::default()).route("/metrics", get(|| async { "ok" }))\n}\n',
+  );
+  assert.equal(materializeApiAssembly(root).ok, true);
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.ok, true, result.errors?.join('\n'));
+});
+
+test('rejects business routes mixed into canonical process infrastructure', () => {
+  const root = fixture();
+  fs.rmSync(path.join(root, 'crates', 'sdkwork-routes-demo-app-api'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'Cargo.toml'),
+    '[workspace]\nmembers = []\nresolver = "2"\n\n[workspace.package]\nedition = "2021"\nversion = "0.1.0"\nlicense = "MIT"\n',
+  );
+  const serviceSource = path.join(root, 'services', 'demo', 'src');
+  fs.mkdirSync(serviceSource, { recursive: true });
+  fs.writeFileSync(
+    path.join(serviceSource, 'router.rs'),
+    'use axum::{routing::get, Router};\nuse sdkwork_web_bootstrap::{mount_infra_routes, ServiceRouterConfig};\n\npub fn router() -> Router {\n    mount_infra_routes(Router::new(), ServiceRouterConfig::default()).route("/app/v3/api/demo", get(|| async { "ok" }))\n}\n',
+  );
+  assert.equal(materializeApiAssembly(root).ok, true);
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('\n'), /apiMode none contradicts executable authored HTTP routing/u);
+});
+
 test('rejects apiMode none assemblies with stale route crate bootstrap references', () => {
   const root = fixture();
   fs.rmSync(path.join(root, 'crates', 'sdkwork-routes-demo-app-api'), { recursive: true });
