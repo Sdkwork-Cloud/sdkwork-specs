@@ -143,6 +143,10 @@ Rules:
   assemblies, adds Cargo workspace membership, writes direct canonical
   pnpm tool delegation, validates immediately, creates no wrapper scripts, and
   is idempotent.
+- `materialize-route-component-specs.mjs (--root <application> | --workspace
+  <workspace>) [--write]` plans missing ownership contracts for canonical Rust
+  app/backend/open route crates and creates them only with explicit `--write`.
+  It never overwrites authored component contracts.
 - `wire-api-assembly-host.mjs --root <application>` is a migration-only wiring
   aid for an existing canonical standalone gateway. It requires an explicit
   mutation scope and is never completion evidence by itself.

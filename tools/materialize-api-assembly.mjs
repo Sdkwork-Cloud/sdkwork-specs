@@ -399,6 +399,9 @@ function shouldPreserveBootstrap(bootstrapPath) {
     return false;
   }
   const bootstrap = readText(bootstrapPath);
+  if (/^\/\/! Generated API assembly bootstrap/mu.test(bootstrap)) {
+    return false;
+  }
   if (bootstrapNeedsRegeneration(bootstrap)) {
     return false;
   }

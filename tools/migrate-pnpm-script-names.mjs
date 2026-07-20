@@ -321,6 +321,7 @@ function transformFile(file, root, renames) {
     const transformed = path.basename(file) === 'package.json'
       ? transformJson(parsed, label, renames)
       : transformReferenceJson(parsed, renames);
+    if (isDeepStrictEqual(parsed, transformed)) return null;
     after = `${JSON.stringify(transformed, null, 2)}\n`;
   } else {
     after = transformTextReferences(before, renames);

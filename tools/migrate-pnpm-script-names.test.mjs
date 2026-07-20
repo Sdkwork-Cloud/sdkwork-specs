@@ -171,10 +171,11 @@ test('does not remigrate a canonical name that contains a legacy suffix', () => 
 test('leaves non-command domain values unchanged outside package manifests', () => {
   const root = fixture();
   const contractPath = path.join(root, 'specs', 'domain.contract.json');
-  fs.writeFileSync(contractPath, JSON.stringify({ operation: 'audit:services' }, null, 2));
+  const before = '{"operation":"audit:services","label":"{{size}}"}\n';
+  fs.writeFileSync(contractPath, before);
 
-  migratePnpmScriptNames(root);
+  const result = migratePnpmScriptNames(root);
 
-  const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
-  assert.equal(contract.operation, 'audit:services');
+  assert.equal(fs.readFileSync(contractPath, 'utf8'), before);
+  assert.ok(!result.actions.includes(contractPath));
 });

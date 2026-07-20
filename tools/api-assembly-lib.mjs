@@ -315,8 +315,11 @@ export function parseGatewayMountBusinessSignature(libRs) {
 
 export function discoverGatewayBusinessMounts(root, routeCrates) {
   return routeCrates.map((crate) => {
-    const libRs = readText(path.join(root, crate.memberDir, 'src', 'lib.rs'));
-    const mount = parseGatewayMountBusinessSignature(libRs);
+    const source = [
+      readText(path.join(root, crate.memberDir, 'src', 'lib.rs')),
+      readText(path.join(root, crate.memberDir, 'src', 'routes.rs')),
+    ].join('\n');
+    const mount = parseGatewayMountBusinessSignature(source);
     return { ...crate, mount };
   });
 }
