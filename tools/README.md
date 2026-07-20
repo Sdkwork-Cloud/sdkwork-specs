@@ -27,6 +27,10 @@ Rules:
   development profiles that autostart local API/dependency processes, omit
   deployed surface URLs, use placeholders, or inherit loopback URLs without an
   explicit tunnel/proxy.
+- `materialize-deployment-index.mjs` previews a minimal
+  `etc/sdkwork.deployment.config.json` from an existing topology v5 profile
+  inventory. It never copies URLs, rejects profiles outside `etc/`, and writes
+  only with explicit `--write` after deployment review.
 - `resolve-app-runtime-plan.mjs` resolves a v5 topology into the canonical
   runtime plan shape, including local processes, remote surfaces, URL
   provenance, data stores, health checks, and forbidden cloud-development
