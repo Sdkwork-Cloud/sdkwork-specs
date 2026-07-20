@@ -30,7 +30,7 @@ All bootstrap operations live in backend-api only. Static path segments use `low
 | Business step | Method | Path | operationId | Auth mode |
 | --- | --- | --- | --- | --- |
 | Register application template | `POST` | `/backend/v3/api/iam/applications/register` | `applications.register` | `bootstrap-body` |
-| Provision tenant application | `POST` | `/backend/v3/api/iam/tenant_applications` | `tenantApplications.provision` | `bootstrap-body` |
+| Provision tenant application | `POST` | `/backend/v3/api/iam/tenant_applications` | `tenantApplications.create` | `bootstrap-body` |
 | Update tenant application | `PATCH` | `/backend/v3/api/iam/tenant_applications/{tenantApplicationId}` | `tenantApplications.update` | `bootstrap-body` |
 | Enable tenant application | `POST` | `/backend/v3/api/iam/tenant_applications/{tenantApplicationId}/enable` | `tenantApplications.enable` | `bootstrap-body` |
 | Retrieve tenant application | `GET` | `/backend/v3/api/iam/tenant_applications/{tenantApplicationId}` | `tenantApplications.retrieve` | `dual-token` |
@@ -66,7 +66,7 @@ the canonical tenant application domain service and permission codes:
 | --- | --- | --- | --- | --- |
 | List tenant applications | `GET` | `/backend/v3/api/iam/tenants/{tenantId}/applications` | `tenantApplications.list` | `iam.tenant_applications.update` |
 | Retrieve tenant application summary | `GET` | `/backend/v3/api/iam/tenants/{tenantId}/applications/summary` | `tenantApplications.summary.retrieve` | `iam.tenant_applications.update` |
-| Provision from a registered template | `POST` | `/backend/v3/api/iam/tenants/{tenantId}/applications` | `tenantApplications.management.provision` | `iam.tenant_applications.provision` |
+| Provision from a registered template | `POST` | `/backend/v3/api/iam/tenants/{tenantId}/applications` | `tenantApplications.management.create` | `iam.tenant_applications.provision` |
 | Update domain and access scope | `PATCH` | `/backend/v3/api/iam/tenants/{tenantId}/applications/{tenantApplicationId}` | `tenantApplications.management.update` | `iam.tenant_applications.update` |
 | Enable tenant application | `POST` | `/backend/v3/api/iam/tenants/{tenantId}/applications/{tenantApplicationId}/enable` | `tenantApplications.management.enable` | `iam.tenant_applications.enable` |
 | Disable tenant application | `POST` | `/backend/v3/api/iam/tenants/{tenantId}/applications/{tenantApplicationId}/disable` | `tenantApplications.management.disable` | `iam.tenant_applications.update` |
