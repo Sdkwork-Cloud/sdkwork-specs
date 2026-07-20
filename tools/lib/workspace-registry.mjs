@@ -30,8 +30,37 @@ export function readJsonIfExists(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/u, ''));
 }
 
-export const DEFAULT_CATALOG = (() => {
-  const catalogPath = path.join(SPECS_ROOT, 'workspace/catalog.base.json');
+function parseFlatYamlCatalog(text) {
+  const catalog = {};
+  for (const line of text.split(/\r?\n/u)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const match = trimmed.match(/^(?:"([^"]+)"|([^:]+)):\s+(.+?)\s*$/u);
+    if (!match) continue;
+    const key = (match[1] ?? match[2]).trim();
+    const rawValue = match[3].trim();
+    catalog[key] = rawValue.startsWith('"') && rawValue.endsWith('"')
+      ? JSON.parse(rawValue)
+      : rawValue;
+  }
+  return catalog;
+}
+
+export function loadDefaultCatalog({ specsRoot = SPECS_ROOT } = {}) {
+  const governanceCatalogPath = path.resolve(
+    specsRoot,
+    '..',
+    'configs',
+    'dependency-catalog.yaml',
+  );
+  if (fs.existsSync(governanceCatalogPath)) {
+    const governanceCatalog = parseFlatYamlCatalog(
+      fs.readFileSync(governanceCatalogPath, 'utf8').replace(/^\uFEFF/u, ''),
+    );
+    if (Object.keys(governanceCatalog).length > 0) return governanceCatalog;
+  }
+
+  const catalogPath = path.join(specsRoot, 'workspace/catalog.base.json');
   const data = readJsonIfExists(catalogPath);
   return data ?? {
     react: '^19.2.4',
@@ -41,7 +70,9 @@ export const DEFAULT_CATALOG = (() => {
     '@types/react': '^19.2.14',
     '@types/react-dom': '^19.2.3',
   };
-})();
+}
+
+export const DEFAULT_CATALOG = loadDefaultCatalog();
 
 export function loadConsumerOverlay(repoName) {
   const consumerPath = path.join(SPECS_ROOT, 'workspace/consumers', `${repoName}.json`);

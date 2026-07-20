@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { isApplicationCloudGatewayScript } from './lib/application-cloud-gateway.mjs';
+import { resolveRepositoryKind } from './lib/packages-layout-patterns.mjs';
 
 const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const API_ASSEMBLY_SCRIPT_TOOLS = new Map([
@@ -234,21 +235,35 @@ function readJson(file) {
   return JSON.parse(text);
 }
 
+function readJsonIfValid(file) {
+  try {
+    return readJson(file);
+  } catch {
+    return null;
+  }
+}
+
 function isApplicationRepositoryRoot(root) {
   const componentPath = path.join(root, 'specs', 'component.spec.json');
-  const component = fs.existsSync(componentPath) ? readJson(componentPath) : null;
+  const component = fs.existsSync(componentPath) ? readJsonIfValid(componentPath) : null;
   const componentType = String(component?.component?.type ?? '').trim().toLowerCase();
   if (new Set(['domain-library', 'node-package']).has(componentType)) return false;
 
   const appPath = path.join(root, 'sdkwork.app.config.json');
-  const app = fs.existsSync(appPath) ? readJson(appPath) : null;
-  return String(app?.runtime?.family ?? '').trim().toLowerCase() !== 'library';
+  const app = fs.existsSync(appPath) ? readJsonIfValid(appPath) : null;
+  if (String(app?.runtime?.family ?? '').trim().toLowerCase() === 'library') return false;
+
+  return new Set([
+    'application',
+    'legacy-application',
+    'unknown',
+  ]).has(resolveRepositoryKind(root));
 }
 
 function isDelegatedApplicationSurface(root) {
   const deploymentPath = path.join(root, 'etc', 'sdkwork.deployment.config.json');
   if (!fs.existsSync(deploymentPath)) return false;
-  return readJson(deploymentPath)?.kind === 'sdkwork.component-deployment';
+  return readJsonIfValid(deploymentPath)?.kind === 'sdkwork.component-deployment';
 }
 
 function canonicalApiAssemblyCommand(root, toolName) {
@@ -303,6 +318,23 @@ function pushGatewayNameIssues(scriptName, issues, prefix = '') {
   if (DEPLOYMENT_PROFILES.has(parts[1])) {
     issues.push(
       `${prefix}${scriptName}: use gateway:<action>[:deploymentProfile], for example gateway:${parts[2]}:${parts[1]}`,
+    );
+  }
+}
+
+function pushRuntimeNamespaceBoundaryIssues(scriptName, commandText, issues, prefix = '') {
+  const isGatewayNamespace = scriptName.startsWith('gateway:')
+    || scriptName.startsWith('_sdkwork:gateway:');
+  if (isGatewayNamespace && /\bsdkwork-[a-z0-9-]+-edge-runtime\b/iu.test(commandText)) {
+    issues.push(
+      `${prefix}${scriptName}: edge runtime targets belong to _sdkwork:runtime:* and release/build composition, not gateway commands`,
+    );
+  }
+
+  if (scriptName.startsWith('_sdkwork:runtime:')
+    && /\bsdkwork-api-(?:cloud|[a-z0-9-]+-standalone)-gateway\b/iu.test(commandText)) {
+    issues.push(
+      `${prefix}${scriptName}: canonical API gateway targets belong to _sdkwork:gateway:*`,
     );
   }
 }
@@ -519,8 +551,8 @@ function pushProfileDevelopmentEntrypointIssues(scripts, issues) {
       issues.push('dev:cloud: remote cloud development must not select or bootstrap a local database');
     }
   }
-  if ((scripts['_sdkwork:dev:standalone'] || scripts['_sdkwork:dev:cloud']) && !scripts['_sdkwork:stop']) {
-    issues.push('private _sdkwork:dev hooks require a scoped _sdkwork:stop hook');
+  if (scripts['_sdkwork:stop']) {
+    issues.push('private _sdkwork:stop is forbidden; declare owned bindings and managed resources in topology');
   }
 }
 
@@ -621,7 +653,7 @@ function pushCommandNameIssues(
     return;
   }
   if (scriptName.startsWith('_sdkwork:')) {
-    if (!/^_sdkwork:(dev:(standalone|cloud)|stop|build|test|check|verify|clean|release:[a-z0-9:-]+|deploy:[a-z0-9:-]+|client(?::[a-z0-9-]+)*|gateway(?::[a-z0-9-]+)*)$/u.test(scriptName)) {
+    if (!/^_sdkwork:(dev:(standalone|cloud)|build|test|check|verify|clean|release:[a-z0-9:-]+|deploy:[a-z0-9:-]+|client(?::[a-z0-9-]+)*|gateway(?::[a-z0-9-]+)*|runtime(?::[a-z0-9-]+)*)$/u.test(scriptName)) {
       issues.push(`${prefix}${scriptName}: private SDKWork hooks must use an approved _sdkwork lifecycle or topology namespace`);
     }
     return;
@@ -683,6 +715,7 @@ function validateRootScripts(root, productPrefixes) {
 
   for (const scriptName of scriptNames) {
     pushCommandNameIssues(scriptName, issues, productPrefixes);
+    pushRuntimeNamespaceBoundaryIssues(scriptName, String(scripts[scriptName]), issues);
     if (!scriptName.startsWith('_sdkwork:')) {
       pushRetiredCommandValueIssues(scriptName, String(scripts[scriptName]), issues);
     }

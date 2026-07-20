@@ -211,6 +211,9 @@ test('API assembly dependency rendering deduplicates preserved Cargo keys', () =
       'tokio = "1"',
       'serde = "1"',
       '',
+      '[dev-dependencies]',
+      'tower = "0.5"',
+      '',
     ].join('\n'),
   );
 
@@ -223,6 +226,8 @@ test('API assembly dependency rendering deduplicates preserved Cargo keys', () =
   assert.equal((cargoToml.match(/^axum(?:\.workspace)?\s*=/gmu) ?? []).length, 1);
   assert.equal((cargoToml.match(/^tokio(?:\.workspace)?\s*=/gmu) ?? []).length, 1);
   assert.equal((cargoToml.match(/^serde(?:\.workspace)?\s*=/gmu) ?? []).length, 1);
+  assert.match(cargoToml, /^\[dev-dependencies\]$/mu);
+  assert.equal((cargoToml.match(/^tower(?:\.workspace)?\s*=/gmu) ?? []).length, 1);
 });
 
 test('API assembly materializer never writes an assembly for the platform cloud gateway', () => {

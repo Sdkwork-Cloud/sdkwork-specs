@@ -1,6 +1,6 @@
 # Naming Standard
 
-- Version: 1.9
+- Version: 2.0
 - Scope: domains, capabilities, repositories, applications, components, packages, SDK families, API authorities, route crates, database identifiers, files, and test names
 - Related: `APPLICATION_GATEWAY_SPEC.md`, `DOMAIN_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `DEPLOYMENT_SPEC.md`, `REGION_SPEC.md`, `CONFIG_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `DATABASE_SPEC.md`, `CODE_STYLE_SPEC.md`
 
@@ -40,6 +40,7 @@ sdkwork_<application_code>_<client_arch>_<capability>    # Dart only
 sdkwork-api-<application-code>-assembly
 sdkwork-api-<application-code>-standalone-gateway
 sdkwork-<application-code>-service-host | -native-host | -tauri-host
+sdkwork-<application-code>-<edge-capability>-edge-runtime
 sdkwork-api-cloud-gateway                                              # platform `api-cloud-gateway` plane only
 sdkwork-<domain>-<capability>-service
 sdkwork-routes-<capability>-<surface>
@@ -71,8 +72,8 @@ After `product`, these words are the most common sources of naming drift. Each r
 | `platform` | domain `platform`; connectivity plane `platform`; OS platform in package ids | application line name; product name | domain `platform` or connectivity plane `platform`; state the axis |
 | `profile` | full topology profile id; **config profile alias** `dev`/`prod`; GitHub package **profile** segment | lifecycle environment alone; deployment profile alone | `environment`, `deploymentProfile`, `configProfile`, or full profile id |
 | `region` | SDKWork market/compliance partition `regionCode`; cloud `providerRegion`; Drive `storageRegion` | bare field `region`; cloud id in `regionCode`; AZ in `regionCode` | `regionCode`, `providerRegion`, `storageRegion` per `REGION_SPEC.md` |
-| `runtime` | `runtimeTarget`; forbidden crate suffix `*-runtime` | synonym for application or environment | `runtimeTarget`, `environment`, or responsibility-specific crate |
-| `gateway` | application `sdkwork-api-<application-code>-standalone-gateway`; platform `sdkwork-api-cloud-gateway`; `gateway:*` pnpm namespace | bare application gateway; application `*-cloud-gateway`; retired `*-api-server`; SDK family name | `api-standalone-gateway` vs platform `api-cloud-gateway` |
+| `runtime` | `runtimeTarget`; responsibility-specific `*-edge-runtime` process defined by section 4.3 | bare or generic `sdkwork-*-runtime`; synonym for application or environment | `runtimeTarget`, `environment`, a responsibility-specific host/worker, or the canonical edge-runtime formula |
+| `gateway` | application `sdkwork-api-<application-code>-standalone-gateway`; platform `sdkwork-api-cloud-gateway`; `gateway:*` pnpm namespace | bare application gateway; application `*-cloud-gateway`; device/edge protocol process; retired `*-api-server`; SDK family name | `api-standalone-gateway`, platform `api-cloud-gateway`, or responsibility-specific `*-edge-runtime` |
 | `foundation` | shared foundation **domain/module** tier (L3); foundation dependency SDKs | package name `foundation` without domain | `sdkwork-<domain>-*` or `shared foundation module` |
 | `portal` | browser **portal** public config (`PORTAL_PUBLIC_*`, `[portal.public]`); static portal assets | application code; IAM domain | `PORTAL_PUBLIC_*`, `browser public runtime` |
 | `identity` | prose "identity projection" in HTTP headers | domain name instead of `iam` | domain `iam` |
@@ -377,6 +378,17 @@ Rules:
 - `sdkwork-api-<application-code>-assembly` owns host-neutral application API composition.
 - `sdkwork-api-<application-code>-standalone-gateway` owns the standalone application HTTP listener and mounts API assemblies plus process infrastructure.
 - `sdkwork-<application-code>-service-host` owns an in-process service container and must not mount HTTP routes.
+- `sdkwork-<application-code>-<edge-capability>-edge-runtime` owns a non-application-plane
+  device or edge protocol process. `<edge-capability>` is mandatory and names the
+  terminated protocol or device responsibility, for example `device`, `mqtt`, or
+  `media-session`; bare `edge` is not a capability.
+- An edge runtime `MUST` declare the `edge` connectivity plane, topology process
+  role `edge-runtime`, and an architecture decision. It `MUST NOT` mount
+  `app-api`, `backend-api`, or `open-api`; terminate
+  `application.public-ingress`; depend on an application API assembly as its
+  business router; or use `gateway:*` / `_sdkwork:gateway:*` commands. An
+  operations-only HTTP listener is allowed only under
+  `APPLICATION_GATEWAY_SPEC.md` section 5.
 - `sdkwork-<application-code>-native-host` and `sdkwork-<application-code>-tauri-host` own native/Tauri command and platform
   adapter boundaries.
 - `sdkwork-<domain>-<capability>-worker` owns background jobs, schedulers, queues, maintenance
@@ -395,13 +407,15 @@ Rules:
 - Application gateway support crates, when necessary, mirror
   `sdkwork-api-<application-code>-standalone-gateway` and must not introduce a
   cloud gateway family.
-- Gateway crates `MUST` live under `crates/`, not `services/` or other ad hoc
-  process directories.
+- Gateway and edge-runtime crates `MUST` live under `crates/`, not `services/`
+  or other ad hoc process directories.
 - The following Rust crate names are forbidden and are not compatibility exceptions:
   `sdkwork-<application-code>-gateway` (bare application gateway without
   `standalone` or `cloud` qualifier),
   `sdkwork-<application-code>-product`, `sdkwork-<application-code>-runtime`,
-  `sdkwork-<domain>-<capability>-runtime`, `sdkwork-<application-code>-backend`,
+  generic `sdkwork-<domain>-<capability>-runtime` names that do not match the
+  canonical `sdkwork-<application-code>-<edge-capability>-edge-runtime` formula,
+  `sdkwork-<application-code>-backend`,
   `sdkwork-<application-code>-core`, `sdkwork-<application-code>-common`, `sdkwork-<application-code>-manager`, and
   `sdkwork-<application-code>-server-runtime`.
 - Commerce merchandise capability uses `merchandise` for sellable-item master data, SKU, and attributes, for example `sdkwork-merchandise-service` and `sdkwork-routes-merchandise-app-api`. The forbidden form is using `product` as the application entrypoint or runtime suffix, such as `sdkwork-drive-product`, or reviving capability token `product` for commerce merchandise.
@@ -469,7 +483,9 @@ Rules:
       application cloud gateways and bare gateway names are not used.
 - [ ] Platform gateway uses `sdkwork-api-cloud-gateway` for the `platform.api-gateway` role.
 - [ ] Rust crate names use responsibility-specific families and do not use forbidden generic
-      `product`, `runtime`, `backend`, `core`, `common`, or `manager` suffixes on application-code crates.
+      `product`, bare `runtime`, `backend`, `core`, `common`, or `manager` suffixes on application-code crates.
+- [ ] Edge protocol processes use `sdkwork-<application-code>-<edge-capability>-edge-runtime`,
+      declare topology role `edge-runtime`, live under `crates/`, and own no application HTTP API surface.
 - [ ] Commerce sellable-item capabilities use `merchandise`, not retired capability token `product`.
 - [ ] Client app packages use the required PC, H5, Flutter, mini program, Android native, iOS native, or Harmony native architecture segment and reserved role names.
 - [ ] Component manifests use matching names.

@@ -58,7 +58,69 @@ function alignPhaseVariants(scripts, kind, phases, profiles, actions) {
   }
 }
 
-export function planReleaseDeployFacadeAlignment(repoRoot) {
+function alignSingleProfileBareReleasePhases(scripts, workflow, profiles, actions) {
+  if (profiles.length !== 1) return;
+  const profile = profiles[0];
+  for (const phase of RELEASE_PHASES) {
+    const bare = `release:${phase}`;
+    const command = scripts[bare];
+    const lifecycle = workflow.lifecycle?.[phase];
+    if (!command || !Array.isArray(lifecycle) || lifecycle.length === 0) continue;
+    const delegatedCommand = `pnpm ${bare}:${profile}`;
+    if (command === delegatedCommand || String(command).includes('sdkwork-app')) continue;
+    const privateName = `_sdkwork:${bare}`;
+    if (!scripts[privateName]) {
+      scripts[privateName] = command;
+      actions.push(`preserve ${bare} as ${privateName}`);
+    }
+    scripts[bare] = delegatedCommand;
+    actions.push(`delegate ${bare} to the single ${profile} release profile`);
+  }
+}
+
+function targetDeploymentProfiles(workflow, runtimeTarget) {
+  const profiles = new Set();
+  for (const target of workflow.targets ?? []) {
+    if (target?.runtimeTarget !== runtimeTarget) continue;
+    if (target.profileBinding === 'runtime-configurable') {
+      for (const profile of target.supportedDeploymentProfiles ?? PROFILES) {
+        if (PROFILES.includes(profile)) profiles.add(profile);
+      }
+    } else if (PROFILES.includes(target.deploymentProfile)) {
+      profiles.add(target.deploymentProfile);
+    }
+  }
+  return PROFILES.filter((profile) => profiles.has(profile));
+}
+
+function alignRuntimeTargetReleasePhases(scripts, workflow, actions) {
+  const runtimeTargets = new Set(
+    (workflow.targets ?? []).map((target) => target?.runtimeTarget).filter(Boolean),
+  );
+  for (const [name, command] of Object.entries(scripts)) {
+    const parts = name.split(':');
+    if (parts[0] !== 'release' || !RELEASE_PHASES.has(parts[1])) continue;
+    if (parts.length !== 4) continue;
+    const [, phase, runtimeTarget, explicitProfile] = parts;
+    if (!runtimeTargets.has(runtimeTarget)) continue;
+    if (!PROFILES.includes(explicitProfile)) continue;
+    const lifecycle = workflow.lifecycle?.[phase];
+    if (!Array.isArray(lifecycle) || lifecycle.length === 0) continue;
+    const profiles = targetDeploymentProfiles(workflow, runtimeTarget);
+    if (!profiles.includes(explicitProfile)) continue;
+    const delegatedCommand = `${facadeCommand('release', phase, explicitProfile)} --runtime-target ${runtimeTarget}`;
+    if (command === delegatedCommand || String(command).includes('sdkwork-app')) continue;
+    const privateName = `_sdkwork:${name}`;
+    if (!scripts[privateName]) {
+      scripts[privateName] = command;
+      actions.push(`preserve ${name} as ${privateName}`);
+    }
+    scripts[name] = delegatedCommand;
+    actions.push(`delegate ${name} to ${runtimeTarget}/${explicitProfile} workflow targets`);
+  }
+}
+
+export function planReleaseDeployFacadeAlignment(repoRoot, { scope = 'all' } = {}) {
   const packagePath = path.join(repoRoot, 'package.json');
   const topologyPath = path.join(repoRoot, 'specs', 'topology.spec.json');
   if (!fs.existsSync(packagePath) || !fs.existsSync(topologyPath)) return null;
@@ -73,10 +135,14 @@ export function planReleaseDeployFacadeAlignment(repoRoot) {
   nextManifest.scripts ??= {};
   const actions = [];
   const workflowPath = path.join(repoRoot, 'sdkwork.workflow.json');
-  if (fs.existsSync(workflowPath)) {
-    alignPhaseVariants(nextManifest.scripts, 'release', RELEASE_PHASES, releaseProfiles(readJson(workflowPath)), actions);
+  if (scope !== 'deploy' && fs.existsSync(workflowPath)) {
+    const workflow = readJson(workflowPath);
+    const profiles = releaseProfiles(workflow);
+    alignPhaseVariants(nextManifest.scripts, 'release', RELEASE_PHASES, profiles, actions);
+    alignSingleProfileBareReleasePhases(nextManifest.scripts, workflow, profiles, actions);
+    alignRuntimeTargetReleasePhases(nextManifest.scripts, workflow, actions);
   }
-  if (fs.existsSync(path.join(repoRoot, 'deployments', 'deploy.yaml'))) {
+  if (scope !== 'release' && fs.existsSync(path.join(repoRoot, 'deployments', 'deploy.yaml'))) {
     alignPhaseVariants(nextManifest.scripts, 'deploy', DEPLOY_PHASES, PROFILES, actions);
   }
   return { actions, manifest: nextManifest, packagePath };
@@ -87,7 +153,11 @@ function main() {
     workspace: { type: 'string', default: DEFAULT_WORKSPACE },
     repo: { type: 'string' },
     'dry-run': { type: 'boolean', default: false },
+    scope: { type: 'string', default: 'all' },
   } });
+  if (!['all', 'release', 'deploy'].includes(values.scope)) {
+    throw new Error(`unsupported alignment scope ${values.scope}`);
+  }
   const workspace = path.resolve(values.workspace);
   const repos = values.repo
     ? [path.join(workspace, values.repo)]
@@ -96,7 +166,7 @@ function main() {
       .map((entry) => path.join(workspace, entry.name));
   let total = 0;
   for (const repoRoot of repos) {
-    const plan = planReleaseDeployFacadeAlignment(repoRoot);
+    const plan = planReleaseDeployFacadeAlignment(repoRoot, { scope: values.scope });
     if (!plan || plan.actions.length === 0) continue;
     console.log(`\n${path.basename(repoRoot)}${values['dry-run'] ? ' (dry-run)' : ''}:`);
     for (const action of plan.actions) console.log(`  - ${action}`);

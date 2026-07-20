@@ -48,6 +48,75 @@ test('materializes a deterministic canonical API assembly manifest', () => {
   assert.equal(validateApiAssembly(root).ok, true);
 });
 
+test('normalizes application-root route manifest declarations without traversal segments', () => {
+  const root = fixture();
+  const componentPath = path.join(
+    root,
+    'crates',
+    'sdkwork-routes-demo-app-api',
+    'specs',
+    'component.spec.json',
+  );
+  fs.writeFileSync(
+    componentPath,
+    JSON.stringify({
+      contracts: {
+        routeManifest: 'sdks/_route-manifests/app-api/sdkwork-routes-demo-app-api.route-manifest.json',
+      },
+    }, null, 2),
+  );
+  const routeManifestPath = path.join(
+    root,
+    'sdks',
+    '_route-manifests',
+    'app-api',
+    'sdkwork-routes-demo-app-api.route-manifest.json',
+  );
+  fs.mkdirSync(path.dirname(routeManifestPath), { recursive: true });
+  fs.writeFileSync(routeManifestPath, '{}\n');
+
+  assert.equal(materializeApiAssembly(root).ok, true);
+  const manifest = JSON.parse(
+    fs.readFileSync(
+      path.join(root, 'crates', 'sdkwork-api-demo-assembly', 'assembly-manifest.json'),
+      'utf8',
+    ),
+  );
+  assert.equal(
+    manifest.routeCrates[0].routeManifestRef,
+    'sdks/_route-manifests/app-api/sdkwork-routes-demo-app-api.route-manifest.json',
+  );
+  assert.doesNotMatch(manifest.routeCrates[0].routeManifestRef, /(?:^|\/)\.\.?\//u);
+  assert.equal(validateApiAssembly(root).ok, true);
+});
+
+test('rejects a declared route manifest that does not exist', () => {
+  const root = fixture();
+  const componentPath = path.join(
+    root,
+    'crates',
+    'sdkwork-routes-demo-app-api',
+    'specs',
+    'component.spec.json',
+  );
+  fs.writeFileSync(
+    componentPath,
+    JSON.stringify({
+      contracts: {
+        routeManifest: 'sdks/_route-manifests/app-api/missing.route-manifest.json',
+      },
+    }, null, 2),
+  );
+
+  const materialized = materializeApiAssembly(root);
+  assert.equal(materialized.ok, false);
+  assert.match(materialized.message, /route manifest contract is unresolved/u);
+
+  const result = validateApiAssembly(root);
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('\n'), /route manifest does not exist/u);
+});
+
 test('rejects a retired gateway assembly manifest kind', () => {
   const root = fixture();
   const materialized = materializeApiAssembly(root);
@@ -153,6 +222,50 @@ test('rejects served route crates whose gateway mount is descriptor-only', () =>
   assert.match(result.errors.join('\n'), /must mount executable handlers/u);
 });
 
+test('rejects served route crates whose gateway mount returns a route manifest', () => {
+  const root = fixture();
+  const routeLib = path.join(root, 'crates', 'sdkwork-routes-demo-app-api', 'src', 'lib.rs');
+  fs.writeFileSync(
+    routeLib,
+    'pub struct RouterApiRouteManifest;\npub fn gateway_mount() -> RouterApiRouteManifest { RouterApiRouteManifest }\n',
+  );
+  assert.equal(materializeApiAssembly(root).ok, true);
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('\n'), /gateway_mount returns RouterApiRouteManifest/u);
+  assert.match(result.errors.join('\n'), /must return an executable axum::Router/u);
+});
+
+test('accepts executable gateway mounts returned through Result', () => {
+  const root = fixture();
+  const routeLib = path.join(root, 'crates', 'sdkwork-routes-demo-app-api', 'src', 'lib.rs');
+  fs.writeFileSync(
+    routeLib,
+    'pub async fn gateway_mount() -> Result<axum::Router, String> { Ok(axum::Router::new().route("/demo", axum::routing::get(|| async {}))) }\n',
+  );
+  assert.equal(materializeApiAssembly(root).ok, true);
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.ok, true, result.errors?.join('\n'));
+});
+
+test('accepts executable gateway mounts with generic parameters and a where clause', () => {
+  const root = fixture();
+  const routeLib = path.join(root, 'crates', 'sdkwork-routes-demo-app-api', 'src', 'lib.rs');
+  fs.writeFileSync(
+    routeLib,
+    'pub fn gateway_mount<R>(service: Service<R>) -> axum::Router\nwhere\n    R: Repository,\n{ axum::Router::new().route("/demo", axum::routing::get(|| async {})) }\n',
+  );
+  assert.equal(materializeApiAssembly(root).ok, true);
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.ok, true, result.errors?.join('\n'));
+});
+
 test('rejects apiMode none when authored production Rust sources mount HTTP routes', () => {
   const root = fixture();
   fs.rmSync(path.join(root, 'crates', 'sdkwork-routes-demo-app-api'), { recursive: true });
@@ -254,4 +367,49 @@ test('rejects apiMode none assemblies with stale route crate bootstrap reference
   assert.equal(result.ok, false);
   assert.match(result.errors.join('\n'), /references undeclared route crates/u);
   assert.match(result.errors.join('\n'), /sdkwork_routes_demo_app_api/u);
+});
+
+test('does not skip a non-application repository whose served assembly references missing route crates', () => {
+  const root = fixture();
+  fs.rmSync(path.join(root, 'sdkwork.app.config.json'));
+  fs.rmSync(path.join(root, 'crates', 'sdkwork-routes-demo-app-api'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'Cargo.toml'),
+    '[workspace]\nmembers = ["crates/sdkwork-api-demo-assembly"]\nresolver = "2"\n\n[workspace.package]\nedition = "2021"\nversion = "0.1.0"\nlicense = "MIT"\n',
+  );
+  const assemblyRoot = path.join(root, 'crates', 'sdkwork-api-demo-assembly');
+  fs.mkdirSync(path.join(assemblyRoot, 'src'), { recursive: true });
+  fs.writeFileSync(
+    path.join(assemblyRoot, 'assembly-manifest.json'),
+    `${JSON.stringify({
+      kind: 'sdkwork.api.assembly',
+      schemaVersion: 1,
+      applicationCode: 'demo',
+      apiMode: 'served',
+      packageName: 'sdkwork-api-demo-assembly',
+      crateDir: 'crates/sdkwork-api-demo-assembly',
+      routeCrates: [{
+        packageName: 'sdkwork-routes-demo-app-api',
+        memberDir: 'crates/sdkwork-routes-demo-app-api',
+        libName: 'sdkwork_routes_demo_app_api',
+        surface: 'app-api',
+        pathPrefix: '/app/v3/api',
+        mountOrder: 0,
+        componentRef: 'crates/sdkwork-routes-demo-app-api/specs/component.spec.json',
+        routeManifestRef: 'crates/sdkwork-routes-demo-app-api/route-manifest.json',
+        sourceRef: 'crates/sdkwork-routes-demo-app-api/Cargo.toml',
+      }],
+    }, null, 2)}\n`,
+  );
+  fs.writeFileSync(
+    path.join(assemblyRoot, 'src', 'bootstrap.rs'),
+    'pub fn assemble_api_router() { sdkwork_routes_demo_app_api::gateway_mount(); }\n',
+  );
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.skipped, undefined);
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('\n'), /route crate list drift/u);
+  assert.match(result.errors.join('\n'), /references undeclared route crates/u);
 });

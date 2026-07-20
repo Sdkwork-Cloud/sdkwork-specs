@@ -187,6 +187,12 @@ Rules:
   architecture, formats, runner, and output globs. Fixed targets declare one
   deploymentProfile; runtime-configurable client targets declare
   supportedDeploymentProfiles and defaultDeploymentProfile.
+- New client targets `MUST` also declare `targetPlatform` and
+  `clientArchitecture` using the canonical values from `APP_MANIFEST_SPEC.md`.
+  `targetPlatform` must match the workflow `platform`; the planner carries both
+  client axes into package matrices and lifecycle environments without treating
+  either as a deployment profile. Existing targets may omit the pair only
+  during the compatibility migration window.
 - `targets` `MUST` contain at least one target.
 - `targets[].platform` identifies the delivery ecosystem or package platform,
   such as `web`, `h5`, `h5-weixin`, `windows`, `macos`, `linux`, `container`,
@@ -331,6 +337,10 @@ Rules:
 - Release workflows `SHOULD` use OIDC-capable publication where external cloud providers are involved.
 - `security.signingRequired: true` `MUST` require non-empty `lifecycle.sign` steps.
 - `security.sbomRequired: true` `MUST` require non-empty `lifecycle.sbom` steps.
+- Logging-only `echo`, `Write-Host`, or `console.log` placeholders do not
+  satisfy required signing or SBOM lifecycle policy. Required steps must invoke
+  an executable producer that fails when the requested evidence cannot be
+  created.
 - A target `MUST NOT` set `signing: false` when global signing is required.
 - `security.artifactAttestations: false` disables framework artifact attestation. When omitted, attestation is enabled by default for package jobs.
 - `publish.workflowArtifact: false` disables workflow artifact upload even when the caller passes `upload_artifact: true`.
@@ -362,6 +372,9 @@ Rules:
 - Each configured deployment `MUST` match at least one package target in the full application workflow config. Selector typos must fail validation instead of silently producing no deployment jobs.
 - Deployment jobs `MUST` bind to GitHub Environments using the configured environment name and URL when present.
 - Deployment lifecycle jobs `MUST` explicitly pass deployment environment, URL, and lifecycle values to the lifecycle runner.
+- Every lifecycle selected by `deployments[]` `MUST` have non-empty executable
+  `lifecycle.deploy` or `lifecycle.publish` steps. An empty deployment phase is
+  a configuration error and must not be treated as a successful deployment.
 - Production deployment approvals, environment secrets, and provider credentials belong to GitHub Environments or OIDC provider configuration, not source-controlled workflow config.
 - Apply and rollback jobs `MUST` select one deployment profile, one lifecycle
   environment, and one immutable artifact/package identity before acquiring

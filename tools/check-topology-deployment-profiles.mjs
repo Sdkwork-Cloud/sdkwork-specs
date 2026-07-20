@@ -13,7 +13,7 @@ const RETIRED_PROFILE_TOKENS = new Set(['unified-process', 'split-services']);
 const LOCAL_CLOUD_PROCESS_PATTERN = /(?:api(?:-server)?|gateway|public-ingress|database|postgres|redis|migrat|seed)/iu;
 const PROCESS_ROLES = new Set([
   'client', 'api-standalone-gateway',
-  'database', 'redis', 'migration',
+  'edge-runtime', 'database', 'redis', 'migration',
   'seed', 'worker', 'tunnel',
 ]);
 
@@ -211,6 +211,17 @@ function checkSpec(repoRoot, specPath) {
         }
         if (!PROCESS_ROLES.has(process.role)) {
           issues.push(`${rel}: ${profileId} process ${process.id ?? '<unknown>'} requires a canonical role`);
+        }
+        if (process.role === 'edge-runtime') {
+          if (!/^_sdkwork:runtime:[a-z0-9][a-z0-9:-]*$/u.test(String(process.script ?? ''))) {
+            issues.push(`${rel}: ${profileId} edge-runtime ${process.id ?? '<unknown>'} requires an _sdkwork:runtime:* script`);
+          }
+          const decisionRef = String(process.decisionRef ?? '');
+          if (!/^docs\/(?:adr|architecture\/decisions)\/[A-Za-z0-9._/-]+\.md$/u.test(decisionRef)) {
+            issues.push(`${rel}: ${profileId} edge-runtime ${process.id ?? '<unknown>'} requires a canonical decisionRef`);
+          } else if (!fs.existsSync(path.resolve(repoRoot, decisionRef))) {
+            issues.push(`${rel}: ${profileId} edge-runtime ${process.id ?? '<unknown>'} decisionRef does not exist: ${decisionRef}`);
+          }
         }
       }
     }

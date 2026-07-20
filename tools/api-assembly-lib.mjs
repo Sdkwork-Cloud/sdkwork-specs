@@ -18,6 +18,8 @@ const ASSEMBLY_MULTI_GATEWAY_MOUNT_PATTERN =
   /router\s*=\s*router\s*\.merge\s*\(\s*sdkwork_routes_[a-z0-9_]+::gateway_mount\b/gu;
 const DESCRIPTOR_ONLY_GATEWAY_MOUNT_PATTERN =
   /pub\s+(?:async\s+)?fn\s+gateway_mount\s*\([^)]*\)\s*(?:->\s*[^\{]+)?\{\s*(?:axum::)?Router::new\(\)\s*\}/u;
+const EXECUTABLE_ROUTER_RETURN_PATTERN =
+  /(?:^|[<,(\s])(?:axum::)?Router(?:\s*<|[,)>\s]|$)/u;
 const AUTHORED_HTTP_ROUTER_PATTERN = /(?:axum::)?Router(?:\s*<[^>{}]+>)?::new\s*\(/u;
 const AUTHORED_HTTP_ROUTE_PATTERN = /\.route(?:_service)?\s*\(/u;
 const AUTHORED_HTTP_ROUTE_LITERAL_PATTERN = /\.route(?:_service)?\s*\(\s*"([^"]+)"/gu;
@@ -208,11 +210,13 @@ export function discoverRouteCrates(root, applicationCode) {
     const componentPath = path.join(root, componentRef);
     const component = readJson(componentPath);
     const routeManifest = component?.contracts?.routeManifest;
+    const routeManifestRef = resolveRouteManifestRef(root, memberDir, routeManifest);
     const pathPrefix = extractPathPrefix(libRs, manifestRs);
     const declaredSurface = component?.component?.surface;
     const surface = ['app-api', 'backend-api', 'open-api'].includes(declaredSurface)
       ? declaredSurface
       : extractSurface(packageName);
+    const gatewayMountReturn = extractGatewayMountReturn(libRs);
     return {
       memberDir,
       packageName,
@@ -221,17 +225,65 @@ export function discoverRouteCrates(root, applicationCode) {
       surface,
       hasComponentSpec: fs.existsSync(componentPath),
       componentRef,
-      routeManifestRef: typeof routeManifest === 'string' && routeManifest.trim()
-        ? `${memberDir}/${routeManifest.replace(/^\.\//u, '')}`
-        : `${componentRef}#contracts.routeManifest`,
+      routeManifestRef,
+      routeManifestExists: !routeManifestRef.includes('#')
+        && fs.existsSync(path.join(root, routeManifestRef)),
+      routeManifestInsideRoot: !routeManifestRef.startsWith('../'),
       sourceRef: `${memberDir}/Cargo.toml`,
       hasGatewayMount: GATEWAY_MOUNT_PATTERN.test(libRs),
       hasDescriptorOnlyGatewayMount: DESCRIPTOR_ONLY_GATEWAY_MOUNT_PATTERN.test(libRs),
+      gatewayMountReturn,
+      hasExecutableGatewayMount: gatewayMountReturn !== null
+        && EXECUTABLE_ROUTER_RETURN_PATTERN.test(gatewayMountReturn),
       hasGatewayMountBusiness: GATEWAY_MOUNT_BUSINESS_PATTERN.test(libRs),
       hasGatewayRouteManifest: GATEWAY_MANIFEST_PATTERN.test(libRs),
       mountsInfrastructure: routeCrateMountsInfrastructure(root, memberDir),
     };
   });
+}
+
+function resolveRouteManifestRef(root, memberDir, declaredValue) {
+  if (typeof declaredValue !== 'string' || !declaredValue.trim()) {
+    return `${memberDir}/specs/component.spec.json#contracts.routeManifest`;
+  }
+
+  const declared = declaredValue.trim().replace(/\\/gu, '/').replace(/^\.\//u, '');
+  const baseDir = declared.startsWith('sdks/_route-manifests/')
+    ? root
+    : path.join(root, memberDir);
+  const absolute = path.resolve(baseDir, declared);
+  return path.relative(root, absolute).replace(/\\/gu, '/');
+}
+
+function extractGatewayMountReturn(source) {
+  const functionMatch = /pub\s+(?:async\s+)?fn\s+gateway_mount\b/u.exec(source);
+  if (!functionMatch) return null;
+
+  const signatureStart = functionMatch.index + functionMatch[0].length;
+  const paramsStart = source.indexOf('(', signatureStart);
+  if (paramsStart < 0) return null;
+
+  let depth = 0;
+  let paramsEnd = -1;
+  for (let index = paramsStart; index < source.length; index += 1) {
+    if (source[index] === '(') depth += 1;
+    if (source[index] === ')') {
+      depth -= 1;
+      if (depth === 0) {
+        paramsEnd = index + 1;
+        break;
+      }
+    }
+  }
+  if (paramsEnd < 0) return null;
+
+  const tail = source.slice(paramsEnd);
+  const arrowMatch = /^\s*->\s*/u.exec(tail);
+  if (!arrowMatch) return null;
+  const returnStart = arrowMatch[0].length;
+  const returnTail = tail.slice(returnStart);
+  const terminator = /\s+where\b|\s*\{/u.exec(returnTail);
+  return returnTail.slice(0, terminator?.index ?? returnTail.length).trim() || null;
 }
 
 function extractSurface(packageName) {

@@ -107,6 +107,11 @@ Rules:
 - Every application-owned route crate `MUST` be included exactly once.
 - Every included route crate `MUST` declare exactly one of `app-api`,
   `backend-api`, or `open-api`.
+- Every served route crate `gateway_mount` `MUST` return an executable
+  `axum::Router`, either directly or through `Result<Router, E>`. Route
+  manifests, descriptor collections, OpenAPI metadata, and an empty
+  `Router::new()` are inventory contributions, not executable mounts, and
+  `MUST NOT` use the `gateway_mount` name or satisfy `apiMode: served`.
 - Route ownership `MUST NOT` be inferred solely from an
   `sdkwork-routes-<application-code>-*` package prefix; aggregate application
   repositories may own capability-named route crates.
@@ -175,6 +180,12 @@ Rules:
 - Route entries include package identity, component reference, surface,
   normalized path prefix, mount order, route-manifest reference, and source
   reference.
+- `componentRef`, `routeManifestRef`, and `sourceRef` are normalized,
+  application-root-relative paths. They `MUST` resolve inside the selected
+  application root, `MUST NOT` contain `.` or `..` traversal segments, and
+  every referenced file `MUST` exist. A route component declaration beginning
+  with `sdks/_route-manifests/` is application-root-relative; other relative
+  route-manifest declarations are component-root-relative.
 - Materialization `MUST` preserve authored bootstrap code and regenerate only
   declared generated regions or files.
 

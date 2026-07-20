@@ -61,6 +61,59 @@ test('only creates release variants supported by fixed workflow targets', () => 
   assert.equal(plan.manifest.scripts['release:package:standalone'], undefined);
 });
 
+test('delegates a bare release phase when workflow ownership and one profile are unambiguous', () => {
+  const root = fixture();
+  fs.writeFileSync(path.join(root, 'sdkwork.workflow.json'), JSON.stringify({
+    lifecycle: {
+      package: [{ run: 'node scripts/workflow-package.mjs' }],
+      validate: [{ run: 'node scripts/workflow-validate.mjs' }],
+    },
+    targets: [{ deploymentProfile: 'cloud' }],
+  }));
+  const packagePath = path.join(root, 'package.json');
+  const manifest = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+  manifest.scripts['release:validate'] = 'node scripts/legacy-validate.mjs';
+  fs.writeFileSync(packagePath, JSON.stringify(manifest));
+
+  const plan = planReleaseDeployFacadeAlignment(root);
+
+  assert.equal(plan.manifest.scripts['release:package'], 'pnpm release:package:cloud');
+  assert.equal(plan.manifest.scripts['_sdkwork:release:package'], 'node scripts/legacy-package.mjs');
+  assert.equal(plan.manifest.scripts['release:validate'], 'pnpm release:validate:cloud');
+  assert.equal(plan.manifest.scripts['_sdkwork:release:validate'], 'node scripts/legacy-validate.mjs');
+});
+
+test('delegates only runtime target release scripts with an explicit supported profile', () => {
+  const root = fixture();
+  fs.writeFileSync(path.join(root, 'sdkwork.workflow.json'), JSON.stringify({
+    lifecycle: {
+      package: [{ run: 'node scripts/workflow-package.mjs' }],
+    },
+    targets: [
+      { deploymentProfile: 'standalone', runtimeTarget: 'desktop' },
+      { deploymentProfile: 'cloud', runtimeTarget: 'browser' },
+    ],
+  }));
+  const packagePath = path.join(root, 'package.json');
+  const manifest = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+  manifest.scripts['release:package:desktop'] = 'node scripts/package-desktop.mjs';
+  manifest.scripts['release:package:browser:cloud'] = 'node scripts/package-browser.mjs';
+  manifest.scripts['release:package:desktop:debug'] = 'node scripts/package-debug.mjs';
+  manifest.scripts['release:package:server'] = 'node scripts/package-server.mjs';
+  fs.writeFileSync(packagePath, JSON.stringify(manifest));
+
+  const plan = planReleaseDeployFacadeAlignment(root);
+
+  assert.equal(plan.manifest.scripts['release:package:desktop'], 'node scripts/package-desktop.mjs');
+  assert.equal(
+    plan.manifest.scripts['release:package:browser:cloud'],
+    'pnpm exec sdkwork-app release:package --deployment-profile cloud --runtime-target browser',
+  );
+  assert.equal(plan.manifest.scripts['_sdkwork:release:package:desktop'], undefined);
+  assert.equal(plan.manifest.scripts['release:package:desktop:debug'], 'node scripts/package-debug.mjs');
+  assert.equal(plan.manifest.scripts['release:package:server'], 'node scripts/package-server.mjs');
+});
+
 test('creates profile variants when only runtime-target release commands exist', () => {
   const root = fixture();
   const packagePath = path.join(root, 'package.json');
@@ -82,4 +135,13 @@ test('creates profile variants when only runtime-target release commands exist',
     plan.manifest.scripts['release:package:desktop'],
     'node scripts/package-desktop.mjs',
   );
+});
+
+test('can align release scripts without changing deploy governance', () => {
+  const root = fixture();
+  const plan = planReleaseDeployFacadeAlignment(root, { scope: 'release' });
+
+  assert.equal(plan.manifest.scripts['release:package:standalone'], 'pnpm exec sdkwork-app release:package --deployment-profile standalone');
+  assert.equal(plan.manifest.scripts['deploy:validate:standalone'], undefined);
+  assert.equal(plan.manifest.scripts['deploy:validate'], 'node scripts/legacy-deploy-validate.mjs');
 });

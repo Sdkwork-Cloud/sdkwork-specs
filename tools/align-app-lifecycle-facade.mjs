@@ -146,6 +146,55 @@ function alignApiAssemblyScripts(scripts, actions) {
   }
 }
 
+function delegatedTestCandidates(scripts) {
+  return Object.keys(scripts)
+    .filter((name) => name.startsWith('test:'))
+    .filter((name) => !/^test:(?:e2e|watch|ui)(?::|$)/u.test(name))
+    .sort();
+}
+
+function inferDelegatedTestScript(scripts) {
+  const candidates = delegatedTestCandidates(scripts);
+  if (candidates.length === 0) return null;
+  const aggregate = candidates.find((candidate) => {
+    const command = String(scripts[candidate]);
+    const leaves = candidates.filter((name) => name !== candidate);
+    return leaves.length > 0 && leaves.every((name) => command.includes(name));
+  });
+  if (aggregate) return `pnpm run ${aggregate}`;
+  return candidates.map((name) => `pnpm run ${name}`).join(' && ');
+}
+
+function alignDelegatedLocalLifecycle(scripts, actions) {
+  if (!scripts.test) {
+    const inferredTest = inferDelegatedTestScript(scripts);
+    if (inferredTest) {
+      scripts.test = inferredTest;
+      actions.push('define local test aggregate from non-E2E test scripts');
+    }
+  }
+  if (!scripts.check && scripts.typecheck && scripts.test && scripts.build) {
+    scripts.check = 'pnpm typecheck && pnpm test && pnpm build';
+    actions.push('define local check aggregate');
+  }
+  if (scripts.check && scripts.test) {
+    const desiredVerify = String(scripts.check).includes('pnpm test')
+      ? 'pnpm check'
+      : 'pnpm check && pnpm test';
+    const managedVerify = !scripts.verify
+      || scripts.verify === 'pnpm check'
+      || scripts.verify === 'pnpm check && pnpm test';
+    if (managedVerify && scripts.verify !== desiredVerify) {
+      scripts.verify = desiredVerify;
+      actions.push('define local verify aggregate');
+    }
+  }
+  if (!scripts.clean && /(?:^|&&|\s)vite\s+build(?:\s|$)/u.test(String(scripts.build ?? ''))) {
+    scripts.clean = 'node -e "require(\'node:fs\').rmSync(\'dist\',{recursive:true,force:true})"';
+    actions.push('define exact local dist clean');
+  }
+}
+
 function relativePosix(from, to) {
   const relative = path.relative(from, to).replaceAll('\\', '/');
   return relative.startsWith('.') ? relative : `./${relative}`;
@@ -233,6 +282,7 @@ export function planDelegatedLifecycleAlignment(appRoot) {
     actions.push(`delegate ${name} to parent sdkwork-app`);
   }
   alignDevTargetScripts(next.scripts, actions, rootArg);
+  alignDelegatedLocalLifecycle(next.scripts, actions);
   return { eligible: true, packagePath, manifest: next, actions, parentRoot };
 }
 

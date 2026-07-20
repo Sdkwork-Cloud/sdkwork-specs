@@ -263,6 +263,64 @@ test('schema v5 uses process roles instead of process-name heuristics', () => {
   assert.equal(result.status, 0, result.stderr);
 });
 
+test('schema v5 accepts a declared standalone edge runtime', () => {
+  const topology = standardTopology();
+  topology.schemaVersion = 5;
+  topology.orchestration.profiles['standalone.development'].processes = [
+    { id: 'standalone-gateway', role: 'api-standalone-gateway' },
+    {
+      id: 'edge.device-ingress',
+      role: 'edge-runtime',
+      script: '_sdkwork:runtime:device-edge',
+      decisionRef: 'docs/adr/001-device-edge-runtime.md',
+    },
+  ];
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, {
+    'docs/adr/001-device-edge-runtime.md': '# Device edge runtime\n',
+    'etc/topology/standalone.development.env': '',
+    'etc/topology/cloud.development.env': [
+      'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL=https://api.dev.sdkwork.com/app',
+      'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=https://api.dev.sdkwork.com',
+      '',
+    ].join('\n'),
+    'etc/topology/cloud.production.env': '',
+  });
+
+  const result = runChecker(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('schema v5 rejects edge runtimes in cloud development and ambiguous edge hooks', () => {
+  const topology = standardTopology();
+  topology.schemaVersion = 5;
+  topology.orchestration.profiles['standalone.development'].processes = [
+    { id: 'standalone-gateway', role: 'api-standalone-gateway' },
+  ];
+  topology.orchestration.profiles['cloud.development'].processes = [
+    {
+      id: 'edge.device.ingress',
+      role: 'edge-runtime',
+      script: '_sdkwork:gateway:edge',
+      decisionRef: 'docs/adr/missing.md',
+    },
+  ];
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, {
+    'etc/topology/standalone.development.env': '',
+    'etc/topology/cloud.development.env': [
+      'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL=https://api.dev.sdkwork.com/app',
+      'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=https://api.dev.sdkwork.com',
+      '',
+    ].join('\n'),
+    'etc/topology/cloud.production.env': '',
+  });
+
+  const result = runChecker(workspace);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /cloud\.development forbids local process role edge-runtime/u);
+  assert.match(result.stderr, /requires an _sdkwork:runtime:\* script/u);
+  assert.match(result.stderr, /decisionRef does not exist/u);
+});
+
 test('schema v5 allows application and platform surfaces to use different deployed origins', () => {
   const topology = standardTopology();
   topology.schemaVersion = 5;
@@ -391,6 +449,7 @@ test('topology schema v5 forbids cloudIngress and the retired api-listener role'
   ].properties.processes.items.properties.role.enum;
   assert.equal(roles.includes('api-listener'), false);
   assert.equal(roles.includes('api-standalone-gateway'), true);
+  assert.equal(roles.includes('edge-runtime'), true);
 });
 
 test('rejects cloud development that starts local API and gateway processes', () => {

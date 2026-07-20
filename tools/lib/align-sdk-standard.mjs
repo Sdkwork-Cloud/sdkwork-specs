@@ -380,26 +380,47 @@ export function collectSdkStandardViolations(workspaceRoot) {
 
     if (fs.existsSync(family.manifestPath)) {
       const manifest = readJson(family.manifestPath);
-      if (manifest.packageName && manifest.packageName !== family.consumerPackageName) {
+      if (manifest.sdkFamily !== family.sdkFamilyStem) {
+        violations.push({
+          kind: 'manifest-sdk-family',
+          file: family.manifestPath,
+          message: `${manifest.sdkFamily} must be ${family.sdkFamilyStem}`,
+        });
+      }
+      if (manifest.sdkName !== family.sdkFamilyStem) {
+        violations.push({
+          kind: 'manifest-sdk-name',
+          file: family.manifestPath,
+          message: `${manifest.sdkName} must be ${family.sdkFamilyStem}`,
+        });
+      }
+      if (manifest.packageName !== family.consumerPackageName) {
         violations.push({
           kind: 'manifest-consumer-name',
           file: family.manifestPath,
           message: `${manifest.packageName} must be ${family.consumerPackageName}`,
         });
       }
-      if (manifest.transportPackageName && manifest.transportPackageName !== family.transportPackageName) {
+      if (manifest.transportPackageName !== family.transportPackageName) {
         violations.push({
           kind: 'manifest-transport-name',
           file: family.manifestPath,
           message: `${manifest.transportPackageName} must be ${family.transportPackageName}`,
         });
       }
-      if (manifest.typescript?.transportEntry !== family.transportEntry) {
-        violations.push({
-          kind: 'manifest-transport-entry',
-          file: family.manifestPath,
-          message: `${manifest.typescript?.transportEntry} must be ${family.transportEntry}`,
-        });
+      for (const [field, expected] of Object.entries({
+        composedRoot: family.composedRoot,
+        composedEntry: family.composedEntry,
+        transportRoot: family.transportRootRelative,
+        transportEntry: family.transportEntry,
+      })) {
+        if (manifest.typescript?.[field] !== expected) {
+          violations.push({
+            kind: `manifest-typescript-${field.replace(/[A-Z]/gu, (token) => `-${token.toLowerCase()}`)}`,
+            file: family.manifestPath,
+            message: `${manifest.typescript?.[field]} must be ${expected}`,
+          });
+        }
       }
       if (!manifestHasOwnership(manifest, { hasTransport: fs.existsSync(family.transportPackageJsonPath) })) {
         const hasOpenApiInput = fs.existsSync(path.join(family.familyRoot, 'openapi'))

@@ -154,7 +154,105 @@ test('delegates only development and stop for a component deployment', () => {
   assert.equal(plan.manifest.scripts['dev:browser'], 'pnpm dev:browser:postgres:standalone');
   assert.equal(plan.manifest.scripts.build, 'vite build');
   assert.equal(plan.manifest.scripts.test, undefined);
+  assert.equal(
+    plan.manifest.scripts.clean,
+    'node -e "require(\'node:fs\').rmSync(\'dist\',{recursive:true,force:true})"',
+  );
   assert.equal(plan.manifest.scripts['_sdkwork:build'], undefined);
+});
+
+test('infers complete local lifecycle scripts for delegated application surfaces', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-delegated-local-lifecycle-'));
+  const parent = path.join(workspace, 'sdkwork-demo');
+  const app = path.join(parent, 'apps', 'sdkwork-demo-pc');
+  fs.mkdirSync(path.join(parent, 'specs'), { recursive: true });
+  fs.mkdirSync(path.join(parent, 'etc'), { recursive: true });
+  fs.mkdirSync(path.join(app, 'etc'), { recursive: true });
+  fs.writeFileSync(path.join(parent, 'package.json'), JSON.stringify({
+    dependencies: { '@sdkwork/app-topology': 'workspace:*' },
+  }));
+  fs.writeFileSync(path.join(parent, 'specs', 'topology.spec.json'), JSON.stringify({ schemaVersion: 5 }));
+  fs.writeFileSync(path.join(parent, 'etc', 'sdkwork.deployment.config.json'), '{}');
+  fs.writeFileSync(path.join(app, 'etc', 'sdkwork.deployment.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    kind: 'sdkwork.component-deployment',
+    parentDeploymentConfig: '../../../etc/sdkwork.deployment.config.json',
+    parentTopologySpec: '../../../specs/topology.spec.json',
+  }));
+  fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ scripts: {
+    build: 'tsc && vite build',
+    typecheck: 'tsc --noEmit',
+    'test:contract': 'node --test contract.test.mjs',
+    'test:unit': 'vitest run',
+    'test:e2e': 'playwright test',
+  } }));
+
+  const plan = planDelegatedLifecycleAlignment(app);
+
+  assert.equal(plan.eligible, true);
+  assert.equal(plan.manifest.scripts.test, 'pnpm run test:contract && pnpm run test:unit');
+  assert.equal(plan.manifest.scripts.check, 'pnpm typecheck && pnpm test && pnpm build');
+  assert.equal(plan.manifest.scripts.verify, 'pnpm check');
+  assert.equal(
+    plan.manifest.scripts.clean,
+    'node -e "require(\'node:fs\').rmSync(\'dist\',{recursive:true,force:true})"',
+  );
+});
+
+test('prefers an existing aggregate test command over duplicating its leaves', () => {
+  const scripts = {
+    'test:app': 'node --test app.test.mjs',
+    'test:iam': 'node --test iam.test.mjs',
+    'test:contracts': 'pnpm run test:app && pnpm run test:iam',
+  };
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-delegated-test-aggregate-'));
+  const parent = path.join(workspace, 'sdkwork-demo');
+  const app = path.join(parent, 'apps', 'sdkwork-demo-h5');
+  fs.mkdirSync(path.join(parent, 'specs'), { recursive: true });
+  fs.mkdirSync(path.join(parent, 'etc'), { recursive: true });
+  fs.mkdirSync(path.join(app, 'etc'), { recursive: true });
+  fs.writeFileSync(path.join(parent, 'package.json'), JSON.stringify({
+    dependencies: { '@sdkwork/app-topology': 'workspace:*' },
+  }));
+  fs.writeFileSync(path.join(parent, 'specs', 'topology.spec.json'), '{"schemaVersion":5}');
+  fs.writeFileSync(path.join(parent, 'etc', 'sdkwork.deployment.config.json'), '{}');
+  fs.writeFileSync(path.join(app, 'etc', 'sdkwork.deployment.config.json'), JSON.stringify({
+    kind: 'sdkwork.component-deployment',
+    parentDeploymentConfig: '../../../etc/sdkwork.deployment.config.json',
+    parentTopologySpec: '../../../specs/topology.spec.json',
+  }));
+  fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ scripts }));
+
+  const plan = planDelegatedLifecycleAlignment(app);
+
+  assert.equal(plan.manifest.scripts.test, 'pnpm run test:contracts');
+});
+
+test('verify adds local tests when an existing check does not run them', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-delegated-verify-'));
+  const parent = path.join(workspace, 'sdkwork-demo');
+  const app = path.join(parent, 'apps', 'sdkwork-demo-pc');
+  fs.mkdirSync(path.join(parent, 'specs'), { recursive: true });
+  fs.mkdirSync(path.join(parent, 'etc'), { recursive: true });
+  fs.mkdirSync(path.join(app, 'etc'), { recursive: true });
+  fs.writeFileSync(path.join(parent, 'package.json'), JSON.stringify({
+    dependencies: { '@sdkwork/app-topology': 'workspace:*' },
+  }));
+  fs.writeFileSync(path.join(parent, 'specs', 'topology.spec.json'), '{"schemaVersion":5}');
+  fs.writeFileSync(path.join(parent, 'etc', 'sdkwork.deployment.config.json'), '{}');
+  fs.writeFileSync(path.join(app, 'etc', 'sdkwork.deployment.config.json'), JSON.stringify({
+    kind: 'sdkwork.component-deployment',
+    parentDeploymentConfig: '../../../etc/sdkwork.deployment.config.json',
+    parentTopologySpec: '../../../specs/topology.spec.json',
+  }));
+  fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ scripts: {
+    check: 'pnpm typecheck && pnpm build',
+    'test:contract': 'node --test contract.test.mjs',
+  } }));
+
+  const plan = planDelegatedLifecycleAlignment(app);
+
+  assert.equal(plan.manifest.scripts.verify, 'pnpm check && pnpm test');
 });
 
 test('refuses component delegation without both parent authorities', () => {

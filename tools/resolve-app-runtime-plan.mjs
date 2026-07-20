@@ -7,7 +7,7 @@ import { parseArgs } from 'node:util';
 
 const CLOUD_FORBIDDEN_ROLES = [
   'api-standalone-gateway',
-  'database', 'redis', 'migration', 'seed', 'worker',
+  'edge-runtime', 'database', 'redis', 'migration', 'seed', 'worker',
 ];
 const GATEWAY_ROLES = new Set([
   'api-standalone-gateway',
@@ -15,7 +15,7 @@ const GATEWAY_ROLES = new Set([
 const DATA_STORE_ROLES = new Set(['database', 'redis']);
 const PROCESS_ROLES = new Set([
   'client', 'api-standalone-gateway',
-  'database', 'redis', 'migration', 'seed', 'worker', 'tunnel',
+  'edge-runtime', 'database', 'redis', 'migration', 'seed', 'worker', 'tunnel',
 ]);
 const DEFAULT_CLIENT_ARCHITECTURES = Object.freeze({
   browser: 'pc-web',

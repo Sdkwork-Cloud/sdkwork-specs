@@ -1,6 +1,6 @@
 # Application Gateway Standard
 
-- Version: 2.0
+- Version: 2.1
 - Scope: application standalone and platform cloud HTTP gateway hosts, listener ownership, naming, topology binding, thin-host boundaries, pnpm commands, migration, and verification
 - Related: `API_ASSEMBLY_SPEC.md`, `NAMING_SPEC.md` section 4.3.1, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `COMPONENT_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `MIGRATION_SPEC.md`, `TEST_SPEC.md`
 
@@ -22,9 +22,11 @@ Rules:
 - Application-level generic HTTP cloud gateways are retired.
 - `sdkwork-api-cloud-gateway` is not an application component, dependency,
   local development sidecar, config bundle, or release artifact.
-- Protocol-specific edge, realtime, device, or operations ingress requires a
-  responsibility-specific name and ADR. It `MUST NOT` use the retired generic
-  `sdkwork-<application-code>-cloud-gateway` identity.
+- Device or edge protocol ingress uses
+  `sdkwork-<application-code>-<edge-capability>-edge-runtime`, declares topology
+  role `edge-runtime`, and requires an ADR. It `MUST NOT` use the retired generic
+  `sdkwork-<application-code>-cloud-gateway` identity, mount application HTTP API
+  surfaces, or use gateway command namespaces.
 - Bare `sdkwork-<application-code>-gateway` and `*-api-server` listener roles
   are retired.
 
@@ -109,6 +111,9 @@ sdkwork-api-<application-code>-standalone-gateway
 `app-api`, `backend-api`, and `open-api` are route surfaces, not listener
 processes. Route crates and service-host packages may remain build/test units,
 but default standalone orchestration `MUST NOT` start them as HTTP sidecars.
+An assembly may count a route surface as served only when its mount contributes
+an executable `axum::Router`; route manifests and descriptors never establish
+runtime HTTP capability by themselves.
 
 An RPC, gRPC, worker, or service host that has no application HTTP API may own
 an operations-only listener for canonical `/healthz`, `/readyz`, and `/metrics`

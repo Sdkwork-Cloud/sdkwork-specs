@@ -93,6 +93,8 @@
       "../sdkwork-agents/apps/sdkwork-agents-pc/packages/sdkwork-agents-pc-agents",
       "../sdkwork-agents/apps/sdkwork-agents-pc/packages/sdkwork-agents-pc-commons",
       "../sdkwork-agents/apps/sdkwork-agents-pc/packages/sdkwork-agents-pc-core",
+      "../sdkwork-memory/sdks/sdkwork-memory-app-sdk/sdkwork-memory-app-sdk-typescript",
+      "../sdkwork-prompts/sdks/sdkwork-prompts-app-sdk/sdkwork-prompts-app-sdk-typescript",
       "../sdkwork-utils/packages/sdkwork-utils-typescript",
       "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-application-bootstrap",

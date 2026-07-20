@@ -70,3 +70,47 @@ test('still skips non-application roots without route crates', (t) => {
   assert.equal(result.score, 'skip');
   assert.equal(result.category, 'non-application-no-route-crates');
 });
+
+test('does not skip a non-application repository with a stale served assembly', (t) => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-gateway-audit-'));
+  t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
+  const root = path.join(workspace, 'sdkwork-demo');
+  const assemblyRoot = path.join(root, 'crates', 'sdkwork-api-demo-assembly');
+  fs.mkdirSync(path.join(assemblyRoot, 'src'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'Cargo.toml'),
+    '[workspace]\nmembers = ["crates/sdkwork-api-demo-assembly"]\nresolver = "2"\n',
+  );
+  fs.writeFileSync(
+    path.join(assemblyRoot, 'assembly-manifest.json'),
+    `${JSON.stringify({
+      kind: 'sdkwork.api.assembly',
+      schemaVersion: 1,
+      applicationCode: 'demo',
+      apiMode: 'served',
+      packageName: 'sdkwork-api-demo-assembly',
+      crateDir: 'crates/sdkwork-api-demo-assembly',
+      routeCrates: [{
+        packageName: 'sdkwork-routes-demo-app-api',
+        memberDir: 'crates/sdkwork-routes-demo-app-api',
+        libName: 'sdkwork_routes_demo_app_api',
+        surface: 'app-api',
+        pathPrefix: '/app/v3/api',
+        mountOrder: 0,
+        componentRef: 'crates/sdkwork-routes-demo-app-api/specs/component.spec.json',
+        routeManifestRef: 'crates/sdkwork-routes-demo-app-api/route-manifest.json',
+        sourceRef: 'crates/sdkwork-routes-demo-app-api/Cargo.toml',
+      }],
+    }, null, 2)}\n`,
+  );
+  fs.writeFileSync(
+    path.join(assemblyRoot, 'src', 'bootstrap.rs'),
+    'pub fn assemble_api_router() { sdkwork_routes_demo_app_api::gateway_mount(); }\n',
+  );
+
+  const result = auditGatewayAlignmentRepo(root);
+
+  assert.equal(result.score, 'fail');
+  assert.notEqual(result.category, 'non-application-no-route-crates');
+  assert.match(result.issues.join('\n'), /route crate list drift/u);
+});

@@ -15,7 +15,6 @@ import {
   findGatewaySourceFiles,
   readText,
   resolveApplicationCode,
-  routeCrateExpectsDelegatableMount,
   scanForbiddenGatewayMerges,
 } from './api-assembly-lib.mjs';
 import { validateApiAssembly } from './validate-api-assembly.mjs';
@@ -93,22 +92,8 @@ function topologyIngressWarnings(root) {
   return [...new Set(warnings)];
 }
 
-function countStubMounts(root, routeCrates) {
-  let stubCount = 0;
-  for (const crate of routeCrates) {
-    if (!routeCrateExpectsDelegatableMount(root, crate.memberDir)) {
-      continue;
-    }
-    const libRs = readText(path.join(root, crate.memberDir, 'src', 'lib.rs'));
-    const mountBody = /pub\s+(?:async\s+)?fn\s+gateway_mount[\s\S]*?\{([\s\S]*?)^\}/mu.exec(libRs);
-    if (!mountBody) {
-      continue;
-    }
-    if (/Router::new\(\)/u.test(mountBody[1]) && !/build_/u.test(mountBody[1])) {
-      stubCount += 1;
-    }
-  }
-  return stubCount;
+function countStubMounts(routeCrates) {
+  return routeCrates.filter((crate) => crate.hasDescriptorOnlyGatewayMount).length;
 }
 
 export function auditGatewayAlignmentRepo(root) {
@@ -139,8 +124,9 @@ export function auditGatewayAlignmentRepo(root) {
   const issues = [];
   const warnings = [];
   const isApplicationRoot = fs.existsSync(path.join(root, 'sdkwork.app.config.json'));
+  const hasAssembly = fs.existsSync(path.join(root, assemblyCrateDir(applicationCode)));
 
-  if (routeCrates.length === 0 && !isApplicationRoot) {
+  if (routeCrates.length === 0 && !isApplicationRoot && !hasAssembly) {
     return {
       applicationCode,
       category: 'non-application-no-route-crates',
@@ -208,7 +194,7 @@ export function auditGatewayAlignmentRepo(root) {
     issues.push(`forbidden hand route merge: ${hit}`);
   }
 
-  const stubCount = countStubMounts(root, routeCrates);
+  const stubCount = countStubMounts(routeCrates);
   if (stubCount > 0) {
     warnings.push(`${stubCount} route crates use stub gateway_mount (Router::new())`);
   }

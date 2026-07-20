@@ -71,6 +71,13 @@ function extractPreservedBuildDependencies(cargoToml) {
     : '';
 }
 
+function extractPreservedDevDependencies(cargoToml) {
+  const section = /\[dev-dependencies\]([\s\S]*?)(?:\n\[|$)/u.exec(cargoToml);
+  return section
+    ? section[1].split('\n').map((line) => line.trim()).filter(Boolean).join('\n')
+    : '';
+}
+
 function dedupeDependencyLines(lines) {
   const seen = new Set();
   const result = [];
@@ -154,6 +161,7 @@ function renderCargoToml(
   bootstrapDeps = [],
   workspaceDepNames = new Set(),
   preservedBuildDeps = '',
+  preservedDevDeps = '',
 ) {
   const packageName = assemblyPackageName(applicationCode);
   const licenseLine = workspaceFields.license ? 'license.workspace = true\n' : '';
@@ -180,6 +188,11 @@ function renderCargoToml(
     ...depLines.split('\n'),
   ]).join('\n');
 
+  const extraSections = [
+    preservedDevDeps ? `[dev-dependencies]\n${preservedDevDeps}` : '',
+    preservedBuildDeps ? `[build-dependencies]\n${preservedBuildDeps}` : '',
+  ].filter(Boolean).join('\n\n');
+
   return `[package]
 name = "${packageName}"
 ${editionLine}
@@ -191,7 +204,7 @@ name = "${packageName.replace(/-/gu, '_')}"
 path = "src/lib.rs"
 
 [dependencies]
-${dependencyLines}${preservedBuildDeps ? `\n\n[build-dependencies]\n${preservedBuildDeps}` : ''}
+${dependencyLines}${extraSections ? `\n\n${extraSections}` : ''}
 `;
 }
 
@@ -566,6 +579,20 @@ export function materializeApiAssembly(root) {
     };
   }
 
+  const invalidRouteManifests = routeCrates.filter(
+    (crate) => !crate.routeManifestRef.includes('#')
+      && (!crate.routeManifestInsideRoot || !crate.routeManifestExists),
+  );
+  if (invalidRouteManifests.length > 0) {
+    return {
+      ok: false,
+      applicationCode,
+      message: `route manifest contract is unresolved: ${invalidRouteManifests
+        .map((crate) => `${crate.packageName} -> ${crate.routeManifestRef}`)
+        .join(', ')}`,
+    };
+  }
+
   const crateDir = path.join(root, assemblyCrateDir(applicationCode));
   const bootstrapPath = path.join(crateDir, 'src', 'bootstrap.rs');
   const preserveBootstrap = shouldPreserveBootstrap(bootstrapPath);
@@ -576,6 +603,7 @@ export function materializeApiAssembly(root) {
     new Set(routeCrates.flatMap((crate) => [crate.packageName, crate.libName])),
   );
   const preservedBuildDeps = extractPreservedBuildDependencies(existingCargoToml);
+  const preservedDevDeps = extractPreservedDevDependencies(existingCargoToml);
   const manifest = buildAssemblyManifest(root, applicationCode, routeCrates);
   const mounts = discoverGatewayMounts(root, routeCrates);
   const workspaceDeps = readWorkspaceDependencyNames(root);
@@ -596,6 +624,7 @@ export function materializeApiAssembly(root) {
       bootstrapDeps,
       workspaceDeps,
       preservedBuildDeps,
+      preservedDevDeps,
     ),
   );
   writeFileEnsuringDir(path.join(crateDir, 'src', 'generated.rs'), renderGeneratedRs(routeCrates));
@@ -642,8 +671,9 @@ function main() {
   const root = path.resolve(values.root);
   const result = materializeApiAssembly(root);
   if (!result.ok) {
-    console.error(`api-assembly:materialize skipped for ${root}: ${result.message}`);
-    process.exit(0);
+    const action = result.skipped ? 'skipped' : 'failed';
+    console.error(`api-assembly:materialize ${action} for ${root}: ${result.message}`);
+    process.exit(result.skipped ? 0 : 1);
   }
 
   console.log(

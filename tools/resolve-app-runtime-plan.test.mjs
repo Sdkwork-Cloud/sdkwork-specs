@@ -110,13 +110,16 @@ test('filters same-runtime clients by canonical client architecture', () => {
 });
 
 test('reports forbidden cloud development process roles', () => {
-  const root = rootWithTopology([{ id: 'local-api', role: 'api-standalone-gateway' }]);
+  const root = rootWithTopology([
+    { id: 'local-api', role: 'api-standalone-gateway' },
+    { id: 'edge.device-ingress', role: 'edge-runtime' },
+  ]);
   const plan = resolveRuntimePlan(root, {
     deploymentProfile: 'cloud',
     environment: 'development',
     runtimeTarget: 'browser',
   });
-  assert.deepEqual(plan.forbiddenProcesses, ['local-api']);
+  assert.deepEqual(plan.forbiddenProcesses, ['local-api', 'edge.device-ingress']);
 });
 
 test('fails closed when a standalone HTTP plan has no gateway', () => {

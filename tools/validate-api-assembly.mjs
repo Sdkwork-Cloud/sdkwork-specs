@@ -110,7 +110,13 @@ export function validateApiAssembly(root, { strict = false } = {}) {
     };
   }
   const routeCrates = discoverRouteCrates(root, applicationCode);
-  if (routeCrates.length === 0 && !fs.existsSync(path.join(root, 'sdkwork.app.config.json'))) {
+  const crateDir = assemblyCrateDir(applicationCode);
+  const crateRoot = path.join(root, crateDir);
+  if (
+    routeCrates.length === 0
+    && !fs.existsSync(path.join(root, 'sdkwork.app.config.json'))
+    && !fs.existsSync(crateRoot)
+  ) {
     return { ok: true, skipped: true, applicationCode, message: 'no route crates' };
   }
 
@@ -129,17 +135,30 @@ export function validateApiAssembly(root, { strict = false } = {}) {
     if (!routeCrate.hasComponentSpec) {
       errors.push(`${routeCrate.memberDir} missing specs/component.spec.json ownership contract`);
     }
+    if (!routeCrate.routeManifestInsideRoot) {
+      errors.push(
+        `${routeCrate.packageName} route manifest escapes the application root: ${routeCrate.routeManifestRef}`,
+      );
+    } else if (!routeCrate.routeManifestExists) {
+      errors.push(
+        `${routeCrate.packageName} route manifest does not exist: ${routeCrate.routeManifestRef}`,
+      );
+    }
     if (!routeCrate.packageName.match(/-(?:http-auth|http-shared|shared|support)$/u)
       && routeCrate.hasDescriptorOnlyGatewayMount) {
       errors.push(
         `${routeCrate.packageName} gateway_mount is descriptor-only (Router::new()); `
         + 'served route crates must mount executable handlers',
       );
+    } else if (!routeCrate.packageName.match(/-(?:http-auth|http-shared|shared|support)$/u)
+      && routeCrate.hasGatewayMount
+      && !routeCrate.hasExecutableGatewayMount) {
+      errors.push(
+        `${routeCrate.packageName} gateway_mount returns ${routeCrate.gatewayMountReturn ?? '<missing>'}; `
+        + 'served route crates must return an executable axum::Router (directly or through Result)',
+      );
     }
   }
-  const crateDir = assemblyCrateDir(applicationCode);
-  const crateRoot = path.join(root, crateDir);
-
   if (!fs.existsSync(crateRoot)) {
     errors.push(`missing ${crateDir}`);
     return { ok: false, applicationCode, errors, warnings };

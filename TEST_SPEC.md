@@ -1087,9 +1087,12 @@ Rules:
   while keeping build and verification phases child-root scoped.
 - Resolved-plan tests `MUST` prove standalone HTTP development has exactly one
   application standalone gateway and cloud development has zero local gateway,
-  API, data, migration, seed, or deployed-service worker roles. The tests must
+  API, edge-runtime, data, migration, seed, or deployed-service worker roles. The tests must
   inspect canonical v5 `process.role` values and config provenance rather than
   only names; missing or unknown roles fail validation.
+- Topology role tests `MUST` prove responsibility-specific device/edge protocol
+  processes use `edge-runtime`, are rejected from `cloud.development`, and are
+  not disguised as `worker` or a gateway role.
 - Resolved-plan tests `MUST` prove clients that share a runtime target are
   filtered by canonical `clientArchitecture`, including `pc-web` versus `h5`
   on `browser`, without inventing an H5 deployment profile or runtime target.

@@ -46,6 +46,47 @@ describe('check-identity-naming route crate prefix', () => {
     assert.match(result.stdout, /identity naming ok/);
   });
 
+  it('accepts a responsibility-specific edge runtime under crates', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-identity-edge-runtime-'));
+    const crateDir = path.join(root, 'crates', 'sdkwork-demo-device-edge-runtime');
+    mkdirSync(crateDir, { recursive: true });
+    writeFileSync(
+      path.join(crateDir, 'Cargo.toml'),
+      'name = "sdkwork-demo-device-edge-runtime"\n',
+    );
+
+    const result = runChecker(root, 'consumer');
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('rejects generic runtime crates and edge runtimes outside crates', () => {
+    const genericRoot = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-identity-runtime-'));
+    const genericDir = path.join(genericRoot, 'crates', 'sdkwork-demo-runtime');
+    mkdirSync(genericDir, { recursive: true });
+    writeFileSync(path.join(genericDir, 'Cargo.toml'), 'name = "sdkwork-demo-runtime"\n');
+
+    const genericResult = runChecker(genericRoot, 'consumer');
+    assert.notEqual(genericResult.status, 0);
+    assert.match(genericResult.stderr, /forbidden generic Rust runtime crate/u);
+
+    const misplacedRoot = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-identity-edge-runtime-'));
+    const misplacedDir = path.join(
+      misplacedRoot,
+      'services',
+      'sdkwork-demo-device-edge-runtime',
+    );
+    mkdirSync(misplacedDir, { recursive: true });
+    writeFileSync(
+      path.join(misplacedDir, 'Cargo.toml'),
+      'name = "sdkwork-demo-device-edge-runtime"\n',
+    );
+
+    const misplacedResult = runChecker(misplacedRoot, 'consumer');
+    assert.notEqual(misplacedResult.status, 0);
+    assert.match(misplacedResult.stderr, /must live under crates/u);
+  });
+
   it('accepts canonical appbase foundation PC React packages in consumer mode', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-identity-route-crate-'));
     const pkgDir = path.join(root, 'packages', 'sdkwork-shell-pc-react');

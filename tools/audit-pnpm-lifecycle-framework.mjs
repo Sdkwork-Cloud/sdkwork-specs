@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const REQUIRED_SCRIPTS = ['dev', 'stop', 'build', 'test', 'check', 'verify', 'clean'];
+const DELEGATED_REQUIRED_SCRIPTS = ['dev', 'stop'];
+const RELEASE_PHASES = new Set([
+  'preflight', 'plan', 'build', 'stage', 'package', 'validate', 'publish',
+]);
 const IGNORED_DIRECTORIES = new Set([
   '.git', '.pnpm-store', '.runtime', 'node_modules', 'target', 'dist', 'build',
   'vendor', 'coverage', 'tmp',
@@ -41,6 +45,25 @@ function scriptNamesMatching(scripts, prefix) {
   return Object.keys(scripts).filter((name) => name.startsWith(prefix));
 }
 
+function publicReleasePhaseScripts(scripts) {
+  return Object.entries(scripts).filter(([name]) => {
+    const parts = name.split(':');
+    return parts[0] === 'release'
+      && RELEASE_PHASES.has(parts[1])
+      && parts.at(-1) !== 'check';
+  });
+}
+
+function delegatesReleasePhase(name, command) {
+  const phase = name.split(':')[1];
+  const value = String(command ?? '').trim();
+  if (!value) return false;
+  if (value.includes('sdkwork-app') && value.includes(` release:${phase}`)) return true;
+  if (value.includes('sdkwork-workflow')) return true;
+  const alias = value.match(/^pnpm\s+(?:run\s+)?(release:[^\s]+)(?:\s+--.*)?$/u)?.[1];
+  return Boolean(alias && alias !== name && alias.split(':')[1] === phase);
+}
+
 function hasDelegatedLifecycleFacade(scripts) {
   const invokesParent = (name, command) => {
     const value = String(command ?? '').trim();
@@ -60,13 +83,24 @@ function waveFor(entry) {
   return 5;
 }
 
+function resolveApplicationFramework(appManifest) {
+  const candidates = [
+    appManifest?.runtime?.framework,
+    appManifest?.app?.runtime?.framework,
+    appManifest?.application?.runtime?.framework,
+    appManifest?.architecture,
+  ];
+  const framework = candidates.find((value) => typeof value === 'string' && value.trim());
+  return String(framework ?? '').trim().toLowerCase();
+}
+
 export function inspectApplicationRoot(workspace, root) {
   const relativeRoot = path.relative(workspace, root).replaceAll('\\', '/');
   const packagePath = path.join(root, 'package.json');
   const packageManifestExists = fs.existsSync(packagePath);
   const packageManifest = packageManifestExists ? readJson(packagePath) : null;
   const appManifest = readJson(path.join(root, 'sdkwork.app.config.json'));
-  const nativeFramework = String(appManifest?.runtime?.framework ?? '').toLowerCase();
+  const nativeFramework = resolveApplicationFramework(appManifest);
   const nativeApplication = nativeFramework === 'flutter'
     || nativeFramework.includes('android-native')
     || nativeFramework.includes('ios-native')
@@ -81,6 +115,7 @@ export function inspectApplicationRoot(workspace, root) {
     && typeof deploymentConfig.parentDeploymentConfig === 'string'
     ? path.resolve(root, 'etc', deploymentConfig.parentDeploymentConfig)
     : null;
+  const delegatedSurface = deploymentConfig?.kind === 'sdkwork.component-deployment';
   const ownsTopology = fs.existsSync(path.join(root, 'specs', 'topology.spec.json'));
   const parentTopologyValid = Boolean(parentTopologySpec && fs.existsSync(parentTopologySpec));
   const parentDeploymentValid = Boolean(parentDeploymentConfig && fs.existsSync(parentDeploymentConfig));
@@ -88,6 +123,8 @@ export function inspectApplicationRoot(workspace, root) {
     parentTopologyValid && parentDeploymentValid,
   );
   const scripts = packageManifest?.scripts ?? {};
+  const workflowPath = path.join(root, 'sdkwork.workflow.json');
+  const workflowManifest = fs.existsSync(workflowPath) ? readJson(workflowPath) : null;
   const readmePath = path.join(root, 'README.md');
   const readme = fs.existsSync(readmePath) ? fs.readFileSync(readmePath, 'utf8') : '';
   const foundationDependency = /repository-kind:\s*foundation-dependency/iu.test(readme);
@@ -97,12 +134,13 @@ export function inspectApplicationRoot(workspace, root) {
     root: relativeRoot || '.',
     applicationId: appManifest?.app?.key ?? path.basename(root),
     foundationDependency,
+    delegatedSurface,
     packageManifest: packageManifestExists,
     packageManifestValid: Boolean(packageManifest),
     pnpmManaged,
     topology: ownsTopology || delegatesTopology,
     topologyOwnership: ownsTopology ? 'owned' : delegatesTopology ? 'delegated' : 'missing',
-    workflow: fs.existsSync(path.join(root, 'sdkwork.workflow.json')),
+    workflow: fs.existsSync(workflowPath),
     deployManifest: fs.existsSync(path.join(root, 'deployments', 'deploy.yaml')),
     lifecycleFacade: delegatesTopology
       ? hasDelegatedLifecycleFacade(scripts)
@@ -121,8 +159,9 @@ export function inspectApplicationRoot(workspace, root) {
   if (!appManifest) entry.debt.push('invalid-app-manifest-json');
   if (pnpmManaged) {
     if (!entry.packageManifest) entry.debt.push('missing-package-manifest');
-    for (const [name, present] of Object.entries(entry.scripts.required)) {
-      if (!present) entry.debt.push(`missing-script:${name}`);
+    const requiredScripts = delegatedSurface ? DELEGATED_REQUIRED_SCRIPTS : REQUIRED_SCRIPTS;
+    for (const name of requiredScripts) {
+      if (!entry.scripts.required[name]) entry.debt.push(`missing-script:${name}`);
     }
     if (!entry.scripts.devStandalone) entry.debt.push('missing-script:dev:standalone');
     if (!entry.scripts.devCloud) entry.debt.push('missing-script:dev:cloud');
@@ -130,9 +169,7 @@ export function inspectApplicationRoot(workspace, root) {
       entry.debt.push('dev-does-not-delegate-standalone');
     }
   }
-  if ((scripts['_sdkwork:dev:standalone'] || scripts['_sdkwork:dev:cloud']) && !scripts['_sdkwork:stop']) {
-    entry.debt.push('private-dev-without-scoped-stop');
-  }
+  if (scripts['_sdkwork:stop']) entry.debt.push('private-stop-bypasses-framework');
   if (!entry.topology && !foundationDependency) entry.debt.push('missing-topology-v5-contract');
   if (ownsTopology && deploymentConfig?.parentTopologySpec) entry.debt.push('competing-topology-authorities');
   if (deploymentConfig?.kind === 'sdkwork.component-deployment' && !parentTopologyValid) {
@@ -144,6 +181,26 @@ export function inspectApplicationRoot(workspace, root) {
   }
   if (!entry.workflow && (entry.scripts.releaseCommands.length > 0 || entry.scripts.deployCommands.length > 0)) {
     entry.debt.push('lifecycle-commands-without-workflow-contract');
+  }
+  if (entry.workflow) {
+    const releaseScripts = publicReleasePhaseScripts(scripts);
+    for (const [name, command] of releaseScripts) {
+      if (!delegatesReleasePhase(name, command)) {
+        entry.debt.push(`public-release-bypasses-workflow:${name}`);
+      }
+    }
+    const delegatedPhases = new Set(
+      releaseScripts
+        .filter(([name, command]) => delegatesReleasePhase(name, command))
+        .map(([name]) => name.split(':')[1]),
+    );
+    for (const phase of delegatedPhases) {
+      if (phase === 'plan') continue;
+      const lifecycle = workflowManifest?.lifecycle?.[phase];
+      if (!Array.isArray(lifecycle) || lifecycle.length === 0) {
+        entry.debt.push(`release-workflow-missing-phase:${phase}`);
+      }
+    }
   }
   if (pnpmManaged && !entry.lifecycleFacade && packageManifest) entry.debt.push('not-using-lifecycle-facade');
   entry.wave = waveFor(entry);

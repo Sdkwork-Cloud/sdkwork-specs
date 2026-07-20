@@ -69,6 +69,12 @@ Rules:
   `_sdkwork:*` namespace. These hooks are consumed by the shared facade and are
   not public automation commands, release documentation, or a replacement for
   the standard lifecycle contract.
+- Topology process hooks use responsibility-specific private namespaces:
+  `_sdkwork:client:*` for local client processes, `_sdkwork:gateway:*` only for
+  canonical API gateway processes, and `_sdkwork:runtime:*` for workers,
+  protocol ingress, realtime hosts, simulators, or other non-gateway runtime
+  processes. A device or realtime edge runtime `MUST NOT` be placed under the
+  gateway namespace.
 - The canonical root facade is:
 
 ```json
@@ -88,10 +94,12 @@ Rules:
 - A private hook `MUST` be named `_sdkwork:<phase>` or
   `_sdkwork:dev:<standalone|cloud>`. The public command `MUST` select the
   profile; the private hook supplies only application-specific tool commands.
-- An application declaring either private `_sdkwork:dev:*` hook `MUST` also
-  declare `_sdkwork:stop`. Generic topology processes use the facade's scoped,
-  heartbeat-backed development session registry; private runners remain
-  responsible for stopping only processes they own.
+- Applications `MUST NOT` implement private `_sdkwork:stop` process-selection
+  logic. The shared facade owns stop semantics through its scoped heartbeat
+  registry plus topology-declared `bindEnv` and managed-resource drivers.
+  Private development runners remain migration-only and `MUST` declare their
+  owned TCP bindings in topology until they are replaced by generic topology
+  processes.
 - Release and deployment public scripts `MUST` delegate to the workflow or
   deploy framework and preserve phase-first profile order. Product packaging
   hooks may be called by `sdkwork.workflow.json` lifecycle steps, but a public
@@ -410,6 +418,10 @@ Rules:
 - Application `gateway:*:standalone` commands `MUST` target
   `sdkwork-api-<application-code>-standalone-gateway` when the repository owns an application
   standalone gateway crate.
+- `gateway:*` and `_sdkwork:gateway:*` commands `MUST NOT` build, run, validate,
+  or package `*-edge-runtime` processes. Edge runtimes participate through
+  `_sdkwork:runtime:*` topology hooks and application-level build/release
+  composition.
 - Application roots `MUST NOT` expose `gateway:*:cloud`; those commands are
   owned only by the `sdkwork-api-cloud-gateway` repository.
 - Platform `gateway:*:cloud` commands `MUST` target `sdkwork-api-cloud-gateway`.

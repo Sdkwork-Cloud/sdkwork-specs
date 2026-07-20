@@ -78,6 +78,32 @@ function dependencyEntries(packageJson) {
   return entries;
 }
 
+export function planWorkspaceMemberProtocolAlignment(repoRoot) {
+  const changes = [];
+  for (const packageDir of listWorkspacePackageDirs(repoRoot)) {
+    const packageJsonPath = path.join(packageDir, 'package.json');
+    if (!fs.existsSync(packageJsonPath)) continue;
+    const packageJson = readJson(packageJsonPath);
+    const updates = [];
+
+    for (const { section, name, value } of dependencyEntries(packageJson)) {
+      if (!SDKWORK_PACKAGE_NAME_RE.test(name) || value !== '*') continue;
+      packageJson[section][name] = 'workspace:*';
+      updates.push(`${section}.${name}: * -> workspace:*`);
+    }
+
+    if (updates.length > 0) {
+      changes.push({
+        packageJson,
+        packageJsonPath,
+        path: toPosix(path.relative(repoRoot, packageJsonPath)),
+        updates,
+      });
+    }
+  }
+  return changes;
+}
+
 export function scanWorkspaceMemberProtocol(repoRoot) {
   const issues = [];
   for (const packageDir of listWorkspacePackageDirs(repoRoot)) {

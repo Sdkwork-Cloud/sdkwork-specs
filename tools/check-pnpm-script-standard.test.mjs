@@ -142,6 +142,62 @@ describe('check-pnpm-script-standard', () => {
     assert.equal(result.status, 0, result.stderr);
   });
 
+  it('does not impose application runtime commands on a non-application repository kind', () => {
+    const root = makeRepo({
+      name: '@sdkwork/shared-tools',
+      scripts: {
+        build: 'tsc',
+        test: 'node --test',
+      },
+    }, { normalizeDevProfiles: false });
+    writeFileSync(
+      path.join(root, 'README.md'),
+      '# Shared tools\n\nrepository-kind: foundation-dependency\n',
+    );
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('keeps explicit application repository kinds on the complete lifecycle contract', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        build: 'tsc',
+        test: 'node --test',
+      },
+    }, { normalizeDevProfiles: false });
+    writeFileSync(
+      path.join(root, 'README.md'),
+      '# Demo\n\nrepository-kind: legacy-application\n',
+    );
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /missing required root script "dev"/u);
+    assert.match(result.stderr, /missing required root script "verify"/u);
+    assert.match(result.stderr, /missing required root script "clean"/u);
+  });
+
+  it('reports lifecycle debt instead of crashing on a malformed optional app manifest', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        build: 'tsc',
+        test: 'node --test',
+      },
+    }, { normalizeDevProfiles: false });
+    writeFileSync(path.join(root, 'sdkwork.app.config.json'), '');
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /missing required root script "dev"/u);
+    assert.doesNotMatch(result.stderr, /SyntaxError|Unexpected end of JSON input/u);
+  });
+
   it('requires API assembly commands for an application root without HTTP routes', () => {
     const root = makeRepo({
       name: 'sdkwork-demo',
@@ -346,14 +402,38 @@ describe('check-pnpm-script-standard', () => {
         clean: 'pnpm exec sdkwork-app clean',
         '_sdkwork:dev:standalone': 'node scripts/demo-dev.mjs --legacy-layout',
         '_sdkwork:dev:cloud': 'vite --mode cloud',
-        '_sdkwork:stop': 'node scripts/demo-stop.mjs',
         '_sdkwork:build': 'cargo build --release',
         '_sdkwork:release:package': 'node scripts/demo-package.mjs',
+        '_sdkwork:runtime:device-edge': 'cargo run -p sdkwork-demo-device-edge-runtime',
       },
     });
 
     const result = runChecker(root);
     assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('keeps edge runtimes and API gateways in distinct command namespaces', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'pnpm dev:standalone',
+        build: 'pnpm exec sdkwork-app build',
+        test: 'pnpm exec sdkwork-app test',
+        check: 'pnpm exec sdkwork-app check',
+        verify: 'pnpm exec sdkwork-app verify',
+        clean: 'pnpm exec sdkwork-app clean',
+        'gateway:package:standalone':
+          'cargo build -p sdkwork-api-demo-standalone-gateway -p sdkwork-demo-device-edge-runtime',
+        '_sdkwork:runtime:device-edge':
+          'cargo run -p sdkwork-api-demo-standalone-gateway',
+      },
+    });
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /edge runtime targets belong to _sdkwork:runtime/u);
+    assert.match(result.stderr, /API gateway targets belong to _sdkwork:gateway/u);
   });
 
   it('rejects malformed private SDKWork hook names', () => {
@@ -375,7 +455,7 @@ describe('check-pnpm-script-standard', () => {
     assert.match(result.stderr, /private SDKWork hooks must use an approved _sdkwork lifecycle or topology namespace/u);
   });
 
-  it('rejects private development hooks without a scoped private stop hook', () => {
+  it('rejects application-private stop hooks', () => {
     const root = makeRepo({
       name: 'sdkwork-demo',
       scripts: {
@@ -385,13 +465,13 @@ describe('check-pnpm-script-standard', () => {
         check: 'pnpm exec sdkwork-app check',
         verify: 'pnpm exec sdkwork-app verify',
         clean: 'pnpm exec sdkwork-app clean',
-        '_sdkwork:dev:standalone': 'node scripts/dev.mjs',
+        '_sdkwork:stop': 'node scripts/stop.mjs',
       },
     });
 
     const result = runChecker(root);
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /private _sdkwork:dev hooks require a scoped _sdkwork:stop hook/u);
+    assert.match(result.stderr, /private _sdkwork:stop is forbidden/u);
   });
 
   it('accepts one runtime-configurable client release lane', () => {

@@ -1,8 +1,8 @@
 # Application Runtime Topology Standard
 
-- Version: 4.0
+- Version: 4.1
 - Scope: cross-application deployment entrypoints, multi-plane routing, multi-protocol surfaces, dev orchestration contracts, and client bootstrap URL authority
-- Related: `APPLICATION_GATEWAY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `CONFIG_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `../sdkwork-app-topology/README.md`
+- Related: `APPLICATION_GATEWAY_SPEC.md`, `NAMING_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `CONFIG_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `../sdkwork-app-topology/README.md`
 
 This standard defines where clients, operators, devices, and SDKs connect for
 each SDKWork application. `DEPLOYMENT_SPEC.md` owns the application deployment
@@ -67,7 +67,7 @@ Rules:
 | `application` | Application repository | `http`, `ws`, future `sse` | Application API assembly hosted by the standalone application gateway or deployed platform gateway |
 | `platform` | Shared SDKWork platform | `http` | Platform API assemblies hosted by `sdkwork-api-cloud-gateway` or an approved standalone host |
 | `operations` | Application operator APIs | `http` | Operations control ingress |
-| `edge` | Device or edge gateway | `ws`, `mqtt`, `udp`, device `http` | Edge device ingress |
+| `edge` | Device or edge protocol clients | `ws`, `mqtt`, `udp`, device `http` | Responsibility-specific `sdkwork-<application-code>-<edge-capability>-edge-runtime` |
 
 Rules:
 
@@ -84,6 +84,10 @@ Rules:
 - Edge/realtime/device ingress requires a protocol-specific role and ADR. It
   does not authorize a generic application HTTP cloud gateway or a local
   gateway in `cloud.development`.
+- A topology process that terminates the `edge` plane uses role `edge-runtime`;
+  it is not a `worker`, application standalone gateway, or platform cloud
+  gateway. Its crate name and listener boundary follow `NAMING_SPEC.md` section
+  4.3 and `APPLICATION_GATEWAY_SPEC.md` section 5.
 
 ## 4. Surfaces
 
@@ -189,12 +193,15 @@ and the resolved runtime-plan schema rather than introducing another runtime
 manifest. Package/release planning belongs to `sdkwork-github-workflow`, and
 deployment apply/rollback belongs to `sdkwork-specs/tools/deployctl.mjs`.
 Generic development orchestration records a repository-scoped heartbeat under
-`.runtime/sdkwork-app/` so a separate `sdkwork-app stop` invocation can reject
-stale ownership and terminate only that development process tree. The registry
-also records directly spawned child PIDs. Windows uses process-tree termination
-when available and falls back to those registered children plus the supervisor
-when the operating-system tree enumeration service fails. Private
-development runners must provide their own scoped `_sdkwork:stop` hook.
+`.runtime/sdkwork-app/` so a separate `sdkwork-app stop` invocation can
+terminate only that development process tree. The registry also records directly
+spawned child PIDs and topology-resolved owned bindings. If registry state is
+missing or stale, the facade reconstructs ownership from development profiles:
+surface/process `bindEnv` declarations provide TCP listener ownership and
+`managedResources` select framework-owned lifecycle drivers. Windows process
+tree termination may be used as an optimization, but correctness must not depend
+on WMI/CIM enumeration. Applications must not provide private `_sdkwork:stop`
+process-selection logic.
 
 Client app surfaces that share an enclosing application deployment unit delegate
 topology through `etc/sdkwork.deployment.config.json#parentTopologySpec` as
@@ -255,8 +262,8 @@ profile. It starts local developer-facing clients only. The profile:
 - `MUST` resolve `application.public-ingress` and every required external plane
   to explicit deployed URLs from the selected source config.
 - `MUST NOT` start an application gateway, platform gateway, API server,
-  worker required only by the deployed API, database, Redis, migration, or seed
-  process.
+  edge runtime, worker required only by the deployed API, database, Redis,
+  migration, or seed process.
 - `MUST` health-check required remote surfaces with bounded timeouts before
   starting clients.
 - `MUST` fail closed when a required remote URL is missing and must not inherit
@@ -294,12 +301,16 @@ node ../sdkwork-specs/tools/resolve-app-runtime-plan.mjs --root . --deployment-p
 ```
 
 Topology schema v5 orchestration processes `MUST` declare one canonical
-`role`: `client`, `api-standalone-gateway`, `database`, `redis`, `migration`, `seed`,
-`worker`, or `tunnel`. `id`, binary, or script text is not role authority.
+`role`: `client`, `api-standalone-gateway`, `edge-runtime`, `database`, `redis`,
+`migration`, `seed`, `worker`, or `tunnel`. `id`, binary, or script text is not
+role authority. `edge-runtime` is reserved for the responsibility-specific
+device/edge protocol process defined by `NAMING_SPEC.md` section 4.3; background
+jobs that terminate no edge ingress remain `worker`.
 The retired `api-listener` role is not valid in schema v5; HTTP API processes
 must be represented by the single `api-standalone-gateway` role.
 `cloud.development` allows only `client` and explicitly configured `tunnel`
-roles. `standalone.development` may declare local dependencies, but an
+roles; in particular, it starts no local `edge-runtime`. `standalone.development`
+may declare local dependencies, but an
 application that serves HTTP APIs has exactly one `api-standalone-gateway` role.
 
 An orchestration process that applies only to selected runtime targets `MAY`
@@ -319,8 +330,8 @@ architecture is `pc-web` and the default desktop architecture is `tauri` for
 backward-compatible public commands; other architectures are explicit.
 
 `cloud.development` plans `MUST` report zero local standalone gateway,
-platform gateway, API listener, database, Redis,
-migration, seed, and deployed-service worker processes.
+platform gateway, API listener, edge runtime, database, Redis, migration, seed,
+and deployed-service worker processes.
 `standalone.development` plans with application HTTP APIs `MUST` report exactly
 one application HTTP ingress:
 `sdkwork-api-<application-code>-standalone-gateway`.

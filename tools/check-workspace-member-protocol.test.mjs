@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  planWorkspaceMemberProtocolAlignment,
   scanWorkspaceMemberProtocol,
   scanWorkspaceMaterialization,
 } from './lib/workspace-member-protocol.mjs';
@@ -61,4 +62,31 @@ test('scanWorkspaceMemberProtocol accepts workspace:* for SDKWork packages', () 
   });
 
   assert.equal(scanWorkspaceMemberProtocol(repoRoot).length, 0);
+});
+
+test('planWorkspaceMemberProtocolAlignment only normalizes SDKWork wildcard dependencies', () => {
+  const repoRoot = makeTempDir('sdkwork-member-protocol-align-');
+  fs.writeFileSync(
+    path.join(repoRoot, 'pnpm-workspace.yaml'),
+    [
+      'packages:',
+      '  - "apps/demo/packages/*"',
+      '',
+    ].join('\n'),
+  );
+  writePackage(repoRoot, 'apps/demo/packages/demo-core', {
+    name: '@sdkwork/demo-core',
+    peerDependencies: {
+      '@sdkwork/ui-pc-react': '*',
+      react: '*',
+    },
+  });
+
+  const changes = planWorkspaceMemberProtocolAlignment(repoRoot);
+  assert.equal(changes.length, 1);
+  assert.deepEqual(changes[0].updates, [
+    'peerDependencies.@sdkwork/ui-pc-react: * -> workspace:*',
+  ]);
+  assert.equal(changes[0].packageJson.peerDependencies['@sdkwork/ui-pc-react'], 'workspace:*');
+  assert.equal(changes[0].packageJson.peerDependencies.react, '*');
 });

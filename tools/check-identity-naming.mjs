@@ -345,6 +345,18 @@ const consumerRules = [
       snippet.includes('sdkwork-api-cloud-gateway') ||
       snippet.includes('sdkwork-api-') && snippet.includes('-standalone-gateway'),
   },
+  {
+    pattern: /^name\s*=\s*"sdkwork-[a-z0-9-]+-runtime"\s*$/gmu,
+    message:
+      'forbidden generic Rust runtime crate; use a responsibility-specific host/worker or sdkwork-<application-code>-<edge-capability>-edge-runtime',
+    allow: (snippet) =>
+      /^name\s*=\s*"sdkwork-[a-z0-9]+(?:-[a-z0-9]+)+-edge-runtime"\s*$/u.test(snippet),
+  },
+  {
+    pattern: /^name\s*=\s*"sdkwork-[a-z0-9]+(?:-[a-z0-9]+)+-edge-runtime"\s*$/gmu,
+    message: 'edge-runtime Rust crates must live under crates/',
+    allow: (_snippet, rel) => /^crates[\\/][^\\/]+[\\/]Cargo\.toml$/u.test(rel),
+  },
 ];
 
 function scanStandards(root) {
