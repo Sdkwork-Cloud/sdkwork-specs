@@ -67,6 +67,31 @@ test('strict mode requires authored components to declare a composable layerRole
   assert.ok(issues.some((issue) => issue.includes('contracts.layerRole is required')));
 });
 
+test('host-neutral API assemblies may declare the runtime-composition layer role', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-component-ports-assembly-'));
+  writeJson(path.join(root, 'crates/sdkwork-api-demo-assembly/specs/component.spec.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component.spec',
+    component: {
+      name: 'sdkwork-api-demo-assembly',
+      type: 'rust-api-assembly',
+      root: 'crates/sdkwork-api-demo-assembly',
+      domain: 'demo',
+      capability: 'api-assembly',
+      languages: ['rust'],
+    },
+    contracts: {
+      layerRole: 'runtime-composition',
+      publicExports: ['.'],
+      runtimeEntrypoints: ['sdkwork_api_demo_assembly::assemble_api_router'],
+      providedPorts: [],
+      requiredPorts: [],
+    },
+  });
+
+  assert.deepEqual(validateComponentPortBindings(root, { strict: true }), []);
+});
+
 test('frontend port declarations must be arrays of named public-export-backed ports', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-component-ports-frontend-'));
   writeJson(path.join(root, 'packages/sdkwork-demo/specs/component.spec.json'), {

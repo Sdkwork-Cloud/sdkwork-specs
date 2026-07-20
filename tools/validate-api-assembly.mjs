@@ -160,6 +160,16 @@ export function validateApiAssembly(root, { strict = false } = {}) {
 
   const bootstrapPath = path.join(crateRoot, 'src', 'bootstrap.rs');
   const bootstrapSource = readText(bootstrapPath);
+  if (routeCrates.length === 0) {
+    const staleRouteReferences = [
+      ...new Set(bootstrapSource.match(/sdkwork_routes_[a-z0-9_]+/gu) ?? []),
+    ];
+    if (staleRouteReferences.length > 0) {
+      errors.push(
+        `apiMode none assembly bootstrap references undeclared route crates: ${staleRouteReferences.join(', ')}`,
+      );
+    }
+  }
 
   const withoutMount = assemblyMountRouteCrates(routeCrates).filter(
     (crate) => !crate.hasGatewayMount && !bootstrapSource.includes(crate.libName),

@@ -43,6 +43,14 @@ Rules:
 - An application that intentionally exposes no HTTP APIs `MUST` still publish
   an empty assembly manifest with `apiMode: none`; absence of the assembly is
   not a valid no-API declaration.
+- Process infrastructure endpoints are not application API surfaces. A gRPC,
+  RPC, worker, or service host `MAY` expose only the canonical `/healthz`,
+  `/readyz`, and `/metrics` operations endpoints through
+  `sdkwork-web-bootstrap` without changing `apiMode: none`. This exception does
+  not authorize business handlers, arbitrary probe aliases, dynamic route
+  paths, or app/backend/open API routes in that host. The first
+  non-infrastructure HTTP route requires a canonical route crate and
+  `apiMode: served`.
 
 ## 2. Naming And Placement
 

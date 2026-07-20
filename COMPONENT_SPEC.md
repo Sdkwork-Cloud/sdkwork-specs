@@ -109,8 +109,8 @@ Rules:
 - `contracts.layerRole` classifies the component in the L0-L6 application layering profile from
   `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md` and the composable architecture profile from
   `COMPOSABLE_ARCHITECTURE_SPEC.md`: for example `frontend-core`, `frontend-feature`,
-  `backend-route`, `backend-service`, `backend-domain`, `backend-repository`, `runtime-gateway`,
-  `runtime-service-host`, `sdk-facade`, or `tooling`. New composable modules `MUST` declare it;
+  `backend-route`, `backend-service`, `backend-domain`, `backend-repository`, `runtime-composition`,
+  `runtime-gateway`, `runtime-service-host`, `sdk-facade`, or `tooling`. New composable modules `MUST` declare it;
   legacy manifests should add it during the next module touch.
 - `contracts.providedPorts` lists named public integration ports offered by the component. Each
   object `MUST` include `name` and `export`, and `export` must reference `contracts.publicExports`.

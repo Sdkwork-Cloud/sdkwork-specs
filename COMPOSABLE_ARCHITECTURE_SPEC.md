@@ -60,6 +60,7 @@ Allowed roles:
 | `backend-provider` | External provider, dependency SDK, RPC, cache, event, or storage adapter |
 | `runtime-api-server` | Migration-only HTTP listener role for retired `*-api-server` crates; new ingress uses `runtime-gateway` |
 | `runtime-service-host` | In-process service container without HTTP listener |
+| `runtime-composition` | Host-neutral API assembly or runtime contribution graph without listener ownership |
 | `runtime-gateway` | Standalone/cloud ingress and dependency surface proxying |
 | `runtime-native-host` | Tauri/native command boundary and local runtime bridge |
 | `sdk-facade` | Authored composed SDK wrapper or consumer facade |

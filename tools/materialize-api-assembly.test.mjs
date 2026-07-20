@@ -240,6 +240,30 @@ test('API assembly materializer never writes an assembly for the platform cloud 
   );
 });
 
+test('replaces a legacy generated gateway bootstrap after route crates are retired', () => {
+  const root = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-')),
+    'sdkwork-agents',
+  );
+  writeText(path.join(root, 'sdkwork.app.config.json'), '{}\n');
+  writeText(
+    path.join(root, 'Cargo.toml'),
+    '[workspace]\nmembers = []\nresolver = "2"\n\n[workspace.package]\nedition = "2021"\nversion = "0.1.0"\n',
+  );
+  const bootstrapPath = path.join(root, 'crates', 'sdkwork-api-agents-assembly', 'src', 'bootstrap.rs');
+  writeText(
+    bootstrapPath,
+    '//! Generated gateway bootstrap for sdkwork-agents.\npub fn assemble_api_router() { sdkwork_routes_agents_app_api::gateway_mount(); }\n',
+  );
+
+  const result = materializeApiAssembly(root);
+
+  assert.equal(result.ok, true);
+  const bootstrap = fs.readFileSync(bootstrapPath, 'utf8');
+  assert.doesNotMatch(bootstrap, /sdkwork_routes_agents_app_api/u);
+  assert.match(bootstrap, /router: Router::new\(\)/u);
+});
+
 test('API assembly includes application-code and capability-named route members together', () => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-'));
   const root = path.join(workspace, 'sdkwork-demo');

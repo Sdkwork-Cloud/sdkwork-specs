@@ -194,3 +194,23 @@ test('accepts apiMode none when Rust routing evidence exists only in test fixtur
 
   assert.equal(result.ok, true, result.errors?.join('\n'));
 });
+
+test('rejects apiMode none assemblies with stale route crate bootstrap references', () => {
+  const root = fixture();
+  fs.rmSync(path.join(root, 'crates', 'sdkwork-routes-demo-app-api'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'Cargo.toml'),
+    '[workspace]\nmembers = []\nresolver = "2"\n\n[workspace.package]\nedition = "2021"\nversion = "0.1.0"\nlicense = "MIT"\n',
+  );
+  assert.equal(materializeApiAssembly(root).ok, true);
+  fs.writeFileSync(
+    path.join(root, 'crates', 'sdkwork-api-demo-assembly', 'src', 'bootstrap.rs'),
+    'pub fn assemble_api_router() { sdkwork_routes_demo_app_api::gateway_mount(); }\n',
+  );
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('\n'), /references undeclared route crates/u);
+  assert.match(result.errors.join('\n'), /sdkwork_routes_demo_app_api/u);
+});

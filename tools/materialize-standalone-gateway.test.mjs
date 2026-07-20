@@ -19,7 +19,7 @@ function fixture() {
   );
   fs.writeFileSync(
     path.join(root, 'Cargo.toml'),
-    '[workspace]\nmembers = [\n    "crates/sdkwork-routes-demo-app-api",\n]\nresolver = "2"\n\n[workspace.package]\nedition = "2021"\nversion = "0.1.0"\nlicense = "MIT"\n\n[workspace.dependencies]\naxum = "0.8"\ntokio = { version = "1", features = ["macros", "rt-multi-thread"] }\n',
+    '[workspace]\nmembers = [\n    "crates/sdkwork-routes-demo-app-api",\n]\nresolver = "2"\n\n[workspace.package]\nedition = "2021"\nversion = "0.1.0"\nlicense = "MIT"\n\n[workspace.dependencies]\naxum = "0.8"\n',
   );
   fs.writeFileSync(
     path.join(routeRoot, 'Cargo.toml'),
@@ -56,6 +56,10 @@ test('materializes a thin Web Framework standalone host from a zero-argument ass
   assert.match(
     fs.readFileSync(path.join(root, 'Cargo.toml'), 'utf8'),
     /members = \[\n    "crates\/sdkwork-api-demo-standalone-gateway",\n/u,
+  );
+  assert.match(
+    fs.readFileSync(path.join(root, 'Cargo.toml'), 'utf8'),
+    /^tokio = \{ version = "1\.48", features = \["macros", "rt-multi-thread"\] \}/mu,
   );
 });
 
@@ -129,5 +133,15 @@ test('refuses to guess application-specific assembly context parameters', () => 
   assert.throws(
     () => materializeStandaloneGateway(root, { write: true }),
     /requires application-specific wiring/u,
+  );
+});
+
+test('refuses non-Cargo application roots instead of inventing a Rust host', () => {
+  const root = fixture();
+  fs.writeFileSync(path.join(root, 'Cargo.toml'), '[package]\nname = "sdkwork-demo"\nversion = "0.1.0"\n');
+
+  assert.throws(
+    () => materializeStandaloneGateway(root, { write: true }),
+    /not a Cargo workspace/u,
   );
 });

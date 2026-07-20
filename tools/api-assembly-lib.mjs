@@ -20,6 +20,8 @@ const DESCRIPTOR_ONLY_GATEWAY_MOUNT_PATTERN =
   /pub\s+(?:async\s+)?fn\s+gateway_mount\s*\([^)]*\)\s*(?:->\s*[^\{]+)?\{\s*(?:axum::)?Router::new\(\)\s*\}/u;
 const AUTHORED_HTTP_ROUTER_PATTERN = /(?:axum::)?Router(?:\s*<[^>{}]+>)?::new\s*\(/u;
 const AUTHORED_HTTP_ROUTE_PATTERN = /\.route(?:_service)?\s*\(/u;
+const AUTHORED_HTTP_ROUTE_LITERAL_PATTERN = /\.route(?:_service)?\s*\(\s*"([^"]+)"/gu;
+const PROCESS_INFRA_ROUTE_PATHS = new Set(['/healthz', '/readyz', '/metrics']);
 const AUTHORED_HTTP_SCAN_SKIP_DIRS = new Set([
   '.git', '.runtime', 'artifacts', 'benches', 'dist', 'examples', 'external', 'fixtures',
   'generated', 'node_modules', 'target', 'test', 'tests', 'vendor',
@@ -148,8 +150,20 @@ export function findAuthoredRustHttpRouterEvidence(root, applicationCode) {
   return sources
     .filter(({ absolute }) => {
       const productionSource = readText(absolute).split(/#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]/u, 1)[0];
-      return AUTHORED_HTTP_ROUTER_PATTERN.test(productionSource)
-        && AUTHORED_HTTP_ROUTE_PATTERN.test(productionSource);
+      if (!AUTHORED_HTTP_ROUTER_PATTERN.test(productionSource)
+        || !AUTHORED_HTTP_ROUTE_PATTERN.test(productionSource)) {
+        return false;
+      }
+
+      const routeCalls = productionSource.match(/\.route(?:_service)?\s*\(/gu) ?? [];
+      const literalPaths = [...productionSource.matchAll(AUTHORED_HTTP_ROUTE_LITERAL_PATTERN)]
+        .map((match) => match[1]);
+      const usesCanonicalInfraMount = ROUTE_INFRA_MOUNT_PATTERN.test(productionSource);
+      const isProcessInfrastructureOnly = usesCanonicalInfraMount
+        && routeCalls.length === literalPaths.length
+        && literalPaths.every((routePath) => PROCESS_INFRA_ROUTE_PATHS.has(routePath));
+
+      return !isProcessInfrastructureOnly;
     })
     .map(({ relative }) => relative)
     .sort((left, right) => left.localeCompare(right));

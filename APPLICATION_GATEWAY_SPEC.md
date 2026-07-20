@@ -110,6 +110,13 @@ sdkwork-api-<application-code>-standalone-gateway
 processes. Route crates and service-host packages may remain build/test units,
 but default standalone orchestration `MUST NOT` start them as HTTP sidecars.
 
+An RPC, gRPC, worker, or service host that has no application HTTP API may own
+an operations-only listener for canonical `/healthz`, `/readyz`, and `/metrics`
+endpoints when its topology declares that operations surface. Such a listener
+is not `application.public-ingress`, does not make the application assembly
+`served`, and must be composed through `sdkwork-web-bootstrap`. It must not
+mount business routes or become a second application-plane HTTP ingress.
+
 Cloud development is remote-client-only. `cloud.development` starts no local
 standalone gateway, platform gateway, API listener, data service, migration,
 seed, or deployed-service worker.

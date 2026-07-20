@@ -161,6 +161,12 @@ export function materializeStandaloneGateway(root, { write = false } = {}) {
     return { root: resolved, skipped: true, reason: 'platform-cloud-gateway', actions: [] };
   }
   const applicationCode = resolveApplicationCode(resolved);
+  const rootCargo = readText(path.join(resolved, 'Cargo.toml'));
+  if (!rootCargo.includes('[workspace]') || !rootCargo.includes('[workspace.package]')) {
+    throw new Error(
+      'application root is not a Cargo workspace; use its declared runtime family host instead of materializing a Rust standalone gateway',
+    );
+  }
   const packageName = `sdkwork-api-${applicationCode}-standalone-gateway`;
   const member = `crates/${packageName}`;
   const target = path.join(resolved, member);
@@ -200,6 +206,14 @@ export function materializeStandaloneGateway(root, { write = false } = {}) {
     write,
   )) {
     actions.push('add Web Framework bootstrap workspace dependency');
+  }
+  if (ensureWorkspaceDependency(
+    resolved,
+    'tokio',
+    '{ version = "1.48", features = ["macros", "rt-multi-thread"] }',
+    write,
+  )) {
+    actions.push('add Tokio workspace dependency');
   }
   const cargo = renderCargo(resolved, applicationCode);
   const main = renderMain(applicationCode, signature);

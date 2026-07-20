@@ -24,6 +24,7 @@ const ALLOWED_LAYER_ROLES = new Set([
   'backend-provider',
   'runtime-api-server',
   'runtime-service-host',
+  'runtime-composition',
   'runtime-gateway',
   'runtime-native-host',
   'sdk-facade',
