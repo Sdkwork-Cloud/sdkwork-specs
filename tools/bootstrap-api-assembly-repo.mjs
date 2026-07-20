@@ -11,29 +11,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
-import { assemblyCrateDir, discoverRouteCrates, readText, resolveApplicationCode } from './api-assembly-lib.mjs';
+import {
+  assemblyCrateDir,
+  discoverRouteCrates,
+  ensureCargoWorkspaceMember,
+  readText,
+  resolveApplicationCode,
+} from './api-assembly-lib.mjs';
 import { materializeApiAssembly } from './materialize-api-assembly.mjs';
 import { validateApiAssembly } from './validate-api-assembly.mjs';
 
 const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-
-function ensureWorkspaceMember(root, applicationCode) {
-  const cargoPath = path.join(root, 'Cargo.toml');
-  const cargoToml = readText(cargoPath);
-  if (!cargoToml.includes('[workspace]')) {
-    return false;
-  }
-  const member = assemblyCrateDir(applicationCode);
-  if (cargoToml.includes(`"${member}"`)) {
-    return false;
-  }
-  const updated = cargoToml.replace(
-    /members\s*=\s*\[/u,
-    `members = [\n    "${member}",`,
-  );
-  fs.writeFileSync(cargoPath, updated, 'utf8');
-  return true;
-}
 
 function relativeToolCommand(root, specsRoot, toolName) {
   const toolPath = path.join(specsRoot, 'tools', toolName);
@@ -90,7 +78,10 @@ export function bootstrapApiAssemblyRepo(root, { specsRoot = SPECS_ROOT } = {}) 
   if (!materialized.ok) {
     return { ...materialized, routeCrates: routeCrates.length };
   }
-  const workspaceMemberAdded = ensureWorkspaceMember(root, applicationCode);
+  const workspaceMemberAdded = ensureCargoWorkspaceMember(
+    root,
+    assemblyCrateDir(applicationCode),
+  );
   const packageScriptsAdded = ensurePackageScripts(root, path.resolve(specsRoot));
   const validation = validateApiAssembly(root);
 

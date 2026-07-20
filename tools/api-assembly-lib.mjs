@@ -16,6 +16,8 @@ const ROUTE_INFRA_MOUNT_PATTERN =
   /mount_infra_routes\s*\(|mount_[a-z0-9_]+_infra_routes\s*\(|service_router\s*\(/u;
 const ASSEMBLY_MULTI_GATEWAY_MOUNT_PATTERN =
   /router\s*=\s*router\s*\.merge\s*\(\s*sdkwork_routes_[a-z0-9_]+::gateway_mount\b/gu;
+const DESCRIPTOR_ONLY_GATEWAY_MOUNT_PATTERN =
+  /pub\s+(?:async\s+)?fn\s+gateway_mount\s*\([^)]*\)\s*(?:->\s*[^\{]+)?\{\s*(?:axum::)?Router::new\(\)\s*\}/u;
 const AUTHORED_HTTP_ROUTER_PATTERN = /(?:axum::)?Router(?:\s*<[^>{}]+>)?::new\s*\(/u;
 const AUTHORED_HTTP_ROUTE_PATTERN = /\.route(?:_service)?\s*\(/u;
 const AUTHORED_HTTP_SCAN_SKIP_DIRS = new Set([
@@ -58,6 +60,41 @@ export function assemblyCrateDir(applicationCode) {
 
 export function assemblyPackageName(applicationCode) {
   return `sdkwork-api-${applicationCode}-assembly`;
+}
+
+/** Adds one Cargo workspace member and removes duplicate canonical member lines. */
+export function ensureCargoWorkspaceMember(root, member, { write = true } = {}) {
+  const cargoPath = path.join(root, 'Cargo.toml');
+  const cargo = readText(cargoPath);
+  const membersMatch = /members\s*=\s*\[([\s\S]*?)\]/u.exec(cargo);
+  if (!membersMatch) return false;
+
+  let found = false;
+  let changed = false;
+  const normalizedMember = member.replaceAll('\\', '/');
+  const lines = membersMatch[1].split('\n').filter((line) => {
+    const quoted = /^\s*"([^"]+)"\s*,?\s*$/u.exec(line);
+    if (!quoted || quoted[1].replaceAll('\\', '/') !== normalizedMember) return true;
+    if (!found) {
+      found = true;
+      return true;
+    }
+    changed = true;
+    return false;
+  });
+  if (!found) {
+    lines.splice(lines[0]?.trim() ? 0 : 1, 0, `    "${normalizedMember}",`);
+    changed = true;
+  }
+  if (!changed) return false;
+
+  const updatedBody = lines.join('\n');
+  const updated = `${cargo.slice(0, membersMatch.index)}${membersMatch[0].replace(
+    membersMatch[1],
+    updatedBody,
+  )}${cargo.slice(membersMatch.index + membersMatch[0].length)}`;
+  if (write) fs.writeFileSync(cargoPath, updated, 'utf8');
+  return true;
 }
 
 function isAuthoredHttpScanSkippedDirectory(name) {
@@ -170,6 +207,7 @@ export function discoverRouteCrates(root, applicationCode) {
         : `${componentRef}#contracts.routeManifest`,
       sourceRef: `${memberDir}/Cargo.toml`,
       hasGatewayMount: GATEWAY_MOUNT_PATTERN.test(libRs),
+      hasDescriptorOnlyGatewayMount: DESCRIPTOR_ONLY_GATEWAY_MOUNT_PATTERN.test(libRs),
       hasGatewayMountBusiness: GATEWAY_MOUNT_BUSINESS_PATTERN.test(libRs),
       hasGatewayRouteManifest: GATEWAY_MANIFEST_PATTERN.test(libRs),
       mountsInfrastructure: routeCrateMountsInfrastructure(root, memberDir),

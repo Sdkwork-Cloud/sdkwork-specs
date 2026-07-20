@@ -22,7 +22,10 @@ function fixture() {
   fs.mkdirSync(path.join(routeRoot, 'src'), { recursive: true });
   fs.mkdirSync(path.join(routeRoot, 'specs'), { recursive: true });
   fs.writeFileSync(path.join(routeRoot, 'Cargo.toml'), '[package]\nname = "sdkwork-routes-demo-app-api"\nversion = "0.1.0"\nedition = "2021"\n');
-  fs.writeFileSync(path.join(routeRoot, 'src', 'lib.rs'), 'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\n');
+  fs.writeFileSync(
+    path.join(routeRoot, 'src', 'lib.rs'),
+    'pub fn gateway_mount() -> axum::Router { axum::Router::new().route("/demo", axum::routing::get(|| async {})) }\n',
+  );
   fs.writeFileSync(
     path.join(routeRoot, 'specs', 'component.spec.json'),
     JSON.stringify({ contracts: { routeManifest: 'route-manifest.json' } }, null, 2),
@@ -132,6 +135,22 @@ test('rejects route crates without component ownership contracts', () => {
 
   assert.equal(result.ok, false);
   assert.match(result.errors.join('\n'), /missing specs\/component\.spec\.json ownership contract/u);
+});
+
+test('rejects served route crates whose gateway mount is descriptor-only', () => {
+  const root = fixture();
+  const routeLib = path.join(root, 'crates', 'sdkwork-routes-demo-app-api', 'src', 'lib.rs');
+  fs.writeFileSync(
+    routeLib,
+    'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\n',
+  );
+  assert.equal(materializeApiAssembly(root).ok, true);
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('\n'), /gateway_mount is descriptor-only/u);
+  assert.match(result.errors.join('\n'), /must mount executable handlers/u);
 });
 
 test('rejects apiMode none when authored production Rust sources mount HTTP routes', () => {

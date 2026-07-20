@@ -168,16 +168,18 @@ export function auditGatewayAlignmentRepo(root) {
     issues.push('api-assembly not in Cargo workspace members');
   }
 
-  if (!hasPackageScript(root, 'api:assembly:materialize')) {
-    warnings.push('missing pnpm api:assembly:materialize');
-  }
-  if (!hasPackageScript(root, 'api:assembly:validate')) {
-    warnings.push('missing pnpm api:assembly:validate');
+  if (fs.existsSync(path.join(root, 'package.json'))) {
+    if (!hasPackageScript(root, 'api:assembly:materialize')) {
+      warnings.push('missing pnpm api:assembly:materialize');
+    }
+    if (!hasPackageScript(root, 'api:assembly:validate')) {
+      warnings.push('missing pnpm api:assembly:validate');
+    }
   }
 
   const gatewayCrates = findStandaloneGateways(root, applicationCode);
   const canonicalGateway = `sdkwork-api-${applicationCode}-standalone-gateway`;
-  if (!gatewayCrates[canonicalGateway]) {
+  if (isApplicationRoot && !gatewayCrates[canonicalGateway]) {
     warnings.push(`missing canonical standalone gateway ${canonicalGateway}`);
   }
   const hasAssemblyDep = Object.keys(gatewayCrates).some((name) => {

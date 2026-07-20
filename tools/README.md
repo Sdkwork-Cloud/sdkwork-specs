@@ -152,6 +152,10 @@ Rules:
   with existing authored business wiring, renames retired application assembly
   and standalone gateway crates to canonical identities, rewrites owned text
   references, and re-runs canonical bootstrap. It requires explicit `--write`.
+- `materialize-standalone-gateway.mjs (--root <application> | --workspace
+  <workspace>) [--write]` creates a minimal canonical standalone host only for
+  application roots whose assembly has a zero-argument `assemble_api_router`.
+  It refuses application-specific dependency wiring instead of guessing.
 - `wire-api-assembly-host.mjs --root <application>` is a migration-only wiring
   aid for an existing canonical standalone gateway. It requires an explicit
   mutation scope and is never completion evidence by itself.

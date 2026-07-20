@@ -75,6 +75,27 @@ function updateComponentIdentity(componentPath, fields, write) {
   return true;
 }
 
+function repairDuplicateAssemblyEntrypoints(repoRoot, applicationCode, write) {
+  const bootstrapPath = path.join(repoRoot, assemblyCrateDir(applicationCode), 'src', 'bootstrap.rs');
+  if (!fs.existsSync(bootstrapPath)) return false;
+  const source = readText(bootstrapPath);
+  const token = 'fn assemble_api_router(';
+  const first = source.indexOf(token);
+  const second = first < 0 ? -1 : source.indexOf(token, first + token.length);
+  if (second < 0) return false;
+
+  const replacement = 'fn assemble_business_routes(';
+  let updated = `${source.slice(0, first)}${replacement}${source.slice(first + token.length)}`;
+  const shiftedSecond = second + (replacement.length - token.length);
+  const wrapperCall = updated.indexOf('assemble_api_router(', shiftedSecond + token.length);
+  if (wrapperCall < 0) {
+    throw new Error('duplicate assemble_api_router definitions do not contain a wrapper delegation call');
+  }
+  updated = `${updated.slice(0, wrapperCall)}assemble_business_routes(${updated.slice(wrapperCall + 'assemble_api_router('.length)}`;
+  if (write) fs.writeFileSync(bootstrapPath, updated, 'utf8');
+  return true;
+}
+
 export function migrateApplicationGatewayHosting(root, { write = false } = {}) {
   const repoRoot = path.resolve(root);
   if (path.basename(repoRoot) === 'sdkwork-api-cloud-gateway') {
@@ -94,7 +115,6 @@ export function migrateApplicationGatewayHosting(root, { write = false } = {}) {
     ['assemble_application_business_router_with_service', 'assemble_business_router_with_service'],
     ['assemble_application_business_router', 'assemble_business_router'],
     ['assemble_application_router', 'assemble_api_router'],
-    ['assemble_business_router', 'assemble_api_router'],
     ['ApplicationAssembly', 'ApiAssembly'],
   ];
 
@@ -134,6 +154,9 @@ export function migrateApplicationGatewayHosting(root, { write = false } = {}) {
   }
 
   const changedFiles = replaceRepositoryText(repoRoot, replacements, write);
+  if (repairDuplicateAssemblyEntrypoints(repoRoot, applicationCode, write)) {
+    changedFiles.push(`${assemblyCrateDir(applicationCode)}/src/bootstrap.rs`);
+  }
 
   if (fs.existsSync(canonicalAssembly)) {
     updateComponentIdentity(

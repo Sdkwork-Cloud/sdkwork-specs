@@ -39,7 +39,7 @@ function workspaceFixture(t, { withRoute = false } = {}) {
     );
     fs.writeFileSync(
       path.join(routeRoot, 'src', 'lib.rs'),
-      'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\n',
+      'pub fn gateway_mount() -> axum::Router { axum::Router::new().route("/catalog", axum::routing::get(|| async {})) }\n',
     );
     fs.writeFileSync(
       path.join(routeRoot, 'specs', 'component.spec.json'),

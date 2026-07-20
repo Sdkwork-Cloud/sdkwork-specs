@@ -129,6 +129,13 @@ export function validateApiAssembly(root, { strict = false } = {}) {
     if (!routeCrate.hasComponentSpec) {
       errors.push(`${routeCrate.memberDir} missing specs/component.spec.json ownership contract`);
     }
+    if (!routeCrate.packageName.match(/-(?:http-auth|http-shared|shared|support)$/u)
+      && routeCrate.hasDescriptorOnlyGatewayMount) {
+      errors.push(
+        `${routeCrate.packageName} gateway_mount is descriptor-only (Router::new()); `
+        + 'served route crates must mount executable handlers',
+      );
+    }
   }
   const crateDir = assemblyCrateDir(applicationCode);
   const crateRoot = path.join(root, crateDir);
