@@ -133,3 +133,45 @@ test('rejects route crates without component ownership contracts', () => {
   assert.equal(result.ok, false);
   assert.match(result.errors.join('\n'), /missing specs\/component\.spec\.json ownership contract/u);
 });
+
+test('rejects apiMode none when authored production Rust sources mount HTTP routes', () => {
+  const root = fixture();
+  fs.rmSync(path.join(root, 'crates', 'sdkwork-routes-demo-app-api'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'Cargo.toml'),
+    '[workspace]\nmembers = []\nresolver = "2"\n\n[workspace.package]\nedition = "2021"\nversion = "0.1.0"\nlicense = "MIT"\n',
+  );
+  const serviceSource = path.join(root, 'services', 'demo', 'src');
+  fs.mkdirSync(serviceSource, { recursive: true });
+  fs.writeFileSync(
+    path.join(serviceSource, 'router.rs'),
+    'use axum::{routing::get, Router};\n\npub fn router() -> Router {\n    Router::new().route("/healthz", get(|| async { "ok" }))\n}\n',
+  );
+  assert.equal(materializeApiAssembly(root).ok, true);
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('\n'), /apiMode none contradicts executable authored HTTP routing/u);
+  assert.match(result.errors.join('\n'), /services\/demo\/src\/router\.rs/u);
+});
+
+test('accepts apiMode none when Rust routing evidence exists only in test fixtures', () => {
+  const root = fixture();
+  fs.rmSync(path.join(root, 'crates', 'sdkwork-routes-demo-app-api'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'Cargo.toml'),
+    '[workspace]\nmembers = []\nresolver = "2"\n\n[workspace.package]\nedition = "2021"\nversion = "0.1.0"\nlicense = "MIT"\n',
+  );
+  const fixtureSource = path.join(root, 'services', 'demo', 'tests', 'fixtures');
+  fs.mkdirSync(fixtureSource, { recursive: true });
+  fs.writeFileSync(
+    path.join(fixtureSource, 'router.rs'),
+    'use axum::{routing::get, Router};\nfn router() -> Router { Router::new().route("/fixture", get(|| async {})) }\n',
+  );
+  assert.equal(materializeApiAssembly(root).ok, true);
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.ok, true, result.errors?.join('\n'));
+});

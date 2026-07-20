@@ -16,6 +16,12 @@ const ROUTE_INFRA_MOUNT_PATTERN =
   /mount_infra_routes\s*\(|mount_[a-z0-9_]+_infra_routes\s*\(|service_router\s*\(/u;
 const ASSEMBLY_MULTI_GATEWAY_MOUNT_PATTERN =
   /router\s*=\s*router\s*\.merge\s*\(\s*sdkwork_routes_[a-z0-9_]+::gateway_mount\b/gu;
+const AUTHORED_HTTP_ROUTER_PATTERN = /(?:axum::)?Router(?:\s*<[^>{}]+>)?::new\s*\(/u;
+const AUTHORED_HTTP_ROUTE_PATTERN = /\.route(?:_service)?\s*\(/u;
+const AUTHORED_HTTP_SCAN_SKIP_DIRS = new Set([
+  '.git', '.runtime', 'artifacts', 'benches', 'dist', 'examples', 'external', 'fixtures',
+  'generated', 'node_modules', 'target', 'test', 'tests', 'vendor',
+]);
 
 export function readText(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -52,6 +58,59 @@ export function assemblyCrateDir(applicationCode) {
 
 export function assemblyPackageName(applicationCode) {
   return `sdkwork-api-${applicationCode}-assembly`;
+}
+
+function isAuthoredHttpScanSkippedDirectory(name) {
+  return AUTHORED_HTTP_SCAN_SKIP_DIRS.has(name) || name.startsWith('target-');
+}
+
+function walkAuthoredRustSources(root, current, excludedRoots, sources) {
+  if (!fs.existsSync(current)) return;
+  const resolvedCurrent = path.resolve(current);
+  if (excludedRoots.some((excluded) => resolvedCurrent === excluded || resolvedCurrent.startsWith(`${excluded}${path.sep}`))) {
+    return;
+  }
+  for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+    if (entry.isDirectory() && isAuthoredHttpScanSkippedDirectory(entry.name)) continue;
+    const absolute = path.join(current, entry.name);
+    if (entry.isDirectory()) {
+      walkAuthoredRustSources(root, absolute, excludedRoots, sources);
+    } else if (entry.isFile() && entry.name.endsWith('.rs')) {
+      sources.push({
+        absolute,
+        relative: path.relative(root, absolute).replaceAll('\\', '/'),
+      });
+    }
+  }
+}
+
+/**
+ * Finds production Rust sources that construct and mount executable HTTP routes outside the
+ * canonical API assembly. This rejects an apiMode:none declaration that merely hides legacy HTTP
+ * ownership instead of migrating it into route crates.
+ */
+export function findAuthoredRustHttpRouterEvidence(root, applicationCode) {
+  const repositoryRoot = path.resolve(root);
+  const excludedRoots = [
+    path.resolve(repositoryRoot, assemblyCrateDir(applicationCode)),
+  ];
+  const sources = [];
+  for (const sourceRoot of ['services', 'crates']) {
+    walkAuthoredRustSources(
+      repositoryRoot,
+      path.join(repositoryRoot, sourceRoot),
+      excludedRoots,
+      sources,
+    );
+  }
+  return sources
+    .filter(({ absolute }) => {
+      const productionSource = readText(absolute).split(/#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]/u, 1)[0];
+      return AUTHORED_HTTP_ROUTER_PATTERN.test(productionSource)
+        && AUTHORED_HTTP_ROUTE_PATTERN.test(productionSource);
+    })
+    .map(({ relative }) => relative)
+    .sort((left, right) => left.localeCompare(right));
 }
 
 export function parseCargoWorkspaceMembers(root) {

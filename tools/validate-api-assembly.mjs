@@ -11,6 +11,7 @@ import {
   assemblyCrateDir,
   buildAssemblyManifest,
   discoverRouteCrates,
+  findAuthoredRustHttpRouterEvidence,
   findGatewaySourceFiles,
   readJson,
   readText,
@@ -115,6 +116,15 @@ export function validateApiAssembly(root, { strict = false } = {}) {
 
   const errors = [];
   const warnings = [];
+  if (routeCrates.length === 0) {
+    const authoredHttpRouters = findAuthoredRustHttpRouterEvidence(root, applicationCode);
+    if (authoredHttpRouters.length > 0) {
+      errors.push(
+        `apiMode none contradicts executable authored HTTP routing in ${authoredHttpRouters.join(', ')}; `
+        + 'migrate the routes into canonical sdkwork-routes-<capability>-{open,app,backend}-api crates',
+      );
+    }
+  }
   for (const routeCrate of routeCrates) {
     if (!routeCrate.hasComponentSpec) {
       errors.push(`${routeCrate.memberDir} missing specs/component.spec.json ownership contract`);
