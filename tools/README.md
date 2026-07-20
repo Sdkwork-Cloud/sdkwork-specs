@@ -156,6 +156,10 @@ Rules:
   <workspace>) [--write]` creates a minimal canonical standalone host only for
   application roots whose assembly has a zero-argument `assemble_api_router`.
   It refuses application-specific dependency wiring instead of guessing.
+- `cleanup-descriptor-only-route-crates.mjs (--root <repo> | --workspace
+  <workspace>) [--write]` removes canonical route crates that contain only an
+  empty `gateway_mount` descriptor and no executable handler routes, clears
+  Cargo and generated route-manifest references, then rematerializes assembly.
 - `wire-api-assembly-host.mjs --root <application>` is a migration-only wiring
   aid for an existing canonical standalone gateway. It requires an explicit
   mutation scope and is never completion evidence by itself.

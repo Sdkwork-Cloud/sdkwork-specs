@@ -53,6 +53,10 @@ test('materializes a thin Web Framework standalone host from a zero-argument ass
   assert.match(main, /sdkwork_web_bootstrap::serve/u);
   assert.match(main, /init_tracing_from_env/u);
   assert.doesNotMatch(main, /TcpListener::bind/u);
+  assert.match(
+    fs.readFileSync(path.join(root, 'Cargo.toml'), 'utf8'),
+    /members = \[\n    "crates\/sdkwork-api-demo-standalone-gateway",\n/u,
+  );
 });
 
 test('deduplicates an existing canonical gateway Cargo workspace member', () => {
@@ -70,8 +74,30 @@ test('deduplicates an existing canonical gateway Cargo workspace member', () => 
 
   assert.equal(result.skipped, false);
   const repaired = fs.readFileSync(cargoPath, 'utf8');
-  assert.equal(repaired.match(new RegExp(member, 'gu')).length, 2);
   assert.equal(repaired.match(new RegExp(`"${member}"`, 'gu')).length, 1);
+});
+
+test('updates a previously generated scaffold and then becomes idempotent', () => {
+  const root = fixture();
+  materializeStandaloneGateway(root, { write: true });
+  const mainPath = path.join(
+    root,
+    'crates',
+    'sdkwork-api-demo-standalone-gateway',
+    'src',
+    'main.rs',
+  );
+  fs.writeFileSync(
+    mainPath,
+    'use sdkwork_api_demo_assembly as api_assembly;\nfn main() { let _ = api_assembly::assembly_route_count(); }\n',
+  );
+
+  const updated = materializeStandaloneGateway(root, { write: true });
+  const repeated = materializeStandaloneGateway(root, { write: true });
+
+  assert.equal(updated.skipped, false);
+  assert.equal(repeated.skipped, true);
+  assert.match(fs.readFileSync(mainPath, 'utf8'), /sdkwork_web_bootstrap::serve/u);
 });
 
 test('refuses to host a served assembly backed only by descriptor mounts', () => {

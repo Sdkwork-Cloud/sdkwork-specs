@@ -84,14 +84,21 @@ function repairDuplicateAssemblyEntrypoints(repoRoot, applicationCode, write) {
   const second = first < 0 ? -1 : source.indexOf(token, first + token.length);
   if (second < 0) return false;
 
-  const replacement = 'fn assemble_business_routes(';
-  let updated = `${source.slice(0, first)}${replacement}${source.slice(first + token.length)}`;
-  const shiftedSecond = second + (replacement.length - token.length);
-  const wrapperCall = updated.indexOf('assemble_api_router(', shiftedSecond + token.length);
-  if (wrapperCall < 0) {
+  const callAfterFirst = source.indexOf('assemble_api_router(', first + token.length);
+  if (callAfterFirst < 0) {
     throw new Error('duplicate assemble_api_router definitions do not contain a wrapper delegation call');
   }
-  updated = `${updated.slice(0, wrapperCall)}assemble_business_routes(${updated.slice(wrapperCall + 'assemble_api_router('.length)}`;
+  const helperDefinition = callAfterFirst < second ? second : first;
+  const wrapperCall = callAfterFirst < second
+    ? callAfterFirst
+    : source.indexOf('assemble_api_router(', second + token.length);
+  if (wrapperCall < 0) throw new Error('duplicate assemble_api_router definitions do not contain a wrapper delegation call');
+
+  const replacement = 'fn assemble_business_routes(';
+  let updated = `${source.slice(0, helperDefinition)}${replacement}${source.slice(helperDefinition + token.length)}`;
+  const callShift = helperDefinition < wrapperCall ? replacement.length - token.length : 0;
+  const shiftedCall = wrapperCall + callShift;
+  updated = `${updated.slice(0, shiftedCall)}assemble_business_routes(${updated.slice(shiftedCall + 'assemble_api_router('.length)}`;
   if (write) fs.writeFileSync(bootstrapPath, updated, 'utf8');
   return true;
 }

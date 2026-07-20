@@ -28,8 +28,9 @@ function assemblySignature(root, applicationCode) {
 function ensureWorkspaceDependency(root, packageName, declaration, write) {
   const cargoPath = path.join(root, 'Cargo.toml');
   const cargo = readText(cargoPath);
-  const dependencyPattern = new RegExp(`^${packageName.replaceAll('-', '\\-')}\\s*=`, 'mu');
-  if (dependencyPattern.test(cargo)) return false;
+  if (cargo.split(/\r?\n/u).some((line) => line.trimStart().startsWith(`${packageName} =`))) {
+    return false;
+  }
   if (!cargo.includes('[workspace.dependencies]')) {
     throw new Error('Cargo workspace is missing [workspace.dependencies]');
   }
@@ -44,6 +45,9 @@ function ensureWorkspaceDependency(root, packageName, declaration, write) {
 function renderMain(applicationCode, signature) {
   const libName = `sdkwork_api_${applicationCode.replaceAll('-', '_')}_assembly`;
   const envCode = applicationCode.replaceAll('-', '_').toUpperCase();
+  const assemblyExpression = signature.result
+    ? `api_assembly::assemble_api_router()${signature.async ? '\n        .await' : ''}\n        .map_err(|error| std::io::Error::other(error.to_string()))?`
+    : `api_assembly::assemble_api_router()${signature.async ? '.await' : ''}`;
   return `use ${libName} as api_assembly;
 use sdkwork_web_bootstrap::{service_router, ServiceRouterConfig};
 
@@ -52,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     sdkwork_web_bootstrap::init_tracing_from_env();
     let bind_address = std::env::var("SDKWORK_${envCode}_APPLICATION_PUBLIC_INGRESS_BIND")
         .unwrap_or_else(|_| "127.0.0.1:8080".to_owned());
-    let assembly = api_assembly::assemble_api_router()${signature.async ? '.await' : ''}${signature.result ? '.map_err(|error| std::io::Error::other(error.to_string()))?' : ''};
+    let assembly = ${assemblyExpression};
     let app = service_router(
         assembly.router,
         ServiceRouterConfig::default().with_always_ready(),
@@ -128,6 +132,26 @@ function renderComponent(applicationCode) {
   };
 }
 
+function isManagedScaffold(target, applicationCode) {
+  const libName = `sdkwork_api_${applicationCode.replaceAll('-', '_')}_assembly`;
+  const main = readText(path.join(target, 'src', 'main.rs'));
+  const componentPath = path.join(target, 'specs', 'component.spec.json');
+  let component = null;
+  try {
+    component = JSON.parse(readText(componentPath).replace(/^\uFEFF/u, ''));
+  } catch {
+    return false;
+  }
+  return main.includes(`use ${libName} as api_assembly;`)
+    && component?.component?.type === 'rust-api-standalone-gateway';
+}
+
+function writeIfChanged(filePath, content, write) {
+  if (readText(filePath) === content) return false;
+  if (write) fs.writeFileSync(filePath, content, 'utf8');
+  return true;
+}
+
 export function materializeStandaloneGateway(root, { write = false } = {}) {
   const resolved = path.resolve(root);
   if (!fs.existsSync(path.join(resolved, 'sdkwork.app.config.json'))) {
@@ -140,13 +164,14 @@ export function materializeStandaloneGateway(root, { write = false } = {}) {
   const packageName = `sdkwork-api-${applicationCode}-standalone-gateway`;
   const member = `crates/${packageName}`;
   const target = path.join(resolved, member);
-  if (fs.existsSync(target)) {
+  const targetExists = fs.existsSync(target);
+  if (targetExists && !isManagedScaffold(target, applicationCode)) {
     const workspaceChanged = ensureCargoWorkspaceMember(resolved, member, { write });
     return {
       root: resolved,
       applicationCode,
       skipped: !workspaceChanged,
-      reason: 'already-exists',
+      reason: 'authored-host-exists',
       actions: workspaceChanged ? [`deduplicate Cargo workspace member ${member}`] : [],
     };
   }
@@ -157,7 +182,7 @@ export function materializeStandaloneGateway(root, { write = false } = {}) {
   const signature = assemblySignature(resolved, applicationCode);
   if (!signature) throw new Error('assembly does not export an authored assemble_api_router signature');
   if (signature.params) throw new Error(`assemble_api_router requires application-specific wiring: ${signature.params}`);
-  const actions = [`create ${member}`];
+  const actions = [];
   const workspaceChanged = ensureCargoWorkspaceMember(resolved, member, { write });
   if (workspaceChanged) actions.push(`add Cargo workspace member ${member}`);
   if (ensureWorkspaceDependency(
@@ -176,18 +201,31 @@ export function materializeStandaloneGateway(root, { write = false } = {}) {
   )) {
     actions.push('add Web Framework bootstrap workspace dependency');
   }
+  const cargo = renderCargo(resolved, applicationCode);
+  const main = renderMain(applicationCode, signature);
+  const component = `${JSON.stringify(renderComponent(applicationCode), null, 2)}\n`;
+  const generatedFilesChanged = [
+    [path.join(target, 'Cargo.toml'), cargo],
+    [path.join(target, 'src', 'main.rs'), main],
+    [path.join(target, 'specs', 'component.spec.json'), component],
+  ].some(([filePath, content]) => readText(filePath) !== content);
+  if (generatedFilesChanged) {
+    actions.push(`${targetExists ? 'update' : 'create'} ${member}`);
+  }
   if (write) {
     fs.mkdirSync(path.join(target, 'src'), { recursive: true });
     fs.mkdirSync(path.join(target, 'specs'), { recursive: true });
-    fs.writeFileSync(
-      path.join(target, 'Cargo.toml'),
-      renderCargo(resolved, applicationCode),
-      'utf8',
-    );
-    fs.writeFileSync(path.join(target, 'src', 'main.rs'), renderMain(applicationCode, signature), 'utf8');
-    fs.writeFileSync(path.join(target, 'specs', 'component.spec.json'), `${JSON.stringify(renderComponent(applicationCode), null, 2)}\n`, 'utf8');
+    writeIfChanged(path.join(target, 'Cargo.toml'), cargo, true);
+    writeIfChanged(path.join(target, 'src', 'main.rs'), main, true);
+    writeIfChanged(path.join(target, 'specs', 'component.spec.json'), component, true);
   }
-  return { root: resolved, applicationCode, skipped: false, actions };
+  return {
+    root: resolved,
+    applicationCode,
+    skipped: actions.length === 0,
+    reason: actions.length === 0 ? 'already-aligned' : undefined,
+    actions,
+  };
 }
 
 function usage() {

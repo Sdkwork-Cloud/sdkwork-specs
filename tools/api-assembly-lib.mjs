@@ -72,6 +72,7 @@ export function ensureCargoWorkspaceMember(root, member, { write = true } = {}) 
   let found = false;
   let changed = false;
   const normalizedMember = member.replaceAll('\\', '/');
+  const emptyMembers = !membersMatch[1].trim();
   const lines = membersMatch[1].split('\n').filter((line) => {
     const quoted = /^\s*"([^"]+)"\s*,?\s*$/u.exec(line);
     if (!quoted || quoted[1].replaceAll('\\', '/') !== normalizedMember) return true;
@@ -83,16 +84,20 @@ export function ensureCargoWorkspaceMember(root, member, { write = true } = {}) 
     return false;
   });
   if (!found) {
-    lines.splice(lines[0]?.trim() ? 0 : 1, 0, `    "${normalizedMember}",`);
+    if (emptyMembers) {
+      lines.splice(0, lines.length, '', `    "${normalizedMember}",`, '');
+    } else {
+      lines.splice(lines[0]?.trim() ? 0 : 1, 0, `    "${normalizedMember}",`);
+    }
     changed = true;
   }
   if (!changed) return false;
 
   const updatedBody = lines.join('\n');
-  const updated = `${cargo.slice(0, membersMatch.index)}${membersMatch[0].replace(
-    membersMatch[1],
-    updatedBody,
-  )}${cargo.slice(membersMatch.index + membersMatch[0].length)}`;
+  const bodyStart = membersMatch.index + membersMatch[0].indexOf('[') + 1;
+  const updated = `${cargo.slice(0, bodyStart)}${updatedBody}${cargo.slice(
+    bodyStart + membersMatch[1].length,
+  )}`;
   if (write) fs.writeFileSync(cargoPath, updated, 'utf8');
   return true;
 }
