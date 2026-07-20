@@ -312,3 +312,47 @@ test('API assembly includes application-code and capability-named route members 
     ['sdkwork-routes-demo-app-api', 'sdkwork-routes-membership-backend-api'],
   );
 });
+
+test('refuses incompatible route mount parameters before writing an assembly', () => {
+  const root = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-')),
+    'sdkwork-demo',
+  );
+  writeText(path.join(root, 'sdkwork.app.config.json'), '{}\n');
+  writeText(
+    path.join(root, 'Cargo.toml'),
+    [
+      '[workspace]',
+      'members = [',
+      '  "crates/sdkwork-routes-demo-app-api",',
+      '  "crates/sdkwork-routes-demo-backend-api"',
+      ']',
+      '',
+    ].join('\n'),
+  );
+  writeText(
+    path.join(root, 'crates/sdkwork-routes-demo-app-api/Cargo.toml'),
+    '[package]\nname = "sdkwork-routes-demo-app-api"\nversion = "0.0.0"\n',
+  );
+  writeText(
+    path.join(root, 'crates/sdkwork-routes-demo-app-api/src/lib.rs'),
+    'pub async fn gateway_mount(pool: sqlx::SqlitePool) -> axum::Router { axum::Router::new() }\n',
+  );
+  writeText(
+    path.join(root, 'crates/sdkwork-routes-demo-backend-api/Cargo.toml'),
+    '[package]\nname = "sdkwork-routes-demo-backend-api"\nversion = "0.0.0"\n',
+  );
+  writeText(
+    path.join(root, 'crates/sdkwork-routes-demo-backend-api/src/lib.rs'),
+    'pub async fn gateway_mount(host: std::sync::Arc<DemoServiceHost>) -> axum::Router { axum::Router::new() }\n',
+  );
+
+  assert.throws(
+    () => materializeApiAssembly(root),
+    /gateway_mount parameters are incompatible/u,
+  );
+  assert.equal(
+    fs.existsSync(path.join(root, 'crates/sdkwork-api-demo-assembly')),
+    false,
+  );
+});

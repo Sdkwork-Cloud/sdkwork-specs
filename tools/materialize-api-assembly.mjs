@@ -426,6 +426,14 @@ function renderBootstrapRs(applicationCode, mounts, root, routeCrates) {
   const paramSets = [
     ...new Set(activeMounts.map((item) => normalizeMountParams(item.mount.params))),
   ];
+  if (paramSets.length > 1 && paramSets.some(Boolean)) {
+    const signatures = activeMounts
+      .map((item) => `${item.packageName ?? item.libName}(${normalizeMountParams(item.mount.params)})`)
+      .join(', ');
+    throw new Error(
+      `route gateway_mount parameters are incompatible for generated assembly bootstrap: ${signatures}; add an authored bootstrap that resolves application context explicitly`,
+    );
+  }
   const sharedParams = paramSets.length === 1 ? paramSets[0] : '';
   const needsAsync = activeMounts.some((item) => item.mount.async);
   const extraUses = new Set();
@@ -572,6 +580,10 @@ export function materializeApiAssembly(root) {
   const mounts = discoverGatewayMounts(root, routeCrates);
   const workspaceDeps = readWorkspaceDependencyNames(root);
   const bootstrapDeps = resolveAssemblyBootstrapDeps(mounts, workspaceDeps);
+  const authoredBootstrapSource = readText(bootstrapPath);
+  const generatedBootstrapSource = preserveBootstrap
+    ? null
+    : renderBootstrapRs(applicationCode, mounts, root, routeCrates);
 
   writeFileEnsuringDir(path.join(crateDir, 'assembly-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   writeFileEnsuringDir(
@@ -588,10 +600,6 @@ export function materializeApiAssembly(root) {
   );
   writeFileEnsuringDir(path.join(crateDir, 'src', 'generated.rs'), renderGeneratedRs(routeCrates));
   ensureAssemblyComponentSpecs(root, applicationCode);
-  const authoredBootstrapSource = readText(bootstrapPath);
-  const generatedBootstrapSource = preserveBootstrap
-    ? null
-    : renderBootstrapRs(applicationCode, mounts, root, routeCrates);
   const bootstrapSource = generatedBootstrapSource ?? authoredBootstrapSource;
   const bootstrapReady =
     bootstrapSource.trim().length > 0 && !bootstrapNeedsRegeneration(bootstrapSource);
