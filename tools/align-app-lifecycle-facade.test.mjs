@@ -22,6 +22,8 @@ function fixture() {
       check: 'cargo check --workspace',
       verify: 'pnpm check && pnpm test',
       clean: 'node scripts/clean.mjs',
+      'api:assembly:materialize': 'node scripts/gateway/assembly-materialize.mjs',
+      'api:assembly:validate': 'node scripts/gateway/assembly-validate.mjs',
     },
   };
   const topology = {

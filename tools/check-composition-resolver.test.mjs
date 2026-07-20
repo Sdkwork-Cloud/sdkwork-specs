@@ -126,7 +126,7 @@ test('resolveComposition prefers verified standalone-host assembly mounts over d
   });
   writeJson(path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/specs/component.spec.json'), {
     component: {
-      name: 'sdkwork-demo-standalone-gateway',
+      name: 'sdkwork-api-demo-standalone-gateway',
       type: 'rust-crate',
       surface: 'backend',
     },

@@ -140,9 +140,9 @@ function alignApiAssemblyScripts(scripts, actions) {
     'api:assembly:validate': 'node ../sdkwork-specs/tools/validate-api-assembly.mjs --root .',
   };
   for (const [name, command] of Object.entries(commands)) {
-    if (scripts[name]) continue;
+    if (scripts[name] === command) continue;
     scripts[name] = command;
-    actions.push(`define ${name} standard tool entrypoint`);
+    actions.push(`delegate ${name} to the canonical sdkwork-specs tool`);
   }
 }
 

@@ -347,8 +347,8 @@ per plane**:
   keep extra application HTTP listeners alive locally.
 
 Normative gateway integration rules live in `APPLICATION_GATEWAY_SPEC.md`
-section 5.6. Workspace verification:
-`node tools/audit-single-http-ingress-workspace.mjs`.
+section 5. From an application root, workspace verification is:
+`node ../sdkwork-specs/tools/audit-single-http-ingress-workspace.mjs --workspace ..`.
 
 Adoption steps: `APP_RUNTIME_TOPOLOGY_ADOPTION.md`.
 
@@ -416,9 +416,10 @@ Rules:
   secrets, probes, and SDK base URL resolution are explicit while client
   bootstrap still receives one application ingress URL.
 - Single HTTP ingress checks must pass:
-  `node tools/check-single-http-ingress.mjs --root .` per repository and
-  `node tools/audit-single-http-ingress-workspace.mjs --workspace ..` across
-  SDKWork application repositories.
+  `node ../sdkwork-specs/tools/check-single-http-ingress.mjs --root .` per
+  application root and
+  `node ../sdkwork-specs/tools/audit-single-http-ingress-workspace.mjs --workspace ..`
+  across SDKWork application repositories.
 - API assembly and application cloud-gateway boundary checks must pass per
   `API_ASSEMBLY_SPEC.md`.
 

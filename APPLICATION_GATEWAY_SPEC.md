@@ -190,12 +190,14 @@ application ownership or autostart of `sdkwork-api-cloud-gateway`.
 
 ## 11. Verification
 
+Run application checks from the selected application root:
+
 ```text
-node tools/validate-api-assembly.mjs --root .
-node tools/check-application-cloud-gateway-boundary.mjs --root .
-node tools/check-single-http-ingress.mjs --root .
-node tools/scan-duplicate-gateway-api-deps.mjs --root .
-node tools/check-route-path-collisions.mjs --root .
+node ../sdkwork-specs/tools/validate-api-assembly.mjs --root .
+node ../sdkwork-specs/tools/check-application-cloud-gateway-boundary.mjs --root .
+node ../sdkwork-specs/tools/check-single-http-ingress.mjs --root .
+node ../sdkwork-specs/tools/scan-duplicate-gateway-api-deps.mjs --root .
+node ../sdkwork-specs/tools/check-route-path-collisions.mjs --root .
 ```
 
 ## 12. Acceptance Checklist

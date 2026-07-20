@@ -42,7 +42,7 @@ function deployment(overrides = {}) {
 test('deployment plans isolate host binaries and nginx upstreams by typed driver', () => {
   const topology = {
     components: {
-      standaloneGateway: { binary: 'sdkwork-demo-standalone-gateway' },
+      standaloneGateway: { binary: 'sdkwork-api-demo-standalone-gateway' },
       cloudGateway: { binary: 'sdkwork-api-cloud-gateway' },
     },
   };
@@ -51,7 +51,7 @@ test('deployment plans isolate host binaries and nginx upstreams by typed driver
       deliveryKind: 'host-package',
       deploymentDriver: 'nginx',
     })),
-    'sdkwork-demo-standalone-gateway',
+    'sdkwork-api-demo-standalone-gateway',
   );
   assert.equal(selectDeploymentBinary(topology, deployment()), null);
   assert.equal(shouldResolveDeploymentUpstreams(deployment()), false);

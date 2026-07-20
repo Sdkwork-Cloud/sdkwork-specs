@@ -978,33 +978,35 @@ Rules:
   `cloud-hosted.`, or when they do not follow
   `<deploymentProfile>.<environment>`.
 - Workspace topology parity checks `MUST` run
-  `node tools/check-topology-deployment-profiles.mjs --workspace ..` and pass
+  `node ../sdkwork-specs/tools/check-topology-deployment-profiles.mjs --workspace ..`
+  from an application root and pass
   for every application repository with `specs/topology.spec.json`.
 - A single application may run
-  `node tools/check-topology-deployment-profiles.mjs --root .`; the checker
+  `node ../sdkwork-specs/tools/check-topology-deployment-profiles.mjs --root .`;
+  the checker
   `MUST` support both root and workspace verification without changing rules.
 - Single HTTP ingress checks `MUST` run
-  `node tools/check-single-http-ingress.mjs --root .` for repositories with
+  `node ../sdkwork-specs/tools/check-single-http-ingress.mjs --root .` for repositories with
   topology specs or dev orchestration scripts, and
-  `node tools/audit-single-http-ingress-workspace.mjs --workspace ..` across
+  `node ../sdkwork-specs/tools/audit-single-http-ingress-workspace.mjs --workspace ..` across
   SDKWork application repositories per `APPLICATION_GATEWAY_SPEC.md` section 5 and
   `APP_RUNTIME_TOPOLOGY_SPEC.md` §8. Workspace audit `MUST` pass with zero
   multi-listener orchestration errors; gateway crate migration warnings may
   remain until `--strict` is enabled repository-wide.
 - API assembly checks `MUST` run
-  `node tools/validate-api-assembly.mjs --root .` for every application root,
+  `node ../sdkwork-specs/tools/validate-api-assembly.mjs --root .` for every application root,
   including applications with capability-named routes or `apiMode: none`, and
   `MUST` fail when
   `sdkwork-api-<application-code>-assembly` is missing, `assembly-manifest.json`
   drifts from component/route/Cargo discovery, or standalone/platform gateway sources hand-merge
   `sdkwork_routes_*` / `sdkwork-routes-*` routers.
 - Workspace API assembly audits `MUST` run
-  `node tools/audit-api-assembly-workspace.mjs --workspace ..` and pass with
+  `node ../sdkwork-specs/tools/audit-api-assembly-workspace.mjs --workspace ..` and pass with
   zero errors and zero warnings before claiming API assembly alignment is complete.
 - Repositories with assembly crates `MUST` run `pnpm api:assembly:validate` in CI
   or root `pnpm verify` when gateway crates or route crates change.
 - Application cloud-gateway boundary checks `MUST` run
-  `node tools/check-application-cloud-gateway-boundary.mjs --root .` and fail
+  `node ../sdkwork-specs/tools/check-application-cloud-gateway-boundary.mjs --root .` and fail
   on application Cargo/pnpm dependencies, startup scripts, source config,
   topology ownership, deployment bundles, or release assets that identify or
   operate `sdkwork-api-cloud-gateway`. They also `MUST` fail on the retired

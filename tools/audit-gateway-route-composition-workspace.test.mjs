@@ -13,7 +13,7 @@ function createSettingsRepo(mainSource) {
   );
   const mainPath = path.join(
     root,
-    'crates/sdkwork-settings-standalone-gateway/src/main.rs',
+    'crates/sdkwork-api-settings-standalone-gateway/src/main.rs',
   );
   fs.mkdirSync(path.dirname(mainPath), { recursive: true });
   fs.writeFileSync(mainPath, mainSource, 'utf8');

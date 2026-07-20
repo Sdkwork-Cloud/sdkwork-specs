@@ -96,13 +96,13 @@ test('frontend port declarations must be arrays of named public-export-backed po
 
 test('same-origin dependency surfaces require executable runtime entrypoints', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-component-ports-runtime-'));
-  writeJson(path.join(root, 'crates/sdkwork-demo-gateway/specs/component.spec.json'), {
+  writeJson(path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/specs/component.spec.json'), {
     schemaVersion: 1,
     kind: 'sdkwork.component.spec',
     component: {
-      name: 'sdkwork-demo-standalone-gateway',
+      name: 'sdkwork-api-demo-standalone-gateway',
       type: 'rust-standalone-gateway',
-      root: 'crates/sdkwork-demo-gateway',
+      root: 'crates/sdkwork-api-demo-standalone-gateway',
       domain: 'demo',
       capability: 'gateway',
       languages: ['rust'],

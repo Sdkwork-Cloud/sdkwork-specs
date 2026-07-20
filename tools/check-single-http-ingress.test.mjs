@@ -35,7 +35,7 @@ test('accepts standalone and cloud profiles with one gateway application ingress
       processes: [
         {
           id: 'application.public-ingress',
-          binary: 'sdkwork-demo-standalone-gateway',
+          binary: 'sdkwork-api-demo-standalone-gateway',
         },
       ],
     },
@@ -65,7 +65,7 @@ test('rejects retired split and unified profile ids and serviceLayout vocabulary
         processes: [
           {
             id: 'application.public-ingress',
-            binary: 'sdkwork-demo-standalone-gateway',
+            binary: 'sdkwork-api-demo-standalone-gateway',
           },
         ],
       },

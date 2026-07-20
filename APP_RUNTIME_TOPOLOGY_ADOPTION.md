@@ -232,7 +232,7 @@ repository-specific rows in this standard:
 Run:
 
 ```bash
-node tools/audit-single-http-ingress-workspace.mjs --workspace ..
+node ../sdkwork-specs/tools/audit-single-http-ingress-workspace.mjs --workspace ..
 ```
 
 Use `--strict` to fail CI on gateway migration warnings after hard errors are cleared.

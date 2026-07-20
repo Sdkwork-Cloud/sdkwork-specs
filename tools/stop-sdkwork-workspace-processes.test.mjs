@@ -41,8 +41,8 @@ test('selects Windows CIM processes by ProcessId', () => {
     {
       ProcessId: 112,
       ParentProcessId: 111,
-      Name: 'sdkwork-im-standalone-gateway.exe',
-      ExecutablePath: 'E:/sdkwork-space/sdkwork-im/target/debug/sdkwork-im-standalone-gateway.exe',
+      Name: 'sdkwork-api-im-standalone-gateway.exe',
+      ExecutablePath: 'E:/sdkwork-space/sdkwork-im/target/debug/sdkwork-api-im-standalone-gateway.exe',
     },
     {
       ProcessId: 113,

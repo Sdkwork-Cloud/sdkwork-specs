@@ -21,7 +21,7 @@ function scaffold() {
   );
   write(
     root,
-    'crates/sdkwork-demo-standalone-gateway/src/main.rs',
+    'crates/sdkwork-api-demo-standalone-gateway/src/main.rs',
     'fn main() { enable_process_shared_database_pool(); bootstrap_demo_database_from_env(); }\n',
   );
   write(
@@ -41,15 +41,15 @@ function scaffold() {
         schema: 'sdkwork_ai_dev',
       },
       processes: [{
-        id: 'sdkwork-demo-standalone-gateway',
-        entrypoint: 'crates/sdkwork-demo-standalone-gateway/src/main.rs',
-        poolOwner: 'crates/sdkwork-demo-standalone-gateway/src/main.rs',
+        id: 'sdkwork-api-demo-standalone-gateway',
+        entrypoint: 'crates/sdkwork-api-demo-standalone-gateway/src/main.rs',
+        poolOwner: 'crates/sdkwork-api-demo-standalone-gateway/src/main.rs',
         driver: 'sdkwork-database-sqlx-pg',
         poolCount: 1,
         databaseUrlEnv: 'SDKWORK_DEMO_DATABASE_URL',
         schemaEnv: 'SDKWORK_DEMO_DATABASE_SCHEMA',
         maxConnectionsEnv: 'SDKWORK_DEMO_DATABASE_MAX_CONNECTIONS',
-        productionSourceRoots: ['crates/sdkwork-demo-standalone-gateway/src'],
+        productionSourceRoots: ['crates/sdkwork-api-demo-standalone-gateway/src'],
         consumers: [{
           module: 'demo',
           poolMode: 'injected',
@@ -71,7 +71,7 @@ assert.equal(validateProcessSharedDatabasePool(validRoot).ok, true);
 const lateEnableRoot = scaffold();
 write(
   lateEnableRoot,
-  'crates/sdkwork-demo-standalone-gateway/src/main.rs',
+  'crates/sdkwork-api-demo-standalone-gateway/src/main.rs',
   'fn main() { bootstrap_demo_database_from_env(); enable_process_shared_database_pool(); }\n',
 );
 const lateEnable = validateProcessSharedDatabasePool(lateEnableRoot);
@@ -81,7 +81,7 @@ assert.ok(lateEnable.failures.some((failure) => failure.includes('after database
 const duplicatePoolRoot = scaffold();
 write(
   duplicatePoolRoot,
-  'crates/sdkwork-demo-standalone-gateway/src/extra.rs',
+  'crates/sdkwork-api-demo-standalone-gateway/src/extra.rs',
   'fn open() { let _pool = PgPoolOptions::new(); }\n',
 );
 const duplicatePool = validateProcessSharedDatabasePool(duplicatePoolRoot);
@@ -91,7 +91,7 @@ assert.ok(duplicatePool.failures.some((failure) => failure.includes('PgPoolOptio
 const testPoolRoot = scaffold();
 write(
   testPoolRoot,
-  'crates/sdkwork-demo-standalone-gateway/src/test_support.rs',
+  'crates/sdkwork-api-demo-standalone-gateway/src/test_support.rs',
   '#[cfg(test)]\nmod tests { fn open() { let _pool = PgPoolOptions::new(); } }\n',
 );
 assert.equal(validateProcessSharedDatabasePool(testPoolRoot).ok, true);

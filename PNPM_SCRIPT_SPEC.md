@@ -34,7 +34,10 @@ Rules:
 - Repository root commands are the stable automation contract.
 - App surface and package commands may be narrower, but they should still use standard base names such as `dev`, `build`, `typecheck`, `lint`, `test`, and `clean`.
 - Internal runner names may contain product names when the file is application-owned, but those names `MUST NOT` leak into public root script names.
-- Root commands `SHOULD` call a standard dispatcher such as `node scripts/sdkwork-command.mjs ...` or a thin equivalent wrapper.
+- Root commands `SHOULD` call a standard dispatcher such as
+  `node scripts/sdkwork-command.mjs ...` or a thin equivalent wrapper, unless
+  the task-specific standard requires direct canonical-tool delegation. The
+  `api:assembly:*` commands in section 7 are such an exception.
 - Vendored upstream source trees under `external/`, `third_party/`, and `vendor/` are excluded from application-owned script-name validation. SDKWork-owned wrappers and workspace packages around them remain in scope.
 - Historical release records under `docs/release/` and tool-owned scratch plans such as `.mimocode/` are not active command documentation and are excluded. Current README, AGENTS, guides, references, runbooks, architecture decisions, and migration instructions remain in scope.
 
@@ -637,7 +640,9 @@ Rules:
       platform gateway repository exposes `gateway:<action>:cloud`.
 - [ ] Release commands use `release:<phase>[:runtimeTarget]:<deploymentProfile>` and deployment commands use `deploy:<phase>:<deploymentProfile>[:provider]`.
 - [ ] Publish, apply, and rollback do not infer an ambiguous deployment profile or lifecycle environment.
-- [ ] Root public scripts call a standard dispatcher or thin wrapper.
+- [ ] Root public scripts call a standard dispatcher or thin wrapper, except
+      commands whose task-specific standard requires direct canonical-tool
+      delegation, including `api:assembly:*`.
 - [ ] App surface/package scripts remain package-local and do not become a second root automation standard.
 - [ ] `pnpm clean` does not delete git-tracked build-critical source files (see `CODE_STYLE_SPEC.md` §7).
 - [ ] `README.md`, related architecture specs, and `TEST_SPEC.md` reference this standard.
