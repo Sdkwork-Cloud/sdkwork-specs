@@ -79,6 +79,34 @@ test('API assembly Cargo dependencies use workspace declarations when root owns 
     ),
     true,
   );
+  const componentSpec = JSON.parse(
+    fs.readFileSync(
+      path.join(root, 'crates/sdkwork-api-agents-assembly/specs/component.spec.json'),
+      'utf8',
+    ),
+  );
+  assert.equal(componentSpec.contracts.layerRole, 'runtime-composition');
+  assert.equal(componentSpec.contracts.routeManifest, undefined);
+  assert.deepEqual(componentSpec.contracts.providedPorts, [
+    { name: 'agentsApiAssembly', export: '.' },
+  ]);
+  for (const requiredSpec of [
+    'COMPONENT_SPEC.md',
+    'API_ASSEMBLY_SPEC.md',
+    'APPLICATION_GATEWAY_SPEC.md',
+    'WEB_FRAMEWORK_SPEC.md',
+    'DATABASE_FRAMEWORK_SPEC.md',
+    'APP_RUNTIME_TOPOLOGY_SPEC.md',
+    'CODE_STYLE_SPEC.md',
+    'NAMING_SPEC.md',
+    'RUST_CODE_SPEC.md',
+    'TEST_SPEC.md',
+  ]) {
+    assert.ok(
+      componentSpec.canonicalSpecs.some(({ file }) => file === requiredSpec),
+      `generated component spec must reference ${requiredSpec}`,
+    );
+  }
   const libRs = fs.readFileSync(
     path.join(root, 'crates/sdkwork-api-agents-assembly/src/lib.rs'),
     'utf8',

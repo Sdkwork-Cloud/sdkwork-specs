@@ -307,6 +307,11 @@ function ensureAssemblyComponentSpecs(root, applicationCode) {
       },
       canonicalSpecs: [
         {
+          file: 'COMPONENT_SPEC.md',
+          path: '../../../sdkwork-specs/COMPONENT_SPEC.md',
+          purpose: 'Component identity, layer role, ports, and integration contract rules.',
+        },
+        {
           file: 'API_ASSEMBLY_SPEC.md',
           path: '../../../sdkwork-specs/API_ASSEMBLY_SPEC.md',
           purpose: 'API ownership, host-neutral composition, and verification rules.',
@@ -326,11 +331,38 @@ function ensureAssemblyComponentSpecs(root, applicationCode) {
           path: '../../../sdkwork-specs/DATABASE_FRAMEWORK_SPEC.md',
           purpose: 'Database lifecycle bootstrap ownership for embedded assemblies.',
         },
+        {
+          file: 'APP_RUNTIME_TOPOLOGY_SPEC.md',
+          path: '../../../sdkwork-specs/APP_RUNTIME_TOPOLOGY_SPEC.md',
+          purpose: 'Standalone and cloud host topology ownership.',
+        },
+        {
+          file: 'CODE_STYLE_SPEC.md',
+          path: '../../../sdkwork-specs/CODE_STYLE_SPEC.md',
+          purpose: 'Authored source and generated artifact boundaries.',
+        },
+        {
+          file: 'NAMING_SPEC.md',
+          path: '../../../sdkwork-specs/NAMING_SPEC.md',
+          purpose: 'Canonical API assembly package and export naming.',
+        },
+        {
+          file: 'RUST_CODE_SPEC.md',
+          path: '../../../sdkwork-specs/RUST_CODE_SPEC.md',
+          purpose: 'Rust crate structure and dependency rules.',
+        },
+        {
+          file: 'TEST_SPEC.md',
+          path: '../../../sdkwork-specs/TEST_SPEC.md',
+          purpose: 'Assembly contract and integration verification.',
+        },
       ],
       contracts: {
+        layerRole: 'runtime-composition',
         publicExports: ['.'],
+        providedPorts: [{ name: `${applicationCode}ApiAssembly`, export: '.' }],
+        requiredPorts: [],
         runtimeEntrypoints: [],
-        routeManifest: 'assembly-manifest.json',
         sdkClients: [],
         sdkDependencies: [],
         dependencyApiExports: [],

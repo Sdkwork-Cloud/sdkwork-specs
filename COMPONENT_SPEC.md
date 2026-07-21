@@ -235,7 +235,10 @@ Rules:
 - A `rust-api-assembly` component `MUST` use component and Cargo package name
   `sdkwork-api-<application-code>-assembly`, live under
   `crates/sdkwork-api-<application-code>-assembly/`, declare
-  `component.surface: "api-assembly"`, and own `assembly-manifest.json`.
+  `component.surface: "api-assembly"`, declare
+  `contracts.layerRole: "runtime-composition"`, and own
+  `assembly-manifest.json`. `api-assembly` is the component type, capability,
+  and surface vocabulary; it is not a composable layer role.
 - A `rust-api-standalone-gateway` component `MUST` use component and Cargo package name
   `sdkwork-api-<application-code>-standalone-gateway`, live under
   `crates/sdkwork-api-<application-code>-standalone-gateway/`, and declare

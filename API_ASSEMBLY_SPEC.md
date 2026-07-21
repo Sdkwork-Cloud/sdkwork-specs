@@ -71,6 +71,7 @@ Canonical identities:
 | API assembly package | `sdkwork-api-<application-code>-assembly` |
 | Rust library | `sdkwork_api_<application_code>_assembly` |
 | Component type | `rust-api-assembly` |
+| Component layer role | `runtime-composition` |
 | Manifest kind | `sdkwork.api.assembly` |
 | Pnpm namespace | `api:assembly:*` |
 
@@ -80,6 +81,12 @@ repository may have a different identity, but `app.key`, `backend.appId`,
 product name, process name, and repository stem `MUST NOT` silently rename the
 assembly. Tools fail closed when the selected application root is not
 canonical; move/select the canonical application root before bootstrapping.
+
+The component contract `MUST` use `component.type: "rust-api-assembly"`,
+`component.capability: "api-assembly"`, `component.surface: "api-assembly"`,
+and `contracts.layerRole: "runtime-composition"`. These fields classify
+different dimensions and are not interchangeable; `api-assembly` `MUST NOT`
+be used as a `layerRole`.
 
 Retired identities:
 
