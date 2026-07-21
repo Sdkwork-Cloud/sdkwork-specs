@@ -238,6 +238,35 @@ Dev scripts `MUST`:
 5. Print the resolved `deploymentProfile`, `environment`, runtime target,
    database profile when applicable, and profile id at startup.
 
+### 8.1 Access Endpoints
+
+Development access URLs are resolved from topology instead of inferred from a
+port number, process name, framework role, or application-specific log code.
+An orchestration profile `MAY` declare `accessEndpoints`. Each endpoint:
+
+- `MUST` have a stable `id`, `kind`, absolute `path`, and exactly one source:
+  `processId` or `surfaceId`;
+- `MUST` reference a process in the same profile or a declared topology
+  surface;
+- `MUST` reference a process with `bindEnv` when `source.processId` is used;
+- `MAY` declare `runtimeTargets` and `clientArchitectures` using the same
+  canonical vocabularies as process selection;
+- `MAY` set `primary: true`; at most one selected endpoint may be primary for
+  one resolved runtime plan;
+- `MUST` use `kind: user-interface` for a browser-accessible application UI
+  and `kind: api-reference` for an OpenAPI or equivalent developer document.
+
+The shared `@sdkwork/app-topology` runtime plan `MUST` resolve selected access
+endpoints after process and client-architecture filtering. It owns bind parsing,
+wildcard-listener loopback projection, LAN address discovery, deterministic URL
+ordering, and standard access-line formatting. Application launchers may add
+product-specific API route diagnostics, but they `MUST NOT` guess that
+`application.public-ingress` serves a UI root or publish a URL that was not
+declared by `accessEndpoints`.
+
+Adding `accessEndpoints` is backward-compatible. Profiles without the field
+retain their existing process plan and do not receive inferred access URLs.
+
 Root `dev:browser` and `dev:desktop` are default dev orchestration commands.
 They `MUST` resolve to `standalone.development` and the PostgreSQL dev database
 profile unless the command name explicitly selects another database or `cloud`.

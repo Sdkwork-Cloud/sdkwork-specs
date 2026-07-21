@@ -190,7 +190,7 @@ export function parseCargoWorkspaceMembers(root) {
 export function discoverRouteCrates(root, applicationCode) {
   const members = [...new Set(parseCargoWorkspaceMembers(root))];
   const routeMembers = members
-    .filter((member) => /^crates\/sdkwork-routes-[a-z0-9-]+-(?:app|backend|open)-api$/u.test(member))
+    .filter((member) => /^crates\/sdkwork-routes-[a-z0-9-]+-(?:app|backend|open|internal)-api$/u.test(member))
     .filter((member) => !/^sdkwork-routes-health-/u.test(path.basename(member)))
     .filter((member) => !/-common$/u.test(path.basename(member)))
     .sort((a, b) => a.localeCompare(b));
@@ -213,7 +213,7 @@ export function discoverRouteCrates(root, applicationCode) {
     const routeManifestRef = resolveRouteManifestRef(root, memberDir, routeManifest);
     const pathPrefix = extractPathPrefix(libRs, manifestRs);
     const declaredSurface = component?.component?.surface;
-    const surface = ['app-api', 'backend-api', 'open-api'].includes(declaredSurface)
+    const surface = ['app-api', 'backend-api', 'open-api', 'internal-api'].includes(declaredSurface)
       ? declaredSurface
       : extractSurface(packageName);
     const gatewayMountReturn = extractGatewayMountReturn(libRs);
@@ -550,8 +550,11 @@ export function parseGatewayMountSignature(libRs) {
 
 export function discoverGatewayMounts(root, routeCrates) {
   return routeCrates.map((crate) => {
-    const libRs = readText(path.join(root, crate.memberDir, 'src', 'lib.rs'));
-    const mount = parseGatewayMountSignature(libRs);
+    const source = [
+      readText(path.join(root, crate.memberDir, 'src', 'lib.rs')),
+      readText(path.join(root, crate.memberDir, 'src', 'routes.rs')),
+    ].join('\n');
+    const mount = parseGatewayMountSignature(source);
     return { ...crate, mount };
   });
 }

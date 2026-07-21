@@ -28,7 +28,26 @@
       "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-i18n-pc-react",
       "../sdkwork-core/sdkwork-core-pc-react",
       "../sdkwork-ui/sdkwork-ui-pc-react",
-      "../sdkwork-utils/packages/sdkwork-utils-typescript"
+      "../sdkwork-utils/packages/sdkwork-utils-typescript",
+      "../sdkwork-membership/apps/sdkwork-membership-common/packages/sdkwork-membership-contracts",
+      "../sdkwork-membership/apps/sdkwork-membership-common/packages/sdkwork-membership-sdk-ports",
+      "../sdkwork-membership/apps/sdkwork-membership-common/packages/sdkwork-membership-service",
+      "../sdkwork-membership/apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-membership",
+      "../sdkwork-membership/apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-subscription",
+      "../sdkwork-membership/sdks/sdkwork-membership-app-sdk/sdkwork-membership-app-sdk-typescript",
+      "../sdkwork-membership/sdks/sdkwork-membership-backend-sdk/sdkwork-membership-backend-sdk-typescript",
+      "../sdkwork-order/apps/sdkwork-order-common/packages/sdkwork-order-sdk-ports",
+      "../sdkwork-order/apps/sdkwork-order-common/packages/sdkwork-order-service",
+      "../sdkwork-order/apps/sdkwork-order-pc/packages/sdkwork-order-pc-checkout",
+      "../sdkwork-order/apps/sdkwork-order-pc/packages/sdkwork-order-pc-recharge",
+      "../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript",
+      "../sdkwork-order/sdks/sdkwork-order-backend-sdk/sdkwork-order-backend-sdk-typescript",
+      "../sdkwork-promotion/apps/sdkwork-promotion-common/packages/sdkwork-promotion-contracts",
+      "../sdkwork-promotion/apps/sdkwork-promotion-common/packages/sdkwork-promotion-sdk-ports",
+      "../sdkwork-promotion/apps/sdkwork-promotion-common/packages/sdkwork-promotion-service",
+      "../sdkwork-promotion/apps/sdkwork-promotion-pc/packages/sdkwork-promotion-pc-core",
+      "../sdkwork-promotion/apps/sdkwork-promotion-pc/packages/sdkwork-promotion-pc-coupon",
+      "../sdkwork-promotion/sdks/sdkwork-promotion-backend-sdk/sdkwork-promotion-backend-sdk-typescript"
     ]
   },
   "catalog": {

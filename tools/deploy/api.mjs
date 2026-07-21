@@ -27,15 +27,23 @@ function collectOpenApiFiles(repoRoot) {
 function extractPrefixesFromOpenApi(filePath) {
   const text = fs.readFileSync(filePath, 'utf8');
   const prefixes = new Set();
-  const pathMatches = text.matchAll(/"(\/[^"]+\/v\d+\/api[^"]*)"/g);
-  for (const match of pathMatches) {
-    const full = match[1];
+  const jsonPathMatches = [...text.matchAll(/"(\/[^"]+\/v\d+\/api[^"]*)"/g)];
+  const yamlPathMatches = [...text.matchAll(/^\s{2}(\/[^:\s]+\/v\d+\/api[^:]*):\s*$/gm)];
+  for (const match of [...jsonPathMatches, ...yamlPathMatches]) {
+    const full = match[1].trim();
     const parts = full.split('/').filter(Boolean);
     if (parts.length >= 3) {
       prefixes.add(`/${parts.slice(0, 3).join('/')}`);
     }
   }
   return [...prefixes];
+}
+
+function apiKindFromPrefix(prefix) {
+  if (prefix.startsWith('/internal/')) return 'internal-api';
+  if (prefix.startsWith('/app/')) return 'app-api';
+  if (prefix.startsWith('/backend/')) return 'backend-api';
+  return 'open-api';
 }
 
 export function resolveApiSurfaces(appConfig, repoRoot) {
@@ -54,7 +62,7 @@ export function resolveApiSurfaces(appConfig, repoRoot) {
   for (const file of collectOpenApiFiles(repoRoot)) {
     for (const prefix of extractPrefixesFromOpenApi(file)) {
       fromOpenApi.push({
-        kind: 'open-api',
+        kind: apiKindFromPrefix(prefix),
         prefix,
         source: path.relative(repoRoot, file),
       });
@@ -77,7 +85,7 @@ export function resolveWebsocketPath(topology) {
 }
 
 const SURFACE_API_KINDS = {
-  'application.public-ingress': new Set(['app-api', 'backend-api', 'open-api', 'unknown']),
+  'application.public-ingress': new Set(['app-api', 'backend-api', 'open-api', 'internal-api', 'unknown']),
   'operations.control-ingress': new Set(['backend-api']),
   'platform.api-gateway': new Set(['open-api', 'platform-api', 'unknown']),
 };

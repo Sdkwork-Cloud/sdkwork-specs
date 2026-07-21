@@ -346,6 +346,51 @@ test('API assembly includes application-code and capability-named route members 
   );
 });
 
+test('API assembly discovers internal-api route crates for application ingress', () => {
+  const root = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-')),
+    'sdkwork-drive',
+  );
+  writeText(path.join(root, 'sdkwork.app.config.json'), '{}\n');
+  writeText(
+    path.join(root, 'Cargo.toml'),
+    '[workspace]\nmembers = ["crates/sdkwork-routes-drive-internal-api"]\n',
+  );
+  const routeRoot = path.join(root, 'crates', 'sdkwork-routes-drive-internal-api');
+  writeText(
+    path.join(routeRoot, 'Cargo.toml'),
+    '[package]\nname = "sdkwork-routes-drive-internal-api"\nversion = "0.1.0"\n',
+  );
+  writeText(
+    path.join(routeRoot, 'src', 'lib.rs'),
+    'mod routes;\npub use routes::*;\n',
+  );
+  writeText(
+    path.join(routeRoot, 'src', 'routes.rs'),
+    'pub async fn gateway_mount() -> axum::Router { axum::Router::new() }\n',
+  );
+  writeText(
+    path.join(routeRoot, 'specs', 'component.spec.json'),
+    `${JSON.stringify({
+      component: { surface: 'internal-api' },
+      contracts: { routeManifest: 'route-manifest.json' },
+    })}\n`,
+  );
+  writeText(path.join(routeRoot, 'route-manifest.json'), '{}\n');
+
+  const result = materializeApiAssembly(root);
+  assert.equal(result.ok, true);
+  const manifest = JSON.parse(
+    fs.readFileSync(
+      path.join(root, 'crates', 'sdkwork-api-drive-assembly', 'assembly-manifest.json'),
+      'utf8',
+    ),
+  );
+  assert.equal(manifest.routeCrates.length, 1);
+  assert.equal(manifest.routeCrates[0].surface, 'internal-api');
+  assert.equal(manifest.routeCrates[0].packageName, 'sdkwork-routes-drive-internal-api');
+});
+
 test('refuses incompatible route mount parameters before writing an assembly', () => {
   const root = path.join(
     fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-')),

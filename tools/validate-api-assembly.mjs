@@ -63,7 +63,7 @@ function compareManifests(expected, actual) {
     errors.push('assembly-manifest.json must not contain nondeterministic generatedAt');
   }
   for (const route of actual?.routeCrates ?? []) {
-    if (!['app-api', 'backend-api', 'open-api'].includes(route.surface)) {
+    if (!['app-api', 'backend-api', 'open-api', 'internal-api'].includes(route.surface)) {
       errors.push(`assembly-manifest.json invalid route surface: ${route.surface ?? '<missing>'}`);
     }
     for (const field of ['componentRef', 'routeManifestRef', 'sourceRef']) {
@@ -127,7 +127,7 @@ export function validateApiAssembly(root, { strict = false } = {}) {
     if (authoredHttpRouters.length > 0) {
       errors.push(
         `apiMode none contradicts executable authored HTTP routing in ${authoredHttpRouters.join(', ')}; `
-        + 'migrate the routes into canonical sdkwork-routes-<capability>-{open,app,backend}-api crates',
+        + 'migrate the routes into canonical sdkwork-routes-<capability>-{open,app,backend,internal}-api crates',
       );
     }
   }

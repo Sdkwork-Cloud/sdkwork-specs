@@ -25,7 +25,7 @@ function usage() {
   return [
     'Usage: node tools/materialize-api-assembly.mjs [--root <repo>]',
     '',
-    'Discovers every application-owned app/backend/open route crate from component ownership',
+    'Discovers every application-owned app/backend/open/internal route crate from component ownership',
     'and Cargo workspace evidence, including capability-named route crates, then writes',
     'crates/sdkwork-api-<application-code>-assembly/assembly-manifest.json plus',
     'generated Cargo.toml when the assembly crate does not yet exist.',

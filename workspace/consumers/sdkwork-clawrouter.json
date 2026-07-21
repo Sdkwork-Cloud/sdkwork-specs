@@ -69,6 +69,7 @@
       "../sdkwork-agents/apps/sdkwork-agents-pc/packages/sdkwork-agents-pc-core",
       "../sdkwork-agents/apps/sdkwork-agents-pc/packages/sdkwork-agents-pc-creative",
       "../sdkwork-agents/apps/sdkwork-agents-pc/packages/sdkwork-agents-pc-inspiration",
+      "../sdkwork-agents/apps/sdkwork-agents-pc/packages/sdkwork-agents-pc-membership",
       "../sdkwork-agents/apps/sdkwork-agents-pc/packages/sdkwork-agents-pc-presentation",
       "../sdkwork-knowledgebase/sdks/sdkwork-knowledgebase-app-sdk/sdkwork-knowledgebase-app-sdk-typescript",
       "../sdkwork-skills/sdks/sdkwork-skills-app-sdk/sdkwork-skills-app-sdk-typescript",

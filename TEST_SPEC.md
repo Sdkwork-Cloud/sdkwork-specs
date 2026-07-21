@@ -1119,7 +1119,9 @@ Rules:
   fixed/runtime-configurable/non-deployable binding, and runtime-target matrix.
 - Topology plan tests run `node --test tools/resolve-app-runtime-plan.test.mjs`
   and validate canonical URL provenance, local gateway/data-store reporting,
-  and forbidden cloud-development roles.
+  declared access endpoint references, process-bind and surface URL resolution,
+  runtime/client-architecture filtering, primary endpoint uniqueness, network
+  projection, and forbidden cloud-development roles.
 - Lifecycle facade tests `MUST` include a live supervisor stop, stale-session
   rejection, Windows registered-child fallback semantics, and one composed
   `doctor` fixture that validates app manifest, source config, topology,
