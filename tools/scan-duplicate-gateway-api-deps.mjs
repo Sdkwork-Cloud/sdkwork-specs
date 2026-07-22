@@ -40,10 +40,12 @@ function listRouteCrateDeps(cargo) {
 function usesAssemblyInSource(sourceFiles, applicationCode) {
   const libName = assemblyPackageName(applicationCode).replace(/-/g, '_');
   const patterns = [
-    new RegExp(`${libName}::assemble_api_router`, 'u'),
-    new RegExp(`${libName}::assemble_api_business_router`, 'u'),
-    /assemble_api_router\s*\(/u,
-    /assemble_api_business_router\s*\(/u,
+    new RegExp(
+      `${libName}::(?:assemble_api_(?:business_)?router(?:_[a-z0-9_]+)?|ApiAssembly::from_environment)\\b`,
+      'u',
+    ),
+    /\bassemble_api_(?:business_)?router(?:_[a-z0-9_]+)?\s*\(/u,
+    /\bApiAssembly::from_environment\s*\(/u,
   ];
   for (const filePath of sourceFiles) {
     const source = readText(filePath);
@@ -74,7 +76,7 @@ export function scanDuplicateGatewayApiDepsRepo(root) {
     }
     const host = path.basename(path.dirname(cargoPath));
     issues.push(
-      `${host}/Cargo.toml: duplicate deps — api-assembly and application route crates (${routeDeps.join(', ')})`,
+      `${host}/Cargo.toml: duplicate deps - api-assembly and application route crates (${routeDeps.join(', ')})`,
     );
   }
 

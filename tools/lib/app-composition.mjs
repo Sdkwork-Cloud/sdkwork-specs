@@ -106,6 +106,7 @@ export function findCorePackages(appRoot) {
     const packageDir = path.join(packagesDir, entry.name);
     const componentSpecPath = path.join(packageDir, 'specs/component.spec.json');
     const packageJsonPath = path.join(packageDir, 'package.json');
+    if (!fs.existsSync(packageJsonPath) && !fs.existsSync(componentSpecPath)) continue;
     const packageJson = fs.existsSync(packageJsonPath) ? readJson(packageJsonPath) : null;
     const componentSpec = fs.existsSync(componentSpecPath)
       ? readJson(componentSpecPath)

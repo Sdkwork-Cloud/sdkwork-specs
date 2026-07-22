@@ -22,14 +22,25 @@ export function classifyOpenApiOperationPatterns(text) {
 
 function classifyOperation({ routePath, method, operation }) {
   const issues = [];
+  const operationId = typeof operation.operationId === 'string' ? operation.operationId : '';
+  const operationLabel = `${method.toUpperCase()} ${routePath}`;
+  const operationRoot = operationId.split('.', 1)[0];
+  const tags = Array.isArray(operation.tags)
+    ? operation.tags.filter((tag) => typeof tag === 'string')
+    : [];
+  if (operationRoot && tags.includes(operationRoot)) {
+    issues.push({
+      kind: 'operation-id-tag-duplication',
+      detail: `${operationLabel} operationId ${operationId} must not repeat tag ${operationRoot}`,
+    });
+  }
+
   const pattern = inferOpenApiOperationPattern(routePath, method, operation);
   if (!pattern) {
     return issues;
   }
 
-  const operationId = typeof operation.operationId === 'string' ? operation.operationId : '';
   const finalAction = operationId.includes('.') ? operationId.split('.').at(-1) : operationId;
-  const operationLabel = `${method.toUpperCase()} ${routePath}`;
 
   if (!operationId || (pattern.expectedAction && finalAction !== pattern.expectedAction)) {
     issues.push({

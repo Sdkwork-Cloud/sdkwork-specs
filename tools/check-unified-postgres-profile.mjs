@@ -245,7 +245,10 @@ function inspectPostgresInitScripts() {
       issues.push(`${entry.name}: has .env.postgres.example but no package.json`);
       continue;
     }
-    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const packageJsonSource = fs
+      .readFileSync(packageJsonPath, 'utf8')
+      .replace(/^\uFEFF/u, '');
+    const pkg = JSON.parse(packageJsonSource);
     const scripts = pkg.scripts ?? {};
     if (!scripts['db:postgres:init']) {
       issues.push(`${entry.name}: missing package.json script db:postgres:init`);

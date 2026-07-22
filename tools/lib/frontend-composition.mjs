@@ -57,7 +57,8 @@ function listPackages(appRoot) {
     if (!entry.isDirectory()) continue;
     const packageDir = path.join(packagesDir, entry.name);
     const packageJsonPath = path.join(packageDir, 'package.json');
-    const packageJson = fs.existsSync(packageJsonPath) ? readJson(packageJsonPath) : {};
+    if (!fs.existsSync(packageJsonPath)) continue;
+    const packageJson = readJson(packageJsonPath);
     packages.push({
       directoryName: entry.name,
       packageDir,

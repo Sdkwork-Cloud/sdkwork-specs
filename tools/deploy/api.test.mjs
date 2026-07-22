@@ -43,3 +43,20 @@ test('YAML internal-api authority is application-ingress only', () => {
   );
   assert.equal(filterApiSurfacesForSurface(surfaces, 'platform.api-gateway').length, 0);
 });
+
+test('logical app and backend domains expose only their owned API surface', () => {
+  const surfaces = [
+    { kind: 'app-api', prefix: '/app/v3/api' },
+    { kind: 'backend-api', prefix: '/backend/v3/api' },
+    { kind: 'open-api', prefix: '/deploy/v3/api' },
+  ];
+
+  assert.deepEqual(
+    filterApiSurfacesForSurface(surfaces, 'application.app-http'),
+    [surfaces[0]],
+  );
+  assert.deepEqual(
+    filterApiSurfacesForSurface(surfaces, 'application.backend-http'),
+    [surfaces[1]],
+  );
+});

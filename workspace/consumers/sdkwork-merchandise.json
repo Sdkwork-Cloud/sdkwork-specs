@@ -21,7 +21,8 @@
       "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-i18n-pc-react",
       "../sdkwork-core/sdkwork-core-pc-react",
       "../sdkwork-ui/sdkwork-ui-pc-react",
-      "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript"
+      "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript",
+      "../sdkwork-shop/sdks/sdkwork-shop-backend-sdk/sdkwork-shop-backend-sdk-typescript"
     ]
   },
   "catalog": {

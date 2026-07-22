@@ -88,6 +88,26 @@ test('classifyOpenApiOperationPatterns flags search operationId drift', () => {
   assert.ok(issues.some((issue) => issue.kind === 'operation-id-action'));
 });
 
+test('classifyOpenApiOperationPatterns rejects operationIds that repeat the SDK tag namespace', () => {
+  const issues = classifyOpenApiOperationPatterns(
+    openApi({
+      '/app/v3/api/catalog/products': {
+        get: {
+          tags: ['catalog'],
+          operationId: 'catalog.products.list',
+          responses: {
+            200: { description: 'catalog products' },
+            default: { description: 'problem' },
+          },
+        },
+      },
+    }),
+  );
+
+  assert.ok(issues.some((issue) => issue.kind === 'operation-id-tag-duplication'));
+  assert.ok(issues.some((issue) => issue.detail.includes('must not repeat tag catalog')));
+});
+
 test('classifyOpenApiOperationPatterns skips external compatibility operations', () => {
   const issues = classifyOpenApiOperationPatterns(
     openApi({

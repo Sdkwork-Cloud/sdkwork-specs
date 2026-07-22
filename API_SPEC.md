@@ -2037,7 +2037,7 @@ SDKWork governance tools may read these extensions.
 | `x-sdkwork-deployment-profile` | `standalone`, `cloud`, or `all` |
 | `x-sdkwork-runtime-target` | Optional runtime target qualifier when an operation is intentionally runtime-target-specific. Shared app/backend/open APIs should normally omit it. |
 | `x-sdkwork-owner` | Owning application, repository, or reusable platform module that publishes this operation in its own SDK family |
-| `x-sdkwork-api-authority` | Logical API authority that owns the operation, for example `sdkwork-iam-app-api`, `sdkwork-im.app`, `sdkwork-drive.backend` |
+| `x-sdkwork-api-authority` | Canonical API authority that owns the operation, for example `sdkwork-iam-app-api`, `sdkwork-im-app-api`, or `sdkwork-drive-backend-api` |
 | `x-sdkwork-source` | Physical source or scanned module that produced the operation |
 | `x-sdkwork-source-route-crate` | Rust route crate package name when the operation was materialized from `sdkwork.route.manifest` |
 | `x-sdkwork-integration-source` | Integrated dependency source when an operation is present only for runtime composition or compatibility |
@@ -2056,7 +2056,7 @@ Rules:
 - `security: []` alone does not imply `x-sdkwork-forbid-credential-headers: true`; public metadata and bootstrap endpoints may be anonymous without rejecting irrelevant credentials unless their contract explicitly sets the extension.
 - Every operation used as input to HTTP SDK generation `MUST` declare `x-sdkwork-owner` and `x-sdkwork-api-authority`.
 - `x-sdkwork-owner` is the SDK generation ownership key. It identifies the app/repo/module that is allowed to generate the operation into its SDK family.
-- `x-sdkwork-api-authority` identifies the logical API authority and should include both owner and surface, for example `sdkwork-iam-app-api`, `sdkwork-iam-backend-api`, `sdkwork-im.im`, or `sdkwork-drive.app`.
+- `x-sdkwork-api-authority` identifies the canonical API authority and `MUST` use the lower-kebab `sdkwork-<domain>-<surface>` identity, for example `sdkwork-iam-app-api`, `sdkwork-iam-backend-api`, `sdkwork-im-app-api`, or `sdkwork-drive-backend-api`. Dotted authority aliases are invalid.
 - `x-sdkwork-source` and `x-sdkwork-integration-source` may describe where the operation was scanned from, but they `MUST NOT` replace `x-sdkwork-owner` for generation decisions.
 - SDKWork-owned custom operations on open-api, app-api, and backend-api `MUST` omit `x-sdkwork-wire-protocol` or declare `x-sdkwork-wire-protocol: sdkwork-v3`; omitted is the default and means `sdkwork-v3`.
 - Vendor compatibility operations `MUST` declare operation-level `x-sdkwork-wire-protocol: external` and `x-sdkwork-external-protocol-id` per section 4.5.2. A document-level external marker, path prefix, tag, SDK family, or auth mode is not enough to opt out.

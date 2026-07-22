@@ -25,6 +25,8 @@ import { validateApiAssembly } from './validate-api-assembly.mjs';
 const INFRA_PATH_PATTERN = /["'`]\/(?:healthz|livez|readyz|metrics)["'`]/u;
 const EMPTY_ASSEMBLY_PATTERN =
   /assemble_api_router[\s\S]{0,400}Router::new\(\)/u;
+const BUSINESS_ASSEMBLY_PATTERN =
+  /assemble_(?:api_)?business_router|assemble_business_routes|assemble_app_business_runtime|build_served_unified_business_router/u;
 const PLATFORM_EMBED_INFRA_SOURCES = [
   'services/sdkwork-api-im-standalone-gateway/src/embedded_dependency_routes.rs',
   'crates/sdkwork-api-im-standalone-gateway/src/embedded_dependency_routes.rs',
@@ -134,7 +136,7 @@ function scanPlatformCloudGatewayEmbed(workspaceRoot) {
       'sdkwork-api-cloud-gateway: embedded mode may only auto-wire IAM; select API assemblies through embedded_dependency_routes',
     );
   }
-  if (embedSource.trim() && !/assemble_api_business_router/u.test(embedSource)) {
+  if (embedSource.trim() && !BUSINESS_ASSEMBLY_PATTERN.test(embedSource)) {
     warnings.push(
       'sdkwork-api-cloud-gateway/crates/sdkwork-api-cloud-gateway/src/embedded_dependency_routes.rs: no API assembly business routers wired',
     );
@@ -142,7 +144,7 @@ function scanPlatformCloudGatewayEmbed(workspaceRoot) {
   return warnings;
 }
 
-function scanPlatformEmbedInfra(workspaceRoot) {
+export function scanPlatformEmbedInfra(workspaceRoot) {
   const warnings = [];
   const imRoot = path.join(workspaceRoot, 'sdkwork-im');
   for (const rel of PLATFORM_EMBED_INFRA_SOURCES) {
@@ -153,7 +155,7 @@ function scanPlatformEmbedInfra(workspaceRoot) {
     const text = readText(filePath);
     if (
       /assemble_api_router/u.test(text)
-      && !/assemble_api_business_router|build_served_unified_business_router/u.test(text)
+      && !BUSINESS_ASSEMBLY_PATTERN.test(text)
     ) {
       warnings.push(
         `${rel}: embedded dependencies may merge domain assemblies with per-domain infra on one listener`,

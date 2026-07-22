@@ -86,6 +86,8 @@ export function resolveWebsocketPath(topology) {
 
 const SURFACE_API_KINDS = {
   'application.public-ingress': new Set(['app-api', 'backend-api', 'open-api', 'internal-api', 'unknown']),
+  'application.app-http': new Set(['app-api']),
+  'application.backend-http': new Set(['backend-api']),
   'operations.control-ingress': new Set(['backend-api']),
   'platform.api-gateway': new Set(['open-api', 'platform-api', 'unknown']),
 };

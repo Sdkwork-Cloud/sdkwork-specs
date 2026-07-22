@@ -5,8 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
+  listFrontendPackages,
   validateFrontendComposition,
 } from './lib/frontend-composition.mjs';
+import { findCorePackages } from './lib/app-composition.mjs';
 
 const CHECKER = path.resolve(import.meta.dirname, 'check-frontend-composition.mjs');
 
@@ -48,6 +50,16 @@ test('core packages must expose the standard composition subpaths', () => {
   const issues = validateFrontendComposition(root);
 
   assert.ok(issues.some((issue) => issue.includes('missing package.json exports["./composition"]')));
+});
+
+test('package discovery ignores empty directories left by package renames', () => {
+  const { appRoot } = createClientRoot();
+  fs.mkdirSync(path.join(appRoot, 'packages/sdkwork-demo-pc-core/src'), {
+    recursive: true,
+  });
+
+  assert.deepEqual(findCorePackages(appRoot), []);
+  assert.deepEqual(listFrontendPackages(appRoot), []);
 });
 
 test('feature packages must not import generated SDK packages directly', () => {

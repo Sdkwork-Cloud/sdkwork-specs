@@ -147,9 +147,9 @@ Rules:
 - If a dependency entry declares `owner`, `apiOwner`, `apiAuthority`, `authoritySpec`, or `apiPrefix`,
   those values `MUST` match the referenced dependency SDK family. `apiPrefix: null` is valid only
   when the referenced SDK family has no HTTP API prefix; it cannot be used to bypass app/backend/open
-  prefix matching. The checker treats historical API authority aliases such as `sdkwork-appbase.app`
-  and `sdkwork-iam-app-api` as equivalent, but mismatched app/backend/open authorities are standards
-  failures.
+  prefix matching. API authority comparison is exact after whitespace normalization; dotted,
+  abbreviated, and historical aliases are not equivalent to canonical app/backend/open authority
+  identities.
 - When two authorities use the same prefix, route ownership still belongs to the authority that
   declares the route. The consuming SDK's derived generator input `MUST` subtract dependency-owned
   routes by normalized path template, and by method when ownership differs per method.

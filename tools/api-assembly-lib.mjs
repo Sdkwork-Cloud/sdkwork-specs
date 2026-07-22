@@ -217,6 +217,8 @@ export function discoverRouteCrates(root, applicationCode) {
       ? declaredSurface
       : extractSurface(packageName);
     const gatewayMountReturn = extractGatewayMountReturn(libRs);
+    const hasDelegatedDescriptorOnlyGatewayMount =
+      functionTransitivelyReturnsEmptyRouter(libRs, 'gateway_mount');
     return {
       memberDir,
       packageName,
@@ -226,12 +228,12 @@ export function discoverRouteCrates(root, applicationCode) {
       hasComponentSpec: fs.existsSync(componentPath),
       componentRef,
       routeManifestRef,
-      routeManifestExists: !routeManifestRef.includes('#')
-        && fs.existsSync(path.join(root, routeManifestRef)),
+      routeManifestExists: routeManifestReferenceExists(root, routeManifestRef),
       routeManifestInsideRoot: !routeManifestRef.startsWith('../'),
       sourceRef: `${memberDir}/Cargo.toml`,
       hasGatewayMount: GATEWAY_MOUNT_PATTERN.test(libRs),
       hasDescriptorOnlyGatewayMount: DESCRIPTOR_ONLY_GATEWAY_MOUNT_PATTERN.test(libRs),
+      hasDelegatedDescriptorOnlyGatewayMount,
       gatewayMountReturn,
       hasExecutableGatewayMount: gatewayMountReturn !== null
         && EXECUTABLE_ROUTER_RETURN_PATTERN.test(gatewayMountReturn),
@@ -240,6 +242,59 @@ export function discoverRouteCrates(root, applicationCode) {
       mountsInfrastructure: routeCrateMountsInfrastructure(root, memberDir),
     };
   });
+}
+
+function extractRustFunctionBodies(source) {
+  const functions = new Map();
+  const pattern = /\b(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+([a-zA-Z_][a-zA-Z0-9_]*)\b/gu;
+  for (const match of source.matchAll(pattern)) {
+    const bodyStart = source.indexOf('{', match.index + match[0].length);
+    if (bodyStart < 0) continue;
+
+    let depth = 0;
+    let bodyEnd = -1;
+    for (let index = bodyStart; index < source.length; index += 1) {
+      if (source[index] === '{') depth += 1;
+      if (source[index] === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          bodyEnd = index;
+          break;
+        }
+      }
+    }
+    if (bodyEnd > bodyStart) {
+      functions.set(match[1], source.slice(bodyStart + 1, bodyEnd).trim());
+    }
+  }
+  return functions;
+}
+
+function functionTransitivelyReturnsEmptyRouter(source, entrypoint) {
+  const functions = extractRustFunctionBodies(source);
+  const visiting = new Set();
+
+  function resolvesToEmptyRouter(functionName) {
+    if (visiting.has(functionName)) return false;
+    const body = functions.get(functionName);
+    if (!body) return false;
+
+    const compact = body.replace(/\s+/gu, '');
+    if (/^(?:axum::)?Router::new\(\)$/u.test(compact)) {
+      return true;
+    }
+
+    const delegated = /^(?:return)?(?:[a-zA-Z_][a-zA-Z0-9_]*::)*([a-zA-Z_][a-zA-Z0-9_]*)\([^;]*\)(?:\.await)?;?$/u
+      .exec(compact);
+    if (!delegated) return false;
+
+    visiting.add(functionName);
+    const result = resolvesToEmptyRouter(delegated[1]);
+    visiting.delete(functionName);
+    return result;
+  }
+
+  return resolvesToEmptyRouter(entrypoint);
 }
 
 function resolveRouteManifestRef(root, memberDir, declaredValue) {
@@ -253,6 +308,24 @@ function resolveRouteManifestRef(root, memberDir, declaredValue) {
     : path.join(root, memberDir);
   const absolute = path.resolve(baseDir, declared);
   return path.relative(root, absolute).replace(/\\/gu, '/');
+}
+
+function routeManifestReferenceExists(root, routeManifestRef) {
+  const [fileRef, symbolRef] = String(routeManifestRef ?? '').split('#', 2);
+  const absolutePath = path.join(root, fileRef);
+  if (!fs.existsSync(absolutePath)) {
+    return false;
+  }
+  if (!symbolRef) {
+    return true;
+  }
+
+  const source = fs.readFileSync(absolutePath, 'utf8');
+  const escapedSymbol = symbolRef.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+  return new RegExp(
+    `\\b(?:pub(?:\\([^)]*\\))?\\s+)?(?:async\\s+)?fn\\s+${escapedSymbol}\\b`,
+    'u',
+  ).test(source);
 }
 
 function extractGatewayMountReturn(source) {

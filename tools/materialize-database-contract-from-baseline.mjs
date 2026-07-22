@@ -71,6 +71,49 @@ function collectPrefixes(tableNames) {
   return [...prefixes].sort();
 }
 
+function readExistingSchema(schemaPath) {
+  if (!fs.existsSync(schemaPath)) {
+    return { contractVersion: '', tableBlocks: new Map() };
+  }
+
+  const text = fs.readFileSync(schemaPath, 'utf8');
+  const contractVersion = text.match(/^contract_version:\s*(\S+)/m)?.[1] ?? '';
+  const tableBlocks = new Map();
+  const tablesOffset = text.search(/^tables:\s*$/m);
+  if (tablesOffset < 0) {
+    return { contractVersion, tableBlocks };
+  }
+
+  const tablesText = text.slice(tablesOffset).replace(/^tables:\s*\r?\n/, '');
+  const matches = [...tablesText.matchAll(/^  - name:\s*([a-z0-9_]+)\s*$/gm)];
+  for (let index = 0; index < matches.length; index += 1) {
+    const match = matches[index];
+    const start = match.index;
+    const end = matches[index + 1]?.index ?? tablesText.length;
+    tableBlocks.set(match[1], tablesText.slice(start, end).trimEnd());
+  }
+  return { contractVersion, tableBlocks };
+}
+
+function resolveContractVersion(manifest, existingSchema) {
+  const manifestVersion = manifest.contractVersion ?? '';
+  const schemaVersion = existingSchema.contractVersion;
+  if (manifestVersion && schemaVersion && manifestVersion !== schemaVersion) {
+    throw new Error(
+      `database contract version mismatch: manifest=${manifestVersion}, schema=${schemaVersion}`,
+    );
+  }
+  return manifestVersion || schemaVersion || '1.0.0';
+}
+
+function renderPrefixContract(prefixes, fallbackPrefix) {
+  const resolvedPrefixes = prefixes.length > 0 ? prefixes : [fallbackPrefix].filter(Boolean);
+  if (resolvedPrefixes.length <= 1) {
+    return [`table_prefix: ${resolvedPrefixes[0] ?? ''}`];
+  }
+  return ['table_prefixes:', ...resolvedPrefixes.map((prefix) => `  - ${prefix}`)];
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.baseline || !args.moduleId || !args.owner) {
@@ -84,8 +127,14 @@ function main() {
     args.prefixes.length > 0
       ? args.prefixes
       : args.tablePrefix
-        ? [args.tablePrefix]
-        : collectPrefixes(tableNames);
+      ? [args.tablePrefix]
+      : collectPrefixes(tableNames);
+
+  const schemaPath = path.join(args.root, 'database/contract/schema.yaml');
+  const manifestPath = path.join(args.root, 'database/database.manifest.json');
+  const existingSchema = readExistingSchema(schemaPath);
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const contractVersion = resolveContractVersion(manifest, existingSchema);
 
   const tableRegistry = {
     schemaVersion: 1,
@@ -112,15 +161,16 @@ function main() {
     'schema_version: 1',
     'kind: sdkwork.database.schema',
     `module_id: ${args.moduleId}`,
-    'contract_version: 1.0.0',
+    `contract_version: ${contractVersion}`,
     `owner_team: ${args.owner}`,
     'compliance_level: L2',
     'engines:',
     ...args.engines.map((engine) => `  - ${engine}`),
-    `table_prefix: ${prefixes[0] ?? args.tablePrefix}`,
+    ...renderPrefixContract(prefixes, args.tablePrefix),
     'tables:',
-    ...tableNames.map(
-      (name) => `  - name: ${name}\n    lifecycle_status: active\n    owner: ${args.owner}`,
+    ...tableNames.map((name) =>
+      existingSchema.tableBlocks.get(name)
+      ?? `  - name: ${name}\n    lifecycle_status: active\n    owner: ${args.owner}`,
     ),
     '',
   ].join('\n');
@@ -133,11 +183,9 @@ function main() {
     path.join(args.root, 'database/contract/prefix-registry.json'),
     `${JSON.stringify(prefixRegistry, null, 2)}\n`,
   );
-  fs.writeFileSync(path.join(args.root, 'database/contract/schema.yaml'), schemaYaml);
+  fs.writeFileSync(schemaPath, schemaYaml);
 
-  const manifestPath = path.join(args.root, 'database/database.manifest.json');
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  manifest.contractVersion = '1.0.0';
+  manifest.contractVersion = contractVersion;
   manifest.lifecycle.autoMigrate = true;
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 

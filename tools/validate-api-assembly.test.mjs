@@ -90,6 +90,32 @@ test('normalizes application-root route manifest declarations without traversal 
   assert.equal(validateApiAssembly(root).ok, true);
 });
 
+test('accepts a Rust route manifest source reference with an exported function symbol', () => {
+  const root = fixture();
+  const componentPath = path.join(
+    root,
+    'crates',
+    'sdkwork-routes-demo-app-api',
+    'specs',
+    'component.spec.json',
+  );
+  fs.writeFileSync(
+    componentPath,
+    JSON.stringify({
+      contracts: {
+        routeManifest: 'src/manifest.rs#demo_route_manifest',
+      },
+    }, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(root, 'crates', 'sdkwork-routes-demo-app-api', 'src', 'manifest.rs'),
+    'pub fn demo_route_manifest() {}\n',
+  );
+
+  assert.equal(materializeApiAssembly(root).ok, true);
+  assert.equal(validateApiAssembly(root).ok, true);
+});
+
 test('rejects a declared route manifest that does not exist', () => {
   const root = fixture();
   const componentPath = path.join(
@@ -219,6 +245,36 @@ test('rejects served route crates whose gateway mount is descriptor-only', () =>
 
   assert.equal(result.ok, false);
   assert.match(result.errors.join('\n'), /gateway_mount is descriptor-only/u);
+  assert.match(result.errors.join('\n'), /must mount executable handlers/u);
+});
+
+test('rejects served route crates whose gateway mount delegates to an empty router builder', () => {
+  const root = fixture();
+  const routeRoot = path.join(root, 'crates', 'sdkwork-routes-demo-app-api');
+  fs.writeFileSync(
+    path.join(routeRoot, 'src', 'lib.rs'),
+    [
+      'mod routes;',
+      'use axum::Router;',
+      'pub async fn gateway_mount() -> Router { routes::build_router_with_framework().await }',
+      '',
+    ].join('\n'),
+  );
+  fs.writeFileSync(
+    path.join(routeRoot, 'src', 'routes.rs'),
+    [
+      'use axum::Router;',
+      'pub async fn build_router_with_framework() -> Router { build_router() }',
+      'pub fn build_router() -> Router { Router::new() }',
+      '',
+    ].join('\n'),
+  );
+  assert.equal(materializeApiAssembly(root).ok, true);
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('\n'), /delegated builders to Router::new/u);
   assert.match(result.errors.join('\n'), /must mount executable handlers/u);
 });
 

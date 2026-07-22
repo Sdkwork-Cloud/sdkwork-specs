@@ -151,6 +151,12 @@ export function validateApiAssembly(root, { strict = false } = {}) {
         + 'served route crates must mount executable handlers',
       );
     } else if (!routeCrate.packageName.match(/-(?:http-auth|http-shared|shared|support)$/u)
+      && routeCrate.hasDelegatedDescriptorOnlyGatewayMount) {
+      errors.push(
+        `${routeCrate.packageName} gateway_mount resolves through delegated builders to Router::new(); `
+        + 'served route crates must mount executable handlers',
+      );
+    } else if (!routeCrate.packageName.match(/-(?:http-auth|http-shared|shared|support)$/u)
       && routeCrate.hasGatewayMount
       && !routeCrate.hasExecutableGatewayMount) {
       errors.push(

@@ -4,7 +4,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { scanStandaloneDoubleInfra } from './audit-gateway-route-composition-workspace.mjs';
+import {
+  scanPlatformEmbedInfra,
+  scanStandaloneDoubleInfra,
+} from './audit-gateway-route-composition-workspace.mjs';
 
 function createSettingsRepo(mainSource) {
   const root = path.join(
@@ -44,4 +47,22 @@ test('standalone infra scan rejects two mount calls around assembly', () => {
   ].join('\n'));
 
   assert.equal(scanStandaloneDoubleInfra(root, 'settings').length, 1);
+});
+
+test('platform embed scan accepts explicit business-only dependency assembly use', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-platform-embed-'));
+  const sourcePath = path.join(
+    workspace,
+    'sdkwork-im/crates/sdkwork-api-im-standalone-gateway/src/embedded_dependency_routes.rs',
+  );
+  fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+  fs.writeFileSync(sourcePath, [
+    'async fn bootstrap() {',
+    '    let drive = sdkwork_api_drive_assembly::assemble_business_routes(pool).await;',
+    '    let mail = sdkwork_api_mail_assembly::assemble_api_router().await;',
+    '}',
+    '',
+  ].join('\n'), 'utf8');
+
+  assert.deepEqual(scanPlatformEmbedInfra(workspace), []);
 });
