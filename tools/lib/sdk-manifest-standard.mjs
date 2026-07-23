@@ -111,7 +111,7 @@ export function collectParallelSdkRegistryViolations(workspaceRoot) {
   }));
 }
 
-export function loadDiscoverySurfaceFromFamilyMetadata(repoRoot, workspace) {
+export function loadSdkFamilyManifestFromFamilyMetadata(repoRoot, workspace) {
   const candidates = [path.join(repoRoot, 'sdks', workspace, 'sdk-manifest.json')];
   const appsDir = path.join(repoRoot, 'apps');
   for (const app of fs.existsSync(appsDir)
@@ -122,28 +122,35 @@ export function loadDiscoverySurfaceFromFamilyMetadata(repoRoot, workspace) {
 
   for (const candidate of candidates) {
     if (!fs.existsSync(candidate)) continue;
-    const doc = readJson(candidate);
-    if (doc?.discoverySurface) return doc.discoverySurface;
+    return readJson(candidate);
   }
   return null;
 }
 
-export function loadDiscoverySurfaceForWorkspaceConsumer(repoRoot, workspace) {
+export function loadSdkFamilyManifestForWorkspaceConsumer(repoRoot, workspace) {
   const domain = workspace.match(/^sdkwork-([^-]+)-(?:app|backend)-sdk$/u)?.[1]
     ?? workspace.match(/^sdkwork-([^-]+)-sdk$/u)?.[1];
   if (domain) {
     const siblingRoot = path.resolve(repoRoot, '..', `sdkwork-${domain}`);
     if (fs.existsSync(path.join(siblingRoot, 'specs', 'component.spec.json'))) {
-      const discovery = loadDiscoverySurfaceFromFamilyMetadata(siblingRoot, workspace);
-      if (discovery) return discovery;
+      const manifest = loadSdkFamilyManifestFromFamilyMetadata(siblingRoot, workspace);
+      if (manifest) return manifest;
     }
     if (domain === 'iam' || domain === 'appbase') {
       const iamRoot = path.resolve(repoRoot, '..', 'sdkwork-iam');
       if (fs.existsSync(path.join(iamRoot, 'specs', 'component.spec.json'))) {
-        const discovery = loadDiscoverySurfaceFromFamilyMetadata(iamRoot, workspace);
-        if (discovery) return discovery;
+        const manifest = loadSdkFamilyManifestFromFamilyMetadata(iamRoot, workspace);
+        if (manifest) return manifest;
       }
     }
   }
-  return loadDiscoverySurfaceFromFamilyMetadata(repoRoot, workspace);
+  return loadSdkFamilyManifestFromFamilyMetadata(repoRoot, workspace);
+}
+
+export function loadDiscoverySurfaceFromFamilyMetadata(repoRoot, workspace) {
+  return loadSdkFamilyManifestFromFamilyMetadata(repoRoot, workspace)?.discoverySurface ?? null;
+}
+
+export function loadDiscoverySurfaceForWorkspaceConsumer(repoRoot, workspace) {
+  return loadSdkFamilyManifestForWorkspaceConsumer(repoRoot, workspace)?.discoverySurface ?? null;
 }

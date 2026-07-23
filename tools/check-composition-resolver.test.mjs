@@ -26,6 +26,146 @@ function writeText(filePath, value) {
   fs.writeFileSync(filePath, value, 'utf8');
 }
 
+function createSdkFamily(repoRoot, workspace, {
+  sdkOwner,
+  apiAuthority,
+  sdkTarget,
+  apiPrefix,
+  integration,
+} = {}) {
+  writeJson(path.join(repoRoot, 'specs/component.spec.json'), {
+    component: { name: sdkOwner, type: 'application-root' },
+    ...(integration ? { integration } : {}),
+  });
+  writeJson(path.join(repoRoot, `sdks/${workspace}/sdk-manifest.json`), {
+    schemaVersion: 1,
+    workspace,
+    sdkOwner,
+    apiAuthority,
+    sdkDependencies: [],
+    discoverySurface: {
+      sdkTarget,
+      apiPrefix,
+      generatedProtocols: ['http-openapi'],
+    },
+  });
+}
+
+function createOwnershipResolutionFixture({ integrationOverrides = {} } = {}) {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-composition-ownership-'));
+  const root = path.join(workspaceRoot, 'sdkwork-demo');
+  const appRoot = path.join(root, 'apps/sdkwork-demo-pc');
+  writeJson(path.join(root, 'sdkwork.app.config.json'), {
+    schemaVersion: 3,
+    kind: 'sdkwork.app',
+    app: { key: 'sdkwork-demo' },
+  });
+  writeJson(path.join(appRoot, 'sdkwork.app.config.json'), {
+    schemaVersion: 3,
+    kind: 'sdkwork.app',
+    app: { key: 'sdkwork-demo' },
+  });
+
+  const appDependencies = [
+    'sdkwork-demo-app-sdk',
+    'sdkwork-drive-app-sdk',
+    'sdkwork-agents-app-sdk',
+    'sdkwork-skills-app-sdk',
+    'sdkwork-prompts-app-sdk',
+    'sdkwork-documents-app-sdk',
+    'sdkwork-messaging-app-sdk',
+    'sdkwork-im-app-sdk',
+  ].map((workspace) => ({
+    workspace,
+    surface: 'app-api',
+    credentialMode: 'authenticated-app-api',
+  }));
+
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-core/package.json'), {
+    name: '@sdkwork/demo-pc-core',
+    version: '0.0.0',
+  });
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-core/specs/component.spec.json'), {
+    component: {
+      name: '@sdkwork/demo-pc-core',
+      type: 'frontend-core',
+      surface: 'app',
+    },
+    contracts: {
+      sdkDependencies: appDependencies,
+      composition: {
+        overrides: {
+          integrations: integrationOverrides,
+        },
+      },
+    },
+  });
+
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-admin-core/package.json'), {
+    name: '@sdkwork/demo-pc-admin-core',
+    version: '0.0.0',
+  });
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-admin-core/specs/component.spec.json'), {
+    component: {
+      name: '@sdkwork/demo-pc-admin-core',
+      type: 'frontend-core',
+      surface: 'backend-admin',
+    },
+    contracts: {
+      sdkDependencies: [{
+        workspace: 'sdkwork-iam-backend-sdk',
+        surface: 'backend-api',
+        credentialMode: 'authenticated-backend-admin',
+      }],
+    },
+  });
+
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-console-core/package.json'), {
+    name: '@sdkwork/demo-pc-console-core',
+    version: '0.0.0',
+  });
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-console-core/specs/component.spec.json'), {
+    component: {
+      name: '@sdkwork/demo-pc-console-core',
+      type: 'frontend-core',
+      surface: 'console',
+    },
+    contracts: {
+      sdkDependencies: [{
+        workspace: 'sdkwork-im-sdk',
+        surface: 'open-api',
+        credentialMode: 'protected-open-api-flexible',
+      }],
+    },
+  });
+
+  const families = [
+    ['demo', 'sdkwork-demo-app-sdk', 'sdkwork-demo', 'sdkwork-demo-app-api', 'app', '/app/v3/api'],
+    ['drive', 'sdkwork-drive-app-sdk', 'sdkwork-drive', 'sdkwork-drive-app-api', 'app', '/app/v3/api'],
+    ['agents', 'sdkwork-agents-app-sdk', 'sdkwork-agents', 'sdkwork-agents-app-api', 'app', '/app/v3/api'],
+    ['skills', 'sdkwork-skills-app-sdk', 'sdkwork-skills', 'sdkwork-skills-app-api', 'app', '/app/v3/api'],
+    ['prompts', 'sdkwork-prompts-app-sdk', 'sdkwork-prompts', 'sdkwork-prompts-app-api', 'app', '/app/v3/api'],
+    ['documents', 'sdkwork-documents-app-sdk', 'sdkwork-documents', 'sdkwork-documents-app-api', 'app', '/app/v3/api'],
+    ['messaging', 'sdkwork-messaging-app-sdk', 'sdkwork-messaging', 'sdkwork-messaging-app-api', 'app', '/app/v3/api'],
+    ['im', 'sdkwork-im-app-sdk', 'sdkwork-im', 'sdkwork-im-app-api', 'app', '/app/v3/api'],
+    ['iam', 'sdkwork-iam-backend-sdk', 'sdkwork-iam', 'sdkwork-iam-backend-api', 'backend', '/backend/v3/api'],
+    ['im', 'sdkwork-im-sdk', 'sdkwork-im', 'sdkwork-im-open-api', 'open', '/im/v3/api'],
+  ];
+  for (const [domain, workspace, sdkOwner, apiAuthority, sdkTarget, apiPrefix] of families) {
+    createSdkFamily(path.join(workspaceRoot, `sdkwork-${domain}`), workspace, {
+      sdkOwner,
+      apiAuthority,
+      sdkTarget,
+      apiPrefix,
+      integration: domain === 'drive'
+        ? { defaultConnectivityPlane: 'application', defaultRuntimeMode: 'same-origin-embedded' }
+        : undefined,
+    });
+  }
+
+  return { root, resolution: resolveComposition(root) };
+}
+
 test('resolveComposition derives platform IAM integration from clawrouter sdkDependencies', () => {
   if (!fs.existsSync(clawRouterRoot)) return;
 
@@ -95,6 +235,65 @@ test('deriveFoundationEnvFromResolution maps platform dependencies to surface or
 
   assert.equal(env.VITE_SDKWORK_APPBASE_APP_API_BASE_URL, 'http://127.0.0.1:3902/app/v3/api');
   assert.equal(env.VITE_SDKWORK_DRIVE_APP_API_BASE_URL, 'http://127.0.0.1:3902/app/v3/api');
+});
+
+test('resolveComposition derives planes from SDK ownership for app, backend, and open surfaces', () => {
+  const { resolution } = createOwnershipResolutionFixture({
+    integrationOverrides: {
+      'sdkwork-drive-app-sdk': {
+        baseUrl: 'https://drive.example.test/app/v3/api',
+        runtimeMode: 'external-via-declared-upstream',
+      },
+    },
+  });
+
+  const ownSdk = resolution.integrations.find((entry) => entry.workspace === 'sdkwork-demo-app-sdk');
+  assert.ok(ownSdk);
+  assert.equal(ownSdk.connectivityPlane, 'application');
+  assert.equal(ownSdk.runtimeMode, 'same-origin-embedded');
+  assert.equal(ownSdk.consumerSdkOwner, 'sdkwork-demo');
+  assert.equal(ownSdk.sdkOwner, 'sdkwork-demo');
+
+  const expectedPlatformFamilies = [
+    'sdkwork-agents-app-sdk',
+    'sdkwork-documents-app-sdk',
+    'sdkwork-im-app-sdk',
+    'sdkwork-im-sdk',
+    'sdkwork-iam-backend-sdk',
+    'sdkwork-messaging-app-sdk',
+    'sdkwork-prompts-app-sdk',
+    'sdkwork-skills-app-sdk',
+  ];
+  for (const workspace of expectedPlatformFamilies) {
+    const integration = resolution.integrations.find((entry) => entry.workspace === workspace);
+    assert.ok(integration, `expected ${workspace} integration`);
+    assert.equal(integration.connectivityPlane, 'platform', workspace);
+    assert.equal(integration.runtimeMode, 'external-via-platform-surface', workspace);
+    assert.equal(integration.forbidApplicationSameOriginFallback, true, workspace);
+  }
+
+  const drive = resolution.integrations.find((entry) => entry.workspace === 'sdkwork-drive-app-sdk');
+  assert.ok(drive);
+  assert.equal(drive.connectivityPlane, 'platform');
+  assert.equal(drive.runtimeMode, 'external-via-declared-upstream');
+  assert.equal(resolution.env.VITE_SDKWORK_DRIVE_APP_API_BASE_URL, 'https://drive.example.test/app/v3/api');
+  assert.equal(resolution.issues.length, 0);
+});
+
+test('resolveComposition rejects consumer overrides that attempt to change connectivity plane', () => {
+  const { resolution } = createOwnershipResolutionFixture({
+    integrationOverrides: {
+      'sdkwork-drive-app-sdk': {
+        connectivityPlane: 'application',
+      },
+    },
+  });
+
+  const drive = resolution.integrations.find((entry) => entry.workspace === 'sdkwork-drive-app-sdk');
+  assert.ok(drive);
+  assert.equal(drive.connectivityPlane, 'platform');
+  assert.equal(drive.runtimeMode, 'external-via-platform-surface');
+  assert.ok(resolution.issues.some((issue) => /unsupported composition integration override connectivityPlane/u.test(issue)));
 });
 
 test('resolveComposition prefers verified standalone-host assembly mounts over dependency surface defaults', () => {

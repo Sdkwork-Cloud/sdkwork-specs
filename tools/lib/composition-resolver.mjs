@@ -25,13 +25,13 @@ import {
 import {
   parseRustCargoManifest,
 } from './rust-backend-composition.mjs';
-import { loadDiscoverySurfaceForWorkspaceConsumer } from './sdk-manifest-standard.mjs';
+import { loadSdkFamilyManifestForWorkspaceConsumer } from './sdk-manifest-standard.mjs';
 
 const APP_API_PREFIX = '/app/v3/api';
 const BACKEND_API_PREFIX = '/backend/v3/api';
 
-const PLATFORM_SURFACE_DOMAINS = new Set(['iam', 'appbase']);
 const SKIP_ARCHITECTURE_DIRS = new Set(['.git', 'node_modules', 'target', 'dist', 'build']);
+const ALLOWED_INTEGRATION_OVERRIDE_KEYS = new Set(['baseUrl', 'runtimeMode']);
 
 export const RUNTIME_MODES = new Set([
   'same-origin-embedded',
@@ -71,13 +71,6 @@ function defaultPrefix(surface, manifestDiscovery) {
   return null;
 }
 
-function defaultConnectivityPlane(domain, surface) {
-  if (domain && PLATFORM_SURFACE_DOMAINS.has(domain) && surface !== 'open-api') {
-    return 'platform';
-  }
-  return 'application';
-}
-
 function findSiblingRepoRoot(repoRoot, domain) {
   const candidate = path.resolve(repoRoot, '..', `sdkwork-${domain}`);
   if (fs.existsSync(path.join(candidate, 'specs', 'component.spec.json'))) {
@@ -92,8 +85,19 @@ function findSiblingRepoRoot(repoRoot, domain) {
   return null;
 }
 
-function loadManifestDiscovery(repoRoot, workspace) {
-  return loadDiscoverySurfaceForWorkspaceConsumer(repoRoot, workspace);
+function loadSdkFamilyManifest(repoRoot, workspace) {
+  return loadSdkFamilyManifestForWorkspaceConsumer(repoRoot, workspace);
+}
+
+function loadConsumerSdkOwner(repoRoot) {
+  const appManifest = readJsonIfExists(path.join(repoRoot, 'sdkwork.app.config.json'));
+  if (appManifest?.app?.key) return appManifest.app.key;
+  if (appManifest?.applicationCode) {
+    return String(appManifest.applicationCode).startsWith('sdkwork-')
+      ? appManifest.applicationCode
+      : `sdkwork-${appManifest.applicationCode}`;
+  }
+  return null;
 }
 
 function loadDependencyIntegration(repoRoot, workspace) {
@@ -167,6 +171,11 @@ function resolveRuntimeMode({
 
   if (connectivityPlane === 'platform') return 'external-via-platform-surface';
   return 'same-origin-embedded';
+}
+
+function resolveOwnershipConnectivityPlane({ sdkOwner, consumerSdkOwner }) {
+  if (!sdkOwner || !consumerSdkOwner) return null;
+  return sdkOwner === consumerSdkOwner ? 'application' : 'platform';
 }
 
 function normalizeDeclaredRuntimeMode(mode) {
@@ -383,26 +392,63 @@ export function resolveComposition(repoRoot, options = {}) {
   const sdkDependencies = collectConsumerSdkDependencies(repoRoot);
   const overridesByCore = loadCompositionOverrides(repoRoot);
   const architecture = buildArchitectureSummary(repoRoot);
+  const consumerSdkOwner = loadConsumerSdkOwner(repoRoot);
+
+  if (sdkDependencies.length > 0 && !consumerSdkOwner) {
+    issues.push('consumer application SDK owner is missing from sdkwork.app.config.json#app.key');
+  }
 
   for (const dep of sdkDependencies) {
     const workspace = dep.workspace;
-    const manifestDiscovery = loadManifestDiscovery(repoRoot, workspace);
+    const sdkFamilyManifest = loadSdkFamilyManifest(repoRoot, workspace);
+    const manifestDiscovery = sdkFamilyManifest?.discoverySurface ?? null;
     const dependencyIntegration = loadDependencyIntegration(repoRoot, workspace);
     const legacySurface = loadLegacyDependencySurface(repoRoot, workspace);
     const integrationOverride = findIntegrationOverride(overridesByCore, workspace);
 
     const surface = dep.surface ?? surfaceFromWorkspace(workspace);
     const embeddedSurface = findVerifiedEmbeddedSurface(architecture, workspace, surface);
-    const domain = domainFromSdkWorkspace(workspace);
     const apiPrefix = embeddedSurface?.apiPrefix ?? defaultPrefix(surface, manifestDiscovery);
+    const ownershipConnectivityPlane = resolveOwnershipConnectivityPlane({
+      sdkOwner: sdkFamilyManifest?.sdkOwner,
+      consumerSdkOwner,
+    });
     const connectivityPlane = embeddedSurface
       ? 'application'
-      : dependencyIntegration?.defaultConnectivityPlane
-        ?? defaultConnectivityPlane(domain, surface);
-    const runtimeMode = normalizeDeclaredRuntimeMode(integrationOverride?.runtimeMode)
-      ?? (embeddedSurface
-        ? 'same-origin-embedded'
-        : resolveRuntimeMode({ dependencyIntegration, legacySurface, connectivityPlane }));
+      : ownershipConnectivityPlane ?? dependencyIntegration?.defaultConnectivityPlane ?? null;
+    const requestedRuntimeMode = normalizeDeclaredRuntimeMode(integrationOverride?.runtimeMode);
+    const dependencyOwned = Boolean(
+      sdkFamilyManifest?.sdkOwner
+      && consumerSdkOwner
+      && sdkFamilyManifest.sdkOwner !== consumerSdkOwner,
+    );
+    let runtimeMode;
+    if (embeddedSurface) {
+      runtimeMode = 'same-origin-embedded';
+    } else if (requestedRuntimeMode === 'same-origin-embedded' && dependencyOwned) {
+      issues.push(`${workspace}: dependency-owned same-origin runtime requires verified embedded assembly evidence`);
+      runtimeMode = 'external-via-platform-surface';
+    } else if (requestedRuntimeMode) {
+      runtimeMode = requestedRuntimeMode;
+    } else if (dependencyOwned) {
+      runtimeMode = 'external-via-platform-surface';
+    } else {
+      runtimeMode = resolveRuntimeMode({ dependencyIntegration, legacySurface, connectivityPlane });
+    }
+
+    if (!sdkFamilyManifest) {
+      issues.push(`${workspace}: sdk-manifest.json is required to resolve SDK ownership`);
+    } else if (!sdkFamilyManifest.sdkOwner || !sdkFamilyManifest.apiAuthority) {
+      issues.push(`${workspace}: sdk-manifest.json must declare sdkOwner and apiAuthority`);
+    }
+    if (!connectivityPlane) {
+      issues.push(`${workspace}: connectivity plane is unresolved without SDK ownership metadata`);
+    }
+    for (const key of Object.keys(integrationOverride ?? {})) {
+      if (!ALLOWED_INTEGRATION_OVERRIDE_KEYS.has(key)) {
+        issues.push(`${workspace}: unsupported composition integration override ${key}; only baseUrl and runtimeMode are allowed`);
+      }
+    }
     if (!RUNTIME_MODES.has(runtimeMode)) {
       issues.push(`${workspace}: unsupported runtimeMode ${runtimeMode}`);
     }
@@ -425,8 +471,7 @@ export function resolveComposition(repoRoot, options = {}) {
       ? 'verified'
       : legacySurface?.runtimeIntegration?.mountCoverage?.status ?? null;
     const forbidApplicationSameOriginFallback = runtimeMode === 'external-via-platform-surface'
-      && connectivityPlane === 'platform'
-      && mountStatus === 'not-mounted';
+      && connectivityPlane === 'platform';
 
     if (runtimeMode === 'external-via-platform-surface') {
       requiresPlatformApiSurface = true;
@@ -442,6 +487,9 @@ export function resolveComposition(repoRoot, options = {}) {
         mountStatus,
         envKey,
         forbidApplicationSameOriginFallback: true,
+        sdkOwner: sdkFamilyManifest?.sdkOwner ?? null,
+        apiAuthority: sdkFamilyManifest?.apiAuthority ?? null,
+        consumerSdkOwner,
         corePackage: dep.corePackage,
         source: dep.source,
       });
@@ -457,6 +505,9 @@ export function resolveComposition(repoRoot, options = {}) {
       mountStatus,
       envKey,
       forbidApplicationSameOriginFallback: false,
+      sdkOwner: sdkFamilyManifest?.sdkOwner ?? null,
+      apiAuthority: sdkFamilyManifest?.apiAuthority ?? null,
+      consumerSdkOwner,
       corePackage: dep.corePackage,
       source: dep.source,
     });
