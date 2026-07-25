@@ -1,12 +1,12 @@
 # SDKWork Database Framework Standard
 
-- Version: 1.0
+- Version: 2.0
 - Status: active
 - Scope: application database lifecycle, standardized `database/` asset layout, migration and seed governance, schema drift observation, lifecycle SPI hosted in `sdkwork-database`, bootstrap and upgrade orchestration, locale-aware initialization data
 - Related: `DATABASE_SPEC.md`, `DATABASE_SPEC_PROCESS_SHARED_POOL.md`, `SCHEMA_REGISTRY_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `MIGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`, `QUALITY_GATE_SPEC.md`, `RELEASE_SPEC.md`, `GOVERNANCE_SPEC.md`, `DOCUMENTATION_SPEC.md`
 - Detail implementation profile: `../sdkwork-database/specs/DATABASE_FRAMEWORK_STANDARD.md` (L1 framework repository authoritative for crate APIs, SPI trait signatures, CLI commands, and verification harnesses)
 
-This standard defines how SDKWork applications **build, initialize, upgrade, observe, and govern** relational databases. `DATABASE_SPEC.md` owns table semantics, logical types, naming, indexes, tenant isolation, connection pools, and repository boundaries. This file owns **database lifecycle orchestration** and the **application asset dictionary** that lifecycle consumes.
+This standard defines how SDKWork applications **build, initialize, upgrade, observe, and govern** relational databases. `DATABASE_SPEC.md` owns PostgreSQL-first authoritative server semantics, SQLite client-local boundaries, logical types, naming, indexes, tenant isolation, connection pools, and repository boundaries. This file owns **database lifecycle orchestration** and the role-specific **database asset dictionaries** that lifecycle consumes.
 
 ## 1. System Model
 
@@ -37,9 +37,10 @@ application database modules (L3)
 Rules:
 
 - Every SDKWork application or backend service repository that owns a relational database `MUST` follow this standard for lifecycle assets and bootstrap behavior.
+- Every database module `MUST` declare `databaseRole`. Server/application-root lifecycle modules use `authoritative-server` and PostgreSQL. Client/native modules use `client-local` and SQLite. One module `MUST NOT` claim both roles.
 - Table and column semantics `MUST` still follow `DATABASE_SPEC.md`. Lifecycle assets `MUST NOT` redefine naming or logical-type rules.
 - All connection pools `MUST` still be created through `sdkwork-database` as defined in `DATABASE_SPEC.md` section 32.
-- Every application ingress, internal service, or worker process `MUST` install one process-local pool per normalized database identity before module lifecycle bootstrap. Embedded modules reuse that pool and do not own independent capacity. See `DATABASE_SPEC.md` section 33.4 and `DATABASE_SPEC_PROCESS_SHARED_POOL.md`.
+- Every application ingress, internal service, or worker process `MUST` install one PostgreSQL process-local pool per normalized database identity before module lifecycle bootstrap. Embedded modules reuse that pool and do not own independent capacity. See `DATABASE_SPEC.md` section 33.5 and `DATABASE_SPEC_PROCESS_SHARED_POOL.md`.
 - A temporary `sqlx::AnyPool` compatibility driver is fail-closed by default. When an approved process-pool contract and ADR declare the exception, `SDKWORK_DATABASE_TEMPORARY_ANY_POOL_EXCEPTION=true` permits the framework to install one identity-checked compatibility pool; every compatibility consumer reuses that handle until driver migration removes the exception.
 - IM's current sqlx plus r2d2 bundle is migration infrastructure, not strict single-pool compliance. New adapters use the canonical process driver; remaining incompatible adapters require a governed temporary exception and removal milestone.
 - Application-specific lifecycle behavior `MUST` extend the framework through SPI traits defined in `sdkwork-database-spi`. Applications `MUST NOT` fork lifecycle orchestration into ad-hoc installers unless an approved exception exists.
@@ -51,7 +52,8 @@ Rules:
 | Goal | Requirement |
 | --- | --- |
 | Contract-first | Expected schema comes from `database/contract/` before migrations or ORM code |
-| Engine-portable | The same lifecycle model works for PostgreSQL and SQLite at minimum |
+| PostgreSQL-first | Authoritative server lifecycle, migrations, drift, release gates, and recovery use PostgreSQL without a SQLite feature ceiling |
+| Role-explicit | PostgreSQL server assets and SQLite client-local assets have separate manifests, contracts, histories, tests, and owners |
 | Upgrade-safe | Forward migrations are idempotent, tracked, checksum-verified, and release-gated |
 | Initialization-safe | Seed data is locale-aware, profile-aware, idempotent, and auditable |
 | Observable | Running services expose drift status through backend ops APIs |
@@ -78,7 +80,7 @@ Compliance tiers:
 | L2 | Contract Governed | `contract/schema.yaml`, registry files, CI validate + migrate + seed smoke |
 | L3 | Drift Observable | Drift engine, ops API, release drift gate, seed locale governance |
 
-New application database work `MUST` reach L2 before production release. Platform, IAM, commerce, billing, and multi-tenant shared databases `SHOULD` reach L3.
+New authoritative server database work `MUST` reach L2 on PostgreSQL before production release. Platform, IAM, commerce, billing, and multi-tenant shared databases `SHOULD` reach L3. Client-local SQLite modules `MUST` meet the client-local contract and test gates in sections 5, 6, and 13 before client release.
 
 ## 4. Lifecycle Model
 
@@ -122,8 +124,8 @@ Rules:
 
 Default service bootstrap order:
 
-1. Resolve database config from env/TOML per `DATABASE_SPEC.md` section 33.2.
-2. Create connection pool through `sdkwork-database-sqlx`.
+1. Resolve the `authoritative-server` PostgreSQL config from env/TOML per `DATABASE_SPEC.md` section 33.2.
+2. Create the PostgreSQL connection pool through `sdkwork-database-sqlx`.
 3. Discover registered `DatabaseModule` SPI providers for the service.
 4. Resolve lifecycle policy from `database/database.manifest.json` and runtime env.
 5. If enabled, run pending migrations through lifecycle orchestrator.
@@ -135,9 +137,9 @@ Applications with multiple bounded database modules `MAY` register multiple SPI 
 
 ## 5. Application Directory Dictionary
 
-### 5.1 Required Top-Level Layout
+### 5.1 Authoritative Server Layout
 
-Every SDKWork application root or standalone backend service root that owns a database `MUST` include:
+Every SDKWork application root or standalone backend service root that owns authoritative relational data `MUST` include:
 
 ```text
 database/
@@ -150,11 +152,9 @@ database/
   ddl/
     baseline/
       postgres/
-      sqlite/
     generated/
   migrations/
     postgres/
-    sqlite/
   seeds/
     seed.manifest.json
     common/
@@ -177,11 +177,44 @@ tests/
 Rules:
 
 - `database/` is the only authoritative source for lifecycle assets. Crate-local `migrations/` directories `MUST` migrate into `database/migrations/` or be referenced through SPI asset locators during a compatibility window.
-- `database/README.md` `MUST` document owner, engine support, bootstrap commands, verification commands, and related specs.
+- `database/README.md` `MUST` document owner, `authoritative-server` role, PostgreSQL version/extension support, bootstrap commands, verification commands, and related specs.
+- Authoritative `database/` roots `MUST NOT` contain `migrations/sqlite/` or `ddl/baseline/sqlite/`. SQLite assets belong to a client/native module under section 5.2.
 - `fixtures/` is test-only. Production bootstrap `MUST NOT` read from `fixtures/`.
 - Generated artifacts under `ddl/generated/` `MUST NOT` be hand-edited.
 
-### 5.2 Optional Extensions
+### 5.2 Client-Local SQLite Layout
+
+A desktop, tablet, mobile, or native client module with a concrete local persistence requirement `MUST` own a separate client-local database root:
+
+```text
+<client-module>/
+  database/
+    README.md
+    database.manifest.json
+    contract/
+      schema.yaml
+    ddl/
+      baseline/
+        sqlite/
+    migrations/
+      sqlite/
+    local-data-policy.yaml
+    fixtures/
+  tests/
+    contract/
+      client-local-database.contract.test.*
+```
+
+Rules:
+
+- The client module manifest `MUST` declare `databaseRole: "client-local"`, `engines: ["sqlite"]`, and `defaultEngine: "sqlite"`.
+- Client-local assets `MUST` be owned by the native/client persistence module that opens the SQLite file. They `MUST NOT` be placed in an authoritative server database root merely to claim engine parity.
+- `local-data-policy.yaml` `MUST` declare data mode (`cache`, `offline-projection`, or `local-only`), profile/environment/origin/account isolation, authoritative source, sync contract reference when applicable, encryption/key storage, backup inclusion, retention, logout/account-switch purge, corruption recovery, disk-full behavior, and schema downgrade policy.
+- `offline-projection` requires a versioned sync contract and tests for identity mapping, outbox/inbox idempotency, ordering, tombstones, conflicts, rejection, retry, and reconciliation.
+- `local-only` data `MUST` name the device-local business boundary and prove that no shared server, cross-device, tenant, entitlement, billing, ledger, or audit authority depends on it.
+- Client-local seeds, when needed, `MUST` be deterministic and local-role specific. They `MUST NOT` reuse the authoritative server seed history as if the physical schemas were interchangeable.
+
+### 5.3 Optional Extensions
 
 Applications `MAY` add bounded extensions when declared in `database.manifest.json`:
 
@@ -194,7 +227,7 @@ Applications `MAY` add bounded extensions when declared in `database.manifest.js
 
 Extensions `MUST NOT` replace the core directories in section 5.1.
 
-### 5.3 Workspace Integration
+### 5.4 Workspace Integration
 
 `SDKWORK_WORKSPACE_SPEC.md` `MUST` treat `database/` as a standard application-root directory alongside `apis/`, `sdks/`, `etc/`, and `deployments/`.
 
@@ -212,13 +245,14 @@ Required manifest for lifecycle discovery:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "sdkwork.database.module",
+  "databaseRole": "authoritative-server",
   "moduleId": "forum",
   "serviceCode": "FORUM",
   "displayName": "Forum Database",
   "owner": "forum-platform",
-  "engines": ["postgres", "sqlite"],
+  "engines": ["postgres"],
   "defaultEngine": "postgres",
   "tablePrefix": "forum_",
   "contractVersion": "1.4.0",
@@ -248,11 +282,52 @@ Required manifest for lifecycle discovery:
 
 Rules:
 
+- `schemaVersion` `MUST` be `2` for new or migrated modules. Schema version 1 is an L0 migration input and requires the migration record defined by `MIGRATION_SPEC.md`.
+- `databaseRole` `MUST` be `authoritative-server` for an application/service root or `client-local` for a native/client module root.
+- An `authoritative-server` manifest `MUST` declare exactly `engines: ["postgres"]` and `defaultEngine: "postgres"`.
+- A `client-local` manifest `MUST` declare exactly `engines: ["sqlite"]` and `defaultEngine: "sqlite"`; it `MUST` also declare `clientLocal.mode`, `clientLocal.scope`, and `clientLocal.authoritativeSource`, plus `clientLocal.syncContract` for `offline-projection`.
 - `moduleId` `MUST` be stable, lowercase, kebab-case or snake_case, and unique within the application root.
 - `serviceCode` `MUST` map to `SDKWORK_{SERVICE}_DATABASE_*` env prefix per `DATABASE_SPEC.md` section 33.2.
-- `contractVersion` `MUST` follow semantic versioning aligned with `DATABASE_SPEC.md` section 22.
+- `contractVersion` `MUST` be a valid semantic version aligned with `DATABASE_SPEC.md` section 22 and `MUST` exactly match `contract/schema.yaml#contract_version`.
+- `lifecycle.autoMigrate` `MUST` be an explicit boolean. Authoritative PostgreSQL modules `MUST` default it to `false`; a production override to `true` requires a single elected migrator, advisory/lease coordination, a dedicated migrator role, bounded lock and statement timeouts, failure isolation, and accepted release evidence. Client-local SQLite modules `MAY` use `true` when migrations are atomic and interruption recovery is tested.
 - `activeSeedLocales` controls which locale directories are eligible for execution. Directories for inactive locales `MUST` still exist once declared in `supportedSeedLocales`.
 - `baselineStrategy` `MUST` be one of: `migrations-only`, `baseline-plus-migrations`, `baseline-only-dev`.
+- `migrations-only` `MUST` provide at least one ordered `.up.sql` migration that can initialize an empty database; a baseline snapshot is optional and is not an alternate production bootstrap path.
+- `baseline-plus-migrations` and `baseline-only-dev` `MUST` provide an engine-specific baseline SQL file. Post-baseline migrations may be empty until the contract evolves.
+- `baseline-only-dev` `MUST NOT` be selected by a production, staging, upgrade, or release profile.
+
+Client-local manifest profile:
+
+```json
+{
+  "schemaVersion": 2,
+  "kind": "sdkwork.database.module",
+  "databaseRole": "client-local",
+  "moduleId": "forum-desktop-local",
+  "serviceCode": "FORUM_DESKTOP_LOCAL",
+  "displayName": "Forum Desktop Local Database",
+  "owner": "forum-client",
+  "engines": ["sqlite"],
+  "defaultEngine": "sqlite",
+  "contractVersion": "1.0.0",
+  "baselineStrategy": "migrations-only",
+  "clientLocal": {
+    "mode": "offline-projection",
+    "scope": "environment-profile-origin-account",
+    "authoritativeSource": "forum-app-api",
+    "syncContract": "specs/forum-offline-sync.spec.json"
+  },
+  "lifecycle": {
+    "autoMigrate": true,
+    "seedOnBoot": false
+  },
+  "paths": {
+    "contract": "contract/schema.yaml",
+    "migrations": "migrations",
+    "localDataPolicy": "local-data-policy.yaml"
+  }
+}
+```
 
 ### 6.2 `contract/schema.yaml`
 
@@ -261,13 +336,13 @@ The portable schema contract `MUST` declare:
 ```yaml
 schema_version: 1
 kind: sdkwork.database.schema
+database_role: authoritative-server
 module_id: forum
 contract_version: 1.4.0
 owner_team: forum-platform
 compliance_level: L2
 engines:
   - postgres
-  - sqlite
 table_prefix: forum_
 tables: []
 ```
@@ -275,6 +350,9 @@ tables: []
 Rules:
 
 - `kind` and `schema_version` are required framework metadata.
+- `database_role` `MUST` exactly match `database.manifest.json#databaseRole`.
+- `engines` `MUST` contain only `postgres` for `authoritative-server` and only `sqlite` for `client-local`.
+- `contract_version` `MUST` be a valid semantic version and `MUST` exactly match `database.manifest.json#contractVersion`.
 - Table definitions `MUST` follow `DATABASE_SPEC.md` sections 4–21.
 - Contract is the semantic source of truth. Migrations `MUST` implement contract evolution.
 
@@ -337,16 +415,16 @@ Migration files `MUST` use sortable names:
 
 ```text
 migrations/postgres/0001_create_forum_space.up.sql
-migrations/postgres/0001_create_forum_space.down.sql
-migrations/sqlite/0001_create_forum_space.up.sql
-migrations/sqlite/0001_create_forum_space.down.sql
+migrations/postgres/0001_create_forum_space.down.sql  # optional when safely reversible
 ```
 
 Rules:
 
 - Version prefix `MUST` be zero-padded numeric or ISO-like sortable token.
-- Every numbered migration `MUST` provide a paired `.down.sql` file; layout validation enforces this pairing.
-- Engine-specific syntax differences `MUST` be expressed as separate files under `migrations/{engine}/`, not runtime branching inside one file, except through approved SQL abstraction macros documented in the framework profile.
+- Every `.up.sql` migration `MUST` declare its rollback strategy in metadata. A paired `.down.sql` file is optional and allowed only for a tested, bounded, data-preserving reversal. Irreversible or lossy migrations declare `reversible: false` and `rollback: forward-fix|restore-cutover`.
+- Authoritative server migrations `MUST` live only under `migrations/postgres/` and may use PostgreSQL-native syntax required by the contract.
+- Client-local migrations `MUST` live only in the owning client module under `migrations/sqlite/` and implement that module's separate client-local contract.
+- PostgreSQL and SQLite migrations `MUST NOT` be copied, mechanically transliterated, or selected by runtime branching inside one SQL file. Cross-role data movement belongs in an explicit sync/projection contract.
 
 ### 7.2 Migration Metadata Header
 
@@ -359,10 +437,19 @@ Each migration `SHOULD` begin with a structured comment block:
 -- module: forum
 -- purpose: Create forum_space foundation table
 -- reversible: true
+-- rollback: down-migration
 -- transactional: true
 -- lock: lightweight
+-- lock_timeout: 2s
+-- statement_timeout: 30s
 -- contract_version: 1.1.0
 ```
+
+Metadata rules:
+
+- `transactional`, `lock`, `lock_timeout`, `statement_timeout`, `reversible`, and `rollback` `MUST` be explicit for production PostgreSQL migrations.
+- Non-trivial migrations `MUST` also declare rewrite expectation, replication/WAL impact, backfill plan, observability, cancellation point, and recovery command in the migration plan or structured header.
+- `transactional: false` is required for operations such as `CREATE INDEX CONCURRENTLY`; the lifecycle runner `MUST` not wrap them in an implicit transaction.
 
 ### 7.3 History Tables
 
@@ -387,6 +474,8 @@ Rules aligned with `MIGRATION_SPEC.md` and `DATABASE_SPEC.md` section 22:
 - Backfills `MUST` be idempotent and resumable.
 - Tenant-sensitive backfills `MUST` include isolation tests.
 - Migration plans `MUST` be linked in release evidence for MAJOR contract changes.
+- PostgreSQL migrations `MUST` be tested on the minimum and maximum supported PostgreSQL major versions when version-specific DDL, planner, extension, or fast-path behavior is used.
+- A release rollback `MUST` prefer compatible application rollback or forward-fix. Automated execution of every available `.down.sql` in reverse order is forbidden.
 
 ## 8. Seed And Locale Standard
 
@@ -634,7 +723,7 @@ pub trait SchemaIntrospector {
 }
 ```
 
-Default implementation: built-in PostgreSQL/SQLite introspection in `sdkwork-database-drift`.
+Default authoritative implementation: PostgreSQL introspection in `sdkwork-database-drift`. SQLite introspection is used only by the client-local validator/adapter for a declared `client-local` module.
 
 #### `DatabaseLifecycleListener`
 
@@ -761,7 +850,7 @@ Application roots `MUST` expose standard commands per `PNPM_SCRIPT_SPEC.md`:
 | `db:materialize:contract` | Materialize L2 contract registries and manifest fields from baseline DDL |
 | `db:bootstrap` | `db:migrate` then `db:seed` for development/bootstrap flows |
 
-Desktop or Tauri hosts that keep an embedded SQLite driver `MAY` mirror the framework baseline into the package runtime and record `database.manifest.json` metadata at startup. CI and shared environments `MUST` still use `sdkwork-database-cli` against `SDKWORK_{SERVICE}_DATABASE_URL`.
+Desktop or Tauri hosts with a declared `client-local` module `MAY` package that module's SQLite baseline and migrations into the native runtime. They `MUST NOT` mirror or mechanically convert the PostgreSQL authoritative baseline. Server CI and shared environments `MUST` use `sdkwork-database-cli` against the PostgreSQL `SDKWORK_{SERVICE}_DATABASE_URL`; client-local CI validates its own SQLite contract separately.
 
 CLI backing implementation `MUST` live in `sdkwork-database-cli` or repository `tools/database/` thin wrappers.
 
@@ -772,19 +861,23 @@ CLI backing implementation `MUST` live in `sdkwork-database-cli` or repository `
 | Test | Purpose |
 | --- | --- |
 | `database-framework.contract.test.*` | Directory/manifest/SPI registration contract |
-| migration smoke | Empty DB -> latest schema on both supported engines |
+| PostgreSQL migration smoke | Empty PostgreSQL database/schema -> latest authoritative schema |
+| PostgreSQL upgrade smoke | Previous supported contract version -> latest, including lock/rewrite/backfill assertions |
 | seed smoke | `common` + default locale/profile idempotency |
 | drift clean | Fresh bootstrap yields zero error-level drift |
 | checksum immutability | Changed applied migration fails CI |
+| PostgreSQL repository/concurrency | Constraints, isolation, SQLSTATE mapping, tenant denial, idempotency, and transaction retry on real PostgreSQL |
+| PostgreSQL plan evidence | Representative P0/P1 plans and buffers satisfy declared budgets |
+| client-local SQLite contract | Required only when a `client-local` module exists; verifies PRAGMAs, schema migration, isolation, purge, corruption/disk-full recovery, and sync/conflict behavior |
 
 ### 13.2 Gate Matrix
 
 | Gate | Requirement |
 | --- | --- |
-| Merge | `db:validate` passes for touched database assets |
-| Staging deploy | `db:migrate`, `db:seed`, `db:drift:check` |
-| Release | Drift report archived; MAJOR contract changes linked to migration plan |
-| Production | No error-level drift; no pending migrations |
+| Merge | `db:validate` passes; authoritative changes pass PostgreSQL migration/repository tests; optional client-local changes pass their separate SQLite tests |
+| Staging deploy | PostgreSQL `db:migrate`, `db:seed`, `db:drift:check`; migration lock/backfill observation active |
+| Release | PostgreSQL drift and query-plan evidence archived; MAJOR contract changes linked to migration plan; client-local sync evidence attached when applicable |
+| Production | PostgreSQL has no error-level drift or pending migrations; backup/restore readiness and connection budget are current |
 
 ### 13.3 Documentation
 
@@ -817,6 +910,9 @@ Known legacy patterns to converge:
 - application-local `DatabaseInstaller`
 - TypeScript/Rust ad-hoc schema bootstrap without history tables
 - seed data embedded in application code instead of `seeds/`
+- service-side SQLite or mixed PostgreSQL/SQLite parity manifests
+- PostgreSQL baselines copied or text-converted into SQLite baselines
+- mandatory generic down migrations that are not proven data-preserving
 
 ## 16. Extension And Future Evolution
 
@@ -844,7 +940,8 @@ Application database lifecycle is compliant when:
 - [ ] `database/` directory matches section 5
 - [ ] `database.manifest.json` and `seeds/seed.manifest.json` exist and validate
 - [ ] `contract/schema.yaml` and registries exist for L2+
-- [ ] Migrations are engine-separated, ordered, checksum-tracked, and history-backed
+- [ ] Authoritative manifest declares `databaseRole=authoritative-server`, `engines=[postgres]`, and `defaultEngine=postgres`
+- [ ] PostgreSQL migrations are ordered, checksum-tracked, history-backed, metadata-complete, and use safe forward/rollback strategy
 - [ ] Seeds split `common` vs locale directories; default seed locale is `zh-CN`
 - [ ] Locale seed manifests declare `i18nVersion`, fallback/default/supported/active locales, locale set versions, and checksums.
 - [ ] Connection pool uses `sdkwork-database`
@@ -852,7 +949,9 @@ Application database lifecycle is compliant when:
 - [ ] Drift ops endpoints or CLI are available for L3
 - [ ] Standard `db:*` commands exist at application root
 - [ ] Contract tests and release gates are wired in CI
+- [ ] PostgreSQL authoritative tests run against real PostgreSQL and include transaction, constraint, isolation, migration, plan, and recovery evidence
+- [ ] Any SQLite module is owned by a client/native module, declares `databaseRole=client-local`, and passes separate local-data/sync/security gates
 
 ## 18. Summary
 
-SDKWork database lifecycle is contract-first, migration-governed, seed-locale-aware, and drift-observable. Applications ship standardized `database/` assets, register module SPI providers from `sdkwork-database-spi`, and let the framework orchestrate bootstrap and upgrades. Table semantics remain in `DATABASE_SPEC.md`; lifecycle behavior lives here and in the `sdkwork-database` framework profile.
+SDKWork database lifecycle is PostgreSQL-first, role-explicit, contract-first, migration-governed, seed-locale-aware, and drift-observable. Authoritative applications ship PostgreSQL `database/` assets and use the shared lifecycle framework. Client/native modules may ship a separate SQLite `client-local` contract when a real local-data requirement exists. Physical parity between those roles is neither required nor allowed to weaken the PostgreSQL design.

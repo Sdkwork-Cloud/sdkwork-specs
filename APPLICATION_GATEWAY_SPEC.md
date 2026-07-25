@@ -50,6 +50,8 @@ and cross-assembly collision validation. They do not own application route
 aggregation, API bootstrap dependencies, OpenAPI authority, permission
 catalogs, or SDK generation.
 
+The host applies exactly one `sdkwork-web-framework` pipeline to the combined router and combined route manifest from all selected assemblies. Framework-owned CORS, authentication, authorization, tenant isolation, problem mapping, audit, and response identity `MUST NOT` be duplicated by gateway-local middleware.
+
 ### 2.1 Vocabulary Discipline
 
 These terms are not interchangeable:
@@ -86,6 +88,8 @@ infrastructure exactly once.
 It `MUST NOT` depend on, resolve, or start `sdkwork-api-cloud-gateway`; depend
 directly on application route crates; duplicate assembly-owned implementation
 dependencies; or start per-surface HTTP sidecars.
+
+The selected standalone profile `MUST` determine whether each dependency surface is embedded through its dependency assembly or external through an explicit platform/dependency URL. The gateway fails startup when the profile selects embedded mode without an executable dependency assembly, or external mode without a resolvable upstream/base URL.
 
 ## 4. Platform Cloud Gateway
 
@@ -160,6 +164,8 @@ platform gateway TOML files, or platform gateway packaging assets.
 | Standalone gateway | `rust-api-standalone-gateway` | `sdkwork-api-<application-code>-assembly` |
 | Platform cloud gateway | `rust-platform-cloud-gateway` | Approved API assembly set or upstream registry |
 
+Standalone gateway component contracts additionally declare required ports for every selected dependency assembly and matching `dependencyApiSurfaces` entries. Direct dependency route-crate imports and undeclared same-origin mounts are invalid even when they compile.
+
 ## 8. Pnpm Commands
 
 Application roots expose `api:assembly:materialize`,
@@ -180,6 +186,8 @@ Only the `sdkwork-api-cloud-gateway` repository exposes
 Application topology declares its standalone gateway and surface-oriented
 remote URLs. It does not declare a cloud gateway crate, binary, repository,
 owner, bind variable, config path, or autostart flag.
+
+Renderer bind/port, access endpoint, SDK base URL, CORS origin, credential-entry bootstrap handoff, and gateway bind `MUST` resolve from the same runtime plan. Package scripts may consume the resolved values but must not override them with hard-coded ports.
 
 Canonical roles are `api-standalone-gateway` in an application topology and
 `platform-cloud-gateway` in the platform gateway topology. Application client
@@ -210,6 +218,7 @@ node ../sdkwork-specs/tools/check-application-cloud-gateway-boundary.mjs --root 
 node ../sdkwork-specs/tools/check-single-http-ingress.mjs --root .
 node ../sdkwork-specs/tools/scan-duplicate-gateway-api-deps.mjs --root .
 node ../sdkwork-specs/tools/check-route-path-collisions.mjs --root .
+node ../sdkwork-specs/tools/check-api-runtime-parity.mjs --root .
 ```
 
 ## 12. Acceptance Checklist
@@ -219,5 +228,7 @@ node ../sdkwork-specs/tools/check-route-path-collisions.mjs --root .
 - [ ] Applications do not depend on, start, configure, or package cloud gateway.
 - [ ] Platform cloud gateway consumes assemblies from the platform side.
 - [ ] Gateway hosts are thin and mount process infrastructure once.
+- [ ] All selected application/dependency routers are merged before one Web Framework layer; no API router or duplicate CORS/auth middleware is added afterward.
+- [ ] Served OpenAPI is built from the same selected assembly contributions and auth profiles as the executable router.
 - [ ] Standalone has one application HTTP listener.
 - [ ] Cloud development starts no local API-plane process.

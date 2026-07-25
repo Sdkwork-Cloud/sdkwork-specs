@@ -25,7 +25,6 @@ function runTool(root) {
       '--baseline', 'database/ddl/baseline/postgres/0001_test_baseline.sql',
       '--module-id', 'test',
       '--owner', 'test-platform',
-      '--engines', 'sqlite,postgres',
     ],
     { stdio: 'pipe' },
   );
@@ -45,7 +44,14 @@ test('materialization preserves semantic contract metadata and is idempotent', (
   write(
     root,
     'database/database.manifest.json',
-    `${JSON.stringify({ contractVersion: '1.4.0', lifecycle: { autoMigrate: false } }, null, 2)}\n`,
+    `${JSON.stringify({
+      schemaVersion: 2,
+      databaseRole: 'authoritative-server',
+      contractVersion: '1.4.0',
+      engines: ['postgres'],
+      defaultEngine: 'postgres',
+      lifecycle: { autoMigrate: false },
+    }, null, 2)}\n`,
   );
   write(
     root,
@@ -53,12 +59,12 @@ test('materialization preserves semantic contract metadata and is idempotent', (
     [
       'schema_version: 1',
       'kind: sdkwork.database.schema',
+      'database_role: authoritative-server',
       'module_id: test',
       'contract_version: 1.4.0',
       'owner_team: test-platform',
       'compliance_level: L2',
       'engines:',
-      '  - sqlite',
       '  - postgres',
       'table_prefixes:',
       '  - alpha_',
@@ -87,7 +93,7 @@ test('materialization preserves semantic contract metadata and is idempotent', (
   assert.match(firstSchema, /name: uk_alpha_record_id/);
   assert.match(firstSchema, /^  - name: beta_record$/m);
   assert.equal(JSON.parse(firstManifest).contractVersion, '1.4.0');
-  assert.equal(JSON.parse(firstManifest).lifecycle.autoMigrate, true);
+  assert.equal(JSON.parse(firstManifest).lifecycle.autoMigrate, false);
 
   runTool(root);
 
@@ -102,7 +108,18 @@ test('materialization rejects mismatched contract versions', () => {
     'database/ddl/baseline/postgres/0001_test_baseline.sql',
     'CREATE TABLE IF NOT EXISTS test_record (id BIGINT PRIMARY KEY);\n',
   );
-  write(root, 'database/database.manifest.json', '{"contractVersion":"2.0.0","lifecycle":{}}\n');
+  write(
+    root,
+    'database/database.manifest.json',
+    `${JSON.stringify({
+      schemaVersion: 2,
+      databaseRole: 'authoritative-server',
+      contractVersion: '2.0.0',
+      engines: ['postgres'],
+      defaultEngine: 'postgres',
+      lifecycle: {},
+    })}\n`,
+  );
   write(
     root,
     'database/contract/schema.yaml',
@@ -113,4 +130,36 @@ test('materialization rejects mismatched contract versions', () => {
     () => runTool(root),
     /database contract version mismatch: manifest=2\.0\.0, schema=1\.0\.0/,
   );
+});
+
+test('materialization rejects client-local and mixed-engine manifests', () => {
+  for (const manifest of [
+    {
+      schemaVersion: 2,
+      databaseRole: 'client-local',
+      contractVersion: '1.0.0',
+      engines: ['sqlite'],
+      defaultEngine: 'sqlite',
+    },
+    {
+      schemaVersion: 2,
+      databaseRole: 'authoritative-server',
+      contractVersion: '1.0.0',
+      engines: ['postgres', 'sqlite'],
+      defaultEngine: 'postgres',
+    },
+  ]) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-database-role-rejection-'));
+    write(
+      root,
+      'database/ddl/baseline/postgres/0001_test_baseline.sql',
+      'CREATE TABLE IF NOT EXISTS test_record (id BIGINT PRIMARY KEY);\n',
+    );
+    write(root, 'database/database.manifest.json', `${JSON.stringify(manifest)}\n`);
+
+    assert.throws(
+      () => runTool(root),
+      /contract materialization requires databaseRole=authoritative-server|authoritative contract materialization requires engines=\[postgres\] and defaultEngine=postgres/,
+    );
+  }
 });

@@ -216,9 +216,11 @@ topology spec, or start a second standalone gateway.
 - IAM login uses `platform.api-gateway` when the platform plane is external.
 - Embedded standalone IAM adapters must preserve the same SDK contract,
   credential rules, and `WebRequestContext` behavior.
+- Each deployment profile `MUST` classify every consumed dependency API surface as exactly one of embedded same-origin or external. Embedded selects the dependency-owned API assembly and proves mount coverage; external selects a declared platform/dependency URL and does not mount the dependency assembly locally.
 - Application open-api and app-api SDKs use `application.public-ingress` HTTP URL.
 - Realtime SDKs use `application.public-ingress` WebSocket URL.
 - Client env keys mirror server keys with the configured browser prefix.
+- Credential-entry bootstrap is a lifecycle precondition, not a feature-level env read. Development renderers receive the approved private bootstrap handoff before application modules execute; production browsers use the approved short-lived IAM bootstrap exchange or trusted host channel from `IAM_CREDENTIAL_ENTRY_SPEC.md`.
 
 Forbidden:
 
@@ -234,9 +236,12 @@ Dev scripts `MUST`:
 1. Load profile env from `etc/topology/` through `@sdkwork/app-topology`.
 2. Start processes from `topology.spec.json` `orchestration.profiles[<profile-id>]`.
 3. Health-check required surfaces before starting clients.
-4. Accept `--deployment-profile` and `--environment`.
-5. Print the resolved `deploymentProfile`, `environment`, runtime target,
+4. Execute declared lifecycle environment providers, including IAM credential-entry development bootstrap, before spawning dependent clients.
+5. Accept `--deployment-profile` and `--environment`.
+6. Print the resolved `deploymentProfile`, `environment`, runtime target,
    database profile when applicable, and profile id at startup.
+
+The resolved runtime plan is the sole bind authority. Child commands receive topology-resolved host/port values through their declared env/arguments; package scripts and application launchers `MUST NOT` replace those values with hard-coded ports. The development session registry records the actual spawned binding and validation fails when it differs from the plan.
 
 ### 8.1 Access Endpoints
 
@@ -455,6 +460,8 @@ Rules:
 - Cloud smoke tests must prove internal upstream URLs, platform surfaces,
   secrets, probes, and SDK base URL resolution are explicit while client
   bootstrap still receives one application ingress URL.
+- Credential-entry lifecycle tests must prove bootstrap provider completion precedes renderer spawn, missing provider output fails before the login UI becomes actionable, and production/public artifacts contain no bootstrap token.
+- Runtime-plan tests must prove declared renderer bindings, spawned command arguments, access endpoints, CORS origins, and session registry bindings are identical.
 - Single HTTP ingress checks must pass:
   `node ../sdkwork-specs/tools/check-single-http-ingress.mjs --root .` per
   application root and

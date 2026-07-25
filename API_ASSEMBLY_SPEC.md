@@ -125,6 +125,8 @@ Rules:
 - Dependency-owned routes remain in the dependency application's assembly.
   Applications and gateways compose dependency assemblies; they do not copy
   dependency route crates into the consuming application's assembly.
+- A consuming application assembly `MUST NOT` import dependency route crates to make a dependency surface executable. The selected gateway host composes dependency-owned assembly contributions through dependency-owned public assembly entrypoints.
+- Dependency assembly selection is deployment-profile specific and must agree with `dependencyApiSurfaces`: an embedded/same-origin surface selects the dependency assembly; an external platform surface selects no local assembly and requires its declared base URL/upstream.
 - Normalized `(surface, method, path)` identities `MUST` be unique inside an
   assembly and across every set of assemblies mounted by one gateway.
 - Permission, request-context, OpenAPI authority, and response-envelope rules
@@ -140,6 +142,8 @@ An API assembly exports host-neutral composition contributions:
 - permission catalog contributions;
 - bootstrap dependency requirements;
 - readiness contributions without public probe-path ownership.
+
+Each contribution `MUST` describe the same normalized route inventory across its executable router, `HttpRouteManifest`, OpenAPI operations, permissions, and ownership metadata. A contribution is invalid when any one of those inventories is missing, stale, or contradictory.
 
 The canonical Rust entrypoint is:
 
@@ -158,6 +162,13 @@ repository paths.
 The assembly owns application service/repository wiring needed to construct
 its APIs. Gateways own listener lifecycle, process-wide Web Framework
 infrastructure, observability, shutdown, and topology materialization.
+
+Before a gateway installs the Web Framework layer, it `MUST` merge all selected application and dependency contributions, reject route/profile collisions, bind the combined manifest, and build the served OpenAPI from those same selected contributions. No API router may be merged after framework installation.
+
+The Web Framework route-manifest contract `MUST` support owned or reference-counted combined route
+inventories. Assemblies and gateways `MUST NOT` use `Box::leak`, leaked allocations, process-lifetime
+global mutation, or source parsing to coerce a runtime-composed manifest into a `'static` slice.
+Static route-crate manifests and runtime-composed manifests use the same validation and binding API.
 
 ## 5. Assembly Manifest
 
@@ -196,6 +207,91 @@ Rules:
 - Materialization `MUST` preserve authored bootstrap code and regenerate only
   declared generated regions or files.
 
+### 5.1 Runtime Parity Evidence
+
+Every selected deployment profile that serves or intentionally serves no HTTP API `MUST` emit one
+deterministic `api-runtime-parity.<profile>.evidence.json` file under application `specs/` or
+`.sdkwork/evidence/`. The machine authority is
+`schemas/sdkwork.api-runtime-parity-evidence.schema.v1.json`. The evidence contract is:
+
+```json
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.api-runtime-parity-evidence",
+  "application": "sdkwork-birdcoder",
+  "profile": "standalone",
+  "apiMode": "served",
+  "sources": {
+    "executableRouter": {
+      "kind": "runtime-probe",
+      "location": "http://127.0.0.1:3901/.well-known/sdkwork/routes"
+    },
+    "boundManifest": {
+      "kind": "framework-bound-manifest",
+      "location": "runtime:combined-manifest"
+    },
+    "servedOpenapi": {
+      "kind": "runtime-http-openapi",
+      "location": "http://127.0.0.1:3901/openapi.json"
+    },
+    "sdkAuthority": {
+      "kind": "sdk-generation-authority",
+      "location": "apis/app-api/birdcoder/openapi.json"
+    }
+  },
+  "inventories": {
+    "executableRouter": [],
+    "boundManifest": [],
+    "servedOpenapi": [],
+    "sdkAuthority": []
+  }
+}
+```
+
+Each inventory row has exactly the comparison fields:
+
+```json
+{
+  "surface": "app-api",
+  "method": "POST",
+  "normalizedPath": "/app/v3/api/oauth/device_authorizations",
+  "operationId": "oauth.deviceAuthorizations.create",
+  "authProfile": "credential-entry-bootstrap"
+}
+```
+
+Rules:
+
+- `apiMode: served` requires a non-empty executable inventory. `apiMode: none` requires all four
+  inventories to be empty; it is not an excuse for a failed probe.
+- Executable evidence comes only from a framework route registry or an integration/runtime probe
+  that exercises the assembled router. Copying the bound manifest and relabeling it executable is
+  forbidden.
+- Served OpenAPI evidence comes from the selected running profile's HTTP OpenAPI endpoint, not a
+  static source file. SDK authority evidence comes from the exact input selected by SDK generation.
+- Path normalization converts framework `:parameter` syntax to OpenAPI `{parameter}` syntax,
+  removes only leading/trailing slash variation, and preserves parameter names. It does not erase
+  contract differences.
+- Duplicate normalized `(surface, method, path)` rows fail. Missing/extra routes, `operationId`
+  differences, and auth-profile differences fail independently.
+- Profile evidence is generated by an integration test or deterministic evidence command after
+  all routers, dependency assemblies, manifests, and OpenAPI contributions are merged and before
+  the one Web Framework layer is applied.
+- An HTTP status alone is not executable-route evidence unless the probe distinguishes the real
+  handler from framework fallback. In particular, a pre-auth `401`, generic `404`, or manifest-only
+  `501` does not prove the handler is mounted.
+- Optional source `sha256` values, when present, are lowercase SHA-256. Secrets, tokens, database
+  addresses, and internal upstream credentials are forbidden in evidence.
+
+The canonical read-only gate is:
+
+```text
+node ../sdkwork-specs/tools/check-api-runtime-parity.mjs --root .
+```
+
+The reusable Rust Web Framework contract exposes normalized manifest/OpenAPI inventory types; it
+does not infer executable Axum routes by parsing source or debug output.
+
 ## 6. Gateway Consumption
 
 ### 6.1 Standalone
@@ -207,6 +303,13 @@ the only application-plane HTTP listener started by `pnpm dev`.
 The standalone gateway `MUST NOT` depend on route, service, repository, or
 database implementation crates already owned by an assembly. All such
 dependencies enter through assemblies.
+
+Standalone dependency composition rules:
+
+- The gateway declares each selected dependency assembly as a required component port and matching `dependencyApiSurfaces` entry with `runtimeMode: same-origin`, `sameOriginAllowed: true`, API authority, SDK family, prefix, executable assembly export, and profile coverage.
+- The gateway calls dependency-owned assembly entrypoints; it does not import `sdkwork-routes-*`, duplicate dependency service wiring, or reclassify dependency ownership.
+- The combined executable router, combined `HttpRouteManifest`, served OpenAPI, permission catalog, and readiness set are constructed as one selected-profile unit before the single Web Framework layer is applied.
+- A configured same-origin dependency whose assembly cannot initialize causes startup/readiness failure with `50301`; the gateway does not start a partial route surface that later returns 404.
 
 ### 6.2 Cloud
 
@@ -343,6 +446,7 @@ node ../sdkwork-specs/tools/validate-api-assembly.mjs --root .
 node ../sdkwork-specs/tools/check-application-cloud-gateway-boundary.mjs --root .
 node ../sdkwork-specs/tools/check-single-http-ingress.mjs --root .
 node ../sdkwork-specs/tools/check-route-path-collisions.mjs --root .
+node ../sdkwork-specs/tools/check-api-runtime-parity.mjs --root .
 ```
 
 Required workspace checks:
@@ -357,8 +461,10 @@ node ../sdkwork-specs/tools/check-application-cloud-gateway-boundary.mjs --works
 - [ ] Exactly one canonical API assembly exists per application root.
 - [ ] All application-owned app/backend/open route crates are included once.
 - [ ] Standalone and cloud hosts consume the same assembly contract.
+- [ ] Dependency-owned routes enter standalone only through selected dependency assemblies and matching profile-specific `dependencyApiSurfaces` declarations.
 - [ ] Application roots do not depend on or operate the platform cloud gateway.
 - [ ] Standalone gateway hosts depend on assemblies, not assembly-owned crates.
+- [ ] Runtime-composed route manifests use Framework-owned/shared ownership and do not leak allocations to manufacture static lifetimes.
 - [ ] `pnpm dev` delegates to standalone and starts one application HTTP ingress.
 - [ ] `pnpm dev:cloud` is remote-client-only.
-- [ ] Route, OpenAPI, permission, readiness, and collision checks pass.
+- [ ] Executable routes, bound manifests, served OpenAPI, SDK authorities, permissions, readiness, auth profiles, and collision checks agree for each selected profile.

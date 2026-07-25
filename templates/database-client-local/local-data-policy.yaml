@@ -1,0 +1,24 @@
+schema_version: 1
+kind: sdkwork.database.client-local-policy
+mode: cache
+scope: environment-profile-origin-account
+authoritative_source: <application-api-authority>
+sync_contract: null
+security:
+  encryption_at_rest: required-when-sensitive
+  key_store: os-secure-storage
+  backup: excluded-unless-declared
+  export: disabled-unless-declared
+  lock_state: close-or-rekey-per-platform-policy
+retention:
+  policy: bounded-by-authoritative-cache-policy
+  max_age_or_event: <declare-duration-or-purge-event>
+lifecycle:
+  logout: purge-account-scoped-data
+  account_switch: isolate-and-purge-active-state
+  uninstall: platform-default-with-documented-backup-policy
+recovery:
+  migration_interruption: atomic-retry-or-restore
+  disk_full: fail-without-partial-commit
+  corruption: integrity-check-then-rebuild-or-restore
+  projection_rebuild: from-authoritative-source

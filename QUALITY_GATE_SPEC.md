@@ -61,6 +61,8 @@ Merge gate evidence should include:
 Rules:
 
 - Public API/RPC/SDK/database/config changes require contract verification.
+- Authoritative database changes require real PostgreSQL migration, repository, constraint, transaction/concurrency, query-plan, role/search-path, and recovery evidence. SQLite-only evidence is a blocking failure for server persistence.
+- SQLite changes require a declared `client-local` manifest and separate local-data isolation, security, migration recovery, purge, and sync/conflict evidence; an authoritative or mixed-role SQLite manifest is a blocking failure.
 - UI architecture changes require package placement and SDK boundary verification.
 - Composable module, dependency SDK, route, permission, frontend package, or Rust backend composition changes `MUST` include applicable `COMPOSABLE_ARCHITECTURE_SPEC.md` closure evidence: `check-component-port-bindings.mjs`, `check-frontend-composition.mjs`, `check-rust-backend-composition.mjs`, `check-permission-composition.mjs`, `check-route-path-collisions.mjs`, `resolve-composition.mjs --write`, `check-composition-resolver.mjs`, and `verify-repo.mjs`.
 - Merge evidence `MUST` name every closure-matrix row that is not applicable. Silence is not evidence for skipping login/session, permissions, route ownership, API input/output, frontend package, Rust crate, or resolved composition checks.
@@ -82,6 +84,8 @@ Release gate evidence should include:
 - signing evidence when required.
 - SBOM and provenance evidence when required.
 - migration readiness and rollback path.
+- PostgreSQL authoritative database evidence: supported major version/extensions, migration lock/rewrite/backfill plan, drift, representative query plans, least-privilege roles, connection budget, backup/restore exercise, RPO/RTO, and no server SQLite fallback.
+- Client-local SQLite evidence when applicable: role-specific contract, file/profile/account isolation, encryption/key policy, migration/corruption/disk-full recovery, purge, and offline reconciliation.
 - deployment/rollout plan that names `standalone` or `cloud` and the affected
   runtime targets.
 - immutable artifact identity and independent publish/deploy/rollback evidence

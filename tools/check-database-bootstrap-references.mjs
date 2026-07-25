@@ -100,6 +100,14 @@ function main() {
   for (const repoRoot of listRepos(args.workspace)) {
     const repoName = path.basename(repoRoot);
     const repoIssues = [];
+    let manifest = null;
+    try {
+      manifest = JSON.parse(
+        fs.readFileSync(path.join(repoRoot, 'database/database.manifest.json'), 'utf8').replace(/^\uFEFF/u, ''),
+      );
+    } catch (error) {
+      repoIssues.push(`database manifest is unreadable: ${error.message}`);
+    }
 
     for (const filePath of walkSourceFiles(repoRoot)) {
       const content = fs.readFileSync(filePath, 'utf8');
@@ -124,8 +132,23 @@ function main() {
       }
     }
 
-    checkBaselineDir(repoRoot, 'postgres', repoIssues);
-    checkBaselineDir(repoRoot, 'sqlite', repoIssues);
+    if (manifest?.databaseRole === 'authoritative-server') {
+      checkBaselineDir(repoRoot, 'postgres', repoIssues);
+      for (const relativePath of ['database/ddl/baseline/sqlite', 'database/migrations/sqlite']) {
+        if (fs.existsSync(path.join(repoRoot, relativePath))) {
+          repoIssues.push(`${relativePath}: authoritative-server roots must not own SQLite assets`);
+        }
+      }
+    } else if (manifest?.databaseRole === 'client-local') {
+      checkBaselineDir(repoRoot, 'sqlite', repoIssues);
+      for (const relativePath of ['database/ddl/baseline/postgres', 'database/migrations/postgres']) {
+        if (fs.existsSync(path.join(repoRoot, relativePath))) {
+          repoIssues.push(`${relativePath}: client-local roots must not own PostgreSQL assets`);
+        }
+      }
+    } else if (manifest) {
+      repoIssues.push('databaseRole must classify the root as authoritative-server or client-local');
+    }
 
     if (repoIssues.length > 0) {
       failures.push({ repo: repoName, issues: repoIssues });

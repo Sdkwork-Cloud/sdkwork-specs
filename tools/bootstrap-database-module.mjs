@@ -23,11 +23,22 @@ const DB_SCRIPTS = {
 };
 
 function buildMaterializeScript(moduleConfig) {
-  const engines = moduleConfig.engines?.length ? moduleConfig.engines : ['postgres'];
-  const defaultEngine = engines.includes('postgres') ? 'postgres' : engines[0];
-  const baseline = `database/ddl/baseline/${defaultEngine}/0001_${moduleConfig.moduleId}_baseline.sql`;
+  const baseline = `database/ddl/baseline/postgres/0001_${moduleConfig.moduleId}_baseline.sql`;
   const prefixArg = moduleConfig.tablePrefix ? ` --prefixes ${moduleConfig.tablePrefix}` : '';
-  return `node ../sdkwork-specs/tools/materialize-database-contract-from-baseline.mjs --root . --baseline ${baseline} --module-id ${moduleConfig.moduleId} --owner ${moduleConfig.ownerTeam}${prefixArg} --engines ${engines.join(',')}`;
+  return `node ../sdkwork-specs/tools/materialize-database-contract-from-baseline.mjs --root . --baseline ${baseline} --module-id ${moduleConfig.moduleId} --owner ${moduleConfig.ownerTeam}${prefixArg}`;
+}
+
+function assertAuthoritativeServerConfig(moduleConfig) {
+  const engines = moduleConfig.engines ?? ['postgres'];
+  if (
+    moduleConfig.databaseRole === 'client-local'
+    || engines.length !== 1
+    || engines[0] !== 'postgres'
+  ) {
+    throw new Error(
+      `${moduleConfig.repo}: bootstrap-database-module creates authoritative-server PostgreSQL roots only; classify SQLite under an owning client/native module and use templates/database-client-local`,
+    );
+  }
 }
 
 function parseArgs(argv) {
@@ -221,6 +232,8 @@ function writeDatabaseReadme(databaseDir, moduleConfig, legacyCopied) {
     '',
     `- moduleId: \`${moduleConfig.moduleId}\``,
     `- serviceCode: \`${moduleConfig.serviceCode}\``,
+    '- databaseRole: `authoritative-server`',
+    '- engine: `postgres`',
     `- tablePrefix: \`${moduleConfig.tablePrefix}\``,
     '',
     '## Commands',
@@ -242,7 +255,7 @@ function writeDatabaseReadme(databaseDir, moduleConfig, legacyCopied) {
   if (legacyCopied.length > 0) {
     lines.push(
       'Legacy SQL was consolidated into `ddl/baseline/postgres/0001_*_baseline.sql` for bootstrap review.',
-      'Author contract-first tables in `contract/schema.yaml`, then split baseline into versioned `migrations/` pairs.',
+      'Author contract-first PostgreSQL tables in `contract/schema.yaml`, then split the baseline into versioned migrations with explicit rollback metadata.',
       '',
       'Imported legacy sources:',
       ...legacyCopied.map((item) => `- \`${item}\``),
@@ -298,6 +311,7 @@ function ensureContractTest(repoRoot) {
 }
 
 function bootstrapRepo(moduleConfig, options) {
+  assertAuthoritativeServerConfig(moduleConfig);
   const repoRoot = path.join(options.workspace, moduleConfig.repo);
   const databaseDir = path.join(repoRoot, 'database');
   if (!fs.existsSync(repoRoot)) {
@@ -325,7 +339,7 @@ function bootstrapRepo(moduleConfig, options) {
     fs.rmSync(databaseDir, { recursive: true, force: true });
   }
   copyDirectory(TEMPLATE_DIR, databaseDir);
-  const engines = moduleConfig.engines ?? ['postgres'];
+  const engines = ['postgres'];
   replaceInTree(databaseDir, [
     ['<module-id>', moduleConfig.moduleId],
     ['<SERVICE>', moduleConfig.serviceCode],
@@ -336,8 +350,10 @@ function bootstrapRepo(moduleConfig, options) {
   ]);
   const manifestPath = path.join(databaseDir, 'database.manifest.json');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  manifest.schemaVersion = 2;
+  manifest.databaseRole = 'authoritative-server';
   manifest.engines = engines;
-  manifest.defaultEngine = engines[0];
+  manifest.defaultEngine = 'postgres';
   manifest.contractVersion = '0.1.0';
   manifest.baselineStrategy = 'baseline-plus-migrations';
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');

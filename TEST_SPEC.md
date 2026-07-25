@@ -85,6 +85,11 @@ Rules:
   manifests, authority OpenAPI, derived `*.sdkgen.*` inputs, and runtime handlers/controllers keep
   the `WEB_FRAMEWORK_SPEC.md` request-context contract: `requestContext: WebRequestContext`,
   `apiSurface`, `x-sdkwork-request-context: WebRequestContext`, and `x-sdkwork-api-surface`.
+- Every assembled HTTP runtime profile `MUST` produce and validate the deterministic parity evidence
+  defined by `API_ASSEMBLY_SPEC.md` section 5.1. Tests compare executable router, bound manifest,
+  served runtime OpenAPI, and exact SDK generation authority inventories by normalized surface,
+  method, path, operationId, and auth profile. Static route metadata, pre-auth `401`, generic `404`,
+  or manifest-only `501` are not executable-handler evidence.
 - Every SDK workspace or OpenAPI generation change `MUST` satisfy `SDK_SPEC.md` first for canonical SDK/API naming vocabulary, family naming, package semantics, generated client behavior, auth behavior, and service integration; then satisfy `SDK_WORKSPACE_GENERATION_SPEC.md` for application-root `sdks/` layout, authority OpenAPI location, deterministic derived inputs, generated-output placement, and component specs.
 - SDK generation verification `MUST` prove the command uses the canonical `@sdkwork/sdk-generator` / `sdkgen` from `..\sdkwork-sdk-generator`; `sdkwork-code-generator`, local stubs, copied generator code, or generic OpenAPI generators are not valid production SDK verification evidence.
 - SDK family verification `MUST` prove `SDK_PACKAGE_NAMING_SPEC.md` and `SDK_MANIFEST_SPEC.md` are satisfied: composed consumer package names and generated transport package names are not conflated, family-root `sdk-manifest.json` is present when required, and ownership/dependency metadata does not live under generated transport output.
@@ -330,9 +335,11 @@ Rules:
   to SQLite, cloud, hidden topology modes, or retired `--hosting` flags. These
   defaults must resolve through their direct command value or root-script
   delegation chain to PostgreSQL, `standalone`, and `development`; explicit
-  alternatives use suffixed scripts such as `dev:desktop:sqlite` or
-  `dev:browser:cloud`. Cloud development variants must not carry a database
-  axis.
+  alternatives use suffixed scripts such as `dev:desktop:sqlite` for a declared
+  client-local SQLite module or `dev:browser:cloud`. Tests `MUST` reject
+  `dev:browser:sqlite` and any `:sqlite` path that starts a gateway, backend
+  service, worker, server CLI, migration, or other authoritative process.
+  Cloud development variants must not carry a database axis.
 - Tests `MUST` verify new root API/SDK command families use `api:*` and
   `sdk:*` public namespaces for cross-application automation.
 - Tests `MUST` scan app surface and package-local `package.json#scripts` for
@@ -413,7 +420,8 @@ Rules:
 - Application repositories that own a `database/` directory `MUST` provide `tests/contract/database-framework.contract.test.*` or call the canonical validator.
 - Database framework tests `MUST` verify `database/database.manifest.json`, `database/contract/schema.yaml`, `database/seeds/seed.manifest.json`, required locale directories, and drift policy presence.
 - Database framework tests `MUST` verify seed `i18nVersion`, fallback/default/supported/active locales, locale set versions, and checksums when locale-specific seed files exist.
-- Database framework tests `MUST` verify L2 contract fields: `contractVersion: "1.0.0"`, `lifecycle.autoMigrate: true`, non-empty prefix/table registries, and at least one baseline `.sql` file under `database/ddl/baseline/<engine>/` for every engine declared in `database.manifest.json`.
+- Authoritative server database tests `MUST` verify manifest schema version 2, `databaseRole: "authoritative-server"`, exactly `engines: ["postgres"]`, `defaultEngine: "postgres"`, matching `contract/schema.yaml#database_role`, a valid semantic `contractVersion` that exactly matches `contract/schema.yaml#contract_version`, an explicit boolean `lifecycle.autoMigrate`, and non-empty prefix/table registries. The authoritative default `MUST` be `false`; any production enablement requires tests for single-migrator election, dedicated privileges, bounded timeouts, failure isolation, and concurrent instance startup. `migrations-only` requires at least one PostgreSQL `.up.sql` that initializes an empty database; baseline strategies require at least one PostgreSQL baseline `.sql` under `database/ddl/baseline/postgres/`.
+- Authoritative server layout tests `MUST` fail when `database/migrations/sqlite/` or `database/ddl/baseline/sqlite/` is introduced to claim engine parity.
 - Database framework tests `MUST` verify root `db:validate`, `db:migrate`, `db:status`, `db:materialize:contract`, and `db:bootstrap` scripts exist when database lifecycle is active.
 - Database framework tests `MUST` fail when crate-local `migrations/` remain the only migration source without an approved exception or adoption plan.
 - Application repositories may call the canonical validator with:
@@ -434,12 +442,29 @@ node ../sdkwork-specs/tools/audit-database-framework-workspace.mjs --workspace .
 node ../sdkwork-specs/tools/bootstrap-database-module.mjs --repo <repo-name>
 ```
 
-- Migration smoke tests `MUST` bootstrap an empty database to the latest schema on each supported engine.
+- Authoritative migration smoke tests `MUST` bootstrap an empty real PostgreSQL database/schema to the latest schema and upgrade from every supported contract release boundary. SQLite does not satisfy this gate.
 - Seed smoke tests `MUST` prove `seeds/common` plus default locale `zh-CN` are idempotent and record locale/profile/`i18nVersion`/checksum evidence in seed history.
 - Drift tests `MUST` prove a fresh bootstrap yields zero error-level drift.
 - Drift tests `MUST` cover constraint/index diffs (`missing_constraint`, `extra_index`) and column nullability mismatches under `type_mismatch`.
 - Checksum immutability tests `MUST` prove modified applied migration files fail migrate/plan with `checksum_mismatch`.
-- Layout validation `MUST` fail when a numbered `.up.sql` migration lacks its paired `.down.sql`.
+- Migration validation `MUST` require rollback metadata for every PostgreSQL `.up.sql`. A `.down.sql` is optional and `MUST` be accepted only when metadata declares a tested, bounded, data-preserving `down-migration`; irreversible or lossy changes `MUST` declare `forward-fix` or `restore-cutover`.
+- Non-trivial PostgreSQL migration tests `MUST` verify transaction mode, lock timeout, statement timeout, rewrite expectation, resumable backfill, cancellation, replication/WAL impact, and recovery behavior on representative data volume.
+- PostgreSQL repository integration tests `MUST` exercise database constraints, tenant/owner denial, idempotency conflicts, optimistic concurrency, SQLSTATE mapping, deadlock/serialization retry of the complete transaction, and read-after-write behavior when replicas are used.
+- P0/P1 or high-growth query tests `MUST` capture representative `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` evidence and assert declared budgets such as maximum scanned-to-returned ratio, execution time class, and spill prohibition. They `MUST NOT` pin an exact planner node tree.
+- PostgreSQL operational tests `MUST` verify runtime/migrator privilege separation, fixed safe `search_path`, required extensions, supported server versions, backup/restore procedure, readiness on pending migrations, and bounded pool/reconnect behavior.
+
+### Client-Local SQLite Tests
+
+Client/native modules that declare `databaseRole: "client-local"` `MUST` provide `tests/contract/client-local-database.contract.test.*` or invoke the canonical database validator with the client-local layout.
+
+Rules:
+
+- Client-local contract tests `MUST` verify manifest schema version 2, exactly `engines: ["sqlite"]`, `defaultEngine: "sqlite"`, matching schema role/version, and `local-data-policy.yaml`.
+- SQLite tests `MUST` verify foreign-key enforcement, selected journal/synchronous policy, busy timeout, bounded writer contention, WAL checkpoint/growth behavior, migration interruption recovery, disk-full behavior, integrity/corruption recovery, and projection rebuild where applicable.
+- Profile, environment, origin, tenant/account, and application-profile isolation tests `MUST` prove that switching identity cannot reuse rows, WAL files, offline queues, backups, or encryption keys implicitly.
+- Security tests `MUST` verify permissions, encryption/key storage policy, background/lock behavior, export/backup policy, logout/account-switch purge, and absence of access tokens, refresh tokens, private keys, or raw credentials in ordinary SQLite columns.
+- Offline mutation tests `MUST` cover temporary-to-server identity mapping, idempotency, ordering, tombstones, retries, conflict detection/resolution, server rejection, reconciliation, and safe recovery after process/device interruption.
+- Server tests `MUST` prove that all values received from client-local storage are re-authenticated, re-authorized, and revalidated; cached permissions, prices, quotas, entitlements, tenant scope, ledger values, and audit values are never trusted as authority.
 
 ### Process-Shared Pool Tests
 
@@ -602,15 +627,16 @@ Rules:
   materialize to `x-sdkwork-owner`, `x-sdkwork-api-authority`, `x-sdkwork-source`,
   `x-sdkwork-source-route-crate`, `x-sdkwork-request-context`, `x-sdkwork-api-surface`, and
   `x-sdkwork-rate-limit-tier` when present in the authority OpenAPI.
-- Auth-mode tests `MUST` prove protected app-api/backend-api routes project dual-token security,
-  protected open-api routes project API key, OAuth bearer, or flexible open-api security according to the route manifest,
-  and public SDK-generated routes project both `security: []` and
-  `x-sdkwork-auth-mode: anonymous`.
+- Auth-profile tests `MUST` cover every canonical profile used by the authority and prove route
+  manifest mode, runtime `RouteAuth`, OpenAPI `security`, `x-sdkwork-auth-mode`, generated transport
+  option, and permitted request credentials agree. Flexible open-api security uses separate API-key
+  and OAuth security objects so the schemes are alternatives, not an accidental AND requirement.
 - Credential-entry tests `MUST` prove login, registration, OAuth session creation, QR auth session
   creation or password completion, password reset request, password reset completion, and equivalent
-  anonymous credential-entry operations set `forbidCredentialHeaders: true`, materialize
-  `x-sdkwork-forbid-credential-headers: true`, and reject inbound `Authorization`, `Access-Token`,
-  `X-Api-Key`/`X-API-Key`, SDKWork identity projection headers, and equivalent credential headers.
+  pre-session credential-entry operations use `credential-entry-bootstrap`, require only bootstrap
+  `Access-Token`, set `forbidCredentialHeaders: true`, materialize the matching OpenAPI security and
+  extensions, reject every non-profile credential/context header, and never reach handler logic on
+  missing/invalid bootstrap or credential contamination.
 - Open-api prefix tests `MUST` prove approved domain prefixes such as `/im/v3/api` classify as
   `open-api` and fail when framework/materializer code recognizes only a literal `/open/v3/api`
   prefix.
@@ -703,7 +729,7 @@ Rules:
 - Bootstrap smoke tests `MUST` prove gateways and migration-only API servers mount routes through framework
   bootstrap rather than ad hoc Axum/Tower security stacks.
 - Pipeline contract tests `MUST` prove the standard 18-stage interceptor order is not bypassed for
-  protected routers or gateway proxy/composition routes.
+  anonymous, credential-entry, refresh, protected, internal, agent, or gateway proxy/composition routes.
 - Locale context tests `MUST` prove public and protected SDKWork HTTP routes receive `WebRequestContext.locale`, unsupported requested locales resolve through the configured fallback chain, and handlers/controllers do not parse locale headers directly.
 - Locale response tests `MUST` prove localized responses emit `Content-Language`, language-varying responses emit `Vary: Accept-Language`, and framework problem mapping preserves numeric `ProblemDetail.code`/`traceId` while exposing safe `i18nKey`/`locale` metadata when configured.
 - Route manifest tests `MUST` fail when any route entry omits `requestContext: WebRequestContext` or
@@ -721,6 +747,9 @@ Rules:
   resolution, interceptor order, centralized problem-detail mapping, and OpenAPI/manifest metadata
   parity with the Rust framework profile.
 - Open-api auth check: protected routes declare `api-key`, `oauth`, or `open-api-flexible`; security vectors cover missing credentials, API key resolution, OAuth bearer resolution, and flexible scheme selection.
+- Credential contamination tests `MUST` exercise every disallowed cross-profile header combination and prove rejection occurs after route metadata binding but before context authentication or handler execution.
+- Runtime parity tests `MUST` compare the executable router, bound `HttpRouteManifest`, served OpenAPI, and SDK authority by normalized `(surface, method, path, operationId, authProfile)` for every selected deployment profile.
+- Framework ownership tests `MUST` fail when API routers are merged after the framework layer or when a gateway adds a second CORS/auth/context middleware around framework-governed routes.
 - Architecture tests `MUST` fail when `sdkwork-web-framework` depends on business route crates or when business repositories vendor framework pipeline source locally.
 
 ## 2.4 PC Application Architecture Tests
@@ -1023,6 +1052,13 @@ Rules:
 - Gateway readiness audit tests `MUST` distinguish assembly readiness from
   standalone-host readiness, inspect `apiMode: none` applications instead of
   skipping them, and make warnings fail under `--strict`.
+- Profile-specific dependency assembly tests `MUST` prove embedded surfaces select dependency-owned
+  assembly exports and matching same-origin component contracts, external surfaces select no local
+  dependency router and require an explicit URL/upstream, and missing selected dependencies fail
+  startup/readiness as `50301` rather than presenting route `404`.
+- Runtime-plan tests `MUST` prove renderer bind/port, spawned command arguments, access endpoint,
+  CORS origin, session registry binding, and credential-entry bootstrap provider output come from
+  one resolved plan; hard-coded package-script ports or registry/process disagreement are failures.
 - Workspace hosting-debt checks `MUST` run
   `node tools/check-app-runtime-hosting-debt.mjs --workspace ..` and pass for
   every application repository with active dev scripts, packaging targets, or
@@ -1136,8 +1172,8 @@ Rules:
 
 - Protected app-api and backend-api operations `MUST` test missing auth token, missing access token, invalid token, expired token, wrong tenant, wrong tenant signing key, contradictory overlapping auth/access token tenant claims, auth-token precedence on overlapping claims, invalid login scope, and insufficient permission.
 - Protected open-api operations `MUST` test missing API key, invalid API key, expired/revoked API key, missing OAuth bearer, invalid OAuth bearer, expired/revoked OAuth bearer, wrong tenant/app binding, insufficient permission scope, flexible mode scheme selection when both headers are present, and the absence of app login token fallback.
-- IAM login integration `MUST` test the checks required by `IAM_LOGIN_INTEGRATION_SPEC.md`: appbase boundary, SDK token wiring, route guard, logout clearing, forbidden application-local auth routes, Rust dual-token guard, AppContext safety, anonymous login request behavior, tenant resolution from real IAM data, and organization-selection continuation behavior.
-- IAM login tests `MUST` prove login requests do not trust inbound credentials or SDKWork context-projection headers as tenant/user/organization context.
+- IAM login integration `MUST` test the checks required by `IAM_LOGIN_INTEGRATION_SPEC.md`: appbase boundary, SDK token wiring, route guard, logout clearing, forbidden application-local auth routes, Rust dual-token guard, AppContext safety, credential-entry bootstrap behavior, tenant resolution from real IAM data, and organization-selection continuation behavior.
+- IAM credential-entry tests `MUST` prove login requests accept only bootstrap `Access-Token`, do not trust it or any client projection as the authenticated user, reject session/API-key/OAuth/ingress/agent/context contamination, and resolve user/organization only from real IAM data after credential validation.
 - IAM token tests `MUST` prove `authToken` and `accessToken` both include tenant, organization, login scope, user, and session claims, that overlapping claims resolve from `authToken` when both tokens are present, and that contradictory overlapping `accessToken` claims are rejected.
 - IAM tenant signing tests `MUST` prove different tenants use different signing keys or key references, `kid` resolves to the expected tenant key, and a token signed with another tenant's key fails validation.
 - IAM organization login tests `MUST` cover zero active organization membership as tenant-level login, one or more active organization memberships as a `LOGIN_CONTEXT_SELECTION` challenge that includes the personal-login option when allowed, and final context selection membership validation before token issuance.
@@ -1177,6 +1213,8 @@ Rules:
 - Static SDK/bootstrap scans MUST fail when application packages import `@sdkwork/iam-sdk-adapter`, call `createIamAppSdkAdapter(...)`, call `createIamBackendSdkAdapter(...)`, or wire `createIamRuntime(...)` directly for appbase login instead of using the approved high-level appbase runtime/factory.
 - Static env/config scans MUST fail when `.env`, runtime TOML examples, `/runtime-env.js`, `PORTAL_PUBLIC_*`, or `VITE_*` contain live auth tokens, access tokens, refresh tokens, API keys, generated auth headers, or SDK credential DTOs.
 - Credential-entry lifecycle tests `MUST` cover `development`, `test`, `staging`, and `production`: development generation, explicit test opt-in, staging/production fail-closed behavior, and configured-token preservation in all environments.
+- Credential-entry client tests `MUST` prove absence fails before network dispatch, bootstrap dispatch contains only `Access-Token`, login/session commit replaces bootstrap state, and `ProblemDetail` preserves `operationId`, `authProfile`, `failedStage`, `reason`, numeric `code`, and `traceId`.
+- Production browser tests `MUST` prove bootstrap tokens are absent from HTML, JavaScript, public runtime env, logs, caches, and screenshots; an approved short-lived exchange or trusted host channel is required before credential-entry UI becomes actionable.
 - Vite credential-entry tests `MUST` prove the canonical global is injected only by `@sdkwork/iam-credential-entry/vite` during development serve or explicitly opted-in test serve, inline values escape `<`, `>`, and `&`, and staging/production produce no plugin or token-bearing output.
 - Cross-repository scans `MUST` reject application-local fixture JWT, manifest lookup, bootstrap env merge, private bootstrap env-file parser, or inline token serializer forks; reject `process.env.SDKWORK_ACCESS_TOKEN` Vite defines; and require the IAM-owned Node and Vite entrypoints for every credential-entry consumer.
 - Credential-entry config scans `MUST` require a blank `SDKWORK_ACCESS_TOKEN=` placeholder in private base/development templates for protected application roots, reject resolved values in tracked templates, and reject the key entirely in production browser templates.

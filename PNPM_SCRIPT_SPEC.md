@@ -237,10 +237,12 @@ Rules:
   either by delegating to `dev:<target>:postgres:standalone`
   or by passing equivalent explicit flags such as `--database postgres`,
   `--deployment-profile standalone`, and `--environment development`.
-  SQLite or cloud development variants must use explicit suffixed scripts such
-  as `dev:browser:sqlite`, `dev:desktop:sqlite`, `dev:browser:cloud`, or
-  `dev:desktop:cloud`. Cloud development variants do not include a database
-  axis because they consume deployed API surfaces.
+  Cloud development variants use explicit suffixed scripts such as
+  `dev:browser:cloud` or `dev:desktop:cloud`. A client/native module may expose
+  `dev:desktop:sqlite` only to validate its declared client-local SQLite store;
+  that suffix does not select SQLite for an application gateway, backend
+  service, worker, or other server process. `dev:browser:sqlite` is forbidden
+  because a browser bundle does not own an embedded SQLite database.
 - Root `dev:standalone` and `dev:cloud` are deployment-profile shortcuts that
   select the repository's default developer-facing runtime target. More
   specific commands retain the grammar
@@ -297,6 +299,7 @@ sqlite
 ```
 
 `postgres` is the command alias for the PostgreSQL runtime engine. Runtime config may normalize it to `postgresql`.
+`sqlite` is allowed only as an explicit client-local native/desktop database alias. It `MUST NOT` be accepted for `server`, `container`, gateway, worker, server CLI, or authoritative database commands.
 
 Deployment profiles:
 
@@ -643,8 +646,9 @@ Rules:
 - [ ] No repository root public script starts with a application-code prefix such as `drive`, `im`, or `clawrouter`.
 - [ ] Runtime-target commands are action-first, for example `dev:browser`, `dev:desktop`, `build:desktop`, `build:container`, `build:android-native`, `build:ios-native`, and `build:mini-program`; no public script uses platform/tool-first aliases such as `browser:*`, `desktop:*`, `tauri:*`, `docker:*`, `android:*`, `ios:*`, `harmony:*`, `flutter:*`, `mini-program:*`, or `*:tauri`.
 - [ ] Root `dev:browser` and `dev:desktop` default to
-      `postgres:standalone` with `environment = development`; SQLite and cloud
-      variants are explicit suffixed commands.
+      `postgres:standalone` with `environment = development`; cloud variants
+      are explicit suffixed commands, and `dev:desktop:sqlite` is client-local
+      only when such a module exists.
 - [ ] Script suffixes use canonical runtime target, database, deployment profile, and tier values.
 - [ ] API assembly commands use `api:assembly:materialize|validate` and directly
       invoke their matching canonical `sdkwork-specs` tool with `--root .`.

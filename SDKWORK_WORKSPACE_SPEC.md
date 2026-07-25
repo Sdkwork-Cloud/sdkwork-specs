@@ -233,11 +233,9 @@ Recommended initial skeleton:
     ddl/
       baseline/
         postgres/
-        sqlite/
       generated/
     migrations/
       postgres/
-      sqlite/
     seeds/
       seed.manifest.json
       common/
@@ -595,6 +593,7 @@ Every git repository root and every SDKWork application root `MUST` have:
 
 Rules:
 
+- The application-root `database/` dictionary shown above is the PostgreSQL `authoritative-server` layout from `DATABASE_FRAMEWORK_SPEC.md`. SQLite assets do not appear beside it; a client/native module with declared local persistence owns its separate role-specific `database/` dictionary.
 - `AGENTS.md` `MUST` follow `AGENTS_SPEC.md`, cite `SOUL.md`, and declare the relative path to root `sdkwork-specs/README.md`.
 - Tool compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md`, when present, `MUST` point to `AGENTS.md`; they must not copy or override root standards.
 - `.sdkwork/README.md` `MUST` explain the workspace purpose, owner, and which directories are authoritative.

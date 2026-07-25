@@ -345,14 +345,16 @@ Rules:
 - `database` resolves the structured database fields defined by `RUNTIME_DIRECTORY_SPEC.md` and `DATABASE_SPEC.md`.
 - Standalone server/container and cloud runtime targets should use structured PostgreSQL fields.
   `url` is a private explicit override, not the primary production contract.
-- Desktop runtime targets may use SQLite with `file` under the
+- Desktop runtime targets may use SQLite only for declared client-local data, with `file` under the
   SDKWork user private data directory.
-- Desktop runtime config should resolve `database.engine` to `sqlite` and
+- Desktop client-local runtime config should resolve `database.engine` to `sqlite` and
   `database.file` to the user private data directory by default.
 - Application root `dev:browser` and `dev:desktop` commands are development
   orchestration defaults. They should resolve `database.engine = "postgresql"`,
   `deploymentProfile = "standalone"`, and `environment = "development"`
-  unless an explicit suffixed command selects SQLite or cloud.
+  unless an explicit suffixed command selects cloud. An SQLite suffix may
+  select only a declared client-local database profile, never the backend
+  service database.
   This development service config is separate from the desktop-local SQLite
   config and must not change the installed desktop package default.
 - Environment parsing for `database` must map
@@ -457,12 +459,12 @@ Rules:
   namespace and require re-authentication. Tokens, cookies, SQLite state,
   offline queues, and feature caches `MUST NOT` cross that boundary implicitly.
 - Runtime config `SHOULD` allow one browser-visible public SDK root, for example `PORTAL_PUBLIC_SDK_BASE_URL`, and derive standard open-api, app-api, and backend-api public runtime URLs from it. Applications `MAY` also expose per-surface or per-SDK public override keys such as `PORTAL_PUBLIC_OPEN_API_BASE_URL`, `PORTAL_PUBLIC_APP_API_BASE_URL`, `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, or dependency-specific keys.
-- Bootstrap `MUST` classify every SDK before constructing feature services: authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake. The presence of `backendApiBaseUrl` alone is not permission to construct a backend SDK client.
+- Bootstrap `MUST` classify every SDK and operation profile before constructing feature services: anonymous, credential-entry bootstrap, refresh-token, authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, ingress/agent, compatibility, local/native, or test fake. The presence of `backendApiBaseUrl` alone is not permission to construct a backend SDK client.
 - Token providers for app-api and backend-api SDKs `MUST` support both `Authorization: Bearer <JWT auth_token>` and `Access-Token: <JWT access_token>`.
 - Token providers `MUST` send both headers on protected requests whenever both credentials are available.
-- Application bootstrap `MAY` seed TokenManager from private `SDKWORK_ACCESS_TOKEN` before interactive login. Login/session bootstrap `MUST` replace that bootstrap credential with IAM-issued session tokens. `auth_token`, `refresh_token`, and API keys `MUST NOT` be configured in environment variables.
+- Service/native application bootstrap `MAY` seed TokenManager from private `SDKWORK_ACCESS_TOKEN` before interactive login. Development browsers use only the approved private Vite lifecycle handoff; production browsers use an approved short-lived bootstrap exchange or trusted host channel. Login/session commit `MUST` replace bootstrap state with IAM-issued session tokens. `auth_token`, `refresh_token`, and API keys `MUST NOT` be configured in environment variables.
 - Credential-entry bootstrap preparation and Vite serve handoff `MUST` use the IAM-owned helpers defined by `IAM_CREDENTIAL_ENTRY_SPEC.md`. Application Vite configs `MUST NOT` implement local `transformIndexHtml` token serializers or define `process.env.SDKWORK_ACCESS_TOKEN`; they consume `@sdkwork/iam-credential-entry/vite` instead.
-- `development` may generate a disposable manifest-derived bootstrap JWT. `test` requires an explicit isolated-test generation opt-in. `staging` and `production` require a private runtime secret and fail closed when it is missing; browser builds never embed that secret.
+- `development` may generate a disposable manifest-derived bootstrap JWT. `test` requires an explicit isolated-test generation opt-in. Staging/production service or native contexts require a private runtime source and fail closed when it is missing; production browsers never embed that credential and must complete the approved runtime bootstrap channel before enabling credential entry.
 - In an authenticated application session context, every app-api SDK client and every explicit `backend-admin` backend-api SDK client `MUST` receive credentials from the same global `TokenManager`. This includes appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, application/dependency backend SDKs, and approved composed wrappers backed by those SDKs.
 - Server service-context runtimes that do not represent a user login session `MUST` use one request/service credential provider per service context. They must not create per-domain or per-SDK credential providers for calls that share the same context.
 - App-api and backend-api SDK clients `MUST NOT` receive live session `authToken`, `accessToken`, or `refreshToken` through browser public runtime config, feature flags, app manifests, or per-call manual headers. Private bootstrap env credentials are allowed only according to `ENVIRONMENT_SPEC.md` section 6.1.
@@ -660,7 +662,7 @@ Rules:
 - Browser deploy-time SDK URLs should be served through `/runtime-env.js` or an equivalent public runtime config document instead of being frozen into a hashed bundle when the same build artifact is promoted across environments.
 - Server production config must come from process env, an administrator-managed runtime config file, deployment infrastructure, or a secret manager, not from a committed `.env.production`.
 - Test config must isolate database names or schemas, Redis key prefixes, log directories, cache directories, and temp directories from development and production.
-- Desktop installed runtime config must live in the SDKWork user private config directory and default to SQLite user data. Desktop/Tauri development service config is a separate server config profile and defaults to PostgreSQL.
+- Desktop installed runtime config must live in the SDKWork user private config directory and default declared client-local data to SQLite. Desktop/Tauri development service config is a separate server config profile and uses PostgreSQL.
 - Tauri platform config files may own bundle identifiers, icons, permissions, capabilities, window metadata, mobile/tablet target metadata, and signing references. They must not contain secrets, business API route contracts, or SDK ownership decisions.
 - Native Android, iOS, and Harmony host config files may own application ids, bundle ids, module ids, icons, permissions, capabilities, app links/universal links/wants, push profiles, store profiles, signing reference names, and OS version requirements. They must not contain signing private keys, tokens, business API route contracts, or SDK ownership decisions.
 - `.env.postgres.example` is the checked-in local PostgreSQL template for apps
@@ -703,10 +705,11 @@ Rules:
 - [ ] Database env parsing maps `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` to typed config and rejects `DATABASE_PROVIDER`/`DATABASE_SSLMODE`.
 - [ ] Apps with PostgreSQL development support provide `.env.postgres.example` and ignore `.env.postgres`.
 - [ ] SDK clients are constructed in bootstrap from one common SDK base URL plus per-surface/per-SDK overrides, with separate effective open-api, app-api, and `backend-admin` backend-api URLs where those surfaces are consumed.
-- [ ] SDK inventory classifies every consumed SDK as authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, public open-api, local/native, or test fake before services are constructed.
+- [ ] SDK inventory classifies every consumed SDK and operation profile, including anonymous, credential-entry bootstrap, refresh-token, authenticated app/backend, protected open-api, ingress/agent, compatibility, local/native, and test fake before services are constructed.
 - [ ] Appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, application/dependency backend SDKs, and approved composed wrappers in the same authenticated application session receive the same global `TokenManager`; server service-context runtimes use one request/service credential provider per service context.
 - [ ] Protected open-api SDKs receive credentials through a separate open-api credential provider matching their declared auth mode and are not placed in login TokenManager client lists.
 - [ ] Runtime config contains SDK base URL values and token-manager behavior, but does not contain actual auth/access/refresh tokens or raw API keys.
+- [ ] Credential-entry bootstrap fails before SDK dispatch when unavailable; development uses the private lifecycle handoff and production browser artifacts use only the approved short-lived runtime channel with no embedded token.
 - [ ] Runtime config contains only i18n locale strategy, active locale list, message-catalog manifest references, and bundle versions, not translated message content or monolithic locale bundles.
 - [ ] Runtime i18n config is not reused as database seed locale configuration; seed locale and seed i18n version are handled by database lifecycle config.
 - [ ] Dependency SDK base URLs are keyed by SDK family id and are injected during bootstrap instead of hard-coded in services.
@@ -722,7 +725,7 @@ Rules:
 - [ ] Application runtime defaults resolve shared foundation APIs through the
   declared platform API surface; direct dependency module URLs are explicit overrides.
 - [ ] Deployment profile and environment are explicit.
-- [ ] Desktop installed config defaults to user-private SQLite, while desktop-started backend service config uses the server PostgreSQL dev profile unless an explicit SQLite profile is selected.
+- [ ] Desktop installed config defaults declared client-local persistence to user-private SQLite, while every desktop-started backend service uses the server PostgreSQL profile.
 - [ ] Test config isolates database/schema, Redis key prefix, logs, cache, and temp directories from development and production.
 - [ ] Secrets are isolated from manifests and committed files.
 - [ ] Feature flags are scoped and documented.

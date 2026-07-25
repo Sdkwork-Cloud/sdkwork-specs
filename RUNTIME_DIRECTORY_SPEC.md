@@ -98,7 +98,7 @@ Linux service, archive, and package deployments must use these directories.
 | Private immutable runtime assets | `/usr/lib/sdkwork/<application-code>` | `root:root` | Binaries, service-local runtime assets, bundled native libraries. |
 | Shared read-only assets | `/usr/share/sdkwork/<application-code>` | `root:root` | Static portal assets, templates, generated SDK archives, catalogs. |
 | Documentation | `/usr/share/doc/sdkwork/<application-code>` | `root:root` | Install guide, license notices, runbooks. |
-| Durable mutable data | `/var/lib/sdkwork/<application-code>` | `sdkwork:sdkwork` | SQLite only for approved desktop/user-data exceptions, catalogs, queues, generated state. |
+| Durable mutable data | `/var/lib/sdkwork/<application-code>` | `sdkwork:sdkwork` | Server-side catalogs, queues, generated state, and non-database durable files; authoritative relational state stays in PostgreSQL. Client-local SQLite belongs under the user/app-private client path. |
 | Logs | `/var/log/sdkwork/<application-code>` | `sdkwork:adm` or `sdkwork:sdkwork` | File logs only when journald/stdout is not enough. |
 | Cache | `/var/cache/sdkwork/<application-code>` | `sdkwork:sdkwork` | Rebuildable cache. |
 | Runtime state | `/run/sdkwork/<application-code>` | `sdkwork:sdkwork` | PID files, sockets, locks. |
@@ -253,9 +253,10 @@ Rules:
 - Secrets, auth tokens, refresh tokens, API keys, signing keys, database URLs,
   and Redis URLs `MUST NOT` be stored in browser runtime config, mini program
   config, generated mobile assets, or committed native platform config.
-- Client-local durable data is cache or user-private app data unless an
-  architecture decision documents an offline-first authoritative data model and
-  synchronization contract.
+- Client-local durable data is cache, offline projection, draft, or explicitly
+  device-local user-private app data. An architecture decision and synchronization
+  contract may make it authoritative only inside that device-local boundary; it
+  cannot replace PostgreSQL authority for shared/server data.
 
 ## 5. Development Environment Standard
 
@@ -282,8 +283,9 @@ Rules:
   the database profile explicit in scripts or generated config.
 - Desktop/Tauri dev commands that launch a backend service must make that
   service's PostgreSQL profile explicit. Desktop-local SQLite paths remain the
-  installed desktop/user-data default and must be exposed only through explicit
-  SQLite dev commands or desktop runtime config.
+  declared client-local default and may be exposed only through explicit
+  client-local SQLite commands or desktop runtime config; they cannot select
+  SQLite for the backend service.
 - Release defaults must not be inferred from `.env.local`.
 - Checked-in examples must never contain real passwords, tenant tokens, API
   keys, or production hostnames.
@@ -303,9 +305,9 @@ platform secret managers. Dev `.env` files are not production configuration.
 Rules:
 
 - Linux service packages must install or initialize `/etc/sdkwork/<application-code>`.
-- Standalone server/container and cloud deployments must default to
-  PostgreSQL unless an approved desktop-only or local-data exception is
-  documented.
+- Standalone server/container and cloud deployments that own relational state
+  `MUST` use PostgreSQL. Desktop-only and local-data SQLite apply only to the
+  separate client-local database role and are not server exceptions.
 - Standalone server/container and cloud deployments that require shared state
   must default to Redis and fail fast when Redis is missing or invalid.
 - Production config examples must use structured database and Redis fields.
@@ -436,7 +438,7 @@ Canonical `[database]` fields:
 
 | Field | Required | Notes |
 | --- | --- | --- |
-| `engine` | yes | `postgresql` for standalone server/container and cloud targets; `sqlite` for desktop user-data targets. |
+| `engine` | yes | `postgresql` for every authoritative server/container/cloud target; `sqlite` only for declared desktop/native client-local data. |
 | `host` | PostgreSQL | Hostname or IP for PostgreSQL. |
 | `port` | PostgreSQL | Default `5432`. |
 | `database` | PostgreSQL | Database name or catalog. |
@@ -449,7 +451,7 @@ Canonical `[database]` fields:
 | `connect_timeout_ms` | recommended | Startup and pool connect timeout. |
 | `idle_timeout_seconds` | optional | Pool idle timeout. |
 | `url` | advanced override | Private operator override only; never browser-visible. |
-| `file` | SQLite | SQLite database file path for local/desktop. |
+| `file` | SQLite | SQLite database file path for declared client-local desktop/native data. |
 | `auto_migrate` | explicit | Whether startup may apply migrations. |
 | `auto_seed` | explicit | Whether startup may seed baseline data. |
 

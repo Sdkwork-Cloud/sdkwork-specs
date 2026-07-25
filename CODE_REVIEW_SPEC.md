@@ -97,6 +97,19 @@ Reviewers `MUST` request changes for composable module or dependency-integration
 - duplicate normalized `(surface, method, path)` route ownership, generic health/status paths claimed by feature modules, or dependency-owned paths copied into application-owned authorities.
 - hand-edited `generated/composition.resolved.json` or missing `resolve-composition.mjs --write` / `check-composition-resolver.mjs` evidence.
 
+### 3.4 Database Blocking Findings
+
+Reviewers `MUST` request changes for database work that introduces or retains:
+
+- SQLite in a service, server, container, cloud workload, shared worker/gateway, or authoritative system-of-record role.
+- a mixed PostgreSQL/SQLite physical parity manifest or PostgreSQL design weakened to the SQLite feature set.
+- server completion claims without real PostgreSQL migration, repository, concurrency, query-plan, and recovery evidence.
+- PostgreSQL DDL copied or mechanically transliterated into SQLite DDL, or a shared migration file selected by runtime engine branching.
+- unbounded migrations/backfills, undocumented table rewrites or locks, unsafe generic down migrations, or missing forward-fix/restore strategy.
+- database message-text matching instead of PostgreSQL SQLSTATE handling, statement retry inside an aborted transaction, remote calls while holding locks, or unbounded deadlock/serialization retry.
+- client-local SQLite without profile/account/origin isolation, secure key policy, purge, corruption/disk-full recovery, or explicit offline sync/conflict semantics.
+- trusting client-local tenant, permission, price, quota, entitlement, ledger, or audit fields as server authority.
+
 ## 4. Risk-Based Review
 
 | Risk | Examples | Minimum review |

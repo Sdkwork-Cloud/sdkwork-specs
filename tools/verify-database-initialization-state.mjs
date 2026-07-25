@@ -79,6 +79,13 @@ function verifyRepo(workspaceRoot, repoName) {
   const targetBaseline = `0001_${normalizedModuleId}_baseline.sql`;
   const issues = [];
 
+  if (manifest.databaseRole !== 'authoritative-server') {
+    issues.push('manifest: initialization-state verifier applies only to authoritative-server roots');
+  }
+  if (JSON.stringify(manifest.engines) !== JSON.stringify(['postgres'])) {
+    issues.push('manifest: authoritative initialization requires engines=[postgres]');
+  }
+
   const framework = validateDatabaseFramework(repoRoot);
   if (!framework.ok) {
     issues.push(...framework.failures.map((failure) => `framework: ${failure}`));
@@ -101,7 +108,7 @@ function verifyRepo(workspaceRoot, repoName) {
     }
   }
 
-  for (const engine of ['postgres', 'sqlite']) {
+  for (const engine of ['postgres']) {
     const migrationDir = path.join(databaseDir, 'migrations', engine);
     if (fs.existsSync(migrationDir)) {
       for (const entry of fs.readdirSync(migrationDir)) {
@@ -168,9 +175,7 @@ function verifyRepo(workspaceRoot, repoName) {
       }
     }
     const materialize = scripts['db:materialize:contract'] ?? '';
-    const engines = manifest.engines?.length ? manifest.engines : ['postgres'];
-    const defaultEngine = engines.includes('postgres') ? 'postgres' : engines[0];
-    const expectedBaseline = `database/ddl/baseline/${defaultEngine}/${targetBaseline}`;
+    const expectedBaseline = `database/ddl/baseline/postgres/${targetBaseline}`;
     if (!materialize.includes(expectedBaseline)) {
       issues.push(`scripts: db:materialize:contract must reference ${expectedBaseline}`);
     }

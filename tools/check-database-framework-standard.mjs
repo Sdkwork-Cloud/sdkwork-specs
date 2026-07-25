@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const REQUIRED_LOCALES = ['zh-CN', 'en-US', 'ja-JP', 'de-DE', 'fr-FR', 'ru-RU', 'ko-KR'];
 const REQUIRED_DB_SCRIPTS = [
@@ -15,7 +15,24 @@ const REQUIRED_DB_SCRIPTS = [
   'db:drift:check',
 ];
 const L2_DB_SCRIPTS = ['db:materialize:contract', 'db:bootstrap'];
-const L2_CONTRACT_VERSION = '1.0.0';
+const MANIFEST_SCHEMA_VERSION = 2;
+const AUTHORITATIVE_ROLE = 'authoritative-server';
+const CLIENT_LOCAL_ROLE = 'client-local';
+const CLIENT_LOCAL_MODES = new Set(['cache', 'offline-projection', 'local-only']);
+const BASELINE_STRATEGIES = new Set([
+  'migrations-only',
+  'baseline-plus-migrations',
+  'baseline-only-dev',
+]);
+const SEMVER_PATTERN = new RegExp(
+  [
+    '^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)',
+    '(?:-(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*)',
+    '(?:\\.(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*))*)?',
+    '(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$',
+  ].join(''),
+  'u',
+);
 
 function parseArgs(argv) {
   const args = { root: process.cwd(), layout: 'application' };
@@ -38,11 +55,141 @@ function existsAt(baseDir, relativePath) {
 
 function readJsonAt(baseDir, relativePath) {
   const absolutePath = path.join(baseDir, relativePath);
-  return JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+  return parseJsonFile(absolutePath);
+}
+
+function parseJsonFile(absolutePath) {
+  return JSON.parse(fs.readFileSync(absolutePath, 'utf8').replace(/^\uFEFF/u, ''));
 }
 
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isValidSemver(value) {
+  return isNonEmptyString(value) && SEMVER_PATTERN.test(value);
+}
+
+function isExactArray(value, expected) {
+  return Array.isArray(value)
+    && value.length === expected.length
+    && value.every((entry, index) => entry === expected[index]);
+}
+
+function expectedEngineForRole(role) {
+  if (role === AUTHORITATIVE_ROLE) return 'postgres';
+  if (role === CLIENT_LOCAL_ROLE) return 'sqlite';
+  return null;
+}
+
+function readTopLevelYamlScalarAt(baseDir, relativePath, key) {
+  const absolutePath = path.join(baseDir, relativePath);
+  const text = fs.readFileSync(absolutePath, 'utf8');
+  const pattern = new RegExp(
+    `^${key}:\\s*(?:"([^"\\r\\n]+)"|'([^'\\r\\n]+)'|([^\\s#]+))\\s*(?:#.*)?$`,
+    'mu',
+  );
+  const match = text.match(pattern);
+  return match?.[1] ?? match?.[2] ?? match?.[3] ?? null;
+}
+
+function normalizeSimpleYamlScalar(value) {
+  const withoutComment = value.trim().replace(/\s+#.*$/u, '').trim();
+  if (/^(?:null|~)$/iu.test(withoutComment)) return null;
+  const quoted = withoutComment.match(/^(?:"([^"]*)"|'([^']*)')$/u);
+  return quoted ? quoted[1] ?? quoted[2] : withoutComment;
+}
+
+function readSimpleYamlAt(baseDir, relativePath) {
+  const absolutePath = path.join(baseDir, relativePath);
+  const scalars = new Map();
+  const sequences = new Map();
+  const stack = [];
+
+  for (const rawLine of fs.readFileSync(absolutePath, 'utf8').split(/\r?\n/u)) {
+    if (!rawLine.trim() || rawLine.trimStart().startsWith('#')) continue;
+    const indent = rawLine.match(/^ */u)?.[0].length ?? 0;
+    if (indent % 2 !== 0) continue;
+    const level = indent / 2;
+    const line = rawLine.trim();
+    const sequenceMatch = line.match(/^-\s+(.+?)\s*$/u);
+    if (sequenceMatch) {
+      const sequencePath = stack.slice(0, level).join('.');
+      if (sequencePath) {
+        const values = sequences.get(sequencePath) ?? [];
+        values.push(normalizeSimpleYamlScalar(sequenceMatch[1]));
+        sequences.set(sequencePath, values);
+      }
+      continue;
+    }
+
+    const scalarMatch = line.match(/^([A-Za-z0-9_-]+):(?:\s*(.*))?$/u);
+    if (!scalarMatch) continue;
+    const [, key, rawValue = ''] = scalarMatch;
+    stack.length = level;
+    const keyPath = [...stack, key].join('.');
+    if (rawValue.trim()) {
+      scalars.set(keyPath, normalizeSimpleYamlScalar(rawValue));
+    } else {
+      stack[level] = key;
+      stack.length = level + 1;
+    }
+  }
+
+  return { scalars, sequences };
+}
+
+function validateClientLocalPolicy(moduleRootDir, manifest, fail) {
+  let policy;
+  try {
+    policy = readSimpleYamlAt(moduleRootDir, 'local-data-policy.yaml');
+  } catch (error) {
+    fail(`local-data-policy.yaml must be readable (${error.message})`);
+    return;
+  }
+
+  const scalar = (key) => policy.scalars.get(key);
+  if (scalar('kind') !== 'sdkwork.database.client-local-policy') {
+    fail('local-data-policy.yaml kind must be sdkwork.database.client-local-policy');
+  }
+  if (scalar('mode') !== manifest.clientLocal?.mode) {
+    fail('local-data-policy.yaml mode must match database.manifest.json clientLocal.mode');
+  }
+  if (scalar('scope') !== manifest.clientLocal?.scope) {
+    fail('local-data-policy.yaml scope must match database.manifest.json clientLocal.scope');
+  }
+  if (scalar('authoritative_source') !== manifest.clientLocal?.authoritativeSource) {
+    fail(
+      'local-data-policy.yaml authoritative_source must match database.manifest.json clientLocal.authoritativeSource',
+    );
+  }
+  if (
+    manifest.clientLocal?.mode === 'offline-projection'
+    && scalar('sync_contract') !== manifest.clientLocal.syncContract
+  ) {
+    fail('local-data-policy.yaml sync_contract must match the offline-projection sync contract');
+  }
+
+  for (const key of [
+    'security.encryption_at_rest',
+    'security.key_store',
+    'security.backup',
+    'security.export',
+    'security.lock_state',
+    'retention.policy',
+    'retention.max_age_or_event',
+    'lifecycle.logout',
+    'lifecycle.account_switch',
+    'lifecycle.uninstall',
+    'recovery.migration_interruption',
+    'recovery.disk_full',
+    'recovery.corruption',
+    'recovery.projection_rebuild',
+  ]) {
+    if (!isNonEmptyString(scalar(key))) {
+      fail(`local-data-policy.yaml ${key} must be defined`);
+    }
+  }
 }
 
 function validateLocaleSetManifest(seedManifest, fail) {
@@ -98,6 +245,12 @@ function listBaselineSqlFiles(moduleRootDir, engine) {
     .sort();
 }
 
+function listMigrationUpSqlFiles(moduleRootDir, engine) {
+  const migrationDir = path.join(moduleRootDir, 'migrations', engine);
+  if (!fs.existsSync(migrationDir)) return [];
+  return fs.readdirSync(migrationDir).filter((entry) => entry.endsWith('.up.sql')).sort();
+}
+
 export function validateDatabaseModuleContract(moduleRootDir) {
   const failures = [];
 
@@ -113,67 +266,249 @@ export function validateDatabaseModuleContract(moduleRootDir) {
     return { ok: false, failures };
   }
 
-  if (manifest.contractVersion !== L2_CONTRACT_VERSION) {
+  const manifestContractVersion = manifest.contractVersion;
+  if (!isValidSemver(manifestContractVersion)) {
     fail(
-      `database.manifest.json contractVersion must be ${L2_CONTRACT_VERSION} (found ${manifest.contractVersion ?? 'missing'})`,
+      `database.manifest.json contractVersion must be valid SemVer (found ${manifestContractVersion ?? 'missing'})`,
     );
   }
-  if (manifest.lifecycle?.autoMigrate !== true) {
-    fail('database.manifest.json lifecycle.autoMigrate must be true for L2 modules');
+
+  if (manifest.schemaVersion !== MANIFEST_SCHEMA_VERSION) {
+    fail(
+      `database.manifest.json schemaVersion must be ${MANIFEST_SCHEMA_VERSION} (found ${manifest.schemaVersion ?? 'missing'})`,
+    );
   }
 
-  const engines = manifest.engines?.length ? manifest.engines : ['postgres'];
-  for (const engine of engines) {
-    const baselineFiles = listBaselineSqlFiles(moduleRootDir, engine);
-    if (baselineFiles.length === 0) {
-      fail(`ddl/baseline/${engine} must contain at least one .sql baseline file`);
+  const databaseRole = manifest.databaseRole;
+  const expectedEngine = expectedEngineForRole(databaseRole);
+  if (!expectedEngine) {
+    fail(
+      `database.manifest.json databaseRole must be ${AUTHORITATIVE_ROLE} or ${CLIENT_LOCAL_ROLE} (found ${databaseRole ?? 'missing'})`,
+    );
+  } else {
+    if (!isExactArray(manifest.engines, [expectedEngine])) {
+      fail(
+        `database.manifest.json engines must be exactly ["${expectedEngine}"] for ${databaseRole}`,
+      );
+    }
+    if (manifest.defaultEngine !== expectedEngine) {
+      fail(
+        `database.manifest.json defaultEngine must be ${expectedEngine} for ${databaseRole}`,
+      );
     }
   }
 
+  let schemaContractVersion = null;
+  let schemaDatabaseRole = null;
+  let schemaEngines = [];
   try {
-    const prefixRegistry = readJsonAt(moduleRootDir, 'contract/prefix-registry.json');
-    if (!Array.isArray(prefixRegistry.prefixes) || prefixRegistry.prefixes.length === 0) {
-      fail('contract/prefix-registry.json prefixes must be non-empty for L2 modules');
+    schemaContractVersion = readTopLevelYamlScalarAt(moduleRootDir, 'contract/schema.yaml', 'contract_version');
+    schemaDatabaseRole = readTopLevelYamlScalarAt(moduleRootDir, 'contract/schema.yaml', 'database_role');
+    schemaEngines = readSimpleYamlAt(moduleRootDir, 'contract/schema.yaml').sequences.get('engines') ?? [];
+    if (!isValidSemver(schemaContractVersion)) {
+      fail(
+        `contract/schema.yaml contract_version must be valid SemVer (found ${schemaContractVersion ?? 'missing'})`,
+      );
+    }
+    if (schemaDatabaseRole !== databaseRole) {
+      fail(
+        `contract/schema.yaml database_role must match manifest databaseRole (manifest=${databaseRole ?? 'missing'}, schema=${schemaDatabaseRole ?? 'missing'})`,
+      );
+    }
+    if (expectedEngine && !isExactArray(schemaEngines, [expectedEngine])) {
+      fail(`contract/schema.yaml engines must be exactly ["${expectedEngine}"] for ${databaseRole}`);
     }
   } catch (error) {
-    fail(`contract/prefix-registry.json must be valid JSON (${error.message})`);
+    fail(`contract/schema.yaml must be readable (${error.message})`);
   }
 
-  try {
-    const tableRegistry = readJsonAt(moduleRootDir, 'contract/table-registry.json');
-    if (!Array.isArray(tableRegistry.tables) || tableRegistry.tables.length === 0) {
-      fail('contract/table-registry.json tables must be non-empty for L2 modules');
+  if (
+    isNonEmptyString(manifestContractVersion)
+    && isNonEmptyString(schemaContractVersion)
+    && manifestContractVersion !== schemaContractVersion
+  ) {
+    fail(
+      `database contract versions must match (manifest=${manifestContractVersion}, schema=${schemaContractVersion})`,
+    );
+  }
+  if (typeof manifest.lifecycle?.autoMigrate !== 'boolean') {
+    fail('database.manifest.json lifecycle.autoMigrate must be an explicit boolean');
+  }
+
+  const baselineStrategy = manifest.baselineStrategy;
+  if (!BASELINE_STRATEGIES.has(baselineStrategy)) {
+    fail(
+      'database.manifest.json baselineStrategy must be migrations-only, baseline-plus-migrations, or baseline-only-dev',
+    );
+  }
+
+  if (expectedEngine && BASELINE_STRATEGIES.has(baselineStrategy)) {
+    const baselineFiles = listBaselineSqlFiles(moduleRootDir, expectedEngine);
+    const migrationFiles = listMigrationUpSqlFiles(moduleRootDir, expectedEngine);
+    if (baselineStrategy === 'migrations-only' && migrationFiles.length === 0) {
+      fail(`migrations/${expectedEngine} must contain at least one .up.sql for migrations-only`);
     }
-  } catch (error) {
-    fail(`contract/table-registry.json must be valid JSON (${error.message})`);
+    if (baselineStrategy !== 'migrations-only' && baselineFiles.length === 0) {
+      fail(`ddl/baseline/${expectedEngine} must contain at least one .sql baseline file`);
+    }
   }
 
-  return { ok: failures.length === 0, failures };
+  if (databaseRole === AUTHORITATIVE_ROLE) {
+    for (const forbiddenPath of ['ddl/baseline/sqlite', 'migrations/sqlite']) {
+      if (existsAt(moduleRootDir, forbiddenPath)) {
+        fail(`${forbiddenPath} must not exist in an authoritative-server database root`);
+      }
+    }
+
+    try {
+      const prefixRegistry = readJsonAt(moduleRootDir, 'contract/prefix-registry.json');
+      if (!Array.isArray(prefixRegistry.prefixes) || prefixRegistry.prefixes.length === 0) {
+        fail('contract/prefix-registry.json prefixes must be non-empty for L2 modules');
+      }
+    } catch (error) {
+      fail(`contract/prefix-registry.json must be valid JSON (${error.message})`);
+    }
+
+    try {
+      const tableRegistry = readJsonAt(moduleRootDir, 'contract/table-registry.json');
+      if (!Array.isArray(tableRegistry.tables) || tableRegistry.tables.length === 0) {
+        fail('contract/table-registry.json tables must be non-empty for L2 modules');
+      }
+    } catch (error) {
+      fail(`contract/table-registry.json must be valid JSON (${error.message})`);
+    }
+  }
+
+  if (databaseRole === CLIENT_LOCAL_ROLE) {
+    for (const forbiddenPath of ['ddl/baseline/postgres', 'migrations/postgres']) {
+      if (existsAt(moduleRootDir, forbiddenPath)) {
+        fail(`${forbiddenPath} must not exist in a client-local database root`);
+      }
+    }
+    const clientLocal = manifest.clientLocal;
+    if (!clientLocal || typeof clientLocal !== 'object' || Array.isArray(clientLocal)) {
+      fail('database.manifest.json clientLocal must be defined for client-local modules');
+    } else {
+      if (!CLIENT_LOCAL_MODES.has(clientLocal.mode)) {
+        fail('database.manifest.json clientLocal.mode must be cache, offline-projection, or local-only');
+      }
+      if (!isNonEmptyString(clientLocal.scope)) {
+        fail('database.manifest.json clientLocal.scope must be defined');
+      } else {
+        const normalizedScope = clientLocal.scope.toLowerCase().split(/[^a-z0-9]+/u);
+        for (const dimension of ['environment', 'profile', 'origin', 'account']) {
+          if (!normalizedScope.includes(dimension)) {
+            fail(`database.manifest.json clientLocal.scope must include ${dimension} isolation`);
+          }
+        }
+      }
+      if (!isNonEmptyString(clientLocal.authoritativeSource)) {
+        fail('database.manifest.json clientLocal.authoritativeSource must be defined');
+      }
+      if (clientLocal.mode === 'offline-projection' && !isNonEmptyString(clientLocal.syncContract)) {
+        fail('database.manifest.json clientLocal.syncContract must be defined for offline-projection');
+      }
+    }
+  }
+
+  return { ok: failures.length === 0, failures, databaseRole };
 }
 
-export function validateDatabaseModuleLayout(moduleRootDir) {
+function migrationMetadata(sql) {
+  const values = {};
+  for (const match of sql.matchAll(/^--\s*([a-z_]+):\s*(.+?)\s*$/gmu)) {
+    values[match[1]] = match[2];
+  }
+  return values;
+}
+
+function validateMigrationDirectory(moduleRootDir, engine, fail) {
+  const migrationDir = path.join(moduleRootDir, 'migrations', engine);
+  if (!fs.existsSync(migrationDir)) return;
+
+  for (const entry of fs.readdirSync(migrationDir)) {
+    if (!entry.endsWith('.up.sql')) continue;
+    if (!/^\d{4}_[a-z0-9_]+\.up\.sql$/u.test(entry)) {
+      fail(`migrations/${engine}/${entry} must match ^\\d{4}_[a-z0-9_]+\\.up\\.sql$`);
+    }
+
+    const upPath = path.join(migrationDir, entry);
+    const metadata = migrationMetadata(fs.readFileSync(upPath, 'utf8'));
+    const downName = entry.replace(/\.up\.sql$/u, '.down.sql');
+    const hasDown = fs.existsSync(path.join(migrationDir, downName));
+
+    if (metadata.engine !== engine) {
+      fail(`migrations/${engine}/${entry} metadata engine must be ${engine}`);
+    }
+    for (const key of ['reversible', 'rollback', 'transactional']) {
+      if (!isNonEmptyString(metadata[key])) {
+        fail(`migrations/${engine}/${entry} metadata ${key} must be defined`);
+      }
+    }
+    if (engine === 'postgres') {
+      for (const key of ['lock', 'lock_timeout', 'statement_timeout']) {
+        if (!isNonEmptyString(metadata[key])) {
+          fail(`migrations/${engine}/${entry} metadata ${key} must be defined`);
+        }
+      }
+    }
+
+    if (metadata.reversible === 'true' && metadata.rollback === 'down-migration' && !hasDown) {
+      fail(`migrations/${engine}/${downName} must exist when rollback is down-migration`);
+    }
+    if (hasDown && (metadata.reversible !== 'true' || metadata.rollback !== 'down-migration')) {
+      fail(
+        `migrations/${engine}/${downName} requires reversible: true and rollback: down-migration`,
+      );
+    }
+  }
+}
+
+export function validateDatabaseModuleLayout(moduleRootDir, requiredRole = null) {
   const failures = [];
 
   function fail(message) {
     failures.push(message);
   }
 
+  let manifest = null;
+  try {
+    manifest = readJsonAt(moduleRootDir, 'database.manifest.json');
+  } catch (error) {
+    fail(`database.manifest.json must be valid JSON (${error.message})`);
+  }
+
+  const databaseRole = manifest?.databaseRole ?? null;
+  const expectedEngine = expectedEngineForRole(databaseRole);
+  if (requiredRole && databaseRole !== requiredRole) {
+    fail(`database.manifest.json databaseRole must be ${requiredRole} for this layout`);
+  }
+
   const requiredPaths = [
     'README.md',
     'database.manifest.json',
     'contract/schema.yaml',
-    'contract/prefix-registry.json',
-    'contract/table-registry.json',
-    'seeds/seed.manifest.json',
-    'drift/policy.yaml',
-    'migrations/postgres',
-    'migrations/sqlite',
-    'seeds/common',
-    'ddl/baseline/postgres',
-    'ddl/baseline/sqlite',
-    'ddl/generated',
     'fixtures',
   ];
+
+  if (databaseRole === AUTHORITATIVE_ROLE) {
+    requiredPaths.push(
+      'contract/prefix-registry.json',
+      'contract/table-registry.json',
+      'seeds/seed.manifest.json',
+      'drift/policy.yaml',
+      'migrations/postgres',
+      'seeds/common',
+      'ddl/baseline/postgres',
+      'ddl/generated',
+    );
+  } else if (databaseRole === CLIENT_LOCAL_ROLE) {
+    requiredPaths.push(
+      'local-data-policy.yaml',
+      'migrations/sqlite',
+      'ddl/baseline/sqlite',
+    );
+  }
 
   for (const relativePath of requiredPaths) {
     if (!existsAt(moduleRootDir, relativePath)) {
@@ -181,34 +516,18 @@ export function validateDatabaseModuleLayout(moduleRootDir) {
     }
   }
 
-  for (const locale of REQUIRED_LOCALES) {
-    const relativePath = `seeds/locales/${locale}`;
-    if (!existsAt(moduleRootDir, relativePath)) {
-      fail(`${relativePath} must exist`);
-    }
-  }
-
-  for (const engine of ['postgres', 'sqlite']) {
-    const migrationDir = path.join(moduleRootDir, 'migrations', engine);
-    if (!fs.existsSync(migrationDir)) {
-      continue;
-    }
-    for (const entry of fs.readdirSync(migrationDir)) {
-      if (!entry.endsWith('.up.sql')) {
-        continue;
-      }
-      if (!/^\d{4}_[a-z0-9_]+\.up\.sql$/.test(entry)) {
-        fail(`migrations/${engine}/${entry} must match ^\\d{4}_[a-z0-9_]+\\.up\\.sql$`);
-      }
-      const downName = entry.replace(/\.up\.sql$/, '.down.sql');
-      if (!fs.existsSync(path.join(migrationDir, downName))) {
-        fail(`migrations/${engine}/${downName} must exist for ${entry}`);
+  if (databaseRole === AUTHORITATIVE_ROLE) {
+    for (const locale of REQUIRED_LOCALES) {
+      const relativePath = `seeds/locales/${locale}`;
+      if (!existsAt(moduleRootDir, relativePath)) {
+        fail(`${relativePath} must exist`);
       }
     }
   }
 
-  try {
-    const manifest = readJsonAt(moduleRootDir, 'database.manifest.json');
+  if (expectedEngine) validateMigrationDirectory(moduleRootDir, expectedEngine, fail);
+
+  if (manifest) {
     if (manifest.kind !== 'sdkwork.database.module') {
       fail('database.manifest.json kind must be sdkwork.database.module');
     }
@@ -216,27 +535,29 @@ export function validateDatabaseModuleLayout(moduleRootDir) {
       fail('database.manifest.json must define moduleId and serviceCode');
     }
     const activeLocales = manifest.lifecycle?.activeSeedLocales ?? ['zh-CN'];
-    if (!activeLocales.includes('zh-CN')) {
+    if (databaseRole === AUTHORITATIVE_ROLE && !activeLocales.includes('zh-CN')) {
       fail('database.manifest.json lifecycle.activeSeedLocales must include zh-CN');
     }
-  } catch (error) {
-    fail(`database.manifest.json must be valid JSON (${error.message})`);
   }
 
-  try {
-    const seedManifest = readJsonAt(moduleRootDir, 'seeds/seed.manifest.json');
-    if (seedManifest.kind !== 'sdkwork.database.seed') {
-      fail('seeds/seed.manifest.json kind must be sdkwork.database.seed');
+  if (databaseRole === AUTHORITATIVE_ROLE) {
+    try {
+      const seedManifest = readJsonAt(moduleRootDir, 'seeds/seed.manifest.json');
+      if (seedManifest.kind !== 'sdkwork.database.seed') {
+        fail('seeds/seed.manifest.json kind must be sdkwork.database.seed');
+      }
+      if (seedManifest.defaultLocale !== 'zh-CN') {
+        fail('seeds/seed.manifest.json defaultLocale must be zh-CN');
+      }
+      validateLocaleSetManifest(seedManifest, fail);
+    } catch (error) {
+      fail(`seeds/seed.manifest.json must be valid JSON (${error.message})`);
     }
-    if (seedManifest.defaultLocale !== 'zh-CN') {
-      fail('seeds/seed.manifest.json defaultLocale must be zh-CN');
-    }
-    validateLocaleSetManifest(seedManifest, fail);
-  } catch (error) {
-    fail(`seeds/seed.manifest.json must be valid JSON (${error.message})`);
+  } else if (databaseRole === CLIENT_LOCAL_ROLE && manifest) {
+    validateClientLocalPolicy(moduleRootDir, manifest, fail);
   }
 
-  return { ok: failures.length === 0, failures };
+  return { ok: failures.length === 0, failures, databaseRole };
 }
 
 export function validateDatabaseFramework(rootDir) {
@@ -249,16 +570,21 @@ export function validateDatabaseFramework(rootDir) {
   const failures = [...moduleResult.failures, ...contractResult.failures];
   const packageJsonPath = path.join(rootDir, 'package.json');
   if (fs.existsSync(packageJsonPath)) {
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const packageJson = parseJsonFile(packageJsonPath);
     const scripts = packageJson.scripts ?? {};
-    for (const scriptName of REQUIRED_DB_SCRIPTS) {
+    const requiredScripts = contractResult.databaseRole === CLIENT_LOCAL_ROLE
+      ? ['db:validate']
+      : REQUIRED_DB_SCRIPTS;
+    for (const scriptName of requiredScripts) {
       if (!scripts[scriptName]) {
         failures.push(`package.json scripts must define ${scriptName}`);
       }
     }
-    for (const scriptName of L2_DB_SCRIPTS) {
-      if (!scripts[scriptName]) {
-        failures.push(`package.json scripts must define ${scriptName} for L2 database modules`);
+    if (contractResult.databaseRole === AUTHORITATIVE_ROLE) {
+      for (const scriptName of L2_DB_SCRIPTS) {
+        if (!scripts[scriptName]) {
+          failures.push(`package.json scripts must define ${scriptName} for L2 database modules`);
+        }
       }
     }
   }
@@ -269,8 +595,9 @@ export function validateDatabaseFramework(rootDir) {
 function main() {
   const { root, layout } = parseArgs(process.argv.slice(2));
 
-  if (layout === 'module') {
-    const result = validateDatabaseModuleLayout(root);
+  if (layout === 'module' || layout === 'client-local') {
+    const requiredRole = layout === 'client-local' ? CLIENT_LOCAL_ROLE : null;
+    const result = validateDatabaseModuleLayout(root, requiredRole);
     if (!result.ok) {
       process.stderr.write(
         `Database module layout failed:\n${result.failures.map((item) => `- ${item}`).join('\n')}\n`,
@@ -298,6 +625,7 @@ function main() {
   process.stdout.write('Database framework standard passed\n');
 }
 
-if (import.meta.url === new URL(process.argv[1], 'file:').href) {
+const entryUrl = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : null;
+if (import.meta.url === entryUrl) {
   main();
 }

@@ -680,6 +680,34 @@ describe('check-pnpm-script-standard', () => {
     );
   });
 
+  it('rejects sqlite browser and server profiles while allowing explicit desktop client-local naming', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'pnpm dev:browser',
+        'dev:browser': 'pnpm dev:browser:postgres:standalone',
+        'dev:browser:postgres:standalone': 'node scripts/demo-dev.mjs --target browser --database postgres --deployment-profile standalone',
+        'dev:desktop': 'pnpm dev:desktop:postgres:standalone',
+        'dev:desktop:postgres:standalone': 'node scripts/demo-dev.mjs --target desktop --database postgres --deployment-profile standalone',
+        'dev:desktop:sqlite': 'node scripts/demo-local-data.mjs --database sqlite',
+        'dev:browser:sqlite': 'node scripts/demo-dev.mjs --target browser --database sqlite',
+        'dev:server:sqlite': 'node scripts/demo-dev.mjs --target server --database sqlite',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+      },
+    });
+
+    const result = runChecker(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /dev:browser:sqlite: sqlite is client-local/);
+    assert.match(result.stderr, /dev:server:sqlite: sqlite is client-local/);
+    assert.doesNotMatch(result.stderr, /dev:desktop:sqlite: sqlite is client-local/);
+  });
+
   it('rejects retired service layout tokens in dev scripts and command values', () => {
     const root = makeRepo({
       name: 'sdkwork-demo',

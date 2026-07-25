@@ -10,13 +10,13 @@ Security is a cross-cutting requirement. It must be enforced by backend services
 
 Rules:
 
-- Protected HTTP APIs `MUST` use the authentication mode declared by their API surface. Protected app-api and backend-api operations require both `AuthToken` and `AccessToken`. Protected open-api operations require `api-key`, `oauth`, or `open-api-flexible` mode according to the route manifest unless the route is a vendor compatibility API declared under `API_SPEC.md` section 4.5.2.
+- Every HTTP operation `MUST` use exactly one authentication profile declared by its route manifest and OpenAPI contract. Protected app-api and backend-api operations require `dual-token`; protected open-api operations require `api-key`, `oauth`, or `open-api-flexible`; pre-session credential-entry uses `credential-entry-bootstrap`; refresh uses `refresh-token`; internal/agent operations use their explicit profile. Credential presence must never change the declared profile.
 - Protected RPC methods `MUST` require the equivalent `authorization` and `access-token` metadata unless the method is explicitly public or internal mTLS-only.
 - Application login/session integration, AuthGate behavior, generated SDK token wiring, logout clearing, and Rust AppContext validation `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`.
-- Public endpoints `MUST` explicitly declare `security: []`. Public endpoints generated into SDKs that must not receive stored user credentials `MUST` also declare `x-sdkwork-auth-mode: anonymous`, and generated SDKs `MUST` skip automatic credential injection for those operations.
+- Public endpoints `MUST` explicitly declare `security: []` and `x-sdkwork-auth-mode: anonymous`, and generated SDKs `MUST` skip every automatic credential for those operations. Credential-entry endpoints are not anonymous: they require only bootstrap `AccessToken` and use `x-sdkwork-auth-mode: credential-entry-bootstrap`.
 - Tokens `MUST` be signed or resolved through a trusted server-side session store.
 - Token expiry, revocation, rotation, and audience checks are mandatory for production.
-- SDKWork login/session creation starts anonymous. Login requests `MUST NOT` use inbound credentials or SDKWork context-projection headers as authenticated context or tenant/organization selectors. Login, registration, OAuth session creation, QR auth credential-entry, and password reset commands `MUST` declare `x-sdkwork-forbid-credential-headers: true` and reject those headers with a standard error.
+- SDKWork login/session creation starts without a user session but requires an application bootstrap access JWT for tenant/app isolation. Login requests `MUST NOT` use session, API-key, OAuth, ingress/agent, or SDKWork context-projection credentials as authenticated context or tenant/organization selectors. Login, registration, OAuth session creation, QR auth credential-entry, and password reset commands `MUST` use `credential-entry-bootstrap`, declare `x-sdkwork-forbid-credential-headers: true`, and reject every non-profile credential with a standard error.
 - Login success, registration success, OAuth/session-bridge completion, QR completion, refresh, and current-session bootstrap `MUST NOT` be mocked or synthesized from user/profile data, cached users, user ids, emails, usernames, QR keys, bridge hints, or legacy session identifiers. SDKWork app/backend authenticated state requires a validated appbase IAM session with non-empty `authToken` and `accessToken`; incomplete or user-only results fail closed.
 - Login success `MUST` resolve tenant and organization context from real IAM data: the authenticated user tenant binding and active organization memberships. It `MUST NOT` use demo tenants, hard-coded tenants, email-normalized ids, request payload tenant fields, or context headers as substitutes.
 - Multi-organization login `MUST` return a short-lived organization-selection continuation state and `MUST NOT` issue normal business tokens until the selected organization membership is validated.
@@ -83,6 +83,7 @@ Rules:
 
 - Frontend modules `MUST NOT` manually assemble auth headers except in SDK/bootstrap infrastructure.
 - Appbase IAM auth UI/runtime and generated app SDK bootstrap own browser login/session token flow; product UI must not duplicate it.
+- Credential-entry wrappers `MUST` fail before network dispatch when bootstrap credentials are absent. Browser bootstrap credentials may be injected only through the lifecycle- and environment-governed private handoff in `IAM_CREDENTIAL_ENTRY_SPEC.md`; they must never use public runtime env or production artifacts.
 - Sensitive tokens `SHOULD` be stored in secure host storage where available.
 - CORS `MUST` be explicit and environment-specific. SDKWork development/test runtimes `MAY`
   enable the shared Web Framework private-network origin policy for dynamic LAN addresses;
@@ -163,8 +164,8 @@ Rules:
 - [ ] OpenAPI security declarations are explicit.
 - [ ] RPC metadata auth declarations are explicit for every service method.
 - [ ] Dual-token validation is enforced server-side.
-- [ ] Login requests do not trust inbound token or context headers and resolve tenant/organization context from real IAM data.
-- [ ] Anonymous SDK-generated operations skip credential injection, and credential-entry operations reject inbound credential/context headers when marked by contract.
+- [ ] Credential-entry requests use only bootstrap `Access-Token`, reject session/context credential contamination, and resolve user/organization context from real IAM data.
+- [ ] Anonymous SDK-generated operations skip every credential, while credential-entry SDKs inject bootstrap access only and fail before dispatch when it is missing.
 - [ ] Tenant-bound token signing or equivalent server-side validation prevents cross-tenant token reuse.
 - [ ] Multi-organization login uses a continuation challenge and validates selected membership before issuing business tokens.
 - [ ] API key open-api validation resolves a server-side API key record before context injection.

@@ -129,6 +129,22 @@ Rules:
 - Bulk operation migrations `MUST` replace ad hoc arrays, human summary strings, and `batch_*` aliases with `:bulk<Action>` paths, `bulk<Action>` operationIds, bounded item counts, and typed item-level results.
 - An operation pattern migration is not complete until `node <sdkwork-specs>/tools/check-api-operation-patterns.mjs --workspace <workspace-root>` and `node <sdkwork-specs>/tools/check-api-response-envelope.mjs --workspace <workspace-root>` pass for the touched repository.
 
+### 4.5 PostgreSQL-First Database Role Migration
+
+Database engine-role migration follows `DATABASE_SPEC.md` and `DATABASE_FRAMEWORK_SPEC.md`.
+
+Rules:
+
+- Every existing database root `MUST` be classified as `authoritative-server`, `client-local`, or non-compliant mixed/ambiguous storage before files or data move.
+- Server-side SQLite is an L0 migration input, not a supported target. Its migration plan `MUST` name the PostgreSQL target version, schema/extension prerequisites, type and collation mappings, identity preservation, constraint validation, data copy/CDC method, dual-write or maintenance window, checksum/count validation, cutover, rollback/forward-fix, backup/restore evidence, and owner.
+- Mixed PostgreSQL/SQLite parity roots `MUST` split into a PostgreSQL authoritative server contract and a separately owned SQLite client-local contract. They `MUST NOT` preserve one shared migration tree or require physical schema equality.
+- SQLite client-local data that is only a cache/projection `SHOULD` be rebuilt from the server authority instead of copied as authoritative data.
+- SQLite local-only or offline-created data `MUST` have a versioned identity/sync mapping, idempotent import, conflict policy, rejection quarantine, reconciliation, and user recovery before PostgreSQL cutover.
+- Automated PostgreSQL-to-SQLite or SQLite-to-PostgreSQL SQL transliteration is forbidden as migration evidence. Migration tools may parse structured contracts and generate a reviewed plan, but owners `MUST` validate types, defaults, constraints, collations, timestamps, decimals, JSON, generated values, indexes, transaction behavior, and query plans explicitly.
+- Existing manifest schema version 1, `engines: ["postgres", "sqlite"]`, SQLite-only server roots, server SQLite commands, or SQLite server test gates require a dated migration record with owner and removal milestone. New/pre-launch modules `MUST` adopt manifest schema version 2 directly without a compatibility exception.
+- Release cutover `MUST` block when PostgreSQL migration/repository/concurrency/plan/recovery evidence is missing, when an authoritative writer still targets SQLite, or when a client can bypass the server with locally asserted tenant/permission/entitlement values.
+- Rollback `MUST` preserve the authoritative write boundary. Once PostgreSQL accepts authoritative writes, rollback may restore a compatible application version, replay/reconcile captured writes, or restore/cut over PostgreSQL; it `MUST NOT` silently return authority to a stale SQLite file.
+
 ## 5. Data Migration
 
 Rules:
@@ -180,6 +196,8 @@ Rules:
 - [ ] Deprecated surfaces have removal criteria.
 - [ ] Tests cover old path, new path, and cutover when applicable.
 - [ ] Rollback or forward-fix plan is explicit.
+- [ ] Database engine roles are explicit; authoritative server data ends on PostgreSQL and SQLite remains client-local only.
+- [ ] Mixed or SQLite server roots have a dated PostgreSQL cutover plan, and rollback cannot return authority to stale SQLite state.
 - [ ] Release notes and documentation explain user/operator impact.
 
 ## 8. Identity And Naming Terminology Migration

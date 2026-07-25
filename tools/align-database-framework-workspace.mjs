@@ -70,29 +70,6 @@ function ensureDir(dirPath, dryRun, changes) {
   }
 }
 
-function ensureSqliteBaselineFromPostgres(databaseDir, dryRun, changes) {
-  const postgresDir = path.join(databaseDir, 'ddl/baseline/postgres');
-  const sqliteDir = path.join(databaseDir, 'ddl/baseline/sqlite');
-  if (!fs.existsSync(postgresDir)) {
-    return;
-  }
-  ensureDir(sqliteDir, dryRun, changes);
-  const postgresBaselines = fs.readdirSync(postgresDir).filter((name) => name.endsWith('.sql'));
-  if (postgresBaselines.length === 0) {
-    return;
-  }
-  for (const fileName of postgresBaselines) {
-    const target = path.join(sqliteDir, fileName);
-    if (fs.existsSync(target)) {
-      continue;
-    }
-    changes.push(path.relative(process.cwd(), target));
-    if (!dryRun) {
-      fs.copyFileSync(path.join(postgresDir, fileName), target);
-    }
-  }
-}
-
 function ensureSeedBootstrap(databaseDir, moduleId, dryRun, changes) {
   const seedPath = path.join(databaseDir, 'seeds/common/001_bootstrap.sql');
   if (fs.existsSync(seedPath)) {
@@ -131,12 +108,10 @@ function ensurePackageScripts(repoRoot, dryRun, changes) {
     if (fs.existsSync(manifestPath)) {
       const manifest = readJson(manifestPath);
       const moduleId = manifest.moduleId ?? path.basename(repoRoot).replace(/^sdkwork-/u, '');
-      const engines = manifest.engines?.length ? manifest.engines : ['postgres'];
-      const defaultEngine = engines.includes('postgres') ? 'postgres' : engines[0];
-      const baseline = `database/ddl/baseline/${defaultEngine}/0001_${moduleId}_baseline.sql`;
+      const baseline = `database/ddl/baseline/postgres/0001_${moduleId}_baseline.sql`;
       const prefixArg = manifest.tablePrefix ? ` --prefixes ${manifest.tablePrefix}` : '';
       packageJson.scripts['db:materialize:contract'] =
-        `node ../sdkwork-specs/tools/materialize-database-contract-from-baseline.mjs --root . --baseline ${baseline} --module-id ${moduleId} --owner ${manifest.owner ?? moduleId}${prefixArg} --engines ${engines.join(',')}`;
+        `node ../sdkwork-specs/tools/materialize-database-contract-from-baseline.mjs --root . --baseline ${baseline} --module-id ${moduleId} --owner ${manifest.owner ?? moduleId}${prefixArg}`;
       changed = true;
     }
   }
@@ -229,6 +204,14 @@ function alignDatabaseLayout(repoRoot, { dryRun = false } = {}) {
   } catch {
     return changes;
   }
+  if (
+    manifest.schemaVersion !== 2
+    || manifest.databaseRole !== 'authoritative-server'
+    || JSON.stringify(manifest.engines) !== JSON.stringify(['postgres'])
+    || manifest.defaultEngine !== 'postgres'
+  ) {
+    return changes;
+  }
 
   const templatePaths = [
     'README.md',
@@ -236,9 +219,7 @@ function alignDatabaseLayout(repoRoot, { dryRun = false } = {}) {
     'contract/table-registry.json',
     'seeds/seed.manifest.json',
     'migrations/postgres/README.md',
-    'migrations/sqlite/README.md',
     'ddl/baseline/postgres/README.md',
-    'ddl/baseline/sqlite/README.md',
     'ddl/generated/README.md',
     'fixtures/README.md',
     'seeds/common/README.md',
@@ -264,10 +245,8 @@ function alignDatabaseLayout(repoRoot, { dryRun = false } = {}) {
   }
 
   ensureDir(path.join(databaseDir, 'migrations/postgres'), dryRun, changes);
-  ensureDir(path.join(databaseDir, 'migrations/sqlite'), dryRun, changes);
   ensureDir(path.join(databaseDir, 'ddl/generated'), dryRun, changes);
   ensureDir(path.join(databaseDir, 'fixtures'), dryRun, changes);
-  ensureSqliteBaselineFromPostgres(databaseDir, dryRun, changes);
   ensureSeedBootstrap(databaseDir, manifest.moduleId ?? path.basename(repoRoot), dryRun, changes);
   ensureSeedManifest(databaseDir, dryRun, changes);
   ensureContractRegistries(databaseDir, manifest, dryRun, changes);

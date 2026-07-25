@@ -184,8 +184,7 @@ Runtime storage is selected by typed config, not ad hoc connection strings in bu
 | Provider | Use |
 | --- | --- |
 | `memory` | Deterministic tests and local development only. |
-| `sqlite` | Durable local/test/small single-node only. Rejected in production server/container config. |
-| `postgres` | Required durable provider for production registry, config, and watch storage. |
+| `postgres` | Required durable relational provider for development/test/staging/production registry, config, and watch storage. |
 | `redis` | Optional durable provider for single-writer or restart-recovery deployments. |
 | `etcd` | Planned distributed adapter; must implement the same store contract tests before acceptance. |
 | `consul` | Planned distributed adapter; must implement the same store contract tests before acceptance. |
@@ -196,6 +195,7 @@ Rules:
 - Direct inline production passwords are rejected by runtime config validation.
 - Database lifecycle for discovery `MUST` follow `DATABASE_FRAMEWORK_SPEC.md` with module id `discovery`.
 - Table prefix `discovery_` follows `DATABASE_SPEC.md`.
+- SQLite `MUST NOT` be selected as a discovery server storage provider. A desktop/native discovery client may keep a declared client-local SQLite cache, but that cache is outside the discovery server store contract and cannot publish registry/config authority.
 
 ## 10. Watch Semantics
 
@@ -319,7 +319,7 @@ Every discovery contract or runtime behavior change `MUST` verify:
 - [ ] Config draft validation, publish, effective resolution, and secret policy rejection tests pass.
 - [ ] Permission enforcement tests pass for registry and config operations.
 - [ ] Watch replay from `from_revision` and heartbeat behavior tests pass.
-- [ ] Production config validation rejects memory/sqlite storage, unsigned local context, and inline secrets.
+- [ ] Server config validation rejects SQLite storage in every lifecycle environment, and production additionally rejects memory storage, unsigned local context, and inline secrets.
 - [ ] Topology surface bindings are documented and validated when ingress changes.
 
 ## 17. External Baselines

@@ -63,6 +63,10 @@ function normalizeDevScriptName(name) {
   if (normalized.includes('cloud')) {
     return normalized.filter((part) => !DATABASE_ALIASES.has(part)).join(':');
   }
+  const runtimeTarget = normalized[1];
+  if (normalized.includes('sqlite') && runtimeTarget !== 'desktop') {
+    return normalized.map((part) => part === 'sqlite' ? 'postgres' : part).join(':');
+  }
   return normalized.join(':');
 }
 

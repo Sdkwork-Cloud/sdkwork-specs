@@ -64,7 +64,7 @@ Rules:
   the mode and verification evidence required by `CONFIG_SPEC.md` and
   `SDK_SPEC.md`.
 - Standalone server packages default to PostgreSQL. Standalone desktop
-  user-data runtime targets may default to SQLite under the SDKWork
+  client-local data targets may default to SQLite under the SDKWork
   user-private directory.
 - Redis is required only when the application profile declares shared runtime
   state, realtime fanout, rate limiting, queueing, or cache behavior that
@@ -294,17 +294,18 @@ client.
 | Service | `standalone` | `server` | PostgreSQL | Initialize missing config, install service integration, then run after PostgreSQL is configured. |
 | Single container | `standalone` | `container` | PostgreSQL | Use mounted config, protected secrets, and a mounted writable data directory as one application unit. |
 | Cloud image/bundle | `cloud` | `container` | Managed PostgreSQL | Use orchestrator-injected config, platform secrets, managed dependencies, probes, rollout, and rollback policy. |
-| Desktop | runtime-configurable: `standalone`, `cloud` | `desktop` | SQLite for standalone-local user data; no local service database in cloud | Initialize isolated profile config; supervise the standalone gateway only when standalone-local placement is active. |
+| Desktop | runtime-configurable: `standalone`, `cloud` | `desktop` | SQLite for declared standalone client-local data; PostgreSQL for any colocated backend service; no local service database in cloud | Initialize isolated profile config; supervise the standalone gateway only when standalone-local placement is active. |
 
 Standalone server/container and cloud container deployments default to
-PostgreSQL. Desktop runtime targets default to SQLite.
+PostgreSQL. Desktop runtime targets default only declared client-local persistence to SQLite.
 
-Desktop packages must keep local user data on SQLite by default. Development
+Desktop packages must keep declared client-local data on SQLite by default. Development
 orchestration is stricter: SDKWork application root `pnpm dev:browser` and
 `pnpm dev:desktop` default to PostgreSQL, `deploymentProfile = standalone`,
-and `environment = development`. Explicit SQLite or cloud development paths
-must use suffixed commands such as `pnpm dev:desktop:sqlite` or
-`pnpm dev:browser:cloud`. Cloud development consumes deployed APIs and does not
+and `environment = development`. Explicit client-local SQLite or cloud development
+paths must use suffixed commands such as `pnpm dev:desktop:sqlite` or
+`pnpm dev:browser:cloud`; the SQLite suffix must not select a backend database.
+Cloud development consumes deployed APIs and does not
 select a local database. The PostgreSQL development profile belongs to
 standalone dev orchestration and any launched backend service runtime; it must
 not change the installed desktop package default or the desktop user data

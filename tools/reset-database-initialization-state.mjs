@@ -95,16 +95,22 @@ function normalizeModuleId(moduleId) {
     .replace(/^-+|-+$/g, '');
 }
 
-function listEngines(databaseDir, manifestEngines) {
-  const engines = new Set(manifestEngines?.length ? manifestEngines : ['postgres', 'sqlite']);
-  for (const engine of ['postgres', 'sqlite']) {
-    const baselineDir = path.join(databaseDir, 'ddl/baseline', engine);
-    const migrationDir = path.join(databaseDir, 'migrations', engine);
-    if (fs.existsSync(baselineDir) || fs.existsSync(migrationDir)) {
-      engines.add(engine);
-    }
+function listEngines(manifest) {
+  if (
+    manifest.databaseRole === 'authoritative-server'
+    && JSON.stringify(manifest.engines) === JSON.stringify(['postgres'])
+  ) {
+    return ['postgres'];
   }
-  return [...engines].sort();
+  if (
+    manifest.databaseRole === 'client-local'
+    && JSON.stringify(manifest.engines) === JSON.stringify(['sqlite'])
+  ) {
+    return ['sqlite'];
+  }
+  throw new Error(
+    'database reset requires a classified schema v2 role with exactly postgres authoritative-server or sqlite client-local',
+  );
 }
 
 function listSqlFiles(dir) {
@@ -381,11 +387,9 @@ function markOtherLegacyPaths(repoRoot, dryRun) {
   return marked;
 }
 
-function normalizeBaselineLayout(databaseDir, normalizedModuleId, dryRun) {
+function normalizeBaselineLayout(databaseDir, normalizedModuleId, engines, dryRun) {
   const actions = [];
   const targetName = `0001_${normalizedModuleId}_baseline.sql`;
-  const engines = ['postgres', 'sqlite'];
-  const resolved = {};
 
   for (const engine of engines) {
     const baselineDir = path.join(databaseDir, 'ddl/baseline', engine);
@@ -396,7 +400,6 @@ function normalizeBaselineLayout(databaseDir, normalizedModuleId, dryRun) {
     const targetPath = path.join(baselineDir, targetName);
 
     if (files.length === 0) {
-      resolved[engine] = null;
       continue;
     }
 
@@ -407,7 +410,6 @@ function normalizeBaselineLayout(databaseDir, normalizedModuleId, dryRun) {
           fs.renameSync(path.join(baselineDir, files[0]), targetPath);
         }
       }
-      resolved[engine] = targetPath;
       continue;
     }
 
@@ -416,7 +418,6 @@ function normalizeBaselineLayout(databaseDir, normalizedModuleId, dryRun) {
       if (!dryRun) {
         fs.renameSync(path.join(baselineDir, files[0]), targetPath);
       }
-      resolved[engine] = targetPath;
       continue;
     }
 
@@ -424,26 +425,7 @@ function normalizeBaselineLayout(databaseDir, normalizedModuleId, dryRun) {
     if (result.changed) {
       actions.push(...result.actions);
       result.apply(dryRun);
-      resolved[engine] = targetPath;
     }
-  }
-
-  if (!resolved.postgres && resolved.sqlite && fs.existsSync(path.join(databaseDir, 'ddl/baseline/postgres'))) {
-    const targetPath = path.join(databaseDir, 'ddl/baseline/postgres', targetName);
-    actions.push(`copy sqlite baseline -> postgres/${targetName}`);
-    if (!dryRun) {
-      fs.copyFileSync(resolved.sqlite, targetPath);
-    }
-    resolved.postgres = targetPath;
-  }
-
-  if (!resolved.sqlite && resolved.postgres && fs.existsSync(path.join(databaseDir, 'ddl/baseline/sqlite'))) {
-    const targetPath = path.join(databaseDir, 'ddl/baseline/sqlite', targetName);
-    actions.push(`copy postgres baseline -> sqlite/${targetName}`);
-    if (!dryRun) {
-      fs.copyFileSync(resolved.postgres, targetPath);
-    }
-    resolved.sqlite = targetPath;
   }
 
   return actions;
@@ -468,7 +450,7 @@ function resetRepo(workspaceRoot, repoName, dryRun) {
   const manifest = readJson(path.join(databaseDir, 'database.manifest.json'));
   const moduleId = manifest.moduleId ?? repoName.replace(/^sdkwork-/u, '');
   const normalizedModuleId = normalizeModuleId(moduleId);
-  const engines = listEngines(databaseDir, manifest.engines);
+  const engines = listEngines(manifest);
 
   const actions = [];
   for (const engine of engines) {
@@ -480,7 +462,7 @@ function resetRepo(workspaceRoot, repoName, dryRun) {
   }
 
   removeLooseMigrationSql(databaseDir, dryRun, actions);
-  actions.push(...normalizeBaselineLayout(databaseDir, normalizedModuleId, dryRun));
+  actions.push(...normalizeBaselineLayout(databaseDir, normalizedModuleId, engines, dryRun));
   ensureContractTest(repoRoot, dryRun, actions);
   updateDatabaseReadme(repoRoot, normalizedModuleId, dryRun);
   const legacyMarked = [...markLegacyCrateMigrations(repoRoot, dryRun), ...markOtherLegacyPaths(repoRoot, dryRun)];

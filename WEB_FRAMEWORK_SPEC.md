@@ -173,11 +173,10 @@ Rules:
 
 | Surface | Prefix | Auth mode | Framework requirement |
 | --- | --- | --- | --- |
-| app-api | `/app/v3/api` | Dual token | `with_web_request_context` + dual-token resolver |
-| backend-api | `/backend/v3/api` | Dual token | Same |
-| open-api | Approved domain prefix, for example `/im/v3/api` | API key, OAuth bearer, open-api-flexible, or public | Header-driven credential resolution + `WebRequestContext` |
-| gateway-api | Gateway-owned prefixes | Surface-specific | Context resolution before proxy/composition |
-| public | Configured public prefixes | None | `WebRequestContext` with `principal: None` |
+| app-api | `/app/v3/api` | `anonymous`, `credential-entry-bootstrap`, `refresh-token`, or `dual-token` | Route-profile resolver + `WebRequestContext` |
+| backend-api | `/backend/v3/api` | `dual-token` or an explicitly governed internal/agent profile | Route-profile resolver + `WebRequestContext` |
+| open-api | Approved domain prefix, for example `/im/v3/api` | `anonymous`, `api-key`, `oauth`, `open-api-flexible`, or `compatibility` | Header-driven credential resolution + `WebRequestContext` |
+| gateway-api/internal-api | Gateway-owned prefixes | `ingress-token` or an explicitly declared profile | Context resolution before proxy/composition |
 
 Rules:
 
@@ -185,6 +184,9 @@ Rules:
 - Protected app-api and backend-api handlers `MUST` call `require_tenant_id()` and `require_app_id()` or an equivalent framework/profile guard before business logic that reads tenant-owned data.
 - Protected open-api handlers `MUST` consume framework-resolved tenant/app context from API key lookup, OAuth bearer lookup, or flexible open-api credential detection. Vendor compatibility routes declared under `API_SPEC.md` section 4.5.2 `MAY` use documented adapter context rules. They `MUST NOT` parse credential headers directly.
 - Open-api credential mode `MUST` be declared in the route manifest (`auth.mode`) and enforced before protected business logic runs.
+- Route metadata is the sole auth-profile selector. Header presence, path-prefix heuristics, public-prefix lists, handler behavior, or SDK defaults `MUST NOT` override the matched route profile.
+- Framework contract types `MUST` expose first-class variants for every canonical profile in `API_SPEC.md` section 10, including `CredentialEntryBootstrap`; encoding it as `Public` plus an unrelated flag is non-compliant.
+- Before authentication, the framework `MUST` run a credential-contamination guard derived from the matched profile. The guard rejects disallowed credential/context headers and never strips them silently before business logic.
 
 ### 6.1 Open-api Credential Modes
 
@@ -203,7 +205,8 @@ Rules:
 - `OpenApiFlexible` default preference when both `X-Api-Key` and OAuth bearer are present is API key first. Applications `MAY` override `OpenApiCredentialSchemeDetector` through framework runtime assembly.
 - Open-api credential modes and app-api/backend-api dual-token mode `MUST` be mutually exclusive for one request.
 - Dual-token resolution on app-api/backend-api surfaces `MUST` require both `Authorization: Bearer <JWT auth_token>` and `Access-Token: <JWT access_token>` when the route declares `dual-token` mode and the client runtime has both credentials available.
-- Public and refresh-token routes on app-api/backend-api/gateway-api surfaces `MUST` require `Access-Token: <JWT access_token>` for tenant isolation even when session `Authorization` is absent.
+- Credential-entry bootstrap routes `MUST` require `Access-Token: <JWT access_token>` and resolve tenant/app isolation from that token while rejecting `Authorization` and every other non-profile credential.
+- Anonymous routes require no credential and receive `principal: None`. Refresh-token routes use only their declared refresh proof; they derive tenant/session context from the validated proof and `MUST NOT` require or inherit `Access-Token` or `Authorization`.
 - `auth_token` and `access_token` header values `MUST` use JWT compact serialization. Semicolon claim-string tokens and raw JSON claim blobs `MUST` be rejected by framework parsers and production resolvers.
 - Auth/access JWT parsers `MUST` require a non-negative integer `token_version` claim. Current production value is `1`. Validators `MUST` reject missing, malformed, obsolete, or future versions outside the configured upgrade window.
 - When both tokens are present, overlapping principal and tenancy claims `MUST` be resolved from `auth_token` first. Contradictory overlapping values in `access_token` `MUST` fail validation.
@@ -213,7 +216,7 @@ Rules:
 
 - Business route crates `MUST NOT` live in `sdkwork-web-framework`. Framework-owned admin or control-plane route crates may live in the framework repository only when their ownership is explicit, their paths are framework-owned, and they follow the same `WebRequestContext`, manifest, OpenAPI, and security rules as application route crates.
 - Surface prefix rules remain authoritative in `API_SPEC.md` section 4.
-- Public route declarations use framework route metadata such as `RouteAuth::Public`; SDK/OpenAPI metadata for those operations uses `security: []` and `x-sdkwork-auth-mode: anonymous`.
+- Public route declarations use framework route metadata such as `RouteAuth::Public`; SDK/OpenAPI metadata for those operations uses `security: []` and `x-sdkwork-auth-mode: anonymous`. Credential-entry declarations use `RouteAuth::CredentialEntryBootstrap`, materialize `security: [{ AccessToken: [] }]`, and never reuse the public variant.
 - Framework runtime enums may use language-native names such as `WebAuthMode::Public` or `WebApiSurface::AppApi`, but route manifests, OpenAPI extensions, SDK generator inputs, and generated SDK metadata `MUST` use the canonical contract labels `public`, `anonymous`, `open-api`, `app-api`, `backend-api`, and approved `*-api` surface labels.
 
 ## 7. Every API Operation Rule
@@ -228,12 +231,12 @@ Rules:
 - SDK generator inputs `MUST` preserve the request-context and surface extensions from authority OpenAPI to derived `*.sdkgen.*` files.
 - Framework route contract types such as `HttpRoute`, Java route metadata annotations, or materializer input records `MUST` carry or validate the route-level `requestContext`, `apiSurface`, owner/API authority, source route crate/module, auth mode, and security flags needed for deterministic OpenAPI materialization. Inferring these fields only from path prefixes is allowed during migration only when the materializer immediately validates the inferred values against the route manifest and rejects `unknown`, missing, or mismatched metadata.
 - Public SDK-generated operations `MUST` materialize `security: []` and `x-sdkwork-auth-mode: anonymous`. Framework-specific markers such as `x-sdkwork-route-auth: public` may also be emitted, but they do not replace `x-sdkwork-auth-mode`.
-- Login, registration, OAuth session creation, QR auth session creation or password completion, password reset request, password reset completion, and equivalent credential-entry operations `MUST` carry a route-level `forbidCredentialHeaders: true` or exact framework-equivalent flag and materialize `x-sdkwork-forbid-credential-headers: true`. Runtime routers and gateways `MUST` reject inbound `Authorization`, `X-Api-Key`/`X-API-Key`, SDKWork context projection headers, and equivalent session credential headers for those operations before handler logic runs. They `MUST` still require bootstrap `Access-Token: <JWT access_token>` for tenant isolation unless an explicit documented exception exists in the owning repository.
+- Login, registration, OAuth session creation, QR auth session creation or password completion, password reset request, password reset completion, and equivalent credential-entry operations `MUST` use `RouteAuth::CredentialEntryBootstrap`, materialize `security: [{ AccessToken: [] }]`, `x-sdkwork-auth-mode: credential-entry-bootstrap`, and `x-sdkwork-forbid-credential-headers: true`. Runtime routers and gateways require bootstrap `Access-Token` and reject every other credential/context header before handler logic.
 - Open-api surface classification `MUST` support approved domain prefixes such as `/im/v3/api`; it `MUST NOT` classify only a hard-coded `/open/v3/api` prefix as open-api.
 
 ## 8. Mandatory Interceptor Chain
 
-All protected SDKWork HTTP routers `MUST` run the standard API call chain defined in `API_SPEC.md` section 10.3 and `SECURITY_SPEC.md` section 5.1.
+All SDKWork HTTP API routers, including anonymous, credential-entry, refresh, protected, gateway, and compatibility routes, `MUST` run the standard API call chain defined in `API_SPEC.md` section 10.3 and `SECURITY_SPEC.md` section 5.1. A profile may make a stage a no-op, but it does not bypass the chain.
 
 Rust protected routers `MUST` use `WebCallInterceptorChain::standard()` from `sdkwork-web-framework` or a documented strict superset. Business code `MUST NOT` bypass context resolution, authentication, authorization, tenant isolation, or context injection stages.
 
@@ -318,6 +321,10 @@ Forbidden:
 - Deprecated context crates such as `sdkwork-platform-http-context-service` for new HTTP work.
 - Vendored framework source or copied framework pipeline code in application repositories.
 - SDK generation from OpenAPI or route manifests that omit request-context/surface metadata.
+- Routers merged outside the one framework-wrapped router after route-manifest binding.
+- A second application/gateway CORS or authentication middleware around a router already governed by the standard framework chain.
+- Runtime OpenAPI assembled from a route inventory different from the executable router and bound `HttpRouteManifest`.
+- Runtime-composed route manifests backed by leaked allocations, process-global mutable registries, or source parsing. The framework contract must own or reference-count combined route inventories directly.
 
 ## 12. Secure Defaults
 
@@ -395,9 +402,11 @@ Business repository after framework integration:
 - Locale response test: localized responses emit `Content-Language`, and language-varying responses emit `Vary: Accept-Language`.
 - Localized problem test: framework errors and validation errors preserve numeric `ProblemDetail.code` and `traceId`, and expose `i18nKey`/`locale` when safe messages exist.
 - Bootstrap smoke test: gateway or migration-only API server mounts routes through framework bootstrap.
-- OpenAPI check: every operation declares `x-sdkwork-request-context: WebRequestContext` and canonical `x-sdkwork-api-surface`; protected operations declare the required security scheme; public SDK-generated operations declare `security: []` and `x-sdkwork-auth-mode: anonymous`.
+- OpenAPI check: every operation declares `x-sdkwork-request-context: WebRequestContext`, canonical `x-sdkwork-api-surface`, and exactly one auth profile; `security`, auth profile, route metadata, and SDK transport policy agree.
 - Operation pattern check: SDKWork-owned operations preserve the `API_SPEC.md` section 15.4 method/path/status/data matrix; delete routes return `204` without JSON bodies and create routes return `201`.
-- Credential-entry check: login-like anonymous operations declare route-level `forbidCredentialHeaders: true`, materialize `x-sdkwork-forbid-credential-headers: true`, and reject inbound credential/context headers before handler logic.
+- Credential-entry check: pre-session operations use `CredentialEntryBootstrap`, require only `AccessToken`, materialize the canonical profile/guard metadata, reject every non-profile credential before handler logic, and return a diagnostic missing-bootstrap problem without reaching the handler.
+- Route/OpenAPI parity check: the executable router, bound route manifest, served OpenAPI, and SDK generation authority have identical normalized `(surface, method, path, operationId, authProfile)` inventory for the selected deployment profile.
+- Manifest ownership check: static route manifests and runtime-composed manifests bind through the same Framework API; composition does not use `Box::leak` or another lifetime-forcing allocation leak.
 - Open-api auth check: protected routes declare `api-key`, `oauth`, or `open-api-flexible`; security vectors cover missing credentials, API key resolution, OAuth bearer resolution, and flexible scheme selection.
 - SDK generation check: authority OpenAPI and derived `*.sdkgen.*` inputs preserve request-context and surface extensions.
 - Java profile check, when Java is present: typed context argument resolution, interceptor order, and problem-detail mapping match this standard.
@@ -414,7 +423,7 @@ Detailed test requirements: `TEST_SPEC.md` section 2.3.1.
 - [ ] Route manifests and OpenAPI authorities pass normalized route path collision validation.
 - [ ] Every materialized OpenAPI operation declares `x-sdkwork-request-context: WebRequestContext`, canonical kebab-case `x-sdkwork-api-surface`, and rate-limit tier when required.
 - [ ] Public SDK-generated operations declare `security: []` and `x-sdkwork-auth-mode: anonymous`.
-- [ ] Login-like anonymous credential-entry operations declare and enforce `x-sdkwork-forbid-credential-headers: true`.
+- [ ] Credential-entry operations declare `CredentialEntryBootstrap`, require only `AccessToken`, and enforce the profile contamination guard.
 - [ ] Handlers/controllers declare typed `WebRequestContext`; no raw credential, tenant, organization, user, permission, or request-id header parsing.
 - [ ] `WebRequestContext` includes `WebLocaleContext` and all SDKWork HTTP routes receive locale context.
 - [ ] Handlers/controllers do not parse locale headers, cookies, query parameters, or user-agent language values.
@@ -422,6 +431,9 @@ Detailed test requirements: `TEST_SPEC.md` section 2.3.1.
 - [ ] Business adapters implement framework traits; no parallel HTTP context framework in appbase or application repositories.
 - [ ] Java controllers, when present, preserve equivalent typed context, interceptor semantics, route metadata, and problem-detail behavior.
 - [ ] Protected open-api routes declare `api-key`, `oauth`, or `open-api-flexible` auth mode and resolve credentials through framework extension traits, not handler-local header parsing.
+- [ ] The executable router, bound manifest, served OpenAPI, and SDK authority use one selected-profile route inventory with no missing or extra operation.
+- [ ] One framework layer owns CORS, authentication, authorization, tenant isolation, problem mapping, and response identity for every mounted API route.
+- [ ] `HttpRouteManifest` natively owns or shares runtime-composed inventories; assembly and gateway code contains no leaked manifest allocation.
 - [ ] SDK generation inputs preserve request-context and API-surface extensions from authority OpenAPI.
 - [ ] Open-api prefix check: approved domain prefixes such as `/im/v3/api` classify and materialize as `open-api`; hard-coded-only `/open/v3/api` classification is not sufficient.
 - [ ] Verification commands from section 14 pass before merge.

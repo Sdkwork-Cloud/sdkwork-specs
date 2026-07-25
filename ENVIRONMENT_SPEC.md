@@ -18,9 +18,9 @@ Environment configuration must satisfy these goals:
   explicit browser, H5, desktop, tablet, Capacitor, Flutter, native mobile,
   mini program, service/server, container, and test-runner runtime targets.
 - Browser renderer, H5 mobile renderer, desktop native host, tablet native host, Capacitor host, Flutter host, mini program runtime, native Android host, native iOS host, native Harmony host, server process, container process, and test runner config are separated.
-- Server-side release deployments use PostgreSQL by default.
-- Desktop installs use SQLite by default in the SDKWork user private data directory defined by `RUNTIME_DIRECTORY_SPEC.md`.
-- Desktop/Tauri development commands that start backend services use the server PostgreSQL development profile by default; SQLite is used only by explicit local-data profiles or installed desktop runtime config.
+- Server-side development, test, staging, and release deployments use PostgreSQL for authoritative relational persistence.
+- Desktop installs use SQLite only for declared client-local data in the SDKWork user private data directory defined by `RUNTIME_DIRECTORY_SPEC.md`.
+- Desktop/Tauri development commands that start backend services use the server PostgreSQL development profile. SQLite profiles belong only to installed or explicitly tested client-local data.
 - Every database setting can be specified in a runtime config file and overridden by environment variables for emergency operations.
 - Browser-visible values are separated from private process values.
 - SDK bootstrap resolves application and platform API surface URLs before
@@ -161,7 +161,7 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_<APPLICATION_CODE>_I18N_CATALOG_MANIFEST_URL` | private/public | MAY | URL or path to a generated **message-catalog** manifest. The manifest points to package-local fragments or generated bundles and must not be an authored monolithic locale file. |
 | `SDKWORK_<APPLICATION_CODE>_I18N_CATALOG_VERSION` | private/public | MAY | Version or content hash for the active frontend message catalog manifest. It must not contain translated message content. |
 | `SDKWORK_<APPLICATION_CODE>_BACKEND_MESSAGE_BUNDLE_VERSION` | private | MAY | Version or content hash for backend message bundles used by framework problem/message resolution. It must not contain translated message content. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` | private | MAY | Database engine, normally `postgresql` for standalone server/container and cloud targets, and `sqlite` for desktop user data. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` | private | MAY | `postgresql` for authoritative server/container/cloud targets; `sqlite` only for declared client-local desktop/native data. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_HOST` | private | MAY | PostgreSQL host. Prefer this structured field over a URL for release deployments. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_PORT` | private | MAY | PostgreSQL port, normally `5432`. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_NAME` | private | MAY | PostgreSQL database name. |
@@ -171,8 +171,8 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD_FILE` | secret | MAY | PostgreSQL password file path. Prefer this over direct password values. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD` | secret | MAY | Direct PostgreSQL password override, allowed only for protected process environments or secret-bearing config files. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` | private | MAY | PostgreSQL SSL mode. Production deployments should use `require`, `verify-ca`, or `verify-full` where supported. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` | private | MAY | Explicit database URL override. Server release packages should prefer structured runtime config fields for PostgreSQL; desktop and local development may use SQLite. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_FILE` | private | MAY | SQLite database file path for desktop user-data targets. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` | private | MAY | Explicit database URL override. Server release packages should prefer structured runtime config fields for PostgreSQL; client-local desktop/native profiles may use SQLite. |
+| `SDKWORK_<APPLICATION_CODE>_DATABASE_FILE` | private | MAY | SQLite database file path for declared client-local desktop/native targets. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_MAX_CONNECTIONS` | private | MAY | Database pool limit. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_MODULE_ID` | private | MAY | Database lifecycle module id resolved from `database/database.manifest.json`. |
 | `SDKWORK_<APPLICATION_CODE>_DATABASE_AUTO_MIGRATE` | private | MAY | When `true`, service bootstrap applies pending migrations. Production SHOULD default to `false`. |
@@ -317,7 +317,7 @@ one PC application root.
 | `mini-program` | Mini program `config/mini-program` plus `config/host` platform profile | Platform storage through approved host adapter | Generated TypeScript app SDK or approved wrapper; platform pages/subpackages are route projections. |
 | `server` | `/etc/sdkwork/<application-code>/<process>.toml` or `%ProgramData%\sdkwork\<application-code>\<process>.toml` | PostgreSQL, Redis when required | Long-running service, explicit bind, reverse proxy assumptions, strict secret handling. |
 | `container` | Mounted `/etc/sdkwork/<application-code>/<process>.toml`, env, and `/run/secrets/...` | External PostgreSQL/Redis or mounted volumes | Image contains examples only; runtime config and secrets are injected. |
-| `test-runner` | Ephemeral generated config under test temp directory | Isolated SQLite or isolated PostgreSQL schema/database | No shared dev/prod state; deterministic cleanup. |
+| `test-runner` | Ephemeral generated config under test temp directory | Isolated PostgreSQL schema/database for server tests; isolated SQLite file only for client-local tests | No shared dev/prod state; deterministic cleanup; evidence is role-specific. |
 
 Rules:
 
@@ -468,16 +468,17 @@ explicit operator override, not the primary production configuration path.
 Application root `pnpm dev:browser` and `pnpm dev:desktop` are development
 orchestration defaults, not installer defaults: both must select the
 PostgreSQL development profile, `deploymentProfile = standalone`, and
-`environment = development` unless an explicit suffixed command selects SQLite
-or cloud.
+`environment = development` unless an explicit suffixed command selects cloud.
+An explicit SQLite suffix may select a client-local database test/profile only;
+it `MUST NOT` select SQLite for a backend service.
 
 | Deployment profile | Runtime target | Default database | Requirement |
 | --- | --- | --- | --- |
-| `standalone` | `desktop` | SQLite for user data; PostgreSQL for a launched backend service in dev | Desktop user data uses a user-private SQLite file. Desktop-started backend services use the server PostgreSQL dev profile unless an explicit SQLite command is selected. |
-| `standalone` | `server` | PostgreSQL | Release/server packages must use PostgreSQL by default unless an approved single-user appliance exception exists. |
+| `standalone` | `desktop` | SQLite for declared client-local data; PostgreSQL for any launched backend service | Desktop client-local data uses a user-private SQLite file. Desktop-started backend services always use the server PostgreSQL profile. |
+| `standalone` | `server` | PostgreSQL | Development, test, release, and installed server packages use PostgreSQL for authoritative relational state. |
 | `standalone` | `container` | PostgreSQL | Single-container packages keep database state external or on explicit mounted volumes; do not store production DB state in ephemeral layers. |
-| `cloud` | `server` or `container` | Managed PostgreSQL or compatible service | Must satisfy `DATABASE_SPEC.md`, secret handling, readiness, backup, and rollback requirements. |
-| `standalone` or `cloud` | `test-runner` | Isolated SQLite or isolated PostgreSQL | Test DB must be isolated per test run. |
+| `cloud` | `server` or `container` | Managed PostgreSQL or qualified compatible service | Must satisfy `DATABASE_SPEC.md`, PostgreSQL conformance, secret handling, readiness, backup, and rollback requirements. |
+| `standalone` or `cloud` | `test-runner` | Isolated PostgreSQL for server tests; isolated SQLite only for client-local tests | Test DB must be isolated per test run and may prove only its declared database role. |
 
 ### 7.1 Unified Workspace PostgreSQL Profile
 
@@ -544,12 +545,12 @@ Rules:
   `im:dev` are retired. The PostgreSQL development profile belongs to dev
   orchestration and any launched service runtime; it must not be treated as the
   installed desktop-local data store.
-- Explicit application server SQLite development commands, such as
-  `pnpm dev:server:sqlite`, must be named clearly and used only when
-  validating local SQLite behavior for the application server runtime. Desktop
-  client commands such as `pnpm dev:desktop:sqlite` must remain backed by the
-  application API assembly and standalone gateway when the application owns
-  local HTTP APIs.
+- New application server SQLite commands, including `pnpm dev:server:sqlite`,
+  are forbidden. Existing commands are L0 migration aliases only and require a
+  dated migration record; they must not satisfy server development, test, or
+  release gates. Desktop client commands such as `pnpm dev:desktop:sqlite`
+  may validate only the declared client-local SQLite module while any launched
+  application API assembly or standalone gateway remains PostgreSQL-backed.
 - PostgreSQL secrets should use `password_file` or a platform secret; direct `password` is allowed only when the runtime config file is protected as a secret-bearing file.
 - Development PostgreSQL profiles must use a checked-in `.env.postgres.example`
   file with local-only placeholder values and an ignored `.env.postgres`
@@ -597,7 +598,7 @@ PostgreSQL development bootstrap workflow:
 
 Applications with `.env.postgres.example` `MUST` expose `db:postgres:init` and `db:postgres:plan` at the repository root. `sdkwork-im` additionally exposes `db:postgres:migrate` for IM-specific bootstrap orchestration.
 
-- Desktop packages may create SQLite automatically during first-run initialization.
+- Desktop packages may create a declared client-local SQLite database automatically during first-run initialization.
 - Database URLs are private process/config values. They must never be exposed through `PORTAL_PUBLIC_*` or `VITE_*`.
 - Pool settings must be explicit for server/container deployments.
 - Migration and seed behavior must be controlled by typed install/init settings, not implicit environment guesses.
@@ -917,10 +918,10 @@ Use when the application is installed per user and can run locally.
 
 Required behavior:
 
-- Default to SQLite in the SDKWork user private data directory.
+- Default declared client-local persistence to SQLite in the SDKWork user private data directory.
 - When the desktop app starts a backend service during development, that service
-  uses the server PostgreSQL dev profile unless an explicit SQLite command is
-  selected.
+  uses the server PostgreSQL dev profile. An explicit SQLite command may test
+  only the client-local persistence module.
 - Support a config file in the SDKWork user private config directory.
 - Keep secrets in OS secure storage when possible.
 - Allow `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` to override the local database for diagnostics and managed operator deployments.
@@ -1423,7 +1424,7 @@ Discovery runtime variables are private process variables for `sdkwork-discovery
 | `SDKWORK_DISCOVERY_APPLICATION_PUBLIC_GRPC_URL` | private | SHOULD | Published gRPC URL for registry/config clients. |
 | `SDKWORK_DISCOVERY_OPERATIONS_CONTROL_INGRESS_BIND` | private | MAY | Bind address for operator/admin ingress. |
 | `SDKWORK_DISCOVERY_OPERATIONS_CONTROL_GRPC_URL` | private | MAY | Published gRPC URL for admin clients. |
-| `SDKWORK_DISCOVERY_STORAGE_PROVIDER` | private | SHOULD | `memory`, `sqlite`, `postgres`, `redis`, `etcd`, or `consul`. |
+| `SDKWORK_DISCOVERY_STORAGE_PROVIDER` | private | SHOULD | `memory`, `postgres`, `redis`, `etcd`, or `consul`; SQLite is not a discovery server provider. |
 | `SDKWORK_DISCOVERY_DATABASE_ENGINE` | private | MAY | Canonical database engine alias that must agree with storage provider when both are set. |
 | `SDKWORK_DISCOVERY_RPC_TLS_ENABLED` | private | SHOULD for production | Enables discovery server TLS. |
 | `SDKWORK_DISCOVERY_RPC_MTLS_ENABLED` | private | SHOULD for service-to-service production | Requires client certificates on discovery ingress. |

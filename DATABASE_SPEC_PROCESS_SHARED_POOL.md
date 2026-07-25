@@ -7,7 +7,7 @@
 - Scope: database pool ownership, identity, injection, capacity, and verification for SDKWork runtime processes
 - Related: `DATABASE_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard extends `DATABASE_SPEC.md` sections 32 and 33.4. It applies to every SDKWork HTTP gateway, RPC service, worker, CLI host, desktop-started server, standalone process, and cloud process that opens a database connection pool.
+This standard extends `DATABASE_SPEC.md` sections 32 and 33.5. It applies to every SDKWork HTTP gateway, RPC service, worker, CLI host, desktop-started server, standalone process, and cloud process that opens an authoritative PostgreSQL connection pool. Embedded client-local SQLite adapters follow the separate ownership rule in `DATABASE_SPEC.md` section 33.4.
 
 ## 1. Cardinality Boundary
 
@@ -33,7 +33,7 @@ Rules:
 4. Service hosts, repositories, readiness checks, schedulers, and route assemblies consume the injected/shared handle.
 5. Embedded module composition `MUST NOT` call an independent low-level constructor or retain a private `*_from_env()` path that bypasses the installed process pool.
 6. If a compatibility `*_from_env()` entry remains, it `MUST` resolve the installed process pool first, validate identity equality, and fail closed on mismatch.
-7. A module configured for SQLite inside a PostgreSQL integrated process is non-compliant unless it is explicitly isolated as a different process and documented by an ADR.
+7. An embedded server module configured for SQLite is non-compliant even when isolated as another server process. SQLite is allowed only in a declared client-local persistence module; every backend/service process remains PostgreSQL-backed.
 
 ## 3. Driver Rule
 

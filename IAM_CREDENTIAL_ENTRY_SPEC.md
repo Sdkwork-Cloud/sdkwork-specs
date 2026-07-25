@@ -1,6 +1,6 @@
 # SDKWork IAM Credential Entry Integration Standard
 
-- Version: 1.1
+- Version: 1.2
 - Scope: login, registration, password reset, OAuth session creation, QR/device authorization bootstrap transport, manifest identity, lifecycle-aware bootstrap env, and Vite development handoff
 - Related: `IAM_SPEC.md`, `IAM_APPLICATION_BOOTSTRAP_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `API_SPEC.md`, `SDK_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `ENVIRONMENT_SPEC.md`
 
@@ -24,12 +24,13 @@ Rules:
 
 ## 3. Auth Mode: `credential-entry-bootstrap`
 
-OpenAPI operations backed by `HttpRoute::credential_entry_public` `MUST` declare:
+OpenAPI operations backed by `HttpRoute::credential_entry_bootstrap` (or the migration alias `credential_entry_public`) `MUST` declare:
 
 ```yaml
 x-sdkwork-auth-mode: credential-entry-bootstrap
 x-sdkwork-forbid-credential-headers: true
-security: []
+security:
+  - AccessToken: []
 ```
 
 SDK transport rules:
@@ -37,12 +38,14 @@ SDK transport rules:
 - Generated TypeScript clients `MUST` call transport with `credentialEntryBootstrap: true`.
 - Transport `MUST` inject bootstrap `Access-Token` from TokenManager.
 - Transport `MUST NOT` inject `Authorization`, API keys, or SDKWork context projection headers.
+- The credential-entry wrapper `MUST` fail before network dispatch when no bootstrap access token is available. It `MUST NOT` clear session credentials and then send an unauthenticated request that can only fail as server `40101`.
 - Pure anonymous operations (`deviceAuthorizations.retrieve`, `deviceAuthorizations.scans.create`, IAM runtime policy reads) remain `x-sdkwork-auth-mode: anonymous` with `skipAuth: true`.
 
 Gateway rules:
 
-- `credential_entry_public` routes `MUST` require bootstrap `Access-Token` JWT for tenant isolation.
-- Handlers `MUST` reject inbound user credential headers per `WEB_FRAMEWORK_SPEC.md`.
+- `credential_entry_public` is a migration helper name only. New route contracts use first-class `RouteAuth::CredentialEntryBootstrap`; the helper must construct that profile and must not encode it as `Public + flag`.
+- Credential-entry routes `MUST` require bootstrap `Access-Token` JWT for tenant isolation.
+- The Web Framework credential-contamination guard `MUST` reject `Authorization`, refresh, API-key, OAuth, ingress/agent, and client-projected context credentials before handlers run. Handlers do not parse or reject headers themselves.
 
 ## 4. Configuration Layering
 
@@ -61,6 +64,8 @@ Rules:
 - Vite `define` replacement for `process.env.SDKWORK_ACCESS_TOKEN` is not a valid credential-entry handoff. Vite 6 client dev transforms do not guarantee that ordinary define replacement reaches linked source packages.
 - Test Vite serve processes `MAY` inject only when the isolated test runner explicitly sets both token-generation and plugin-injection opt-ins.
 - Staging and production renderers `MUST NOT` inject bootstrap tokens into HTML, JavaScript bundles, `/runtime-env.js`, or equivalent browser artifacts.
+- Production browser clients obtain only a short-lived bootstrap JWT through an approved IAM/application bootstrap exchange or trusted native host channel. The exchange derives app/tenant/audience from server-owned deployment binding, never client tenant selectors; applies origin policy, rate limits, `Cache-Control: no-store`, short expiry, and credential-entry-only purpose; and returns no user session credential.
+- A production browser credential-entry runtime `MUST` fail bootstrap before rendering an actionable login form when neither an approved short-lived exchange nor a trusted host channel is configured.
 
 ## 5. Lifecycle Bootstrap
 
@@ -89,7 +94,8 @@ Canonical helpers:
 
 Rules:
 
-- Topology orchestrators `MUST` merge bootstrap env before spawning renderer processes.
+- The repository-level `sdkwork-app` lifecycle facade `MUST` run the canonical IAM development bootstrap provider before spawning any renderer that consumes credential-entry operations. Application-local orchestration helpers are forbidden after migration.
+- The lifecycle facade `MUST` pass the resolved renderer bind/port and bootstrap env to the same child process plan; package scripts `MUST NOT` override the topology-selected port with a hard-coded value.
 - Standalone IAM PC packages `MUST` route `dev` through `run-pc-renderer-dev-with-bootstrap.mjs` unless a repository-local orchestrator already merges bootstrap env.
 - BirdCoder and other apps with public-runtime env denylists `MUST` inject bootstrap credentials through approved private dev channels only.
 - A configured token is preserved in every lifecycle. Shared helpers generate only for development or explicitly isolated tests and fail closed when a required staging/production private token is absent.
@@ -97,10 +103,11 @@ Rules:
 
 ## 6. Acceptance Checklist
 
-- [x] Credential-entry OpenAPI operations use `credential-entry-bootstrap`, not anonymous.
-- [x] IAM app SDK transport injects bootstrap `Access-Token` for credential-entry operations.
-- [x] Host apps consume `@sdkwork/iam-credential-entry`; no duplicated local wrappers remain.
-- [x] Host app Vite configs consume `@sdkwork/iam-credential-entry/vite`; no local serializer or `process.env.SDKWORK_ACCESS_TOKEN` define remains.
-- [x] Dev/test orchestrators consume the canonical IAM Node helper; no local fixture JWT or manifest/env helper fork remains.
-- [x] `device_authorizations.create` transport sends bootstrap `Access-Token` without session header leakage.
-- [x] Production and production-like profiles still fail closed without valid bootstrap JWT.
+- [ ] Credential-entry route manifests, OpenAPI, SDK metadata, generated call options, and runtime `RouteAuth` all use `credential-entry-bootstrap`, not anonymous.
+- [ ] OpenAPI requires only `AccessToken`; SDK transport injects only bootstrap `Access-Token` and fails before dispatch when it is absent.
+- [ ] Host apps consume `@sdkwork/iam-credential-entry`; no duplicated local wrappers remain.
+- [ ] Host app Vite configs consume `@sdkwork/iam-credential-entry/vite`; no local serializer or `process.env.SDKWORK_ACCESS_TOKEN` define remains.
+- [ ] `sdkwork-app` invokes the canonical IAM dev bootstrap provider before renderer spawn; no application-local token generation/helper fork remains.
+- [ ] `device_authorizations.create` sends bootstrap `Access-Token` without session or context-header leakage, and every negative credential vector stops before handler execution.
+- [ ] Development/test lifecycle gates and production browser bootstrap exchange/host channels fail closed under the exact environment policy.
+- [ ] Renderer port/bind, injected bootstrap, browser access endpoint, and CORS authority come from the same resolved runtime plan.

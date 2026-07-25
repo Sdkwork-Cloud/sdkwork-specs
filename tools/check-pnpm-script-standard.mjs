@@ -417,6 +417,11 @@ function pushDevAxisIssues(scriptName, issues, prefix = '') {
       `${prefix}${scriptName}: cloud development consumes deployed APIs and must not include a database axis`,
     );
   }
+  if (parts.includes('sqlite') && parts[1] !== 'desktop') {
+    issues.push(
+      `${prefix}${scriptName}: sqlite is client-local and is allowed only on an explicit dev:desktop:sqlite profile`,
+    );
+  }
 }
 
 function isIgnoredPathPart(filePath, ignoredParts) {

@@ -1,0 +1,10 @@
+schema_version: 1
+kind: sdkwork.database.schema
+database_role: client-local
+module_id: <module-id>-client-local
+contract_version: 0.1.0
+owner_team: <client-owner-team>
+compliance_level: L2
+engines:
+  - sqlite
+tables: []

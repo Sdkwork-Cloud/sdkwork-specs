@@ -7,3 +7,4 @@ File name: `ADR-YYYYMMDD-<short-title>.md`
 Retired layout: `docs/adr/` must not be used for new ADRs.
 
 - [ADR-20260720 API Assembly And Gateway Hosting](ADR-20260720-api-assembly-gateway-hosting.md)
+- [ADR-20260724 PostgreSQL Authority And SQLite Client-Local Storage](ADR-20260724-postgresql-authority-sqlite-client-local.md)

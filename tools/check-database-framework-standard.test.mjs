@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateDatabaseFramework, validateDatabaseModuleLayout, validateDatabaseModuleContract } from './check-database-framework-standard.mjs';
+import {
+  validateDatabaseFramework,
+  validateDatabaseModuleContract,
+  validateDatabaseModuleLayout,
+} from './check-database-framework-standard.mjs';
 
 const toolsDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,24 +25,27 @@ function writeText(relativePath, value, rootDir) {
   fs.writeFileSync(absolutePath, value, 'utf8');
 }
 
-function scaffoldValidDatabaseRoot(rootDir) {
+function scaffoldValidDatabaseRoot(rootDir, contractVersion = '5.0.0') {
   writeText('database/README.md', '# database\n', rootDir);
   writeJson(
     'database/database.manifest.json',
     {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: 'sdkwork.database.module',
+      databaseRole: 'authoritative-server',
       moduleId: 'demo',
       serviceCode: 'DEMO',
-      contractVersion: '1.0.0',
+      contractVersion,
       engines: ['postgres'],
+      defaultEngine: 'postgres',
+      baselineStrategy: 'baseline-plus-migrations',
       lifecycle: { activeSeedLocales: ['zh-CN'], autoMigrate: true },
     },
     rootDir,
   );
   writeText(
     'database/contract/schema.yaml',
-    'schema_version: 1\nkind: sdkwork.database.schema\nmodule_id: demo\ntables: []\n',
+    `schema_version: 1\nkind: sdkwork.database.schema\ndatabase_role: authoritative-server\nmodule_id: demo\ncontract_version: ${contractVersion}\nengines:\n  - postgres\ntables: []\n`,
     rootDir,
   );
   writeJson('database/contract/prefix-registry.json', {
@@ -74,10 +82,8 @@ function scaffoldValidDatabaseRoot(rootDir) {
   );
   writeText('database/drift/policy.yaml', 'schemaVersion: 1\nkind: sdkwork.database.drift-policy\nrules: {}\n', rootDir);
   writeText('database/migrations/postgres/.gitkeep', '', rootDir);
-  writeText('database/migrations/sqlite/.gitkeep', '', rootDir);
   writeText('database/seeds/common/.gitkeep', '', rootDir);
   writeText('database/ddl/baseline/postgres/0001_demo_baseline.sql', 'CREATE TABLE demo_probe (id INTEGER PRIMARY KEY);\n', rootDir);
-  writeText('database/ddl/baseline/sqlite/.gitkeep', '', rootDir);
   writeText('database/ddl/generated/.gitkeep', '', rootDir);
   writeText('database/fixtures/.gitkeep', '', rootDir);
   for (const locale of ['zh-CN', 'en-US', 'ja-JP', 'de-DE', 'fr-FR', 'ru-RU', 'ko-KR']) {
@@ -108,6 +114,45 @@ scaffoldValidDatabaseRoot(tempRoot);
 const valid = validateDatabaseFramework(tempRoot);
 assert.equal(valid.ok, true, 'valid scaffold should pass');
 
+const bomPackageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(bomPackageRoot);
+const bomPackagePath = path.join(bomPackageRoot, 'package.json');
+fs.writeFileSync(bomPackagePath, `\uFEFF${fs.readFileSync(bomPackagePath, 'utf8')}`, 'utf8');
+const bomPackage = validateDatabaseFramework(bomPackageRoot);
+assert.equal(bomPackage.ok, true, 'UTF-8 BOM must not prevent package.json validation');
+
+const alternateValidVersionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(alternateValidVersionRoot, '2.1.0');
+const alternateValidVersion = validateDatabaseFramework(alternateValidVersionRoot);
+assert.equal(alternateValidVersion.ok, true, 'valid L2 contract versions must not be pinned to 1.0.0');
+
+const invalidContractVersionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(invalidContractVersionRoot, '1.0');
+const invalidContractVersion = validateDatabaseModuleContract(
+  path.join(invalidContractVersionRoot, 'database'),
+);
+assert.equal(invalidContractVersion.ok, false, 'invalid semantic versions should fail L2 contract checks');
+assert.ok(
+  invalidContractVersion.failures.some((item) => item.includes('valid SemVer')),
+  'failure should mention invalid SemVer',
+);
+
+const contractVersionMismatchRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(contractVersionMismatchRoot);
+const mismatchSchemaPath = path.join(contractVersionMismatchRoot, 'database/contract/schema.yaml');
+const mismatchSchema = fs
+  .readFileSync(mismatchSchemaPath, 'utf8')
+  .replace('contract_version: 5.0.0', 'contract_version: 5.0.1');
+fs.writeFileSync(mismatchSchemaPath, mismatchSchema, 'utf8');
+const contractVersionMismatch = validateDatabaseModuleContract(
+  path.join(contractVersionMismatchRoot, 'database'),
+);
+assert.equal(contractVersionMismatch.ok, false, 'manifest and schema contract versions must match');
+assert.ok(
+  contractVersionMismatch.failures.some((item) => item.includes('database contract versions must match')),
+  'failure should mention the manifest and schema contract version mismatch',
+);
+
 const missingLocaleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
 scaffoldValidDatabaseRoot(missingLocaleRoot);
 fs.rmSync(path.join(missingLocaleRoot, 'database/seeds/locales/ko-KR'), { recursive: true, force: true });
@@ -136,18 +181,207 @@ const templateRoot = path.resolve(toolsDir, '../templates/database');
 const templateResult = validateDatabaseModuleLayout(templateRoot);
 assert.equal(templateResult.ok, true, 'templates/database should satisfy module layout checks');
 
-const missingDownRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
-scaffoldValidDatabaseRoot(missingDownRoot);
+const clientTemplateRoot = path.resolve(toolsDir, '../templates/database-client-local');
+const clientTemplateResult = validateDatabaseModuleLayout(clientTemplateRoot, 'client-local');
+assert.equal(clientTemplateResult.ok, true, 'templates/database-client-local should satisfy client-local layout checks');
+
+const forwardOnlyRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(forwardOnlyRoot);
 writeText(
-  'database/migrations/sqlite/0001_create_demo.up.sql',
-  'CREATE TABLE demo_probe (id INTEGER PRIMARY KEY);',
-  missingDownRoot,
+  'database/migrations/postgres/0001_add_demo_status.up.sql',
+  '-- sdkwork:migration\n-- engine: postgres\n-- reversible: false\n-- rollback: forward-fix\n-- transactional: true\n-- lock: access-exclusive\n-- lock_timeout: 2s\n-- statement_timeout: 30s\nALTER TABLE demo_probe ADD COLUMN status INTEGER;\n',
+  forwardOnlyRoot,
 );
-const missingDown = validateDatabaseModuleLayout(path.join(missingDownRoot, 'database'));
-assert.equal(missingDown.ok, false, 'up migration without down.sql should fail');
+const forwardOnly = validateDatabaseModuleLayout(path.join(forwardOnlyRoot, 'database'));
+assert.equal(forwardOnly.ok, true, 'forward-only migration with explicit rollback metadata should pass');
+
+const migrationsOnlyRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(migrationsOnlyRoot);
+const migrationsOnlyManifestPath = path.join(migrationsOnlyRoot, 'database/database.manifest.json');
+const migrationsOnlyManifest = JSON.parse(fs.readFileSync(migrationsOnlyManifestPath, 'utf8'));
+migrationsOnlyManifest.baselineStrategy = 'migrations-only';
+fs.writeFileSync(
+  migrationsOnlyManifestPath,
+  `${JSON.stringify(migrationsOnlyManifest, null, 2)}\n`,
+  'utf8',
+);
+fs.rmSync(path.join(migrationsOnlyRoot, 'database/ddl/baseline/postgres/0001_demo_baseline.sql'));
+writeText(
+  'database/migrations/postgres/0001_create_demo.up.sql',
+  '-- sdkwork:migration\n-- engine: postgres\n-- reversible: false\n-- rollback: forward-fix\n-- transactional: true\n-- lock: access-exclusive\n-- lock_timeout: 2s\n-- statement_timeout: 30s\nCREATE TABLE demo_probe (id BIGINT PRIMARY KEY);\n',
+  migrationsOnlyRoot,
+);
+const migrationsOnly = validateDatabaseModuleContract(path.join(migrationsOnlyRoot, 'database'));
+assert.equal(migrationsOnly.ok, true, 'migrations-only contract with an initial migration should pass');
+
+const emptyMigrationsOnlyRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(emptyMigrationsOnlyRoot);
+const emptyMigrationsOnlyManifestPath = path.join(
+  emptyMigrationsOnlyRoot,
+  'database/database.manifest.json',
+);
+const emptyMigrationsOnlyManifest = JSON.parse(
+  fs.readFileSync(emptyMigrationsOnlyManifestPath, 'utf8'),
+);
+emptyMigrationsOnlyManifest.baselineStrategy = 'migrations-only';
+fs.writeFileSync(
+  emptyMigrationsOnlyManifestPath,
+  `${JSON.stringify(emptyMigrationsOnlyManifest, null, 2)}\n`,
+  'utf8',
+);
+const emptyMigrationsOnly = validateDatabaseModuleContract(
+  path.join(emptyMigrationsOnlyRoot, 'database'),
+);
+assert.equal(emptyMigrationsOnly.ok, false, 'migrations-only contract without a migration should fail');
 assert.ok(
-  missingDown.failures.some((item) => item.includes('.down.sql')),
-  'failure should mention missing down.sql',
+  emptyMigrationsOnly.failures.some((item) => item.includes('at least one .up.sql')),
+  'failure should identify the missing initial migration',
+);
+
+const missingOperationalMetadataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(missingOperationalMetadataRoot);
+writeText(
+  'database/migrations/postgres/0001_add_demo_status.up.sql',
+  '-- sdkwork:migration\n-- engine: postgres\n-- reversible: false\n-- rollback: forward-fix\n-- transactional: true\nALTER TABLE demo_probe ADD COLUMN status INTEGER;\n',
+  missingOperationalMetadataRoot,
+);
+const missingOperationalMetadata = validateDatabaseModuleLayout(
+  path.join(missingOperationalMetadataRoot, 'database'),
+);
+assert.equal(missingOperationalMetadata.ok, false, 'PostgreSQL migration without lock budgets should fail');
+assert.ok(
+  missingOperationalMetadata.failures.some((item) => item.includes('metadata lock_timeout')),
+  'failure should identify missing PostgreSQL lock timeout metadata',
+);
+
+const missingRollbackMetadataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(missingRollbackMetadataRoot);
+writeText(
+  'database/migrations/postgres/0001_add_demo_status.up.sql',
+  '-- sdkwork:migration\n-- engine: postgres\nALTER TABLE demo_probe ADD COLUMN status INTEGER;\n',
+  missingRollbackMetadataRoot,
+);
+const missingRollbackMetadata = validateDatabaseModuleLayout(
+  path.join(missingRollbackMetadataRoot, 'database'),
+);
+assert.equal(missingRollbackMetadata.ok, false, 'migration without rollback metadata should fail');
+assert.ok(
+  missingRollbackMetadata.failures.some((item) => item.includes('metadata rollback')),
+  'failure should mention rollback metadata',
+);
+
+const missingDeclaredDownRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(missingDeclaredDownRoot);
+writeText(
+  'database/migrations/postgres/0001_add_demo_status.up.sql',
+  '-- sdkwork:migration\n-- engine: postgres\n-- reversible: true\n-- rollback: down-migration\n-- transactional: true\n-- lock: access-exclusive\n-- lock_timeout: 2s\n-- statement_timeout: 30s\nALTER TABLE demo_probe ADD COLUMN status INTEGER;\n',
+  missingDeclaredDownRoot,
+);
+const missingDeclaredDown = validateDatabaseModuleLayout(
+  path.join(missingDeclaredDownRoot, 'database'),
+);
+assert.equal(missingDeclaredDown.ok, false, 'declared down-migration without down file should fail');
+assert.ok(
+  missingDeclaredDown.failures.some((item) => item.includes('.down.sql')),
+  'failure should mention the missing declared down migration',
+);
+
+const serverSqliteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(serverSqliteRoot);
+writeText('database/migrations/sqlite/.gitkeep', '', serverSqliteRoot);
+const serverSqlite = validateDatabaseModuleContract(path.join(serverSqliteRoot, 'database'));
+assert.equal(serverSqlite.ok, false, 'authoritative-server root must reject SQLite assets');
+assert.ok(
+  serverSqlite.failures.some((item) => item.includes('migrations/sqlite must not exist')),
+  'failure should identify server SQLite assets',
+);
+
+const clientLocalRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidClientLocalRoot(clientLocalRoot);
+const clientLocal = validateDatabaseFramework(clientLocalRoot);
+assert.equal(clientLocal.ok, true, 'valid client-local SQLite scaffold should pass');
+
+const clientSchemaEngineRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidClientLocalRoot(clientSchemaEngineRoot);
+const clientSchemaPath = path.join(clientSchemaEngineRoot, 'database/contract/schema.yaml');
+fs.writeFileSync(
+  clientSchemaPath,
+  fs.readFileSync(clientSchemaPath, 'utf8').replace('  - sqlite', '  - postgres'),
+  'utf8',
+);
+const clientSchemaEngine = validateDatabaseModuleContract(path.join(clientSchemaEngineRoot, 'database'));
+assert.equal(clientSchemaEngine.ok, false, 'client-local schema with PostgreSQL engine should fail');
+assert.ok(
+  clientSchemaEngine.failures.some((item) => item.includes('schema.yaml engines must be exactly ["sqlite"]')),
+  'failure should identify the role-specific schema engine',
+);
+
+const incompleteClientScopeRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidClientLocalRoot(incompleteClientScopeRoot);
+const incompleteScopeManifestPath = path.join(
+  incompleteClientScopeRoot,
+  'database/database.manifest.json',
+);
+const incompleteScopeManifest = JSON.parse(fs.readFileSync(incompleteScopeManifestPath, 'utf8'));
+incompleteScopeManifest.clientLocal.scope = 'environment-profile-account';
+fs.writeFileSync(
+  incompleteScopeManifestPath,
+  `${JSON.stringify(incompleteScopeManifest, null, 2)}\n`,
+  'utf8',
+);
+const incompleteClientScope = validateDatabaseModuleContract(
+  path.join(incompleteClientScopeRoot, 'database'),
+);
+assert.equal(incompleteClientScope.ok, false, 'client-local scope without origin isolation should fail');
+assert.ok(
+  incompleteClientScope.failures.some((item) => item.includes('scope must include origin isolation')),
+  'failure should identify the missing client-local isolation dimension',
+);
+
+const missingRetentionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidClientLocalRoot(missingRetentionRoot);
+const missingRetentionPolicyPath = path.join(missingRetentionRoot, 'database/local-data-policy.yaml');
+fs.writeFileSync(
+  missingRetentionPolicyPath,
+  fs.readFileSync(missingRetentionPolicyPath, 'utf8').replace(
+    /retention:\n  policy:.*\n  max_age_or_event:.*\n/u,
+    '',
+  ),
+  'utf8',
+);
+const missingRetention = validateDatabaseModuleLayout(path.join(missingRetentionRoot, 'database'));
+assert.equal(missingRetention.ok, false, 'client-local policy without retention should fail');
+assert.ok(
+  missingRetention.failures.some((item) => item.includes('retention.policy')),
+  'failure should identify missing client-local retention policy',
+);
+
+const mixedClientRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidClientLocalRoot(mixedClientRoot);
+const mixedClientManifestPath = path.join(mixedClientRoot, 'database/database.manifest.json');
+const mixedClientManifest = JSON.parse(fs.readFileSync(mixedClientManifestPath, 'utf8'));
+mixedClientManifest.engines = ['postgres', 'sqlite'];
+fs.writeFileSync(mixedClientManifestPath, `${JSON.stringify(mixedClientManifest, null, 2)}\n`, 'utf8');
+const mixedClient = validateDatabaseModuleContract(path.join(mixedClientRoot, 'database'));
+assert.equal(mixedClient.ok, false, 'mixed engine client-local manifest should fail');
+assert.ok(
+  mixedClient.failures.some((item) => item.includes('engines must be exactly ["sqlite"]')),
+  'failure should identify the exact client-local engine contract',
+);
+
+const offlineWithoutSyncRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidClientLocalRoot(offlineWithoutSyncRoot, 'offline-projection');
+const offlineManifestPath = path.join(offlineWithoutSyncRoot, 'database/database.manifest.json');
+const offlineManifest = JSON.parse(fs.readFileSync(offlineManifestPath, 'utf8'));
+offlineManifest.clientLocal.syncContract = null;
+fs.writeFileSync(offlineManifestPath, `${JSON.stringify(offlineManifest, null, 2)}\n`, 'utf8');
+const offlineWithoutSync = validateDatabaseModuleContract(
+  path.join(offlineWithoutSyncRoot, 'database'),
+);
+assert.equal(offlineWithoutSync.ok, false, 'offline projection without sync contract should fail');
+assert.ok(
+  offlineWithoutSync.failures.some((item) => item.includes('syncContract')),
+  'failure should identify the missing sync contract',
 );
 
 const missingBaselineRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
@@ -156,17 +390,111 @@ fs.rmSync(path.join(missingBaselineRoot, 'database/ddl/baseline/postgres/0001_de
 const missingBaseline = validateDatabaseModuleContract(path.join(missingBaselineRoot, 'database'));
 assert.equal(missingBaseline.ok, false, 'missing postgres baseline should fail L2 contract checks');
 
-const autoMigrateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
-scaffoldValidDatabaseRoot(autoMigrateRoot);
-const autoMigrateManifest = JSON.parse(
-  fs.readFileSync(path.join(autoMigrateRoot, 'database/database.manifest.json'), 'utf8'),
+const missingAutoMigrateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(missingAutoMigrateRoot);
+const missingAutoMigrateManifest = JSON.parse(
+  fs.readFileSync(path.join(missingAutoMigrateRoot, 'database/database.manifest.json'), 'utf8'),
 );
-autoMigrateManifest.lifecycle.autoMigrate = false;
+delete missingAutoMigrateManifest.lifecycle.autoMigrate;
 fs.writeFileSync(
-  path.join(autoMigrateRoot, 'database/database.manifest.json'),
-  `${JSON.stringify(autoMigrateManifest, null, 2)}\n`,
+  path.join(missingAutoMigrateRoot, 'database/database.manifest.json'),
+  `${JSON.stringify(missingAutoMigrateManifest, null, 2)}\n`,
 );
-const autoMigrate = validateDatabaseModuleContract(path.join(autoMigrateRoot, 'database'));
-assert.equal(autoMigrate.ok, false, 'autoMigrate false should fail L2 contract checks');
+const missingAutoMigrate = validateDatabaseModuleContract(path.join(missingAutoMigrateRoot, 'database'));
+assert.equal(missingAutoMigrate.ok, false, 'missing autoMigrate policy should fail contract checks');
+assert.ok(
+  missingAutoMigrate.failures.some((item) => item.includes('explicit boolean')),
+  'failure should identify the missing auto-migration policy',
+);
+
+const cliTempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork db framework cli '));
+try {
+  const cliDir = path.join(cliTempRoot, 'validator path with spaces');
+  const cliPath = path.join(cliDir, 'check-database-framework-standard.mjs');
+  const cliAppRoot = path.join(cliTempRoot, 'application root with spaces');
+  fs.mkdirSync(cliDir, { recursive: true });
+  fs.copyFileSync(path.join(toolsDir, 'check-database-framework-standard.mjs'), cliPath);
+  scaffoldValidDatabaseRoot(cliAppRoot);
+
+  const validCli = spawnSync(process.execPath, [cliPath, '--root', cliAppRoot], { encoding: 'utf8' });
+  const validCliOutput = `${validCli.stdout}${validCli.stderr}`;
+  assert.equal(validCli.status, 0, validCliOutput);
+  assert.match(validCli.stdout, /Database framework standard passed/, validCliOutput);
+
+  fs.rmSync(path.join(cliAppRoot, 'database/README.md'));
+  const invalidCli = spawnSync(process.execPath, [cliPath, '--root', cliAppRoot], { encoding: 'utf8' });
+  const invalidCliOutput = `${invalidCli.stdout}${invalidCli.stderr}`;
+  assert.equal(invalidCli.status, 1, invalidCliOutput);
+  assert.match(invalidCli.stderr, /Database framework standard failed/, invalidCliOutput);
+  assert.match(invalidCli.stderr, /README\.md must exist/, invalidCliOutput);
+} finally {
+  fs.rmSync(cliTempRoot, { recursive: true, force: true });
+}
+
+function scaffoldValidClientLocalRoot(rootDir, mode = 'cache') {
+  writeText('database/README.md', '# client-local database\n', rootDir);
+  writeJson(
+    'database/database.manifest.json',
+    {
+      schemaVersion: 2,
+      kind: 'sdkwork.database.module',
+      databaseRole: 'client-local',
+      moduleId: 'demo-client-local',
+      serviceCode: 'DEMO_CLIENT_LOCAL',
+      contractVersion: '1.2.0',
+      engines: ['sqlite'],
+      defaultEngine: 'sqlite',
+      baselineStrategy: 'baseline-plus-migrations',
+      clientLocal: {
+        mode,
+        scope: 'environment-profile-origin-account',
+        authoritativeSource: 'demo-app-api',
+        syncContract: mode === 'offline-projection' ? 'specs/demo-sync.spec.json' : null,
+      },
+      lifecycle: { autoMigrate: true },
+    },
+    rootDir,
+  );
+  writeText(
+    'database/contract/schema.yaml',
+    'schema_version: 1\nkind: sdkwork.database.schema\ndatabase_role: client-local\nmodule_id: demo-client-local\ncontract_version: 1.2.0\nengines:\n  - sqlite\ntables: []\n',
+    rootDir,
+  );
+  writeText(
+    'database/local-data-policy.yaml',
+    [
+      'schema_version: 1',
+      'kind: sdkwork.database.client-local-policy',
+      `mode: ${mode}`,
+      'scope: environment-profile-origin-account',
+      'authoritative_source: demo-app-api',
+      `sync_contract: ${mode === 'offline-projection' ? 'specs/demo-sync.spec.json' : 'null'}`,
+      'security:',
+      '  encryption_at_rest: required-when-sensitive',
+      '  key_store: os-secure-storage',
+      '  backup: excluded-unless-declared',
+      '  export: disabled-unless-declared',
+      '  lock_state: close-or-rekey-per-platform-policy',
+      'retention:',
+      '  policy: bounded-by-authoritative-cache-policy',
+      '  max_age_or_event: 30d-or-logout',
+      'lifecycle:',
+      '  logout: purge-account-scoped-data',
+      '  account_switch: isolate-and-purge-active-state',
+      '  uninstall: platform-default-with-documented-backup-policy',
+      'recovery:',
+      '  migration_interruption: atomic-retry-or-restore',
+      '  disk_full: fail-without-partial-commit',
+      '  corruption: integrity-check-then-rebuild-or-restore',
+      '  projection_rebuild: from-authoritative-source',
+      '',
+    ].join('\n'),
+    rootDir,
+  );
+  writeText('database/migrations/sqlite/.gitkeep', '', rootDir);
+  writeText('database/ddl/baseline/sqlite/0001_demo_client_local_baseline.sql', 'CREATE TABLE demo_cache (id BIGINT PRIMARY KEY);\n', rootDir);
+  writeText('database/fixtures/.gitkeep', '', rootDir);
+  writeJson('package.json', { scripts: { 'db:validate': 'echo validate' } }, rootDir);
+}
 
 process.stdout.write('check-database-framework-standard.test.mjs passed\n');

@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdkwork.com/schemas/sdkwork.api-runtime-parity-evidence.schema.v1.json",
+  "title": "SDKWork API Runtime Parity Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "application",
+    "profile",
+    "apiMode",
+    "sources",
+    "inventories"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "sdkwork.api-runtime-parity-evidence" },
+    "application": { "type": "string", "minLength": 1 },
+    "profile": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "apiMode": { "enum": ["served", "none"] },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executableRouter", "boundManifest", "servedOpenapi", "sdkAuthority"],
+      "properties": {
+        "executableRouter": {
+          "$ref": "#/$defs/source",
+          "properties": {
+            "kind": { "enum": ["framework-route-registry", "runtime-probe"] }
+          }
+        },
+        "boundManifest": {
+          "$ref": "#/$defs/source",
+          "properties": { "kind": { "const": "framework-bound-manifest" } }
+        },
+        "servedOpenapi": {
+          "$ref": "#/$defs/source",
+          "properties": { "kind": { "const": "runtime-http-openapi" } }
+        },
+        "sdkAuthority": {
+          "$ref": "#/$defs/source",
+          "properties": { "kind": { "const": "sdk-generation-authority" } }
+        }
+      }
+    },
+    "inventories": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executableRouter", "boundManifest", "servedOpenapi", "sdkAuthority"],
+      "properties": {
+        "executableRouter": { "$ref": "#/$defs/inventory" },
+        "boundManifest": { "$ref": "#/$defs/inventory" },
+        "servedOpenapi": { "$ref": "#/$defs/inventory" },
+        "sdkAuthority": { "$ref": "#/$defs/inventory" }
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "location"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "location": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "inventory": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface", "method", "normalizedPath", "operationId", "authProfile"],
+      "properties": {
+        "surface": {
+          "enum": ["app-api", "backend-api", "gateway-api", "internal-api", "open-api"]
+        },
+        "method": { "enum": ["DELETE", "GET", "PATCH", "POST", "PUT"] },
+        "normalizedPath": { "type": "string", "pattern": "^/" },
+        "operationId": { "type": "string", "minLength": 1 },
+        "authProfile": {
+          "enum": [
+            "agent-token",
+            "anonymous",
+            "api-key",
+            "compatibility",
+            "credential-entry-bootstrap",
+            "dual-token",
+            "ingress-token",
+            "oauth",
+            "open-api-flexible",
+            "refresh-token"
+          ]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "apiMode": { "const": "none" } } },
+      "then": {
+        "properties": {
+          "inventories": {
+            "properties": {
+              "executableRouter": { "maxItems": 0 },
+              "boundManifest": { "maxItems": 0 },
+              "servedOpenapi": { "maxItems": 0 },
+              "sdkAuthority": { "maxItems": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "apiMode": { "const": "served" } } },
+      "then": {
+        "properties": {
+          "inventories": {
+            "properties": { "executableRouter": { "minItems": 1 } }
+          }
+        }
+      }
+    }
+  ]
+}

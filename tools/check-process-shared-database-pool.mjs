@@ -286,6 +286,7 @@ function main() {
   process.stdout.write('Process-shared database pool standard passed\n');
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+const entryUrl = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : null;
+if (import.meta.url === entryUrl) {
   main();
 }

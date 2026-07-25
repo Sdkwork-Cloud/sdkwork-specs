@@ -222,11 +222,11 @@ Rules:
 - The centralized session store `MUST` persist the complete rotating session, including `refreshToken`. Browser applications use app-scoped durable storage; desktop and native mobile hosts `MUST` use OS-backed secure storage such as Keychain, Keystore, or a platform credential vault for long-lived refresh credentials. Plaintext native Preferences, SharedPreferences, NSUserDefaults, and feature-owned state are forbidden for refresh-token persistence.
 - TypeScript applications `SHOULD` use `@sdkwork/iam-runtime` `createPersistentIamTokenStore(...)` or an architecture-specific secure wrapper with the same contract instead of authoring another token-store format.
 - Applications `MUST` create exactly one global token manager per authenticated session context.
-- Login/session-creation requests `MUST NOT` send existing credentials or SDKWork context-projection headers to select tenant or organization. Login starts anonymous and receives tenant/organization context only from the appbase login response.
-- Appbase login, registration, OAuth session creation, QR auth session creation, QR auth password completion, password reset request, and password reset completion OpenAPI operations `MUST` declare `security: []`, `x-sdkwork-auth-mode: anonymous`, and `x-sdkwork-forbid-credential-headers: true`. Generated appbase SDKs `MUST` skip automatic TokenManager credential injection for these operations, and appbase servers `MUST` reject inbound credential or SDKWork context headers for them.
+- Login/session-creation requests `MUST NOT` send an existing user session, API key, OAuth bearer, ingress/agent token, or SDKWork context-projection headers to select tenant or organization. Credential-entry starts without a user session, but it uses the application bootstrap `Access-Token` to establish validated app/tenant isolation before IAM resolves the real user and organization context.
+- Appbase login, registration, OAuth session creation, QR auth session creation, QR auth password completion, password reset request, and password reset completion OpenAPI operations `MUST` declare `security: [{ AccessToken: [] }]`, `x-sdkwork-auth-mode: credential-entry-bootstrap`, and `x-sdkwork-forbid-credential-headers: true`, unless the IAM authority explicitly classifies an operation as pure anonymous or refresh-token proof. Generated appbase SDKs `MUST` send only the bootstrap `Access-Token`, fail before network dispatch when it is absent, and appbase servers `MUST` reject every credential or context header outside the profile allowlist.
 - `authToken` and `accessToken` returned by appbase login/session APIs `MUST` both carry `tenant_id`, `organization_id`, `login_scope`, `user_id`, and `session_id` claims. Client-side code may decode token claims for diagnostics only; authorization and routing decisions `MUST` rely on appbase session validation and returned `AppContext`.
-- Protected SDK clients `MUST` send `Access-Token: <JWT access_token>` on every non-open-api app-api/backend-api request when an access token is available from bootstrap or authenticated session state.
-- Protected SDK clients `MUST` send `Authorization: Bearer <auth_token>` on every protected app-api/backend-api request when an auth token is available from bootstrap or authenticated session state.
+- Credential-entry SDK calls send only bootstrap `Access-Token`. Protected dual-token SDK calls send the authenticated session `Access-Token` and `Authorization`; anonymous and refresh-token operations send neither.
+- Protected dual-token SDK clients `MUST` send `Access-Token: <JWT access_token>` and `Authorization: Bearer <auth_token>` together. A partial pair fails before or at the framework authentication stage and never degrades into a public or bootstrap profile.
 - When both `authToken` and `accessToken` are present, server-side dual-token resolution `MUST` treat overlapping principal and tenancy claims from `authToken` as authoritative. Client runtimes `MUST` keep both tokens in sync through the single TokenManager and `MUST NOT` override token-derived scope with request fields.
 - Runtime session normalization `MUST` reject complete-looking sessions whose
   `authToken`, `accessToken`, and returned `AppContext` disagree on tenant,
@@ -269,7 +269,7 @@ The standard login endpoint may complete immediately or return a continuation st
 Flow:
 
 ```text
-anonymous login request with bootstrap Access-Token tenant isolation
+pre-session credential-entry request with bootstrap Access-Token tenant isolation
   -> appbase scopes credential verification to bootstrap tenant_id
   -> appbase validates credentials within that tenant
   -> appbase resolves real user_id from IAM data
@@ -500,8 +500,8 @@ rg -n "/app/v3/api/auth|/api/.*/auth|user-center/session" services crates
 - [ ] Logout clears local session, global token manager, AppContext, realtime connections, sensitive cache, and native storage when present, including remote logout failure cases.
 - [ ] Login/refresh/current-session restoration waits for session persistence and context propagation before returning to UI/runtime code, replaces refresh tokens for new sessions, preserves current refresh tokens only for continuation flows, rolls back on context propagation failure, and clears stale AppContext when the committed session has no context.
 - [ ] Application/dependency SDKs and realtime transports share one session recovery coordinator; concurrent `401` responses coalesce refresh, safe reads replay at most once, terminal refresh failure clears once, and problem-detail `code` / `traceId` remain available.
-- [ ] Login requests are anonymous; tenant and organization context are returned only by appbase after credential validation and real IAM tenant/organization membership lookup.
-- [ ] Login-like appbase OpenAPI operations are marked `x-sdkwork-auth-mode: anonymous` and `x-sdkwork-forbid-credential-headers: true`, generated SDKs skip auth injection, and appbase backends reject inbound credential/context headers.
+- [ ] Credential-entry requests have no user session, carry only the validated bootstrap `Access-Token`, and receive user/organization context only after real IAM credential and membership lookup.
+- [ ] Credential-entry OpenAPI operations use `security: [{ AccessToken: [] }]`, `x-sdkwork-auth-mode: credential-entry-bootstrap`, and `x-sdkwork-forbid-credential-headers: true`; generated SDKs fail before dispatch when bootstrap is missing, and backends reject every non-profile credential/context header.
 - [ ] Multi-organization login uses the appbase organization-selection continuation protocol and does not commit normal session state until final dual tokens are returned.
 - [ ] Runtime env, tracked `.env.example`, bootstrap overlays, and public runtime config do not inject fixed tenant, organization, user, owner, or session scope through `SDKWORK_IAM_BOOTSTRAP_*`, runtime `SDKWORK_APP_ID`, `VITE_SDKWORK_APP_ID`, or equivalent bootstrap variables.
 - [ ] Both tokens and persisted AppContext agree on tenant, organization, login scope, user, session, app, environment, deployment profile, and runtime target.

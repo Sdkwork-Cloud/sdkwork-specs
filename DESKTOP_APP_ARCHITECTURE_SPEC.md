@@ -65,7 +65,7 @@ Desktop applications have two different persistence concerns:
 
 Rules:
 
-- Installed desktop applications `MUST` store desktop-local user data in SQLite
+- Installed desktop applications `MUST` store declared desktop client-local data in SQLite
   under the SDKWork user private data directory unless the user explicitly
   configures an external database.
 - Installed tablet native applications `MUST` store tablet-local user data in
@@ -81,10 +81,10 @@ Rules:
   because the runtime target is `desktop`. The deployment profile remains
   `standalone` or `cloud`; the launched service profile describes backend
   persistence.
-- SQLite development entrypoints are allowed only as explicit local-data or
-  regression profiles, such as `pnpm dev:server:sqlite` or a documented
-  desktop-local validation command; they must not replace the default explicit
-  service/runtime PostgreSQL profile.
+- SQLite development entrypoints are allowed only as explicit client-local
+  validation profiles such as `pnpm dev:desktop:sqlite`. New
+  `pnpm dev:server:sqlite` entrypoints are forbidden; existing aliases are L0
+  migration inputs and cannot satisfy service/runtime PostgreSQL gates.
 - Feature UI and host adapters `MUST NOT` access either SQLite or PostgreSQL
   directly. They call services, SDKs, or local runtime APIs.
 
@@ -137,7 +137,7 @@ Rules:
 - The root PC app package owns web bootstrap and web build scripts.
 - Repositories that include a desktop app `MUST` expose top-level launch commands that follow `PNPM_SCRIPT_SPEC.md`: `pnpm dev` starts the default PC renderer or documented default development workflow, and `pnpm dev:desktop` starts the default desktop shell. Tauri CLI commands remain implementation details behind action-first public scripts.
 - The PC renderer dev command `MUST` use the same host and port as the Tauri `devUrl`, and it `MUST` fail on port conflicts instead of silently falling back to another port.
-- Existing backend or application server development commands `MUST` remain available under explicit names such as `pnpm dev:server`, `pnpm dev:postgres`, or `pnpm dev:sqlite` when `pnpm dev` is assigned to the desktop renderer.
+- Existing backend or application server development commands `MUST` remain available under explicit PostgreSQL names such as `pnpm dev:server` or `pnpm dev:postgres` when `pnpm dev` is assigned to the desktop renderer. `pnpm dev:sqlite` may name only a client-local desktop validation path, never a server database.
 - The desktop package owns Tauri CLI, Tauri config, Rust shell code, icons, permissions, and native bundle scripts.
 - The desktop package also owns iPadOS and Android tablet Tauri target metadata, generated native project directories, signing/runbook references, and target-specific capabilities.
 - The root PC app `MUST NOT` own Tauri native dependencies unless the app is intentionally single-package and documents that exception.
@@ -219,9 +219,10 @@ Rules:
 - Environment variables and runtime config follow `ENVIRONMENT_SPEC.md` and `CONFIG_SPEC.md`.
 - Lifecycle environment, profile alias, deployment profile, build mode, and runtime target `MUST` be modeled separately. Tauri target, Vite mode, or Spring profile must not be used as the entire runtime decision.
 - Runtime directories, logs, cache, user-private files, and local database paths follow `RUNTIME_DIRECTORY_SPEC.md`.
-- Desktop-local data uses SQLite by default, tablet-local data uses SQLite or approved platform-local encrypted storage, while the backend service launched
-  by desktop development commands uses the PostgreSQL dev profile unless an
-  explicit SQLite command is selected.
+- Declared desktop client-local data uses SQLite by default, and tablet-local
+  data uses SQLite or approved platform-local encrypted storage. Every backend
+  service launched by desktop development commands uses the PostgreSQL profile;
+  an explicit SQLite command may validate only client-local persistence.
 - Installed desktop config uses `environment = "production"`,
   `deployment_profile = "standalone"`, and `runtime_target = "desktop"` by
   default unless the installer is explicitly producing a cloud-managed desktop
@@ -311,9 +312,9 @@ Command rules:
 - `dev:server:standalone` or an equivalent explicit server command makes the backend
   service profile explicit when contributors need to debug the desktop plus
   service integration path.
-- `dev:desktop:sqlite`, `dev:server:sqlite`, or an equivalent documented command
-  is the explicit local SQLite regression profile. It must not become the
-  default server integration command.
+- `dev:desktop:sqlite` or an equivalent documented command is the explicit
+  client-local SQLite regression profile. It must not select SQLite for an
+  application gateway, backend service, worker, or server integration process.
 - `check:tauri-config` validates platform config merge, profile normalization, desktop/server split, secret absence, local path resolution, and test isolation.
 - `build:desktop:prod`, `build:tablet-ipados:prod`, and `build:tablet-android:prod` must run release preflight before packaging.
 
@@ -384,7 +385,7 @@ Required verification for desktop architecture changes:
 | Host boundary | Static scan proves feature packages use host adapters or shell-owned commands, not scattered raw Tauri globals. |
 | Session behavior | Logout, refresh failure, and account switch clear session and prevent stale route guards. |
 | Config behavior | Localhost defaults are dev/local only; dev/test/staging/prod profiles normalize correctly; browser public runtime, desktop user runtime, server runtime, container runtime, and Tauri platform config remain separate. |
-| Database boundary | Desktop-local user data resolves to SQLite; desktop-started backend services resolve to PostgreSQL unless an explicit SQLite command is used. |
+| Database boundary | Declared desktop client-local data resolves to SQLite; every desktop-started backend service resolves to PostgreSQL. |
 | Tauri config | `devUrl`, `frontendDist`, window config, permissions, capabilities, bundle metadata, and icons are present. |
 | Tablet config | iPadOS/Android config, signing references, large-screen behavior, safe-area handling, permissions/capabilities, and output artifact commands are present when enabled. |
 | Type and build | Changed packages pass typecheck and relevant build or smoke commands. |

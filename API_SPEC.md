@@ -309,7 +309,7 @@ Optional route fields:
 | --- | --- |
 | `rateLimitTier` | Framework rate-limit tier for abuse-sensitive operations; materializes to `x-sdkwork-rate-limit-tier` when present. |
 | `interceptorChain` | `standard` or a documented stricter profile; protected routes default to the standard chain from `WEB_FRAMEWORK_SPEC.md`. |
-| `forbidCredentialHeaders` | Boolean flag for login-like anonymous credential-entry operations; materializes to `x-sdkwork-forbid-credential-headers: true` and requires runtime rejection of inbound credential/context headers. |
+| `forbidCredentialHeaders` | Strict credential-contamination guard. When true, the runtime rejects every credential or context header not allowed by `auth.mode`. For `credential-entry-bootstrap`, bootstrap `Access-Token` remains allowed and required. |
 
 Rules:
 
@@ -321,12 +321,13 @@ Rules:
 - Every `routes[]` entry `MUST` declare `requestContext: WebRequestContext`. Public routes still receive `WebRequestContext` with an anonymous principal; protected routes require a resolved principal before business logic.
 - Every `routes[]` entry `MUST` declare `apiSurface` and it `MUST` match the top-level `surface`. The materializer `MUST` reject missing or mismatched values.
 - `routes[].apiSurface` values `MUST` use canonical kebab-case contract labels such as `open-api`, `app-api`, and `backend-api`. Runtime enum labels such as `openApi`, `appApi`, and `backendApi` are not valid route manifest or OpenAPI extension values.
-- `auth.mode` `MUST` be one of `public`, `dual-token`, `api-key`, `oauth`, `open-api-flexible`, or `compatibility`. Protected app-api and backend-api routes use `dual-token`. Protected open-api routes use `api-key`, `oauth`, or `open-api-flexible` unless the route is a vendor compatibility API declared under section 4.5.2, in which case `compatibility` is allowed together with `x-sdkwork-wire-protocol: external`.
+- `auth.mode` `MUST` be one of `anonymous`, `credential-entry-bootstrap`, `refresh-token`, `dual-token`, `api-key`, `oauth`, `open-api-flexible`, `ingress-token`, `agent-token`, or `compatibility`. Runtime APIs may retain a language-native `Public` enum variant, but route manifests and OpenAPI use `anonymous`; the legacy route-manifest value `public` is migration input only and materializers `MUST` normalize it to `anonymous` before validation or output.
+- Protected app-api and backend-api routes use `dual-token`. Protected open-api routes use `api-key`, `oauth`, or `open-api-flexible` unless the route is a vendor compatibility API declared under section 4.5.2, in which case `compatibility` is allowed together with `x-sdkwork-wire-protocol: external`.
 - Public SDK-generated routes `MUST` materialize `security: []` and `x-sdkwork-auth-mode: anonymous`; a framework-specific `x-sdkwork-route-auth: public` extension may be present but does not replace `x-sdkwork-auth-mode`.
-- Login, registration, OAuth session creation, QR auth session creation or password completion, password reset request, password reset completion, and equivalent credential-entry routes `MUST` set `forbidCredentialHeaders: true`.
+- Login, registration, OAuth session creation, QR auth session creation or password completion, password reset request, password reset completion, and equivalent pre-session credential-entry routes `MUST` use `auth.mode: credential-entry-bootstrap` and set `forbidCredentialHeaders: true` unless the owning IAM contract explicitly classifies the operation as pure anonymous or refresh-token proof.
 - `ownership.owner` and `ownership.apiAuthority` materialize to `x-sdkwork-owner` and `x-sdkwork-api-authority`. `source.crateRoot` or `routes[].source` materializes to `x-sdkwork-source` and `x-sdkwork-source-route-crate`.
 - `routes[].requestContext` materializes to `x-sdkwork-request-context`, `routes[].apiSurface` materializes to `x-sdkwork-api-surface`, and `routes[].rateLimitTier` materializes to `x-sdkwork-rate-limit-tier` when present.
-- `routes[].forbidCredentialHeaders: true` materializes to `x-sdkwork-forbid-credential-headers: true`. Runtime routers, gateways, and handlers `MUST` reject inbound dual-token credentials, API-key credentials, SDKWork context projection headers, and equivalent credential headers on those operations.
+- `routes[].forbidCredentialHeaders: true` materializes to `x-sdkwork-forbid-credential-headers: true`. Runtime routers and gateways `MUST` enforce the exact credential allowlist derived from `auth.mode` before handler execution. Handlers do not implement or override this guard.
 - Route manifests `MUST NOT` contain duplicate `(method, path)` pairs after path-template normalization.
 - Route manifests `MUST NOT` include dependency-owned operations as application-owned operations. Appbase, Drive, IAM login/session, and other reusable-module routes remain in their owning route crates and SDK families.
 - Handler and schema references are traceability inputs, not permission to bypass OpenAPI review. The aggregated OpenAPI authority remains the SDK generation contract.
@@ -755,6 +756,14 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    IngressToken:
+      type: apiKey
+      in: header
+      name: X-SDKWork-Ingress-Token
+    AgentToken:
+      type: apiKey
+      in: header
+      name: X-SDKWork-Agent-Token
 ```
 
 Rules:
@@ -762,7 +771,10 @@ Rules:
 - Protected app-api and backend-api operations `MUST` require both `AuthToken` and `AccessToken`.
 - Protected open-api operations with `auth.mode: api-key` `MUST` require `ApiKey`.
 - Protected open-api operations with `auth.mode: oauth` `MUST` require `OAuthBearer`.
-- Protected open-api operations with `auth.mode: open-api-flexible` `MAY` declare both `ApiKey` and `OAuthBearer`; runtime selection follows `WEB_FRAMEWORK_SPEC.md` section 6.1.
+- Protected open-api operations with `auth.mode: open-api-flexible` `MUST` declare separate `ApiKey` and `OAuthBearer` security alternatives; runtime selection follows `WEB_FRAMEWORK_SPEC.md` section 6.1.
+- Credential-entry bootstrap operations `MUST` require only `AccessToken`. They `MUST NOT` require or accept `AuthToken`, `ApiKey`, `OAuthBearer`, `IngressToken`, or `AgentToken`.
+- Refresh-token operations carry refresh proof only through the declared request body or a dedicated refresh-token channel. They `MUST` declare `security: []` when the proof is modeled in the request body and `MUST NOT` inherit session or bootstrap headers.
+- Internal ingress-token and agent-token operations `MUST` declare only their matching security scheme unless an approved compatibility contract explicitly says otherwise.
 - Public operations `MUST` explicitly set `security: []`.
 - `Authorization: Bearer <auth_token>` authenticates the principal/session on app-api/backend-api dual-token requests.
 - `Authorization: Bearer <token>` on open-api OAuth routes carries an OAuth bearer credential. It `MUST NOT` be treated as app-api `auth_token` when `Access-Token` is absent and the route declares `oauth` or `open-api-flexible`.
@@ -771,7 +783,7 @@ Rules:
 - `Access-Token` is the canonical SDKWork access isolation header for v3 app-api/backend-api contracts.
 - Do not define duplicate security scheme names for the same token.
 - Open-api credential modes and dual-token mode `MUST` be mutually exclusive for one request.
-- App-api login/session creation operations are public session-creation operations. They `MUST` declare the correct public or challenge-specific security contract and `MUST NOT` use inbound `AuthToken`, `AccessToken`, or context headers to choose tenant or organization.
+- App-api login/session creation operations are pre-session credential-entry operations. Unless explicitly classified as pure anonymous or refresh-token proof, they `MUST` use the `credential-entry-bootstrap` profile, require bootstrap `AccessToken`, and reject session, API-key, agent, ingress, and context-projection credentials.
 
 Protected app/backend operation example:
 
@@ -795,7 +807,19 @@ security:
 # auth.mode: open-api-flexible
 security:
   - ApiKey: []
-    OAuthBearer: []
+  - OAuthBearer: []
+
+# auth.mode: credential-entry-bootstrap
+security:
+  - AccessToken: []
+
+# auth.mode: ingress-token
+security:
+  - IngressToken: []
+
+# auth.mode: agent-token
+security:
+  - AgentToken: []
 ```
 
 Public operation example:
@@ -807,6 +831,26 @@ security: []
 ## 10. Token And Tenant Isolation Standard
 
 The dual-token model separates authentication from access isolation.
+
+Every operation has exactly one canonical authentication profile. The profile is contract metadata, SDK transport policy, framework resolver selection, and credential-contamination policy; these layers `MUST NOT` infer different profiles for the same operation.
+
+| `x-sdkwork-auth-mode` | Allowed request credentials | Required context source | Forbidden automatic credentials |
+| --- | --- | --- | --- |
+| `anonymous` | None | Anonymous framework context | All stored/session/API credentials |
+| `credential-entry-bootstrap` | Bootstrap `Access-Token` only | Validated bootstrap access JWT | `Authorization`, refresh token, API key, OAuth bearer, ingress/agent token, client context projection |
+| `refresh-token` | Declared refresh proof only | Validated refresh session/proof | Stored auth/access tokens, API key, OAuth bearer, client context projection |
+| `dual-token` | `Authorization` plus `Access-Token` | Validated matching session and access claims | API key, OAuth-only, ingress/agent token, client context projection |
+| `api-key` | `X-API-Key` only | Server-side API-key lookup | App/backend session credentials and client context projection |
+| `oauth` | OAuth bearer only | Server-side OAuth token/session lookup | Access token, API key, ingress/agent token, client context projection |
+| `open-api-flexible` | API key or OAuth bearer | Detector-selected server-side lookup | App/backend session credentials and client context projection |
+| `ingress-token` | `X-SDKWork-Ingress-Token` only | Trusted ingress-token resolver | User/session/API-key credentials and client context projection |
+| `agent-token` | `X-SDKWork-Agent-Token` only | Trusted agent-token resolver | User/session/API-key credentials and client context projection |
+| `compatibility` | Operation-defined external protocol | Approved compatibility adapter | Any credential outside the external contract |
+
+- Credential presence never changes the declared profile. A request with headers from another profile fails in the framework credential-contamination guard before business logic.
+- `anonymous` means no credential, not "session optional". A route that requires an application/tenant bootstrap access JWT is `credential-entry-bootstrap`.
+- `security` and `x-sdkwork-auth-mode` `MUST` agree. One OpenAPI security object means all schemes in that object are required together; separate objects express alternatives. Therefore `open-api-flexible` uses separate `ApiKey` and `OAuthBearer` objects.
+- Tenant/app context for `credential-entry-bootstrap` comes from the validated bootstrap JWT. Tenant/session context for `refresh-token` comes from the validated refresh proof; neither route may fall through to dual-token handling.
 
 | Token | Header | Purpose |
 | --- | --- | --- |
@@ -825,7 +869,7 @@ Rules:
 - Explicit tenant administration or cross-tenant platform operations may address a tenant as the managed resource only when the operation is `backend-admin` or platform scoped, declares a platform/cross-tenant permission, and verifies explicit authorization. Such identifiers must be target/resource identifiers, not ambient request context selectors, and they `MUST NOT` weaken the ban on generated `tenant_id` or `tenantId` current-context inputs.
 - If a request path contains a tenant or organization resource identifier, the server `MUST` verify it matches or is authorized by token claims.
 - A token claim that affects authorization `MUST` be signed or server-validated.
-- Auth/session creation endpoints in app-api are anonymous credential verification flows. They may be public but must return standard token objects and context metadata only after resolving the real IAM user, tenant, and organization context server-side.
+- Auth/session creation endpoints in app-api are pre-session credential verification flows. They use `credential-entry-bootstrap` unless the IAM authority explicitly declares a pure-anonymous exception, and they return standard token objects and context metadata only after resolving the real IAM user, tenant, and organization context server-side.
 - Multi-organization login `MUST` be represented as a documented continuation response, not as a normal authenticated session. The continuation credential is not valid for protected business operations.
 - Production token validation `MUST` use tenant-bound signing keys or a server-side session lookup that proves tenant binding. A global shared tenant signing secret is forbidden for production and production-like profiles.
 - Local Rust deployment `MUST` enforce the same logical token and tenant checks even if tokens are issued locally.
@@ -1589,6 +1633,15 @@ ProblemDetail:
     operationId:
       type: string
       description: OpenAPI operation id for the failing request when resolved by the web framework.
+    authProfile:
+      type: string
+      description: Safe canonical `x-sdkwork-auth-mode` value for the matched operation.
+    failedStage:
+      type: string
+      description: Safe canonical Web Framework stage that rejected the request.
+    reason:
+      type: string
+      description: Stable non-secret diagnostic reason such as `credential_missing`, `token_expired`, `credential_headers_forbidden`, or `dependency_surface_unavailable`.
     code:
       type: integer
       format: int32
@@ -1634,7 +1687,9 @@ Rules:
 - `traceId` `MUST` be present on every error and `MUST` match the success-body correlation semantics.
 - `instance` `SHOULD` identify the failing endpoint as `{METHOD} {routeTemplate}` using the OpenAPI route template when available; raw request paths `MUST` redact user, tenant, file, object, token, and provider identifiers per `OBSERVABILITY_SPEC.md`.
 - `operationId` `SHOULD` be present when the web framework resolves the matched OpenAPI operation for the request.
+- Framework-generated authentication, authorization, tenant-isolation, routing, and dependency-availability problems `SHOULD` include `authProfile`, `failedStage`, and a stable non-secret `reason` when the route is known. These fields `MUST NOT` expose token contents, lookup keys, subject secrets, or internal upstream addresses.
 - `code` `MUST` use stable numeric values from §15.3.
+- Missing credentials use `40101`; expired tokens use `40102`; malformed, unverifiable, wrong-issuer, wrong-audience, wrong-purpose, or contradictory tokens use `40103`; revoked sessions use `40104`; authenticated permission/scope/tenant/organization denials use the matching `403xx`; absent routes/resources use `40401`; unavailable dependency surfaces use `50301` or an applicable gateway `502xx`/`504xx`. A missing or unreachable dependency surface `MUST NOT` be reported as route `404`.
 - SDKWork-owned problem details `SHOULD` include `i18nKey` when a safe localized message exists. The standard key for result codes is `errors.result.<code>` per `I18N_SPEC.md`.
 - SDKWork-owned problem details `SHOULD` include `locale` when the framework resolved `WebRequestContext.locale`.
 - Field-level validation errors intended for UI display `SHOULD` include `errors[].i18nKey` and sanitized `errors[].params`; localized strings must not replace stable field paths or numeric codes.
@@ -2031,8 +2086,8 @@ SDKWork governance tools may read these extensions.
 | `x-sdkwork-data-scope` | Data visibility scope |
 | `x-sdkwork-audit-event` | Audit event type |
 | `x-sdkwork-idempotent` | Whether idempotency is required |
-| `x-sdkwork-auth-mode` | Operation credential mode: `anonymous`, `dual-token`, `refresh-token`, `api-key`, `oauth`, `open-api-flexible`, or `internal` |
-| `x-sdkwork-forbid-credential-headers` | Whether the server must reject inbound credential and SDKWork context headers for this operation |
+| `x-sdkwork-auth-mode` | Canonical operation credential profile: `anonymous`, `credential-entry-bootstrap`, `refresh-token`, `dual-token`, `api-key`, `oauth`, `open-api-flexible`, `ingress-token`, `agent-token`, or `compatibility` |
+| `x-sdkwork-forbid-credential-headers` | Strict contamination guard: reject every credential/context header outside the allowlist defined by `x-sdkwork-auth-mode` |
 | `x-sdkwork-sdk-resource` | SDK nested resource override if path inference is insufficient |
 | `x-sdkwork-deployment-profile` | `standalone`, `cloud`, or `all` |
 | `x-sdkwork-runtime-target` | Optional runtime target qualifier when an operation is intentionally runtime-target-specific. Shared app/backend/open APIs should normally omit it. |
@@ -2051,8 +2106,9 @@ Rules:
 - Every HTTP operation `MUST` declare `x-sdkwork-request-context: WebRequestContext` and `x-sdkwork-api-surface`. Missing either extension makes the contract non-compliant for SDKWork HTTP APIs.
 - `x-sdkwork-api-surface` values `MUST` use canonical kebab-case contract labels: `open-api`, `app-api`, `backend-api`, or another approved `*-api` surface label. CamelCase runtime labels such as `openApi`, `appApi`, `backendApi`, and `gatewayApi` are invalid in OpenAPI and derived `*.sdkgen.*` inputs.
 - Abuse-sensitive operations `MUST` declare `x-sdkwork-rate-limit-tier` and the runtime framework `MUST` enforce the matching policy. Mandatory-sensitive operations include login, registration, OAuth session creation, QR auth session creation or completion, verification code send/check, password reset request/completion, token refresh, API key creation/rotation/revocation, credential binding, and high-risk commands or mutation hot paths. Low-risk read/list operations `MAY` omit the extension only when the owning API threat model does not require throttling.
-- Public operations that are generated into SDKs and must not receive stored user credentials `MUST` declare `security: []` and `x-sdkwork-auth-mode: anonymous`. TypeScript, Flutter, and other generated SDKs `MUST` use that marker to skip automatic credential injection for that operation.
-- Login, registration, OAuth session creation, QR auth session creation or password completion, password reset request, password reset completion, and equivalent credential-entry commands `MUST` additionally declare `x-sdkwork-forbid-credential-headers: true`. Runtime routers, gateways, and handlers `MUST` reject inbound dual-token credentials, SDKWork context-projection headers, and equivalent credential headers for these operations instead of silently ignoring them.
+- Public operations that are generated into SDKs and must not receive stored credentials `MUST` declare `security: []` and `x-sdkwork-auth-mode: anonymous`. TypeScript, Flutter, and other generated SDKs `MUST` use that marker to skip automatic credential injection for that operation.
+- Login, registration, OAuth session creation, QR auth session creation or password completion, password reset request, password reset completion, and equivalent pre-session credential-entry commands `MUST` declare `security: [{ AccessToken: [] }]`, `x-sdkwork-auth-mode: credential-entry-bootstrap`, and `x-sdkwork-forbid-credential-headers: true`, unless the owning IAM authority explicitly classifies an operation as pure anonymous or refresh-token proof. Runtime gateways enforce the derived allowlist before handler logic.
+- `x-sdkwork-auth-mode`, OpenAPI `security`, route-manifest `auth.mode`, generated SDK call options, and runtime `RouteAuth` `MUST` represent the same profile. Validators `MUST` reject contradictions instead of choosing one source implicitly.
 - `security: []` alone does not imply `x-sdkwork-forbid-credential-headers: true`; public metadata and bootstrap endpoints may be anonymous without rejecting irrelevant credentials unless their contract explicitly sets the extension.
 - Every operation used as input to HTTP SDK generation `MUST` declare `x-sdkwork-owner` and `x-sdkwork-api-authority`.
 - `x-sdkwork-owner` is the SDK generation ownership key. It identifies the app/repo/module that is allowed to generate the operation into its SDK family.
@@ -2204,9 +2260,9 @@ An API is standard only when this checklist passes:
 - [ ] No operationId contains `__`.
 - [ ] Public operations explicitly set `security: []`.
 - [ ] Public SDK-generated operations that must not send stored credentials set `x-sdkwork-auth-mode: anonymous`.
-- [ ] Login-like anonymous credential-entry operations set `x-sdkwork-forbid-credential-headers: true` and runtime code rejects credential/context headers.
+- [ ] Credential-entry operations require only `AccessToken`, set `x-sdkwork-auth-mode: credential-entry-bootstrap` and `x-sdkwork-forbid-credential-headers: true`, and runtime code rejects every non-profile credential/context header.
 - [ ] Protected app-api and backend-api operations require both `AuthToken` and `AccessToken`.
-- [ ] Protected open-api operations require `ApiKey`, `OAuthBearer`, or both per declared `auth.mode` (`api-key`, `oauth`, or `open-api-flexible`).
+- [ ] Protected open-api operations require `ApiKey`, `OAuthBearer`, or either alternative per declared `auth.mode` (`api-key`, `oauth`, or `open-api-flexible`).
 - [ ] Auth/session creation operations do not use inbound tokens or context headers to choose tenant, organization, or user.
 - [ ] Dual-token protected operations validate matching tenant, organization, login scope, user, session, app, and token type claims.
 - [ ] Token validation uses tenant-bound signing keys or an equivalent server-side tenant-bound token lookup.

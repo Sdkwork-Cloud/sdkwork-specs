@@ -19,8 +19,6 @@ import { fileURLToPath } from 'node:url';
 const TOOL_DIR = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = path.resolve(TOOL_DIR, '../..');
 
-const ENGINES = ['postgres', 'sqlite'];
-
 function parseArgs(argv) {
   const args = { workspace: WORKSPACE_ROOT, dryRun: false, repo: '' };
   for (let i = 0; i < argv.length; i++) {
@@ -105,25 +103,6 @@ function sqlContentAlreadyPresent(migrationSql, baselineContent) {
 }
 
 /**
- * Adapt PostgreSQL-specific SQL syntax to SQLite-compatible syntax.
- */
-function adaptToSqlite(sql) {
-  return sql
-    // Remove PostgreSQL type casts like '::jsonb', '::json', '::text', '::int', etc.
-    .replace(/'([^']*)'::\w+/g, "'$1'")
-    .replace(/::\w+/g, '')
-    // Replace BYTEA with BLOB
-    .replace(/\bBYTEA\b/gi, 'BLOB')
-    // Replace TIMESTAMPTZ with TEXT (SQLite stores as text)
-    .replace(/\bTIMESTAMPTZ\b/gi, 'TEXT')
-    // Replace ON CONFLICT ... DO NOTHING (keep as-is, SQLite supports this)
-    // Replace GEN_RANDOM_UUID() - keep as text
-    // Remove partial index WHERE clauses that use PostgreSQL-specific syntax
-    // Keep WHERE for partial indexes - SQLite supports WHERE on indexes
-    ;
-}
-
-/**
  * Consolidate database/ddl/migrations/ into baseline for a specific engine.
  */
 function consolidateDdlMigrations(databaseDir, moduleId, engine, dryRun, actions) {
@@ -162,11 +141,6 @@ function consolidateDdlMigrations(databaseDir, moduleId, engine, dryRun, actions
   for (const migrationFile of migrationFiles) {
     const fileName = path.basename(migrationFile);
     let migrationSql = fs.readFileSync(migrationFile, 'utf8');
-
-    // Adapt SQL for SQLite engine
-    if (engine === 'sqlite') {
-      migrationSql = adaptToSqlite(migrationSql);
-    }
 
     if (sqlContentAlreadyPresent(migrationSql, baselineContent)) {
       actions.push(`skip duplicate ddl/migrations/${engine}/${fileName} (already in baseline)`);
@@ -346,7 +320,19 @@ function resetRepo(workspaceRoot, repoName, dryRun) {
   const manifest = readJson(manifestPath);
   const moduleId = manifest.moduleId ?? repoName.replace(/^sdkwork-/u, '');
   const normalizedModuleId = normalizeModuleId(moduleId);
-  const engines = manifest.engines?.length ? manifest.engines : ['postgres', 'sqlite'];
+  const engines = manifest.databaseRole === 'authoritative-server'
+    ? ['postgres']
+    : manifest.databaseRole === 'client-local'
+    ? ['sqlite']
+    : [];
+
+  if (engines.length === 0) {
+    return {
+      repoName,
+      actions: ['blocked: classify databaseRole as authoritative-server or client-local before cleanup'],
+      skipped: true,
+    };
+  }
 
   const actions = [];
 

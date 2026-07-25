@@ -10,7 +10,6 @@ function parseArgs(argv) {
     owner: '',
     tablePrefix: '',
     prefixes: [],
-    engines: ['postgres'],
   };
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
@@ -31,12 +30,6 @@ function parseArgs(argv) {
       index += 1;
     } else if (token === '--prefixes') {
       args.prefixes = (argv[index + 1] ?? '')
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-      index += 1;
-    } else if (token === '--engines') {
-      args.engines = (argv[index + 1] ?? 'postgres')
         .split(',')
         .map((item) => item.trim())
         .filter(Boolean);
@@ -117,7 +110,7 @@ function renderPrefixContract(prefixes, fallbackPrefix) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.baseline || !args.moduleId || !args.owner) {
-    throw new Error('usage: --root <dir> --baseline <relative-sql> --module-id <id> --owner <team> [--table-prefix p_] [--prefixes p1_,p2_] [--engines postgres,sqlite]');
+    throw new Error('usage: --root <dir> --baseline <relative-postgres-sql> --module-id <id> --owner <team> [--table-prefix p_] [--prefixes p1_,p2_]');
   }
 
   const baselinePath = path.join(args.root, args.baseline);
@@ -134,6 +127,12 @@ function main() {
   const manifestPath = path.join(args.root, 'database/database.manifest.json');
   const existingSchema = readExistingSchema(schemaPath);
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  if (manifest.databaseRole !== 'authoritative-server') {
+    throw new Error('contract materialization requires databaseRole=authoritative-server');
+  }
+  if (JSON.stringify(manifest.engines) !== JSON.stringify(['postgres']) || manifest.defaultEngine !== 'postgres') {
+    throw new Error('authoritative contract materialization requires engines=[postgres] and defaultEngine=postgres');
+  }
   const contractVersion = resolveContractVersion(manifest, existingSchema);
 
   const tableRegistry = {
@@ -160,12 +159,13 @@ function main() {
   const schemaYaml = [
     'schema_version: 1',
     'kind: sdkwork.database.schema',
+    'database_role: authoritative-server',
     `module_id: ${args.moduleId}`,
     `contract_version: ${contractVersion}`,
     `owner_team: ${args.owner}`,
     'compliance_level: L2',
     'engines:',
-    ...args.engines.map((engine) => `  - ${engine}`),
+    '  - postgres',
     ...renderPrefixContract(prefixes, args.tablePrefix),
     'tables:',
     ...tableNames.map((name) =>
@@ -186,7 +186,12 @@ function main() {
   fs.writeFileSync(schemaPath, schemaYaml);
 
   manifest.contractVersion = contractVersion;
-  manifest.lifecycle.autoMigrate = true;
+  manifest.schemaVersion = 2;
+  manifest.databaseRole = 'authoritative-server';
+  manifest.engines = ['postgres'];
+  manifest.defaultEngine = 'postgres';
+  manifest.lifecycle ??= {};
+  manifest.lifecycle.autoMigrate ??= false;
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
   process.stdout.write(

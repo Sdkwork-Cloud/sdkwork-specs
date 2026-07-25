@@ -398,6 +398,7 @@ function main() {
   console.log(`permission composition alignment complete (${total} component spec(s))`);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+const entryUrl = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : null;
+if (import.meta.url === entryUrl) {
   main();
 }

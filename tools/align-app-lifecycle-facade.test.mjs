@@ -84,10 +84,7 @@ test('retires process-layout dev aliases behind runtime-target facade commands',
     plan.manifest.scripts['dev:browser:cloud'],
     'pnpm exec sdkwork-app dev --runtime-target browser --deployment-profile cloud',
   );
-  assert.equal(
-    plan.manifest.scripts['dev:browser:sqlite:standalone'],
-    'node scripts/dev.mjs --database sqlite --dev-env-file configs/topology/standalone.development.env',
-  );
+  assert.equal(plan.manifest.scripts['dev:browser:sqlite:standalone'], undefined);
   assert.equal(plan.manifest.scripts['dev:browser:split-services'], undefined);
   assert.equal(plan.manifest.scripts['dev:browser:postgres:unified-process:standalone'], undefined);
 });

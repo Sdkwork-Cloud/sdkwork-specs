@@ -133,7 +133,7 @@ Rules:
 - Java and Rust schemas across standalone/cloud profiles `MUST` preserve the
   same logical table names, IDs, isolation fields, token hash fields, status
   semantics, and audit fields.
-- Rust may choose SQLite/PostgreSQL-compatible column types, but API-visible semantics and migration intent `MUST` match Java.
+- Authoritative Java and Rust IAM persistence `MUST` use the PostgreSQL physical profile from `DATABASE_SPEC.md`. SQLite may store only a declared client-local IAM projection/cache; it is never the authority for users, memberships, sessions, signing keys, roles, permissions, applications, or audit events.
 - `iam_user` or the canonical tenant membership relation `MUST` provide the user's tenant binding used by login. Login implementations `MUST NOT` invent tenant ids from usernames, emails, request bodies, headers, or local default values.
 - `iam_organization_membership` `MUST` provide the organization memberships used by login organization selection and authorization. A missing organization membership means tenant-level login only; it does not authorize organization-scoped data.
 - `iam_session` `MUST` store token hashes, context fields, sharding fields, data scope, permission scope, expiry, revocation, and audit timestamps.

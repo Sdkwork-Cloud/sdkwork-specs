@@ -166,7 +166,7 @@ Rules:
 
 - Bootstrap scope **inherits** from app manifest; `permissionComposition.bootstrapAccessTokenScope.supplement` may add dev-only codes.
 - Bootstrap scope **must not** duplicate entire dependency module catalogs.
-- Credential-entry transport follows `IAM_CREDENTIAL_ENTRY_SPEC.md`; permission inheritance does not change bootstrap JWT requirements on `credential_entry_public` routes.
+- Credential-entry transport follows `IAM_CREDENTIAL_ENTRY_SPEC.md`; permission inheritance does not change bootstrap JWT requirements on `credential_entry_bootstrap` routes or the migration alias.
 
 ## 7. Frontend Route and Menu Hints
 

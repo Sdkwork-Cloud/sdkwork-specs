@@ -3,6 +3,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { execSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 function parseArgs(argv) {
   const args = { root: process.cwd() };
@@ -72,9 +73,8 @@ function main(argv = process.argv.slice(2)) {
   return failures.length === 0 ? 0 : 1;
 }
 
-const isDirectRun = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
-
-if (isDirectRun || process.argv[1]?.includes('audit-repository-baseline.mjs')) {
+const entryUrl = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : null;
+if (import.meta.url === entryUrl) {
   process.exitCode = main();
 }
 

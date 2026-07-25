@@ -1,11 +1,16 @@
-# General Database Contract Standard
+# SDKWork Database Contract Standard
 
-- Version: 2.0
-- Scope: relational database contracts, schema registry inputs, table naming, logical data types, tenant and subject isolation, indexes, schema evolution, repository access, lifecycle orchestration, and database readiness for SDKWork-owned systems
+- Version: 3.0
+- Scope: PostgreSQL-first authoritative server persistence, SQLite client-local persistence, relational database contracts, schema registry inputs, table naming, logical data types, tenant and subject isolation, indexes, transactions, schema evolution, repository access, lifecycle orchestration, and database readiness for SDKWork-owned systems
 - Related: `API_SPEC.md`, `PAGINATION_SPEC.md`, `SUBJECT_ID_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `DATABASE_SPEC_PROCESS_SHARED_POOL.md`, `SCHEMA_REGISTRY_SPEC.md`, `MIGRATION_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `TEST_SPEC.md`
 - Canonical location: `DATABASE_SPEC.md` in the `sdkwork-specs` standards root
 
-This standard defines portable database contracts for SDKWork. It is intentionally independent of Java, Rust, TypeScript, Python, Go, PHP, C#, ORM choice, migration engine, and database product. Its purpose is to keep table semantics, identity, tenant isolation, query contracts, schema evolution, API/SDK serialization, and lifecycle evidence stable while applications move between standalone and cloud deployments.
+This standard defines the database contract for SDKWork. It is independent of Java, Rust, TypeScript, Python, Go, PHP, C#, ORM choice, and migration tool, but it is intentionally not database-product neutral at the physical implementation boundary:
+
+- PostgreSQL is the mandatory authoritative relational implementation for SDKWork services, server processes, containers, cloud workloads, shared business state, and system-of-record data.
+- SQLite is the embedded client-local implementation for desktop, tablet, mobile, or other native client data that is device-scoped and non-authoritative outside its declared local boundary.
+
+Portability means that logical identity, ownership, tenant isolation, API/SDK serialization, lineage, and lifecycle semantics remain explicit. It does not mean reducing PostgreSQL schema, transaction, indexing, integrity, observability, or migration design to the SQLite feature set.
 
 This repository owns global standards only. Repository-specific table inventories, ORM scan results, migration evidence, and rename plans belong in the consuming repository `specs/`, migration plans, or generated audit evidence. They `MUST NOT` be embedded in this global standard.
 
@@ -30,7 +35,7 @@ Standard levels:
 | L2 | Service Ready | Tenant/subject isolation, idempotency, API/SDK serialization, bounded pagination, schema evolution, and contract tests. |
 | L3 | Enterprise Grade | Least privilege, privacy classification, audit and ledger evidence, retention, disaster recovery, drift controls, and formal release gates. |
 
-New business tables `MUST` target L1 or higher. Tenant, IAM, permission, account, payment, billing, entitlement, file, message, AI execution, and cross-service write tables `MUST` target L2 or higher. Money, credentials, privacy-sensitive data, legal hold, and critical audit records `SHOULD` target L3.
+New business tables `MUST` target L1 or higher. Tenant, IAM, permission, account, payment, billing, entitlement, file, message, AI execution, and cross-service write tables `MUST` target L2 or higher. Money, credentials, privacy-sensitive data, legal hold, and critical audit records `SHOULD` target L3. L1+ authoritative server tables `MUST` run on PostgreSQL.
 
 ## 2. Scope
 
@@ -42,18 +47,58 @@ This standard applies to:
 - database-backed read models, projections, indexes, search mirrors, data warehouse exports, and CDC/event materialization;
 - database lifecycle bootstrap, migration, seed, health, readiness, and drift orchestration.
 
-This standard does not require one ORM, one language, one schema migration tool, one database engine, or database foreign keys on every table. It does require a portable contract that those tools can validate.
+This standard does not require one ORM, one language, one schema migration tool, or database foreign keys on every table. It does require PostgreSQL for authoritative server persistence, SQLite only for declared client-local persistence, and a logical contract that the selected tools can validate.
 
 ## 3. Core Principles
 
-1. Data contract first: field names, logical types, constraints, and semantics are more stable than ORM annotations or language class names.
-2. Explicit ownership: every core table has a business domain, bounded context, system of record, and write owner.
-3. Explicit subject scope: tenant, organization, user, owner, and data-scope predicates must be stored and indexed when they affect access control.
-4. API/SDK-safe serialization: `int64`, decimal, timestamps, enum values, and JSON must have a cross-language representation.
-5. Bounded query cost: list/search contracts define filters, sort, pagination, and indexes before implementation.
-6. Evolution by expand and contract: breaking database changes require compatibility, backfill, validation, cutover, and cleanup.
-7. Tool-checkable rules: schema linters, repository tests, OpenAPI generation, SDK generation, CI, and drift checks should validate the standard.
-8. Legacy is migration-only: L0 compatibility is not an alternate standard for new or pre-launch applications.
+1. PostgreSQL first: authoritative server behavior is designed, implemented, tested, tuned, migrated, and recovered on PostgreSQL before optional client-local work is considered complete.
+2. Storage role before engine: every database contract declares whether it is `authoritative-server` or `client-local`; a connection string does not decide data authority.
+3. Data contract first: field names, logical types, constraints, and semantics are more stable than ORM annotations or language class names.
+4. Explicit ownership: every core table has a business domain, bounded context, system of record, and write owner.
+5. Explicit subject scope: tenant, organization, user, owner, and data-scope predicates must be stored and indexed when they affect access control.
+6. API/SDK-safe serialization: `int64`, decimal, timestamps, enum values, and JSON must have a cross-language representation.
+7. Bounded query cost: list/search contracts define filters, sort, pagination, and indexes before implementation.
+8. Evolution by expand and contract: breaking database changes require compatibility, backfill, validation, cutover, and cleanup.
+9. Native capability without accidental coupling: PostgreSQL-native constraints, indexes, locking, JSONB, RLS, and operational features are allowed when they improve correctness or operability and are declared in the contract.
+10. Tool-checkable rules: schema linters, repository tests, OpenAPI generation, SDK generation, CI, and drift checks should validate the standard.
+11. Legacy is migration-only: L0 compatibility is not an alternate standard for new or pre-launch applications.
+
+### 3.1 Storage Authority And Engine Policy
+
+| Database role | Required engine | Allowed responsibility | Forbidden responsibility |
+| --- | --- | --- | --- |
+| `authoritative-server` | PostgreSQL | Service and platform systems of record, shared tenant/business state, server-side transactions, ledgers, audit, jobs, integration state | SQLite fallback, SQLite-only release evidence, or lowest-common-denominator design |
+| `client-local` | SQLite | Device/profile/account-scoped cache, offline projection, draft, local preference, local search index, resumable client queue, or explicitly local-only user data | Server authorization authority, shared multi-user truth, cross-device uniqueness authority, billing/ledger truth, tenant entitlement truth, or a substitute for the server system of record |
+| `server-test` | PostgreSQL | Authoritative schema, repository, migration, concurrency, query-plan, backup, and recovery verification | Claiming server compatibility from SQLite tests |
+| `client-local-test` | SQLite | Client schema migration, corruption recovery, profile isolation, purge, offline/sync, and concurrency verification | Replacing PostgreSQL integration coverage |
+
+Rules:
+
+- Every relational database manifest and schema contract `MUST` declare one database role.
+- Every service, gateway, RPC host, worker, scheduled job, server CLI, server process started by a desktop host, standalone server/container, and cloud workload that owns relational state `MUST` use PostgreSQL for `authoritative-server` persistence.
+- Server startup `MUST` fail closed when PostgreSQL configuration is absent or invalid. It `MUST NOT` silently or automatically fall back to SQLite.
+- A PostgreSQL-compatible managed service `MAY` be used only when an accepted ADR records the provider, supported PostgreSQL version and extensions, transaction and locking compatibility, collation behavior, backup/restore behavior, observability gaps, failover semantics, and conformance evidence. Marketing compatibility alone is not sufficient.
+- SQLite `MUST` be embedded in a client/native persistence adapter and scoped to one installation plus the declared profile, environment, origin, and account boundary. It `MUST NOT` be exposed as a shared network database or used from a network filesystem.
+- Client-local rows copied from a server remain projections of the PostgreSQL authority. A client-local table may be authoritative only for data whose business scope is explicitly device-local and never claims cross-device, cross-user, tenant, billing, entitlement, audit, or shared service authority.
+- Offline mutation requires an explicit sync contract defining local identity, server identity mapping, idempotency key, ordering, tombstones, conflict detection, conflict resolution, retry, rejection handling, and user-visible recovery. A generic `updated_at` last-write-wins rule is not sufficient for money, permissions, ledgers, inventories, quotas, or collaborative edits.
+- Server APIs `MUST` re-authenticate, re-authorize, revalidate, and reapply invariants for every client-local mutation. Local tenant, role, permission, price, quota, or entitlement values are untrusted inputs.
+- PostgreSQL and SQLite physical schemas `MUST NOT` be treated as interchangeable mirrors. When both roles exist, each owns a separate contract and migration history, with an explicit projection/sync mapping where data crosses the boundary.
+
+### 3.2 Implementation Priority And Completion Order
+
+For any feature with persistent server data, the required completion order is:
+
+1. Define the logical data ownership, invariants, PostgreSQL physical schema, transaction boundary, query contracts, indexes, migration, retention, backup/recovery, and observability.
+2. Pass PostgreSQL contract, migration, repository, concurrency, isolation, query-plan, and recovery gates.
+3. Add SQLite client-local storage only when the client has a concrete local-data or offline requirement.
+4. Validate the client-local schema, security, lifecycle, and sync mapping independently.
+
+Rules:
+
+- A server feature `MUST NOT` be declared complete from SQLite unit or integration tests.
+- Optional SQLite support `MUST NOT` delay, weaken, or remove a PostgreSQL constraint, index, transaction rule, data type, RLS policy, JSONB query, generated column, partitioning decision, or operational control required by the authoritative design.
+- New server SQL `MUST` be authored and reviewed as PostgreSQL SQL. SQLite DDL or migrations `MUST NOT` be produced through regex replacement, type-name substitution, or other blind transliteration of PostgreSQL SQL.
+- Cross-engine repository abstractions `MAY` share logical interfaces, but engine-specific implementations `MUST` remain explicit. An abstraction that hides locking, isolation, constraint, query-plan, or error-code differences is non-compliant.
 
 ## 4. Portable Data Contract
 
@@ -128,8 +173,8 @@ Rules:
 Rules:
 
 - Standard runtime tables `MUST` have a primary key.
-- SQLite runtime business tables `MUST NOT` use `INTEGER PRIMARY KEY` for SDKWork business ids because that has rowid auto-allocation semantics.
-- PostgreSQL, MySQL/MariaDB, SQL Server, Oracle, and SQLite DDL examples `MUST` preserve explicit id binding semantics.
+- SQLite client-local business tables `MUST NOT` use `INTEGER PRIMARY KEY` for SDKWork business ids because that has rowid auto-allocation semantics.
+- PostgreSQL authoritative DDL and SQLite client-local DDL examples `MUST` preserve explicit id binding semantics.
 - Generated repositories `MUST` accept already-generated ids or inject the approved ID provider before insert.
 - Bulk imports and backfills `MUST` preserve existing stable ids or use a documented deterministic remap table.
 
@@ -267,16 +312,17 @@ Rules:
 
 ### 8.1 Type Mapping
 
-| Logical type | SQL shape | API/SDK shape |
-| --- | --- | --- |
-| `int64` | `BIGINT` | string in JSON HTTP contracts when precision matters. |
-| `decimal` | `DECIMAL(p,s)` / `NUMERIC(p,s)` | string or structured `{ units, nanos }`; never float/double for money. |
-| `instant` | timestamp with UTC semantics or approved text profile | ISO 8601 UTC string. |
-| `date` | date | ISO date string. |
-| `boolean` | boolean or constrained integer | boolean. |
-| `enum` | integer or short string with dictionary | typed enum, tolerant reader for unknown values. |
-| `json` | JSON/JSONB/TEXT with schema | typed object or documented extension map. |
-| `binary` | bytea/blob | base64 or object-storage reference. |
+| Logical type | PostgreSQL `authoritative-server` | SQLite `client-local` | API/SDK shape |
+| --- | --- | --- | --- |
+| `int64` | `BIGINT` | `BIGINT`/integer affinity with explicit application binding; not `INTEGER PRIMARY KEY` | string in JSON HTTP contracts when precision matters. |
+| `uuid` | native `UUID` | canonical lowercase UUID text | UUID string. |
+| `decimal` | `NUMERIC(p,s)` | canonical decimal text or documented scaled integer; never `REAL` for precise values | string or structured `{ units, nanos }`; never float/double for money. |
+| `instant` | `TIMESTAMPTZ` | canonical ISO 8601 UTC text or integer epoch with declared unit | ISO 8601 UTC string. |
+| `date` | `DATE` | ISO date text | ISO date string. |
+| `boolean` | `BOOLEAN` | integer constrained to `0` or `1` | boolean. |
+| `enum` | constrained short text or integer dictionary | constrained text or integer dictionary | typed enum, tolerant reader for unknown values. |
+| `json` | `JSONB` by default | canonical JSON text validated before write | typed object or documented extension map. |
+| `binary` | `BYTEA` | `BLOB` | base64 or object-storage reference. |
 
 Rules:
 
@@ -293,7 +339,28 @@ Rules:
 - TEXT-stored instants `MUST` use a single normalized UTC format.
 - PostgreSQL queries comparing TEXT-stored logical instants `MUST` use explicit casts such as `expires_at::timestamptz > $1::timestamptz` when the physical column type is text.
 - Rust sqlx queries `MUST NOT` bind `chrono::DateTime<Utc>` directly against TEXT instant columns without the required cast or adapter.
-- New L2+ PostgreSQL tables `SHOULD` use timestamp types with UTC semantics instead of TEXT for instants.
+- New L2+ PostgreSQL tables `MUST` use `TIMESTAMPTZ` for instants instead of TEXT.
+
+### 8.2 PostgreSQL Physical Type Profile
+
+Rules:
+
+- PostgreSQL authoritative schemas `MUST` use native `UUID`, `BOOLEAN`, `DATE`, `TIMESTAMPTZ`, `NUMERIC`, `JSONB`, and `BYTEA` where their logical types apply. Encoding these values as generic text for cross-engine convenience is non-compliant for new L2+ tables.
+- `TIMESTAMP WITHOUT TIME ZONE` `MAY` represent an intentional local wall-clock value only when the contract also declares the business timezone/calendar semantics. It `MUST NOT` represent an instant.
+- `VARCHAR(n)` `MUST` have a domain or wire-contract reason for the limit. Arbitrary storage-oriented lengths such as `VARCHAR(255)` `SHOULD NOT` be copied by habit; use `TEXT` plus a meaningful `CHECK` when a business maximum is required.
+- `NUMERIC(p,s)` precision and scale `MUST` be derived from domain range, rounding, aggregation, and overflow requirements. Unlimited `NUMERIC` is not a substitute for a capacity decision on financial write paths.
+- `JSONB` is the default PostgreSQL JSON storage type. Plain `JSON` requires a documented need to preserve input text, whitespace, or duplicate-key behavior.
+- PostgreSQL arrays, range types, generated columns, domains, and extensions `MAY` be used when they simplify a declared invariant or query contract. Extension use `MUST` be versioned, schema-qualified, allow-listed, and verified in bootstrap, backup, restore, and managed-service profiles.
+- Collation-sensitive equality, ordering, and uniqueness `MUST` declare normalization and collation behavior. Locale-dependent database defaults `MUST NOT` silently define public identifiers, email/domain uniqueness, cursor order, or signature inputs.
+
+### 8.3 SQLite Client-Local Type Profile
+
+Rules:
+
+- SQLite affinity does not replace logical type validation. Client-local adapters `MUST` validate decimal, instant, UUID, boolean, enum, and JSON values before binding and `MUST` add `CHECK` constraints where SQLite can enforce the invariant.
+- A client-local schema `MUST` choose one canonical representation per logical type and keep it stable across migrations. Mixed instant formats, mixed decimal encodings, and mixed boolean encodings in one column are forbidden.
+- SQLite `STRICT` tables `SHOULD` be used when the supported SQLite runtime version and platform bindings provide consistent behavior.
+- Client-local money, quota, permission, entitlement, and server-owned status values are cached/projection values only. The server `MUST` ignore them as authority when processing a mutation.
 
 ## 9. Standard DDL Templates
 
@@ -316,8 +383,15 @@ Rules:
 - Every index `MUST` serve a named query, uniqueness, integrity, lifecycle, or migration purpose.
 - Tenant-scoped list indexes `MUST` lead with `tenant_id` unless a documented query plan proves a different order is required.
 - Stable list ordering `SHOULD` include a unique tie-breaker such as `id`.
-- Large-table indexes `SHOULD` document online creation, backfill, lock impact, rollback/forward-fix, and monitoring.
+- PostgreSQL B-tree is the default for equality, range, and ordered access. GIN, GiST, SP-GiST, BRIN, hash, expression, partial, covering (`INCLUDE`), full-text, vector, or extension-owned indexes `MUST` name the operator/query they accelerate and why B-tree is insufficient.
+- Composite index order `MUST` be derived from equality predicates, range predicates, sort order, selectivity, tenant isolation, and keyset pagination. Copying all filter fields into one wide index is not a design method.
+- Partial indexes `MUST` use predicates that the query can prove, such as `deleted_at IS NULL`; parameterized or mutable predicates that PostgreSQL cannot match reliably are forbidden.
+- Index-only scan assumptions `MUST` account for visibility-map behavior, write amplification, and vacuum health. `INCLUDE` columns `MUST` be justified by measured read benefit.
+- JSONB GIN indexes `MUST` select `jsonb_ops` or `jsonb_path_ops` from the actual containment/key query contract. A blanket GIN index on every JSONB column is forbidden.
+- Large-table PostgreSQL indexes `MUST` document online creation, lock impact, statement/lock timeouts, invalid-index cleanup, rollback/forward-fix, and monitoring. Production creation should use `CREATE INDEX CONCURRENTLY` when blocking writes exceeds the declared budget.
+- P0/P1 and high-growth queries `MUST` have representative PostgreSQL `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` evidence before release. Evidence records cardinality assumptions, scanned versus returned rows, execution time, buffer reads, sort/hash spill, and selected index; it `MUST NOT` pin an exact planner node tree as a brittle test.
 - Duplicate, unused, or queryless indexes `SHOULD` enter cleanup review.
+- Index removal `MUST` account for constraint ownership, replica/query consumers, seasonal traffic, and observation-window length. A zero counter after restart is not sufficient removal evidence.
 
 ## 11. Constraints And Referential Integrity
 
@@ -327,6 +401,11 @@ Rules:
 - Foreign key columns `SHOULD` be indexed.
 - Database foreign keys are recommended when they match ownership and lifecycle boundaries; cross-service ownership may use application-level integrity with audit and repair jobs.
 - Case-insensitive unique fields such as email or domain names `MUST` define normalization, collation, and uniqueness strategy.
+- Required values `MUST` use `NOT NULL`; application-language non-null types are not database evidence.
+- Defaults `MUST` be deterministic and semantically owned by either the database or application. A default `MUST NOT` conceal a missing tenant, actor, currency, status transition, or externally supplied business value.
+- PostgreSQL `CHECK` constraints `SHOULD` enforce row-local invariants such as non-negative amounts, range ordering, state-dependent nullability, and bounded enum values.
+- New foreign keys and checks on large PostgreSQL tables `SHOULD` use a staged `NOT VALID` plus `VALIDATE CONSTRAINT` flow when immediate validation would exceed the lock or availability budget.
+- Deferrable constraints `MAY` be used only when the transaction contract requires end-of-transaction validation. They `MUST NOT` hide routine write-order bugs.
 
 ## 12. Enum Standard
 
@@ -344,6 +423,8 @@ Rules:
 - JSON fields `MUST` have a schema, version, validation strategy, and migration policy when used by production code.
 - JSON `MUST NOT` be the only storage for tenant, owner, permission, amount, status, idempotency, lifecycle, or high-frequency filter/sort fields.
 - Generated DTOs and OpenAPI schemas `SHOULD` represent stable JSON shapes.
+- PostgreSQL production JSON uses `JSONB` by default and `MUST` be bound as a typed parameter. Dynamic JSON-path fragments, operators, or keys derived from user input require an allow-list and parameterized values.
+- Frequently filtered or joined JSON properties `MUST` graduate to first-class columns or generated columns when query plans, integrity, or statistics require it.
 
 ## 14. Money, Measurement, And Precision
 
@@ -371,6 +452,9 @@ Rules:
 - Platform-level cross-tenant queries `MUST` require explicit admin/service authorization and audit evidence.
 - Permission, role, and ABAC condition fields used by policies `MUST` be first-class indexed columns when they affect online access.
 - Tests `MUST` cover cross-tenant and cross-user denial cases for security-sensitive repositories.
+- PostgreSQL Row Level Security `SHOULD` be used as defense in depth for high-risk shared tables when request/session context can be set safely. RLS policy, `BYPASSRLS` ownership, connection-pool context reset, migrations, background jobs, and negative tests `MUST` be explicit.
+- Runtime roles `MUST NOT` own application tables or have `BYPASSRLS`, superuser, database-create, role-create, or schema-create privileges unless a narrower capability is technically impossible and governed.
+- Client-local SQLite filters are UX and data-minimization controls only; they are not a server authorization boundary.
 
 ## 17. Idempotency And Consistency
 
@@ -381,6 +465,13 @@ Rules:
 - A duplicate idempotency key with a different fingerprint `MUST` be rejected as a conflict.
 - Outbox/inbox tables `SHOULD` include event version, aggregate id, payload hash, dispatch state, retry count, and next retry time.
 - Cross-aggregate writes `SHOULD` use events, sagas, or explicit transaction boundaries with retry behavior.
+- Every write workflow `MUST` declare its PostgreSQL transaction boundary and isolation expectation. `READ COMMITTED` is the default only when statement-level snapshots preserve the invariant; stronger isolation or explicit locking is required otherwise.
+- Serializable transactions and deadlock victims `MUST` retry only the complete idempotent transaction on PostgreSQL SQLSTATE `40001` or `40P01`, with bounded jittered backoff and an attempt budget. Retrying an arbitrary failed statement inside an already-aborted transaction is forbidden.
+- Lock acquisition order `MUST` be stable for multi-row/multi-table writes. A transaction `MUST NOT` hold database locks while performing remote HTTP/RPC calls, user interaction, long computation, or unbounded iteration.
+- Optimistic writes `MUST` perform a conditional update such as `WHERE id = $id AND version = $expected`, increment the version atomically, and distinguish not-found from concurrency conflict without a race.
+- Queue claimers `MAY` use `FOR UPDATE SKIP LOCKED` when at-least-once processing, lease expiry, retry, poison-message, fairness, and reconciliation semantics are declared. `SKIP LOCKED` is not a general consistency shortcut.
+- PostgreSQL advisory locks `MAY` coordinate rare coarse-grained operations only when lock-key derivation, session/transaction scope, collision analysis, timeout, and crash release are documented. Durable business invariants still require durable state or constraints.
+- Read-replica use `MUST` declare read-after-write behavior, acceptable lag, stale authorization risk, failover behavior, and primary-read escalation. Security, entitlement, and immediate post-write reads `MUST` use the primary unless the contract proves a safe alternative.
 
 ## 18. Logs, Audit, And Ledger
 
@@ -477,6 +568,13 @@ Rules:
 - Rollback or forward-fix strategy `MUST` be documented before release.
 - Schema drift checks `SHOULD` compare contracts, migrations, live schema, ORM entities, and generated SDK/OpenAPI outputs.
 - L0 compatibility windows `MUST` have owner, risk, and removal milestone.
+- PostgreSQL production migrations are forward-first. A `.down.sql` file is optional and `MUST` exist only when reversal is demonstrably data-preserving, operationally bounded, and tested. Irreversible or lossy changes `MUST` declare `reversible: false` and a forward-fix plus restore/cutover strategy instead of a misleading down migration.
+- Every PostgreSQL migration `MUST` declare transaction mode, expected lock level, lock timeout, statement timeout, estimated table/index size, write-traffic impact, replication impact, observability, cancellation behavior, and recovery action when any item is non-trivial.
+- Metadata-only or fast-default assumptions `MUST` be validated against the minimum supported PostgreSQL version. A migration `MUST NOT` assume that adding a default, changing a type, or attaching a constraint is non-rewriting without version-specific evidence.
+- Large backfills `MUST` run outside one unbounded schema transaction, process deterministic resumable chunks, rate-limit load, record progress, tolerate retries, and validate counts/checksums before cutover.
+- Column renames and type changes on live contracts `MUST` use additive columns or compatibility views/adapters until all writers, readers, SDKs, CDC, reports, search, and exports migrate.
+- PostgreSQL enum types `MAY` be used only when their evolution constraints fit the domain. Frequently changing public enums `SHOULD` use constrained text plus a registry/dictionary rather than requiring unsafe enum surgery.
+- SQLite client-local migrations own a separate history and may rebuild tables when SQLite requires it, but they `MUST` preserve user-local data atomically, verify free disk space, support interrupted-upgrade recovery, and never be derived blindly from PostgreSQL migrations.
 
 ## 23. Data Lifecycle
 
@@ -486,6 +584,9 @@ Rules:
 - Archive, TTL, purge, legal hold, anonymization, and export flows `MUST` document ownership and scheduling.
 - Cold/hot separation `MUST` define query entry points so applications do not assume the hot table contains full history.
 - Backups and recovery objectives `SHOULD` be documented for L2 and `MUST` be documented for L3.
+- PostgreSQL L2/L3 owners `MUST` define backup method, retention, encryption, restore target, point-in-time recovery coverage where required, RPO, RTO, and a scheduled restore exercise. A successful backup job without a verified restore is not recovery evidence.
+- High-write or high-churn PostgreSQL tables `MUST` monitor dead tuples, autovacuum/analyze recency, transaction-id age, long-running transactions, bloat indicators, and replication/WAL pressure. Per-table autovacuum or fillfactor tuning requires measured evidence and rollback.
+- Partitioning `MUST` solve a declared retention, pruning, maintenance, or size problem. It `MUST` define partition key, uniqueness implications, partition creation, default-partition handling, retention detach/drop, global query behavior, and recovery. Partitioning by tenant by default is forbidden.
 
 ## 24. Derived Data And Read Models
 
@@ -583,12 +684,26 @@ CI, schema linters, migration tools, or repository audits `SHOULD` implement the
 | DB070 | SHOULD | External channel, connector, and provider account tables use `integration_` or a more specific approved prefix. |
 | DB071 | SHOULD | Workspace, project, application, and template design-time assets use `studio_` or a more specific approved prefix. |
 | DB072 | SHOULD | Entity annotations, DDL, migrations, audit files, and schema linter rules share the same prefix registry. |
+| DB073 | MUST | Authoritative server relational persistence declares `databaseRole=authoritative-server` and uses PostgreSQL. |
+| DB074 | MUST | SQLite declares `databaseRole=client-local` and is not used by a server, shared-state, or system-of-record runtime. |
+| DB075 | MUST | PostgreSQL-native correctness and operability are not weakened to preserve SQLite physical parity. |
+| DB076 | MUST | Server database release evidence includes real PostgreSQL migration and repository integration tests. |
+| DB077 | MUST | SQLite DDL/migrations are not generated by blind transliteration of PostgreSQL SQL. |
+| DB078 | MUST | P0/P1 or high-growth PostgreSQL queries have representative plan and buffer evidence. |
+| DB079 | MUST | Non-trivial PostgreSQL migrations declare lock, timeout, rewrite, replication, backfill, observation, and recovery behavior. |
+| DB080 | MUST | Offline mutation declares identity mapping, idempotency, ordering, tombstones, conflict resolution, retry, and rejection behavior. |
+| DB081 | MUST | Client-local SQLite is isolated by profile/environment/origin/account and has logout/removal purge behavior. |
+| DB082 | MUST | PostgreSQL owner, migrator, runtime, read-only/analytics, and backup roles follow least privilege with a fixed safe `search_path`. |
+| DB083 | MUST | PostgreSQL serialization failures and deadlocks retry the complete idempotent transaction with a bounded budget. |
+| DB084 | MUST | Lossy or irreversible migrations use forward-fix/restore strategy rather than an unsafe generic down migration. |
+| DB085 | SHOULD | L2/L3 PostgreSQL recovery evidence includes a scheduled restore or point-in-time recovery exercise. |
 
 ## 27. Design Review Checklist
 
 New table review:
 
 - [ ] Business domain, bounded context, and write owner are declared.
+- [ ] Database role is explicit: PostgreSQL `authoritative-server` or SQLite `client-local`.
 - [ ] Table profile and standard fields are selected.
 - [ ] Tenant, organization, user, owner, and data-scope semantics are correct.
 - [ ] ID generation, UUID/public id, and seed id behavior are documented.
@@ -597,6 +712,8 @@ New table review:
 - [ ] API/SDK serialization for `int64`, decimal, instant, enum, and JSON is safe.
 - [ ] Sensitive fields, retention, export, deletion, and audit behavior are documented.
 - [ ] Migration, backfill, rollback/forward-fix, and drift checks are ready.
+- [ ] PostgreSQL transaction isolation, locks, SQLSTATE retry behavior, query plans, role privileges, backup/restore, and operational budgets are reviewed.
+- [ ] SQLite, when present, has a separate client-local contract, profile/account isolation, local security/purge policy, and sync/conflict evidence.
 - [ ] Repository tests cover isolation, pagination, conflicts, and idempotency where relevant.
 
 ## 28. Anti-Patterns
@@ -611,19 +728,29 @@ Forbidden or migration-only patterns:
 - Direct pool construction in handlers, services, repositories, or background jobs.
 - Raw SQL string concatenation with user input.
 - Manual production schema edits without reconciliation into migrations and schema registry.
+- SQLite used by a service, server, container, cloud workload, shared gateway module, shared worker, or server-side system of record.
+- Server completion or compatibility claims based only on SQLite tests.
+- One physical DDL/migration tree copied between PostgreSQL and SQLite or converted with regex/type substitution.
+- Avoiding PostgreSQL constraints, types, indexes, RLS, locks, or query features only to keep SQLite parity.
+- SQLite files on shared/network filesystems or concurrently shared as a multi-user server database.
+- Trusting client-local tenant, permission, price, quota, entitlement, ledger, or audit values as server authority.
+- Blind `down.sql` execution for lossy migrations or production rollback without data-preservation evidence.
 
 ## 29. Adoption Route
 
 New systems:
 
-- Define the schema contract before DDL, ORM entities, repositories, and SDKs.
+- Declare `databaseRole` before selecting assets or drivers.
+- Define the PostgreSQL authoritative schema contract before DDL, ORM entities, repositories, and SDKs.
 - Register module prefixes and ownership before creating tables.
 - Wire schema validation, migration tests, repository tests, and API/SDK generation into CI.
+- Add a separate SQLite client-local contract only when a client-local requirement exists.
 
 Existing systems:
 
 - Register L0 compatibility facts in the owning repository.
-- Map legacy names, ids, timestamps, tenant fields, and table prefixes to the standard.
+- Classify every existing database as PostgreSQL `authoritative-server`, SQLite `client-local`, or non-compliant mixed/ambiguous storage before changing DDL.
+- Map legacy names, ids, timestamps, tenant fields, table prefixes, and engine roles to the standard.
 - Classify gaps by risk and prioritize P0 conflict fixes before renames.
 - Migrate through expand/backfill/validate/cutover/contract; do not rename physical tables without a separate plan.
 
@@ -634,6 +761,8 @@ Legacy compatibility exists only to migrate already-launched systems. It is not 
 Rules:
 
 - New applications and new modules `MUST` implement this standard directly.
+- Existing server-side SQLite implementations are L0 migration inputs only. They `MUST` migrate authoritative data and runtime behavior to PostgreSQL or be reclassified and isolated as client-local data with an accepted ADR and sync/ownership contract.
+- Existing mixed PostgreSQL/SQLite service repositories `MUST` split authoritative server assets from client-local assets. Continuing to require feature-equivalent DDL on both engines is not an approved compatibility strategy.
 - Legacy Java/JPA base classes, historical table prefixes, ORM filters, and old migration scripts `MAY` be mapped to this standard only as registered L0 compatibility inputs.
 - An L0 database exception `MUST` record owner, affected tables, compatibility window, risk, target standard name, migration or retirement plan, and validation evidence.
 - Global standard files `MUST NOT` hard-code consumer repository paths, one-off scan counts, physical table inventories, or consumer-specific rename backlogs.
@@ -659,21 +788,25 @@ An L2 multi-tenant business table `MUST` declare stable identity, tenant scope, 
 ```sql
 CREATE TABLE content_document (
     id BIGINT NOT NULL,
-    uuid VARCHAR(64) NOT NULL,
+    uuid UUID NOT NULL,
     tenant_id BIGINT NOT NULL,
     organization_id BIGINT NOT NULL DEFAULT 0,
     user_id BIGINT NOT NULL,
     data_scope INTEGER NOT NULL DEFAULT 1,
-    title VARCHAR(200) NOT NULL,
+    title TEXT NOT NULL,
     status INTEGER NOT NULL,
-    metadata JSON,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
     version BIGINT NOT NULL DEFAULT 0,
-    deleted_at TIMESTAMP,
+    deleted_at TIMESTAMPTZ,
     deleted_by BIGINT,
     PRIMARY KEY (id),
-    CONSTRAINT uk_content_document_uuid UNIQUE (uuid)
+    CONSTRAINT uk_content_document_uuid UNIQUE (uuid),
+    CONSTRAINT ck_content_document_title_length
+        CHECK (char_length(title) BETWEEN 1 AND 200),
+    CONSTRAINT ck_content_document_status
+        CHECK (status IN (0, 1, 2, 3))
 );
 
 CREATE INDEX idx_content_document_tenant_user_status_updated
@@ -696,6 +829,8 @@ Rules:
 - Pool configuration `MUST` be environment/profile driven and must not hard-code credentials, hostnames, pool sizes, or table prefixes in business code.
 - Every production pool `MUST` expose health, readiness, latency, acquire timeout, active/idle connection, and migration/drift status metrics.
 - Tests `MAY` use simplified in-memory or temporary database helpers, but those helpers must stay under test code.
+- Authoritative server integration and release tests `MUST` use PostgreSQL. In-memory SQLite and temporary SQLite helpers are allowed only for a declared `client-local` adapter and do not satisfy server database evidence.
+- Embedded client-local SQLite access `MUST` be owned by one native persistence adapter per local database identity. The adapter `MUST` serialize writes or otherwise prove safe concurrent access; it is not a server process-pool substitute.
 
 ## 33. Database Lifecycle Framework Integration
 
@@ -720,16 +855,32 @@ SDKWORK_<SERVICE>_DATABASE_MAX_LIFETIME
 
 The concrete manifest shape, directory layout, and lifecycle hooks are owned by `DATABASE_FRAMEWORK_SPEC.md`.
 
-### 33.3 SQLite And PostgreSQL Profiles
+### 33.3 PostgreSQL Authoritative Server Profile
 
 Rules:
 
-- SQLite profiles `SHOULD` apply WAL mode, busy timeout, foreign key enforcement, and safe synchronous mode through the approved adapter.
-- SQLite runtime business IDs `MUST` still be generated by the SDKWork ID provider.
-- PostgreSQL profiles `SHOULD` configure `application_name`, SSL mode, statement timeout, acquire timeout, idle timeout, and pool bounds explicitly.
+- PostgreSQL profiles `MUST` configure `application_name`, TLS/SSL mode, connect/acquire timeout, statement timeout, lock timeout, idle-in-transaction timeout, idle timeout, maximum lifetime, minimum/maximum pool bounds, and a fixed safe `search_path` explicitly.
+- Production PostgreSQL `sslmode=disable` is forbidden. `verify-full` is preferred; weaker modes require a documented network and certificate trust model.
+- PostgreSQL versions `MUST` be within upstream or approved managed-provider support. The minimum/maximum supported major versions, required extensions, collation/locale, encoding, timezone, and upgrade path `MUST` be declared and tested.
+- Database ownership and runtime access `MUST` be separated into least-privilege roles where supported: owner/bootstrap, migrator, application runtime, read-only/analytics, and backup/replication. Runtime credentials `MUST` not own schema objects.
+- Connections `MUST` set UTC timezone and a controlled `search_path`; application schemas and extension schemas `MUST` be explicit. Writable untrusted schemas such as a broad `public` path `MUST NOT` precede trusted application schemas.
+- Poolers `MAY` be used only with a declared session/transaction pooling mode and compatibility evidence for prepared statements, session variables, advisory locks, RLS context, listen/notify, temp tables, and migration connections.
 - Every database-owning process follows `DATABASE_SPEC_PROCESS_SHARED_POOL.md`; its IM section owns the migration from dual sqlx/r2d2 pools.
 
-### 33.4 Deployment Profiles
+### 33.4 SQLite Client-Local Profile
+
+Rules:
+
+- SQLite profiles `MUST` declare `databaseRole=client-local` and apply `PRAGMA foreign_keys=ON`, WAL journal mode where the platform supports it safely, a bounded busy timeout, and an explicit synchronous policy through the approved adapter. Durability-critical local-only data should use `synchronous=FULL`; rebuildable caches may use `NORMAL` with a documented loss model.
+- The adapter `SHOULD` configure and verify `journal_size_limit`, `wal_autocheckpoint` or explicit checkpoints, page/cache sizing, and `PRAGMA optimize` from measured workload needs. It `MUST` monitor or recover from unbounded WAL growth.
+- One writer coordinator `SHOULD` own mutations. Transactions `MUST` be short, bounded, and free of remote calls. `SQLITE_BUSY` retry uses bounded backoff and must surface a recoverable error after the budget.
+- SQLite files, WAL, shared-memory files, backups, and temporary copies `MUST` stay in the platform-approved user/app-private directory with restrictive permissions. They `MUST NOT` be placed beside the executable, in source trees, browser-public storage, shared/network storage, or server data directories.
+- Sensitive local data `MUST` declare encryption-at-rest, key storage, lock-screen/background behavior, backup inclusion, export, logout/account-switch purge, uninstall behavior, and incident response. Access/refresh tokens, private keys, and raw credentials belong in OS secure storage or an approved secret store, not ordinary SQLite columns.
+- Local databases `MUST` be isolated by lifecycle environment, deployment profile, API origin, tenant/account, and application profile. Switching any identity boundary `MUST NOT` reuse rows, WAL files, offline queues, or encryption keys implicitly.
+- SQLite integrity recovery `MUST` define startup checks, migration backup or atomic replacement, corruption handling, disk-full behavior, schema-version compatibility, and a rebuild path for projections/caches.
+- Client-local runtime business IDs `MUST` still use the approved SDKWork ID provider or a declared temporary local identifier with deterministic server-id mapping. SQLite rowid allocation is not SDKWork business identity.
+
+### 33.5 Deployment Profiles
 
 Rules:
 
@@ -737,7 +888,9 @@ Rules:
 - `cloud` profile: database configuration comes from managed deployment configuration and must expose lifecycle/drift health.
 - Embedded modules in the same OS process `MUST` share the approved process-level pool for the same normalized database identity and `MUST NOT` open independent pools against the same DSN/schema/driver.
 - External upstream services and worker processes own their lifecycle bootstrap and must not assume local process sharing.
-- `test` profile: temporary or in-memory databases may be used only through test helpers or approved lifecycle adapters.
+- `standalone` server/container, cloud server/container, worker, CLI host, and desktop-started backend service profiles `MUST` use PostgreSQL.
+- `test` server profile `MUST` use an isolated PostgreSQL database or schema for contract/integration evidence. SQLite test databases are allowed only for client-local contracts.
+- Desktop/tablet/mobile client profiles `MAY` use SQLite only for their client-local database role; selecting a desktop runtime target does not authorize a colocated backend service to use SQLite.
 
 ## 34. Repository Standard
 
@@ -753,6 +906,8 @@ Rules:
 - Entity/record structs `MUST` remain persistence data shapes; business workflows, authorization decisions, and API response assembly belong in service or handler layers.
 - Raw SQL is allowed only when the query shape, indexes, pagination, tenant predicates, parameters, and result mapping remain explicit and reviewed.
 - Repository code `MUST` use parameter binding and must not concatenate user input into SQL.
+- PostgreSQL repositories `MUST` classify expected SQLSTATE outcomes such as unique violation, foreign-key violation, check violation, serialization failure, deadlock, lock timeout, statement timeout, and connection failure into stable domain/framework errors. Matching localized database message text is forbidden.
+- Queries `SHOULD` select explicit columns. `SELECT *` is forbidden in stable production mappings, migrations/backfills, public projections, and CDC contracts where column addition or order can change behavior.
 
 Repository tests `SHOULD` cover tenant and ownership isolation, sorting, pagination boundaries, optimistic concurrency conflicts, idempotency behavior, and L0 registered table compatibility.
 
@@ -765,6 +920,8 @@ Rules:
 - Every database-owning service `SHOULD` expose database health and readiness signals through the standard application health surface.
 - Readiness `MUST` fail when required migrations are missing, the pool cannot acquire a connection within the configured timeout, or the schema drift state blocks writes.
 - Health signals `SHOULD` include latency, acquire timeout, pool size, active connections, idle connections, migration version, and drift status.
+- PostgreSQL health and operations `SHOULD` include server version, recovery/primary role, replica lag when used, transaction-id age, long transactions, blocked/locking sessions, deadlocks, statement/lock timeouts, temporary-file spill, WAL/replication pressure, autovacuum/analyze freshness, and backup/restore evidence without exposing SQL text or secrets.
+- `pg_stat_statements` or an approved managed equivalent `SHOULD` support normalized query performance analysis. Raw SQL, bind values, tenant ids, tokens, secrets, and sensitive payloads `MUST NOT` become unbounded metric labels or logs.
 - Schema changes `MUST` use managed migrations or an approved lifecycle framework; ad hoc manual SQL is allowed only as a documented incident action with post-incident reconciliation.
 - Application roots with relational databases `MUST` provide the standard `database/` asset structure required by `DATABASE_FRAMEWORK_SPEC.md`.
 - Lifecycle orchestration `MUST` use `sdkwork-database` or an approved compatible adapter; applications must not maintain a competing lifecycle engine.
@@ -772,7 +929,7 @@ Rules:
 
 ## 36. Summary
 
-This standard is about portable data semantics, not a single programming language, ORM, or database product.
+This standard keeps logical data semantics portable while making the physical implementation boundary unambiguous: PostgreSQL is the authoritative server database, and SQLite is a client-local embedded database.
 
 A compliant SDKWork database design keeps these contracts stable:
 
@@ -782,4 +939,6 @@ A compliant SDKWork database design keeps these contracts stable:
 - `status`, `deleted_at`, `archived_at`, and `retention_until` define lifecycle state.
 - `idempotency_key`, `external_event_id`, and `payload_hash` define retry and event consistency.
 - Query contracts, indexes, and pagination prevent unbounded runtime scans.
+- PostgreSQL-native constraints, transactions, plans, roles, migrations, backup/restore, and observability protect authoritative data.
+- SQLite profile isolation, local security, short transactions, corruption recovery, and explicit sync contracts protect client-local data without pretending it is server authority.
 - Structure evolution, schema registry, drift checks, and review evidence keep the standard enforceable over time.

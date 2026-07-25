@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "kind": "sdkwork.database.module",
+  "databaseRole": "client-local",
+  "moduleId": "<module-id>-client-local",
+  "serviceCode": "<SERVICE>_CLIENT_LOCAL",
+  "displayName": "<Display Name> Client-Local Database",
+  "owner": "<client-owner-team>",
+  "engines": ["sqlite"],
+  "defaultEngine": "sqlite",
+  "contractVersion": "0.1.0",
+  "baselineStrategy": "migrations-only",
+  "clientLocal": {
+    "mode": "cache",
+    "scope": "environment-profile-origin-account",
+    "authoritativeSource": "<application-api-authority>",
+    "syncContract": null
+  },
+  "lifecycle": {
+    "autoMigrate": true,
+    "seedOnBoot": false
+  },
+  "paths": {
+    "contract": "contract/schema.yaml",
+    "migrations": "migrations",
+    "localDataPolicy": "local-data-policy.yaml"
+  }
+}
