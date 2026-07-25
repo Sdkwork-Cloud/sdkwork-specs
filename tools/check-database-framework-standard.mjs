@@ -251,6 +251,22 @@ function listMigrationUpSqlFiles(moduleRootDir, engine) {
   return fs.readdirSync(migrationDir).filter((entry) => entry.endsWith('.up.sql')).sort();
 }
 
+function validateBaselineSourceEngines(moduleRootDir, engine, baselineFiles, fail) {
+  const foreignEngine = engine === 'postgres' ? 'sqlite' : 'postgres';
+  const foreignSource = new RegExp(
+    `^--\\s*(?:baseline source|folded migration|source):\\s+.*(?:^|[/\\\\])${foreignEngine}(?:[/\\\\]|$)`,
+    'imu',
+  );
+  for (const fileName of baselineFiles) {
+    const sql = fs.readFileSync(path.join(moduleRootDir, 'ddl/baseline', engine, fileName), 'utf8');
+    if (foreignSource.test(sql)) {
+      fail(
+        `ddl/baseline/${engine}/${fileName} must not contain ${foreignEngine} source provenance or DDL`,
+      );
+    }
+  }
+}
+
 export function validateDatabaseModuleContract(moduleRootDir) {
   const failures = [];
 
@@ -300,10 +316,12 @@ export function validateDatabaseModuleContract(moduleRootDir) {
 
   let schemaContractVersion = null;
   let schemaDatabaseRole = null;
+  let schemaTablePrefix = null;
   let schemaEngines = [];
   try {
     schemaContractVersion = readTopLevelYamlScalarAt(moduleRootDir, 'contract/schema.yaml', 'contract_version');
     schemaDatabaseRole = readTopLevelYamlScalarAt(moduleRootDir, 'contract/schema.yaml', 'database_role');
+    schemaTablePrefix = readTopLevelYamlScalarAt(moduleRootDir, 'contract/schema.yaml', 'table_prefix');
     schemaEngines = readSimpleYamlAt(moduleRootDir, 'contract/schema.yaml').sequences.get('engines') ?? [];
     if (!isValidSemver(schemaContractVersion)) {
       fail(
@@ -317,6 +335,11 @@ export function validateDatabaseModuleContract(moduleRootDir) {
     }
     if (expectedEngine && !isExactArray(schemaEngines, [expectedEngine])) {
       fail(`contract/schema.yaml engines must be exactly ["${expectedEngine}"] for ${databaseRole}`);
+    }
+    if (!isNonEmptyString(schemaTablePrefix) || schemaTablePrefix !== manifest.tablePrefix) {
+      fail(
+        `contract/schema.yaml table_prefix must match database.manifest.json tablePrefix (manifest=${manifest.tablePrefix ?? 'missing'}, schema=${schemaTablePrefix ?? 'missing'})`,
+      );
     }
   } catch (error) {
     fail(`contract/schema.yaml must be readable (${error.message})`);
@@ -351,6 +374,7 @@ export function validateDatabaseModuleContract(moduleRootDir) {
     if (baselineStrategy !== 'migrations-only' && baselineFiles.length === 0) {
       fail(`ddl/baseline/${expectedEngine} must contain at least one .sql baseline file`);
     }
+    validateBaselineSourceEngines(moduleRootDir, expectedEngine, baselineFiles, fail);
   }
 
   if (databaseRole === AUTHORITATIVE_ROLE) {
@@ -364,6 +388,8 @@ export function validateDatabaseModuleContract(moduleRootDir) {
       const prefixRegistry = readJsonAt(moduleRootDir, 'contract/prefix-registry.json');
       if (!Array.isArray(prefixRegistry.prefixes) || prefixRegistry.prefixes.length === 0) {
         fail('contract/prefix-registry.json prefixes must be non-empty for L2 modules');
+      } else if (!prefixRegistry.prefixes.some((entry) => entry?.prefix === manifest.tablePrefix)) {
+        fail('contract/prefix-registry.json must declare database.manifest.json tablePrefix');
       }
     } catch (error) {
       fail(`contract/prefix-registry.json must be valid JSON (${error.message})`);
@@ -373,6 +399,13 @@ export function validateDatabaseModuleContract(moduleRootDir) {
       const tableRegistry = readJsonAt(moduleRootDir, 'contract/table-registry.json');
       if (!Array.isArray(tableRegistry.tables) || tableRegistry.tables.length === 0) {
         fail('contract/table-registry.json tables must be non-empty for L2 modules');
+      } else if (
+        isNonEmptyString(manifest.tablePrefix)
+        && tableRegistry.tables.some(
+          (entry) => !isNonEmptyString(entry?.table_name) || !entry.table_name.startsWith(manifest.tablePrefix),
+        )
+      ) {
+        fail('contract/table-registry.json table names must use database.manifest.json tablePrefix');
       }
     } catch (error) {
       fail(`contract/table-registry.json must be valid JSON (${error.message})`);

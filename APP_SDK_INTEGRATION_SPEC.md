@@ -166,6 +166,12 @@ Rules:
   multi-host deployments, and tenant-specific routing. Application launchers
   must not materialize per-module foundation upstream defaults beside the
   platform surface origin; those variables are explicit upstream overrides.
+- Browser development may expose one same-origin API edge to generated SDK
+  clients only when client-visible request paths remain canonical API paths and
+  proxy routing to `application.public-ingress`, `platform.api-gateway`, or
+  explicit dependency upstreams happens behind that API edge. SDK base URLs,
+  public runtime config, examples, and HAR-visible requests must not contain
+  proxy selector prefixes such as `/__sdkwork/platform`.
 - Application-owned APIs remain independent SDKWork API systems. They keep
   their own API authority, SDK family, generated SDKs, component specs, and
   owner-only SDK generation. When an application-owned API becomes reusable,
@@ -364,6 +370,11 @@ Rules:
 - Application roots that do not mount the dependency executable router `MUST` configure dependency
   SDK clients with either the declared platform API surface or explicit dependency
   base URLs, and fail fast when neither is available.
+- Browser renderer dependency SDK clients `MUST` be configured with an API edge
+  base URL that preserves canonical path construction. They `MUST NOT` be
+  configured with a base URL whose path segment exists only to choose an
+  upstream, such as `/__sdkwork/platform`, `/proxy/platform`, or
+  `/gateway/platform`.
 - `backend-admin` appbase IAM management uses the appbase backend SDK and backend dependency base URL;
   it may use the platform API surface only when that surface explicitly serves appbase backend IAM.
   It must not fall back to an application backend route prefix unless appbase backend IAM executable

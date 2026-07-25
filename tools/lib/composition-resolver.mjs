@@ -89,6 +89,27 @@ function loadSdkFamilyManifest(repoRoot, workspace) {
   return loadSdkFamilyManifestForWorkspaceConsumer(repoRoot, workspace);
 }
 
+function isCanonicalApiEdgeRoot(value) {
+  const normalized = String(value ?? '').trim().replace(/\/+$/u, '') || '/';
+  if (normalized === '/') return true;
+  try {
+    const parsed = new URL(normalized);
+    const pathname = parsed.pathname.replace(/\/+$/u, '') || '/';
+    return pathname === '/';
+  } catch {
+    return false;
+  }
+}
+
+function isBrowserSameOriginApiEdgeAllowed(value, {
+  allowBrowserSameOriginApiEdge = false,
+  canonicalRoutePrecedenceVerified = false,
+} = {}) {
+  return allowBrowserSameOriginApiEdge
+    && canonicalRoutePrecedenceVerified
+    && isCanonicalApiEdgeRoot(value);
+}
+
 function loadConsumerSdkOwner(repoRoot) {
   const appManifest = readJsonIfExists(path.join(repoRoot, 'sdkwork.app.config.json'));
   if (appManifest?.app?.key) return appManifest.app.key;
@@ -562,6 +583,8 @@ export function resolveComposition(repoRoot, options = {}) {
 export function validateCompositionResolution(resolution, {
   observedEnv = {},
   applicationAppApiBaseUrl,
+  allowBrowserSameOriginApiEdge = false,
+  canonicalRoutePrecedenceVerified = false,
 } = {}) {
   const issues = [];
 
@@ -570,13 +593,23 @@ export function validateCompositionResolution(resolution, {
     const observed = observedEnv[integration.envKey];
     if (!observed) continue;
     if (applicationAppApiBaseUrl && observed === applicationAppApiBaseUrl) {
-      issues.push(
-        `${integration.envKey} must not fall back to application same-origin base URL (${applicationAppApiBaseUrl}); use the declared platform API surface for ${integration.workspace}`,
-      );
+      if (!isBrowserSameOriginApiEdgeAllowed(observed, {
+        allowBrowserSameOriginApiEdge,
+        canonicalRoutePrecedenceVerified,
+      })) {
+        issues.push(
+          `${integration.envKey} must not fall back to application same-origin base URL (${applicationAppApiBaseUrl}); use the declared platform API surface or a verified browser same-origin API edge for ${integration.workspace}`,
+        );
+      }
     }
     if (observed === '/app/v3/api' && integration.connectivityPlane === 'platform') {
       issues.push(
-        `${integration.envKey} must not use application relative same-origin path for platform dependency ${integration.workspace}`,
+        `${integration.envKey} must not use application app-api surface path for platform dependency ${integration.workspace}; use an API edge root with canonical route precedence or the declared platform API surface`,
+      );
+    }
+    if (/^\/(?:__sdkwork|proxy|gateway|platform)(?:\/|$)/u.test(String(observed))) {
+      issues.push(
+        `${integration.envKey} must not expose proxy or gateway selector path ${observed}; client-visible SDK base URLs must preserve canonical API paths for ${integration.workspace}`,
       );
     }
   }

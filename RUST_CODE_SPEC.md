@@ -14,6 +14,9 @@ Rules:
 - `src/lib.rs` `MUST NOT` contain handlers, repositories, SQL queries, provider clients, long business services, large DTO definitions, test fixtures, or generated data tables.
 - If `lib.rs` contains multiple unrelated responsibilities (e.g., business logic AND database access), split it before adding more behavior.
 - `src/main.rs` or `bin/*` owns process startup only. Runtime business logic belongs in library modules.
+- A final process host that composes TLS-capable Rust dependencies `MUST` explicitly install one process-level Rustls `CryptoProvider` before constructing HTTP clients, routers, services, or listeners. It `MUST NOT` rely on Rustls automatic provider selection because aggregated dependency features may enable both `ring` and `aws-lc-rs`; provider policy belongs to the final process host, not to route, service, repository, or generated SDK crates.
+- Process-startup tests for a TLS-capable gateway, worker, or server `MUST` execute or directly verify provider installation before runtime composition so feature unification cannot defer a missing-provider panic to deployment startup.
+- A platform process that composes many framework routers or manifests `MUST` verify startup with its complete production feature set on every supported operating-system family. When bounded composition depth exceeds an operating system's default main-thread stack, the final process host `MAY` establish an explicit documented runtime-thread stack budget; it `MUST NOT` remove modules, skip route construction, or weaken runtime parity to avoid the failure.
 
 **Cohesion guidance for Rust files:**
 

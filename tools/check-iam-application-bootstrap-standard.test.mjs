@@ -37,13 +37,24 @@ test('accepts the shared embedded Rust bootstrap framework for manifest-owning r
   });
 });
 
-test('rejects an application manifest without either shared bootstrap framework', async () => {
+test('accepts the IAM assembly when it owns the embedded bootstrap lifecycle', async () => {
+  await withFixture({
+    'sdkwork.app.config.json': APP_MANIFEST,
+    'Cargo.toml': `[workspace.dependencies]\nsdkwork-api-iam-assembly = { path = "../sdkwork-iam/crates/sdkwork-api-iam-assembly" }\n`,
+  }, async (root) => {
+    const result = validateIamApplicationBootstrapStandard(root);
+    assert.equal(result.ok, true, result.failures.join('\n'));
+    assert.equal(result.summary.hasIamAssembly, true);
+  });
+});
+
+test('rejects an application manifest without a shared bootstrap owner', async () => {
   await withFixture({
     'sdkwork.app.config.json': APP_MANIFEST,
     'Cargo.toml': '[workspace]\nmembers = []\n',
   }, async (root) => {
     const result = validateIamApplicationBootstrapStandard(root);
     assert.equal(result.ok, false);
-    assert.match(result.failures.join('\n'), /depends on neither/);
+    assert.match(result.failures.join('\n'), /depends on none of/);
   });
 });

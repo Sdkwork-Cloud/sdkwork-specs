@@ -38,6 +38,7 @@ function scaffoldValidDatabaseRoot(rootDir, contractVersion = '5.0.0') {
       contractVersion,
       engines: ['postgres'],
       defaultEngine: 'postgres',
+      tablePrefix: 'demo_',
       baselineStrategy: 'baseline-plus-migrations',
       lifecycle: { activeSeedLocales: ['zh-CN'], autoMigrate: true },
     },
@@ -45,7 +46,7 @@ function scaffoldValidDatabaseRoot(rootDir, contractVersion = '5.0.0') {
   );
   writeText(
     'database/contract/schema.yaml',
-    `schema_version: 1\nkind: sdkwork.database.schema\ndatabase_role: authoritative-server\nmodule_id: demo\ncontract_version: ${contractVersion}\nengines:\n  - postgres\ntables: []\n`,
+    `schema_version: 1\nkind: sdkwork.database.schema\ndatabase_role: authoritative-server\nmodule_id: demo\ncontract_version: ${contractVersion}\nengines:\n  - postgres\ntable_prefix: demo_\ntables: []\n`,
     rootDir,
   );
   writeJson('database/contract/prefix-registry.json', {
@@ -113,6 +114,58 @@ const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'))
 scaffoldValidDatabaseRoot(tempRoot);
 const valid = validateDatabaseFramework(tempRoot);
 assert.equal(valid.ok, true, 'valid scaffold should pass');
+
+const mismatchedPrefixRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(mismatchedPrefixRoot);
+const mismatchedPrefixManifestPath = path.join(
+  mismatchedPrefixRoot,
+  'database/database.manifest.json',
+);
+const mismatchedPrefixManifest = JSON.parse(
+  fs.readFileSync(mismatchedPrefixManifestPath, 'utf8'),
+);
+mismatchedPrefixManifest.tablePrefix = 'foreign_';
+fs.writeFileSync(
+  mismatchedPrefixManifestPath,
+  `${JSON.stringify(mismatchedPrefixManifest, null, 2)}\n`,
+  'utf8',
+);
+const mismatchedPrefix = validateDatabaseModuleContract(
+  path.join(mismatchedPrefixRoot, 'database'),
+);
+assert.equal(mismatchedPrefix.ok, false, 'database prefix ownership must be consistent');
+assert.ok(
+  mismatchedPrefix.failures.some((item) => item.includes('table_prefix must match')),
+  'failure should identify schema and manifest prefix mismatch',
+);
+assert.ok(
+  mismatchedPrefix.failures.some((item) => item.includes('prefix-registry.json must declare')),
+  'failure should identify missing prefix ownership declaration',
+);
+assert.ok(
+  mismatchedPrefix.failures.some((item) => item.includes('table names must use')),
+  'failure should identify tables outside the owned prefix',
+);
+
+const mixedDialectBaselineRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(mixedDialectBaselineRoot);
+const mixedDialectBaselinePath = path.join(
+  mixedDialectBaselineRoot,
+  'database/ddl/baseline/postgres/0001_demo_baseline.sql',
+);
+fs.appendFileSync(
+  mixedDialectBaselinePath,
+  "\n-- source: crates/demo/migrations/sqlite/0002_add_status.sql\nALTER TABLE demo_probe ADD COLUMN status TEXT;\n",
+  'utf8',
+);
+const mixedDialectBaseline = validateDatabaseModuleContract(
+  path.join(mixedDialectBaselineRoot, 'database'),
+);
+assert.equal(mixedDialectBaseline.ok, false, 'PostgreSQL baseline must reject SQLite sources');
+assert.ok(
+  mixedDialectBaseline.failures.some((item) => item.includes('must not contain sqlite source')),
+  'failure should identify cross-engine baseline provenance',
+);
 
 const bomPackageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
 scaffoldValidDatabaseRoot(bomPackageRoot);
@@ -444,6 +497,7 @@ function scaffoldValidClientLocalRoot(rootDir, mode = 'cache') {
       contractVersion: '1.2.0',
       engines: ['sqlite'],
       defaultEngine: 'sqlite',
+      tablePrefix: 'demo_cache_',
       baselineStrategy: 'baseline-plus-migrations',
       clientLocal: {
         mode,
@@ -457,7 +511,7 @@ function scaffoldValidClientLocalRoot(rootDir, mode = 'cache') {
   );
   writeText(
     'database/contract/schema.yaml',
-    'schema_version: 1\nkind: sdkwork.database.schema\ndatabase_role: client-local\nmodule_id: demo-client-local\ncontract_version: 1.2.0\nengines:\n  - sqlite\ntables: []\n',
+    'schema_version: 1\nkind: sdkwork.database.schema\ndatabase_role: client-local\nmodule_id: demo-client-local\ncontract_version: 1.2.0\nengines:\n  - sqlite\ntable_prefix: demo_cache_\ntables: []\n',
     rootDir,
   );
   writeText(

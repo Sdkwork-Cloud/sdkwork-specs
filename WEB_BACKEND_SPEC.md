@@ -250,6 +250,8 @@ Rules:
 - Migration-only API server process crates construct DB pools, repositories, services, adapters, and route crates only until default public ingress moves to `sdkwork-api-<application-code>-standalone-gateway`. They `MUST NOT` own business rules, SQL query bodies, or OpenAPI authority.
 - Rust errors should map through a shared problem-detail conversion boundary. Handlers must not leak `Debug` output from database, provider, or framework errors.
 - Route crates `SHOULD` expose only package-root modules needed for router composition and manifest extraction. Generated SDK consumers and UI packages must not import them.
+- Route adapters `MUST` preserve the exact authority OpenAPI URI. When a framework cannot register a mixed parameter/custom-method segment such as `{entryId}:publish`, the adapter `MUST` capture the complete segment, validate the identifier and action against an explicit closed dispatch table, and invoke the matching typed handler. It `MUST NOT` change the external URI, broaden accepted actions, or leak the private capture template into route manifests or generated SDKs.
+- A whole-segment command dispatcher `MUST` reject unknown actions and malformed identifiers through the standard problem-detail boundary. It `MUST NOT` use prefix matching, substring matching, or an open-ended fallback handler.
 - Local/private Rust implementations of appbase-owned behavior `MUST` reuse appbase Rust runtime
   crates. They must not fork appbase IAM/session/context behavior into application route crates.
 - Rust crates `MUST NOT` use generic `product`, `runtime`, `backend`, `core`, `common`, or
@@ -452,6 +454,7 @@ Every web backend change should verify the relevant subset:
 - Authority OpenAPI materializes deterministically and contains only owner operations before SDK generation.
 - Generated SDKs compile and expose the expected resource-style methods.
 - Handler/controller tests cover request decoding, typed context consumption, problem-detail mapping, and forbidden raw header parsing.
+- Route-crate tests construct every exported router or gateway mount so invalid framework route templates fail during tests rather than process startup. Route adapters for authority paths containing custom method suffixes also test every declared action, malformed identifiers, unknown actions, and exact external URI reachability.
 - Service tests cover business rules, authorization decisions, tenant/data-scope behavior, idempotency, and transaction behavior without starting an HTTP server.
 - Repository tests cover tenant predicates, indexes/query shape where relevant, optimistic concurrency, and migration compatibility.
 - Security tests cover missing/invalid credentials, insufficient permission, wrong tenant, and absence of app login token fallback for protected open-api across `api-key`, `oauth`, and `open-api-flexible` modes.

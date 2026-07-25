@@ -492,8 +492,9 @@ IAM application bootstrap tests make `IAM_APPLICATION_BOOTSTRAP_SPEC.md` executa
 
 Rules:
 
-- Application repositories that declare `sdkwork.app.config.json` or own `scripts/bootstrap/*` `MUST` depend on `@sdkwork/iam-application-bootstrap`.
+- Application repositories that declare `sdkwork.app.config.json` or own `scripts/bootstrap/*` `MUST` depend on `@sdkwork/iam-application-bootstrap`, `sdkwork-iam-embedded-application-bootstrap`, or the IAM-owned `sdkwork-api-iam-assembly` entrypoint that encapsulates the shared embedded bootstrap lifecycle.
 - Bootstrap scripts `MUST NOT` embed raw bootstrap HTTP paths.
+- Multi-surface bootstrap tests `MUST` cover PC, H5, Flutter, native Android, native iOS, native HarmonyOS, and mini-program-shaped manifest roots. They must prove discovery is architecture-independent, `backend.appId` is preserved exactly, template identities are distinct, repeated mapping is idempotent, and architecture metadata cannot produce inferred ids such as duplicated or cross-platform suffixes.
 - Application repositories with IAM bootstrap `MUST` expose `admin:bootstrap:app` and `check:iam-application-bootstrap` (or `test:contract:iam-application-bootstrap`).
 - Application repositories may call the canonical validator with:
 

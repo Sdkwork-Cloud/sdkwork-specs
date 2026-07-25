@@ -22,6 +22,9 @@ Forbidden:
 - Consumer-side copies of dependency permission code tables.
 - Consumer-side parallel `dependency-api-surfaces.json` as a hand-maintained second source of truth outside an approved migration exception.
 - Silent fallback from platform dependency SDK base URLs to application same-origin URLs.
+- Client-visible proxy or gateway selector prefixes such as
+  `/__sdkwork/platform`, `/proxy`, `/gateway`, or `/platform` in generated SDK
+  base URLs, public runtime config, HAR-visible API paths, docs, or examples.
 - Treating assembly crate linkage as permission configuration.
 
 ## 2. Three-Layer Contract Model
@@ -101,13 +104,24 @@ Rules:
 
 - Application-owned SDK base URLs come from `application.public-ingress`.
 - Platform dependency SDK base URLs come from `platform.api-gateway`.
-- In browser dev, application-owned SDKs may use same-origin relative prefixes when Vite proxies to application ingress.
-- Platform dependency SDKs must use absolute platform surface origins when `runtimeMode=external-via-platform-surface`, even in `standalone` profiles.
+- In browser dev, application-owned SDKs may use the same-origin API edge root
+  when Vite proxies canonical API paths to application ingress.
+- In browser dev, platform dependency SDKs may use the same browser origin only
+  when the dev proxy preserves canonical API paths and internally routes the
+  dependency's specific `/app/v3/api/...`, `/backend/v3/api/...`, or open-api
+  namespace to the declared `platform.api-gateway` or explicit dependency
+  upstream. This is same-origin API-edge routing, not same-origin embedding.
+- Outside browser-dev same-origin API-edge routing, platform dependency SDKs
+  must use absolute platform surface origins when
+  `runtimeMode=external-via-platform-surface`, including `standalone` profiles.
 - `composition.overrides.integrations.<sdkWorkspace>.baseUrl` is the only consumer JSON override for dependency SDK base URLs.
 
 Forbidden:
 
 - Setting `VITE_SDKWORK_APPBASE_*` from application same-origin fallbacks when IAM is `external-via-platform-surface`.
+- Setting any dependency SDK public base URL to a synthetic proxy path such as
+  `/__sdkwork/platform`; the browser-visible request URI must remain the
+  canonical API URI from `API_SPEC.md`.
 - Using retired `PORTAL_PUBLIC_SDK_BASE_URL` as the only platform root key in new work.
 
 ## 4. Consumer `composition.overrides`

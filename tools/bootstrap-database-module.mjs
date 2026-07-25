@@ -39,6 +39,18 @@ function assertAuthoritativeServerConfig(moduleConfig) {
       `${moduleConfig.repo}: bootstrap-database-module creates authoritative-server PostgreSQL roots only; classify SQLite under an owning client/native module and use templates/database-client-local`,
     );
   }
+  assertPostgresLegacySqlGlobs(moduleConfig);
+}
+
+function assertPostgresLegacySqlGlobs(moduleConfig) {
+  for (const pattern of moduleConfig.legacySqlGlobs ?? []) {
+    const segments = pattern.replace(/\\/g, '/').toLowerCase().split('/');
+    if (segments.includes('sqlite')) {
+      throw new Error(
+        `${moduleConfig.repo}: authoritative-server legacySqlGlobs must not import SQLite sources into the PostgreSQL baseline (${pattern})`,
+      );
+    }
+  }
 }
 
 function parseArgs(argv) {
@@ -155,6 +167,7 @@ function globFiles(repoRoot, pattern) {
 }
 
 function materializeLegacyBaseline(repoRoot, moduleConfig, databaseDir) {
+  assertPostgresLegacySqlGlobs(moduleConfig);
   const globs = moduleConfig.legacySqlGlobs ?? [];
   if (globs.length === 0) {
     return [];
@@ -396,7 +409,14 @@ function main() {
   process.exit(failed ? 1 : 0);
 }
 
-export { bootstrapRepo, readRegistry, materializeLegacyBaseline, markLegacyAssetDeprecation, writeDatabaseReadme };
+export {
+  assertPostgresLegacySqlGlobs,
+  bootstrapRepo,
+  readRegistry,
+  materializeLegacyBaseline,
+  markLegacyAssetDeprecation,
+  writeDatabaseReadme,
+};
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main();

@@ -44,6 +44,24 @@ test('accepts a canonical credential-entry Vite consumer', () => {
   }
 });
 
+test('accepts canonical Vite integration through a local composition helper', () => {
+  const root = createFixture({ installPlugin: false });
+  const appRoot = path.join(root, 'apps', 'sdkwork-demo-pc');
+  try {
+    fs.writeFileSync(
+      path.join(appRoot, 'credential-entry-plugins.mjs'),
+      "import { createSdkworkCredentialEntryBootstrapVitePlugin } from '@sdkwork/iam-credential-entry/vite';\nexport function createCredentialEntryPlugins() { return [createSdkworkCredentialEntryBootstrapVitePlugin()]; }\n",
+    );
+    fs.writeFileSync(
+      path.join(appRoot, 'vite.config.ts'),
+      "import { createCredentialEntryPlugins } from './credential-entry-plugins.mjs';\nexport default { plugins: createCredentialEntryPlugins() };\n",
+    );
+    assert.deepEqual(validateCredentialEntryRepository(root), []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('reports missing canonical Vite integration', () => {
   const root = createFixture({ installPlugin: false });
   try {

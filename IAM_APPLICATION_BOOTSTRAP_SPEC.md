@@ -147,6 +147,9 @@ Rules:
 - `backend.accessTokenPermissionScope` `MUST` be a non-empty string array for every new app.
 - Bootstrap `MUST` fail closed when default access permissions are missing.
 - Manifest content `MUST NOT` contain secrets, live tokens, or bootstrap passwords.
+- Every runnable manifest-bearing application root, including PC, H5/Capacitor, Flutter, native Android, native iOS, native HarmonyOS, mini program, and future client roots, `MUST` declare a non-empty `backend.appId` when it uses credential-entry.
+- `backend.appId` is the sole manifest-derived IAM runtime application identity. Bootstrap and token generation `MUST NOT` infer or append identity segments from `app.key`, `runtime.family`, `runtime.framework`, package platform, runtime target, or client architecture metadata.
+- A multi-surface repository `MUST` discover the repository manifest and each direct manifest-bearing `apps/*` root without hardcoded architecture suffix lists. Each credential-entry surface `MUST` use a unique `backend.appId`, and repeated bootstrap runs `MUST` reconcile the same template and tenant-application rows.
 
 ### 4.1 Bootstrap Owner, Default Permissions, And Production Guards
 
@@ -187,6 +190,12 @@ When IAM runs inside an application process or installer (standalone gateway, da
 ```text
 sdkwork-iam/crates/sdkwork-iam-embedded-application-bootstrap
 ```
+
+An application gateway that mounts `sdkwork-api-iam-assembly` through
+`assemble_app_api_contribution()` satisfies this dependency requirement when the IAM assembly
+owns database bootstrap and delegates tenant-application provisioning to the shared embedded
+bootstrap implementation before returning its routes. The consuming gateway must not add an
+unused direct embedded-bootstrap dependency or duplicate that lifecycle locally.
 
 Rules:
 

@@ -7,6 +7,7 @@ import { IAM_PACKAGE_PATHS } from './iam-workspace-paths.mjs';
 
 const FRAMEWORK_PACKAGE = '@sdkwork/iam-application-bootstrap';
 const EMBEDDED_RUST_FRAMEWORK_PACKAGE = 'sdkwork-iam-embedded-application-bootstrap';
+const IAM_ASSEMBLY_PACKAGE = 'sdkwork-api-iam-assembly';
 const FRAMEWORK_PACKAGE_PATHS = [
   IAM_PACKAGE_PATHS[FRAMEWORK_PACKAGE],
   'apps/sdkwork-iam-common/packages/sdkwork-iam-application-bootstrap',
@@ -96,6 +97,19 @@ function hasEmbeddedRustFrameworkDependency(rootDir) {
   return cargoManifests.some((manifestPath) => dependencyPattern.test(readText(manifestPath)));
 }
 
+function hasIamAssemblyDependency(rootDir) {
+  const cargoManifests = listFiles(
+    rootDir,
+    (filePath) => path.basename(filePath) === 'Cargo.toml',
+    5,
+  );
+  const dependencyPattern = new RegExp(
+    `^\\s*(?:${IAM_ASSEMBLY_PACKAGE}|sdkwork_api_iam_assembly)\\s*(?:=|\\.)`,
+    'mu',
+  );
+  return cargoManifests.some((manifestPath) => dependencyPattern.test(readText(manifestPath)));
+}
+
 function validateManifestPermissions(manifestPath, failures) {
   let manifest;
   try {
@@ -141,6 +155,7 @@ export function validateIamApplicationBootstrapStandard(rootDir) {
     fs.existsSync(path.join(rootDir, relativePath)),
   );
   const hasEmbeddedRustFramework = hasEmbeddedRustFrameworkDependency(rootDir);
+  const hasIamAssembly = hasIamAssemblyDependency(rootDir);
   const frameworkPackagePath = FRAMEWORK_PACKAGE_PATHS.find((relativePath) =>
     fs.existsSync(path.join(rootDir, relativePath)),
   );
@@ -171,9 +186,10 @@ export function validateIamApplicationBootstrapStandard(rootDir) {
     && !hasFrameworkDependency(packageJson)
     && !hasFrameworkPackageDir
     && !hasEmbeddedRustFramework
+    && !hasIamAssembly
   ) {
     failures.push(
-      `repository declares app bootstrap surfaces but depends on neither ${FRAMEWORK_PACKAGE} nor ${EMBEDDED_RUST_FRAMEWORK_PACKAGE}; add the matching shared framework package or remove local bootstrap duplication`,
+      `repository declares app bootstrap surfaces but depends on none of ${FRAMEWORK_PACKAGE}, ${EMBEDDED_RUST_FRAMEWORK_PACKAGE}, or ${IAM_ASSEMBLY_PACKAGE}; add the matching shared bootstrap owner or remove local bootstrap duplication`,
     );
   }
 
@@ -185,6 +201,7 @@ export function validateIamApplicationBootstrapStandard(rootDir) {
       bootstrapScripts: bootstrapScripts.length,
       hasFrameworkPackageDir,
       hasEmbeddedRustFramework,
+      hasIamAssembly,
     },
   };
 }

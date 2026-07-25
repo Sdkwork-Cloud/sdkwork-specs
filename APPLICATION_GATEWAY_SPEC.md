@@ -72,6 +72,30 @@ gateway implementation. `integration.foundationApiGateway` is retired; its
 facts belong to topology surfaces, `sdkDependencies`, and
 `dependencyApiSurfaces`.
 
+### 2.2 Gateway Transparency And Canonical Paths
+
+Gateways and development proxies are transport infrastructure. They select an
+upstream, apply process infrastructure, and enforce route precedence; they do
+not change SDKWork API identity.
+
+Rules:
+
+- Gateway hosts, reverse proxies, browser dev servers, and platform API edges
+  `MUST` preserve the client-visible canonical API paths defined in
+  `API_SPEC.md` section 4.1.1.
+- Infrastructure selector prefixes such as `/__sdkwork/platform`,
+  `/proxy/platform`, `/gateway/platform`, or `/platform/app/v3/api` `MUST NOT`
+  appear in public runtime config, generated SDK base URLs, documentation
+  examples, browser network traces, or client-visible API contracts.
+- When one browser development origin serves both application-owned and
+  dependency-owned APIs, the dev server `MUST` route by canonical path
+  precedence: exact and dependency-owned route namespaces first, then broad
+  application-owned surface fallbacks such as `/app`, `/backend`, or open-api
+  prefixes.
+- A proxy target, upstream URL, or connectivity plane name may be configured
+  privately in Node/server runtime config, but it must not be encoded into the
+  client-visible request URI.
+
 ## 3. Standalone Application Gateway
 
 Every application root has one canonical standalone host:

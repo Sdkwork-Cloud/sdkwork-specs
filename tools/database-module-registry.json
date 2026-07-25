@@ -189,11 +189,10 @@
     "repo": "sdkwork-local-router",
     "moduleId": "localrouter",
     "serviceCode": "LOCAL_ROUTER",
-    "tablePrefix": "lr_",
+    "tablePrefix": "local_router_",
     "ownerTeam": "local-router-platform",
     "legacySqlGlobs": [
-      "crates/sdkwork-lr-store/migrations/postgres/*.sql",
-      "crates/sdkwork-lr-store/migrations/sqlite/*.sql"
+      "crates/sdkwork-lr-store/migrations/postgres/*.sql"
     ]
   },
   {

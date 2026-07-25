@@ -85,15 +85,25 @@ for (const repo of EMBEDDED_IAM_REPOS) {
   );
 }
 
-const sharedRuntime = readIfExists(
+const canonicalSharedRuntime = readIfExists(
   iamRepoRoot,
-  'crates/sdkwork-iam-embedded-application-bootstrap/src/runtime.rs',
+  'crates/sdkwork-iam-web-adapter/src/embedded_bootstrap.rs',
 );
-assert.ok(sharedRuntime, 'sdkwork-iam embedded bootstrap runtime must exist');
+assert.ok(canonicalSharedRuntime, 'sdkwork-iam canonical embedded bootstrap runtime must exist');
 assert.match(
-  sharedRuntime,
-  /ensure_tenant_application_from_app_root_with_env_and_fallback/u,
+  canonicalSharedRuntime,
+  /pub async fn ensure_tenant_application_from_app_root_with_env_and_fallback/u,
   'Shared embedded bootstrap must expose repository-root fallback API.',
+);
+const embeddedBootstrapFacade = readIfExists(
+  iamRepoRoot,
+  'crates/sdkwork-iam-embedded-application-bootstrap/src/lib.rs',
+);
+assert.ok(embeddedBootstrapFacade, 'sdkwork-iam embedded bootstrap facade must exist');
+assert.match(
+  embeddedBootstrapFacade,
+  /pub use sdkwork_iam_web_adapter/u,
+  'Embedded bootstrap crate must delegate to the canonical IAM web adapter implementation.',
 );
 
 for (const repo of EMBEDDED_IAM_REPOS) {

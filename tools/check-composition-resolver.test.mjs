@@ -208,6 +208,55 @@ test('validateCompositionResolution rejects platform IAM falling back to applica
   assert.match(issues[0], /must not fall back to application same-origin/u);
 });
 
+test('validateCompositionResolution allows verified browser same-origin API edge root', () => {
+  const resolution = {
+    issues: [],
+    integrations: [
+      {
+        workspace: 'sdkwork-drive-app-sdk',
+        envKey: 'VITE_SDKWORK_DRIVE_APP_API_BASE_URL',
+        connectivityPlane: 'platform',
+        forbidApplicationSameOriginFallback: true,
+      },
+    ],
+  };
+
+  const issues = validateCompositionResolution(resolution, {
+    observedEnv: {
+      VITE_SDKWORK_DRIVE_APP_API_BASE_URL: '/',
+    },
+    applicationAppApiBaseUrl: '/',
+    allowBrowserSameOriginApiEdge: true,
+    canonicalRoutePrecedenceVerified: true,
+  });
+
+  assert.deepEqual(issues, []);
+});
+
+test('validateCompositionResolution rejects synthetic browser proxy selector paths', () => {
+  const resolution = {
+    issues: [],
+    integrations: [
+      {
+        workspace: 'sdkwork-drive-app-sdk',
+        envKey: 'VITE_SDKWORK_DRIVE_APP_API_BASE_URL',
+        connectivityPlane: 'platform',
+        forbidApplicationSameOriginFallback: true,
+      },
+    ],
+  };
+
+  const issues = validateCompositionResolution(resolution, {
+    observedEnv: {
+      VITE_SDKWORK_DRIVE_APP_API_BASE_URL: '/__sdkwork/platform',
+    },
+    applicationAppApiBaseUrl: '/',
+  });
+
+  assert.ok(issues.length >= 1);
+  assert.match(issues[0], /must not expose proxy or gateway selector path/u);
+});
+
 test('deriveFoundationEnvFromResolution maps platform dependencies to surface origin', () => {
   const resolution = {
     env: {},

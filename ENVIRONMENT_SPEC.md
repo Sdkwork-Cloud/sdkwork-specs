@@ -841,7 +841,7 @@ Required behavior:
 
 - Load `/runtime-env.js` or equivalent before the hashed application bundle.
 - Use only browser-visible runtime variables for SDK client base URLs.
-- Prefer `PORTAL_PUBLIC_SDK_BASE_URL` as the common public SDK root and derive open/app/backend public base URLs from it. Use `PORTAL_PUBLIC_OPEN_API_BASE_URL`, `PORTAL_PUBLIC_APP_API_BASE_URL`, `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, or dependency-specific overrides only for multi-host deployments or nonstandard mounts.
+- Prefer `PORTAL_PUBLIC_SDK_BASE_URL` as the common public API edge root and derive open/app/backend public base URLs from it while preserving canonical API paths. Use `PORTAL_PUBLIC_OPEN_API_BASE_URL`, `PORTAL_PUBLIC_APP_API_BASE_URL`, `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, or dependency-specific overrides only for multi-host deployments or explicit dependency upstreams.
 - Reject invalid public URLs at startup or build-time preflight.
 - Treat Vite mode as build-time input only. Runtime environment, deployment profile, and runtime target must come from validated public runtime config.
 - Browser public runtime config must declare `environment`, `deploymentProfile`, and `runtimeTarget = "browser"` or their JSON/language equivalents.

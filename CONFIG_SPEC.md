@@ -310,6 +310,11 @@ Rules:
   standard API prefixes, for example `/v1`, `/app/v3/api`, and
   `/backend/v3/api`. It `MUST NOT` treat a resolved surface URL such as `/v1`
   as the origin for other surfaces.
+- Browser-visible SDK base URLs and public runtime config `MUST` preserve
+  client-visible API URI canonicality from `API_SPEC.md` section 4.1.1. A
+  development proxy selector, upstream id, gateway role, or connectivity-plane
+  token must not appear in a public SDK base URL when generated SDKs will append
+  `/app/v3/api`, `/backend/v3/api`, or an approved open-api prefix.
 - Per-surface and per-SDK overrides win over the common `sdkBaseUrl`. This keeps the simple one-base-url deployment path while still allowing external upstream services, private dependency hosts, and tenant-specific SDK routing.
 - `sdkBaseUrls.dependencySdkBaseUrls` owns override base URLs for dependency SDK families such as appbase, Drive, IM, or another application. It must be keyed by stable SDK family id, not by ad hoc host names.
 - `dependencyApiSurfaces` records which dependency-owned HTTP API surfaces are available through
@@ -458,7 +463,7 @@ Rules:
   application identity `MUST` create a distinct credential/cache/storage
   namespace and require re-authentication. Tokens, cookies, SQLite state,
   offline queues, and feature caches `MUST NOT` cross that boundary implicitly.
-- Runtime config `SHOULD` allow one browser-visible public SDK root, for example `PORTAL_PUBLIC_SDK_BASE_URL`, and derive standard open-api, app-api, and backend-api public runtime URLs from it. Applications `MAY` also expose per-surface or per-SDK public override keys such as `PORTAL_PUBLIC_OPEN_API_BASE_URL`, `PORTAL_PUBLIC_APP_API_BASE_URL`, `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, or dependency-specific keys.
+- Runtime config `SHOULD` allow one browser-visible public API edge root, for example `PORTAL_PUBLIC_SDK_BASE_URL`, and derive standard open-api, app-api, and backend-api public runtime URLs from it while preserving canonical API paths. Applications `MAY` also expose per-surface or per-SDK public override keys such as `PORTAL_PUBLIC_OPEN_API_BASE_URL`, `PORTAL_PUBLIC_APP_API_BASE_URL`, `PORTAL_PUBLIC_BACKEND_API_BASE_URL`, or dependency-specific keys.
 - Bootstrap `MUST` classify every SDK and operation profile before constructing feature services: anonymous, credential-entry bootstrap, refresh-token, authenticated app-api, authenticated `backend-admin` backend-api, protected open-api API-key, protected open-api OAuth bearer, protected open-api flexible, ingress/agent, compatibility, local/native, or test fake. The presence of `backendApiBaseUrl` alone is not permission to construct a backend SDK client.
 - Token providers for app-api and backend-api SDKs `MUST` support both `Authorization: Bearer <JWT auth_token>` and `Access-Token: <JWT access_token>`.
 - Token providers `MUST` send both headers on protected requests whenever both credentials are available.
@@ -481,6 +486,13 @@ Rules:
   an application same-origin app/backend default only when the
   application runtime declares `dependencyApiSurfaces` mount coverage for that dependency SDK
   family, surface, and prefix. A route contract or `sdkDependencies` entry alone is not enough.
+- Browser development may use the browser's same-origin API edge origin for
+  both application-owned and platform dependency SDK clients only when the
+  dev-server proxy routes canonical API paths internally to the declared
+  `application.public-ingress`, `platform.api-gateway`, or explicit dependency
+  upstream without changing the client-visible URI. This is not an application
+  same-origin dependency mount and does not satisfy `sameOriginAllowed` or
+  `runtimeMode: "same-origin"` coverage.
 - `dependencyApiSurfaces` entries with `runtimeMode: "same-origin"` `MUST` set
   `sameOriginAllowed: true`, name the executable router/controller/service export or equivalent
   runtime adapter, and record `coverage: "verified"` before SDK clients may inherit the application
@@ -526,6 +538,11 @@ Rules:
   app/backend fallback surfaces. Broad external upstream surfaces
   may inherit a common API edge origin only when tests prove they do not shadow more specific dependency
   surfaces.
+- Development proxies that serve multiple owners under one browser origin
+  `MUST` use canonical route-prefix precedence, route manifests, or materialized
+  OpenAPI path inventories to route requests. They `MUST NOT` expose synthetic
+  prefixes such as `/__sdkwork/*`, `/proxy/*`, `/gateway/*`, or `/platform/*`
+  as SDK base URLs or documented API examples.
 - Same-origin dependency surface config `MUST` name only production-capable routers, controllers,
   service adapters, or upstreams as verified coverage. Demo routers, mock servers, fixture stores,
   hard-coded IAM tenants/users/organizations/API keys, or seed-only responses are valid only in
@@ -705,6 +722,8 @@ Rules:
 - [ ] Database env parsing maps `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` to typed config and rejects `DATABASE_PROVIDER`/`DATABASE_SSLMODE`.
 - [ ] Apps with PostgreSQL development support provide `.env.postgres.example` and ignore `.env.postgres`.
 - [ ] SDK clients are constructed in bootstrap from one common SDK base URL plus per-surface/per-SDK overrides, with separate effective open-api, app-api, and `backend-admin` backend-api URLs where those surfaces are consumed.
+- [ ] Browser-visible SDK base URLs and public runtime config preserve canonical
+  API URIs; proxy/upstream selectors do not appear in client-visible API paths.
 - [ ] SDK inventory classifies every consumed SDK and operation profile, including anonymous, credential-entry bootstrap, refresh-token, authenticated app/backend, protected open-api, ingress/agent, compatibility, local/native, and test fake before services are constructed.
 - [ ] Appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` appbase backend SDKs, application/dependency backend SDKs, and approved composed wrappers in the same authenticated application session receive the same global `TokenManager`; server service-context runtimes use one request/service credential provider per service context.
 - [ ] Protected open-api SDKs receive credentials through a separate open-api credential provider matching their declared auth mode and are not placed in login TokenManager client lists.

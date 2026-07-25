@@ -17,6 +17,7 @@ IAM owns credential-entry business handlers and SDK contracts. Host applications
 Rules:
 
 - Host applications `MUST` use this package for `wrapCredentialEntryClient`, `prepareCredentialEntryTokens`, and manifest identity helpers.
+- Flutter mobile applications `MUST` use `sdkwork_iam_flutter_mobile_core` credential-entry bootstrap helpers and a dedicated credential-entry IAM SDK client. They `MUST NOT` send login, registration, password reset, OAuth session, authorization URL, or IAM runtime policy operations through an anonymous client.
 - Application repos `MUST NOT` copy credential-entry wrapper logic into local `*-commons` packages.
 - Vite renderers `MUST` use `@sdkwork/iam-credential-entry/vite`. Source-linked multi-repository workspaces `MAY` resolve that declared package dependency to its canonical `sdkwork-iam-credential-entry/src/vite.ts` source entry while package links are unavailable; applications `MUST NOT` copy its HTML serialization, canonical global assignment, or lifecycle gating.
 - Node dev/test orchestrators `MUST` use `sdkwork-iam/scripts/dev/create-dev-bootstrap-access-token-env.mjs`; applications `MUST NOT` copy JWT fixture generation, manifest lookup, or env merge helpers.
@@ -39,7 +40,7 @@ SDK transport rules:
 - Transport `MUST` inject bootstrap `Access-Token` from TokenManager.
 - Transport `MUST NOT` inject `Authorization`, API keys, or SDKWork context projection headers.
 - The credential-entry wrapper `MUST` fail before network dispatch when no bootstrap access token is available. It `MUST NOT` clear session credentials and then send an unauthenticated request that can only fail as server `40101`.
-- Pure anonymous operations (`deviceAuthorizations.retrieve`, `deviceAuthorizations.scans.create`, IAM runtime policy reads) remain `x-sdkwork-auth-mode: anonymous` with `skipAuth: true`.
+- Pure anonymous browser QR operations (`deviceAuthorizations.create`, `deviceAuthorizations.retrieve`, and `deviceAuthorizations.sessionExchanges.create`) remain `x-sdkwork-auth-mode: anonymous` with `skipAuth: true`. QR scan and password-completion operations remain credential-entry unless the owning IAM route contract explicitly selects another protected profile.
 
 Gateway rules:
 
@@ -52,13 +53,14 @@ Gateway rules:
 Effective credential-entry identity resolves in this order:
 
 1. Platform defaults from SDKWork specs
-2. `sdkwork.app.config.json` (`app.key`, `backend.tenantId`, `backend.organizationId`, permission scope)
+2. Surface `sdkwork.app.config.json` (`backend.appId`, `backend.tenantId`, `backend.organizationId`, permission scope)
 3. Optional module/composition overrides documented in local `specs/`
 4. Environment profile secrets and generated bootstrap artifacts
 
 Rules:
 
 - `SDKWORK_ACCESS_TOKEN` is a generated private bootstrap artifact, not hand-authored identity.
+- Credential-entry token generation `MUST` fail closed when the selected surface manifest omits `backend.appId`; it `MUST NOT` fall back to `app.key` or infer an id from architecture metadata.
 - Browser runtimes `MUST NOT` expose bootstrap tokens through `VITE_*` or `PORTAL_PUBLIC_*`.
 - Development Vite serve processes `MAY` inject a private bootstrap token only through `createSdkworkCredentialEntryBootstrapVitePlugin`, which assigns `globalThis.__SDKWORK_CREDENTIAL_ENTRY_BOOTSTRAP_ACCESS_TOKEN__` before application modules execute.
 - Vite `define` replacement for `process.env.SDKWORK_ACCESS_TOKEN` is not a valid credential-entry handoff. Vite 6 client dev transforms do not guarantee that ordinary define replacement reaches linked source packages.
@@ -88,6 +90,9 @@ Canonical helpers:
   - `readBootstrapAccessTokenEnvFile`
 - `@sdkwork/iam-credential-entry/vite`
   - `createSdkworkCredentialEntryBootstrapVitePlugin`
+- `sdkwork_iam_flutter_mobile_core`
+  - `resolveSdkworkFlutterCredentialEntryBootstrapAccessToken`
+  - `requireSdkworkFlutterCredentialEntryBootstrapAccessToken`
 - `sdkwork-iam/scripts/dev/run-pc-renderer-dev-with-bootstrap.mjs`
   - standalone PC package `dev` scripts that invoke Vite directly
 - topology dev orchestrators such as `*-dev.mjs` that spawn renderers after backend health checks
@@ -100,6 +105,7 @@ Rules:
 - BirdCoder and other apps with public-runtime env denylists `MUST` inject bootstrap credentials through approved private dev channels only.
 - A configured token is preserved in every lifecycle. Shared helpers generate only for development or explicitly isolated tests and fail closed when a required staging/production private token is absent.
 - Login, registration completion, refresh, and current-session bootstrap `MUST` replace bootstrap credentials through the global TokenManager. Feature code must not retain or reapply the bootstrap value.
+- Development Flutter builds may receive the generated private bootstrap token through a Dart define prepared from the explicit surface manifest by the canonical IAM Node helper. Staging and production Flutter artifacts `MUST NOT` embed it and must use a trusted native host channel or approved short-lived exchange.
 
 ## 6. Acceptance Checklist
 
@@ -108,6 +114,6 @@ Rules:
 - [ ] Host apps consume `@sdkwork/iam-credential-entry`; no duplicated local wrappers remain.
 - [ ] Host app Vite configs consume `@sdkwork/iam-credential-entry/vite`; no local serializer or `process.env.SDKWORK_ACCESS_TOKEN` define remains.
 - [ ] `sdkwork-app` invokes the canonical IAM dev bootstrap provider before renderer spawn; no application-local token generation/helper fork remains.
-- [ ] `device_authorizations.create` sends bootstrap `Access-Token` without session or context-header leakage, and every negative credential vector stops before handler execution.
+- [ ] Browser `device_authorizations.create`, retrieve, and session exchange dispatch without `Access-Token` or `Authorization`; QR scan and password-completion credential-entry calls still require only bootstrap `Access-Token`.
 - [ ] Development/test lifecycle gates and production browser bootstrap exchange/host channels fail closed under the exact environment policy.
 - [ ] Renderer port/bind, injected bootstrap, browser access endpoint, and CORS authority come from the same resolved runtime plan.

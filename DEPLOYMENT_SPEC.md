@@ -95,10 +95,10 @@ Rules:
   cross-application SDKs `MUST` be reached through declared platform/application
   surfaces or dependency SDK base URLs. They must not be hidden behind ad hoc
   localhost defaults.
-- Cloud browser/runtime config `SHOULD` start from one public SDK root when a
-  gateway serves all SDK surfaces, and `MUST` support explicit per-surface or
-  per-dependency base URL overrides when selected surfaces route to different
-  hosts.
+- Cloud browser/runtime config `SHOULD` start from one public API edge root
+  when a gateway serves all SDK surfaces while preserving canonical API paths,
+  and `MUST` support explicit per-surface or per-dependency base URL overrides
+  when selected surfaces route to different hosts.
 - Cloud release artifacts are container images, charts/manifests, deployment
   bundles, or provider-specific deployment packages with SBOM, provenance,
   checksums, signing, rollout, and rollback evidence.

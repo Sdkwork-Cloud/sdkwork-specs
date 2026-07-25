@@ -107,18 +107,56 @@ function isCredentialEntryViteConsumer(viteConfigPath) {
     || (isExecutableRenderer(moduleRoot) && moduleConsumesIam(moduleRoot));
 }
 
+function resolveLocalImportPath(importerPath, specifier) {
+  if (!specifier.startsWith('.')) return undefined;
+  const unresolved = path.resolve(path.dirname(importerPath), specifier);
+  for (const candidate of [
+    unresolved,
+    `${unresolved}.ts`,
+    `${unresolved}.mjs`,
+    `${unresolved}.js`,
+    path.join(unresolved, 'index.ts'),
+    path.join(unresolved, 'index.mjs'),
+    path.join(unresolved, 'index.js'),
+  ]) {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+  }
+  return undefined;
+}
+
+function readLocalViteComposition(entryPath, visited = new Set()) {
+  const resolvedEntryPath = path.resolve(entryPath);
+  if (visited.has(resolvedEntryPath)) return '';
+  visited.add(resolvedEntryPath);
+
+  const source = readText(resolvedEntryPath);
+  const importedSources = [];
+  const staticImportPattern = /\bfrom\s+['"](?<specifier>\.{1,2}\/[^'"]+)['"]/gu;
+  for (const match of source.matchAll(staticImportPattern)) {
+    const importedPath = resolveLocalImportPath(
+      resolvedEntryPath,
+      match.groups?.specifier ?? '',
+    );
+    if (importedPath) {
+      importedSources.push(readLocalViteComposition(importedPath, visited));
+    }
+  }
+  return [source, ...importedSources].join('\n');
+}
+
 function validateViteConsumer(repositoryRoot, viteConfigPath) {
   const source = readText(viteConfigPath);
   if (!isCredentialEntryViteConsumer(viteConfigPath)) return [];
+  const compositionSource = readLocalViteComposition(viteConfigPath);
 
   const displayPath = relative(repositoryRoot, viteConfigPath);
   const issues = [];
-  if (!source.includes('createSdkworkCredentialEntryBootstrapVitePlugin')) {
+  if (!compositionSource.includes('createSdkworkCredentialEntryBootstrapVitePlugin')) {
     issues.push(`${displayPath} must install createSdkworkCredentialEntryBootstrapVitePlugin`);
   }
   if (
-    !source.includes('@sdkwork/iam-credential-entry/vite')
-    && !source.includes('sdkwork-iam-credential-entry/src/vite.ts')
+    !compositionSource.includes('@sdkwork/iam-credential-entry/vite')
+    && !compositionSource.includes('sdkwork-iam-credential-entry/src/vite.ts')
   ) {
     issues.push(`${displayPath} must consume the canonical IAM Vite entry`);
   }

@@ -126,7 +126,9 @@ Rules:
 - `audit-database-framework-workspace.mjs` scans all `sdkwork-*` repositories under
   a workspace root and reports database framework compliance tiers.
 - `bootstrap-database-module.mjs` scaffolds a standard `database/` module from
-  `templates/database/` using `database-module-registry.json`.
+  `templates/database/` using `database-module-registry.json`. Authoritative
+  server imports are PostgreSQL-only and fail when a legacy source glob crosses
+  into SQLite assets.
 - `check-identity-naming.mjs` validates identity lattice terminology in standards
   (`NAMING_SPEC.md` §0–§0.2), including root-level authority documents, and
   rejects deleted example identities, ambiguous gateway roles, retired

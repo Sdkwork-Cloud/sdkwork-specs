@@ -173,6 +173,39 @@ Rules:
 - Generated SDK manifests and OpenAPI source contracts `MUST` fail validation if any runtime path uses a forbidden prefix.
 - Environment examples and app bootstrap defaults `MUST` use canonical prefixes. Historical or migration documents may mention old prefixes only when explicitly labeled `legacy`, `deprecated`, `noncanonical`, or `migration-only`.
 
+### 4.1.1 Client-Visible URI Canonicality
+
+SDKWork API paths are contract identity, not transport implementation detail. A
+browser, desktop renderer, mobile client, SDK debug log, HAR capture,
+documentation example, generated SDK base URL, or public runtime config must
+show the same canonical API URI that appears in OpenAPI.
+
+Rules:
+
+- Client-visible SDKWork HTTP requests `MUST` use canonical API paths:
+  `/app/v3/api/...` for app-api, `/backend/v3/api/...` for backend-api,
+  `/internal/v3/api/...` for internal-api, and the approved domain prefix for
+  open-api.
+- Development proxies, reverse proxies, platform gateways, service meshes,
+  upstream selectors, and browser same-origin adapters `MUST NOT` add transport
+  routing prefixes to the client-visible API path. Forbidden examples include
+  `/__sdkwork/platform/app/v3/api/...`, `/proxy/app/v3/api/...`,
+  `/gateway/app/v3/api/...`, `/platform/app/v3/api/...`, and
+  `/api/app/v3/api/...`.
+- A development or production proxy may route the canonical request internally
+  to `application.public-ingress`, `platform.api-gateway`, or an explicit
+  dependency upstream only after matching the canonical path and preserving the
+  request URI seen by the client.
+- When application-owned and dependency-owned operations share the same API
+  surface prefix, the host or dev proxy `MUST` route by the more specific
+  canonical namespace or route manifest path before falling back to a broad
+  surface prefix. Broad `/app` or `/backend` fallback routes must not shadow
+  dependency-owned canonical paths.
+- Generated SDKs and public runtime config `MUST` receive an API edge origin or
+  deployment path prefix that preserves canonical path assembly. They `MUST NOT`
+  receive hidden infrastructure prefixes whose only purpose is selecting an
+  upstream.
+
 ### 4.2 Rust HTTP Route Crate Naming
 
 Rust HTTP route crates are the source-level route/path configuration layer. They are not generated SDK families and they are not final OpenAPI authority names.
@@ -456,6 +489,7 @@ Good:
 /backend/v3/api/iam/roles/{roleId}/permissions
 /app/v3/api/iam/users:search
 /app/v3/api/iam/users:bulkCreate
+/backend/v3/api/cms/entries/{entryId}:publish
 ```
 
 Forbidden:
@@ -475,6 +509,8 @@ Rules:
 - Paths `MUST` be resource-oriented, not RPC-oriented by default.
 - Slash action segments such as `/<resource>/{id}/cancel` `MAY` be used only when the operation is not naturally represented by CRUD, for example `activate`, `deactivate`, `cancel`, `submit`, `verify`, `resend`, `revoke`, or `restore`. Slash action segments `MUST` use lowercase `lower_snake_case`.
 - SDKWork custom method suffixes `MAY` be used only as the final path suffix after a collection or resource path: `:<action>`, `:search`, or `:bulk<Action>`. The suffix action `MUST` use lowerCamelCase and `bulk<Action>` `MUST` use an uppercase action word after `bulk`.
+- Once an operation path is published by the authority OpenAPI, that exact external URI is the transport contract for route manifests, runtime listeners, gateways, generated SDKs, browser requests, documentation, and examples. An implementation `MUST NOT` change a selected `/{id}:<action>` path to `/{id}/<action>`, insert an infrastructure selector, or otherwise rewrite the public path to accommodate a router framework.
+- A framework that cannot register a path segment containing both a parameter and a custom method suffix, such as `{entryId}:publish`, `MUST` preserve the exact external URI through an adapter that captures the complete segment and strictly dispatches the declared id/action pair. The capture form is private implementation detail and `MUST NOT` appear in OpenAPI, route manifests, SDK metadata, client base URLs, browser-visible requests, documentation, or examples.
 - Do not use double underscores, uppercase ordinary path segments, mixed naming styles, or colons except for the SDKWork custom method suffixes allowed above.
 - A path `MUST NOT` duplicate another operation on the same surface/listener after template normalization. For collision checks, `/users/{userId}`, `/users/:id`, and `/users/<id>` are the same path. Intentional overrides require an ADR and an explicit route override marker.
 - Standard app/backend health and readiness paths (`/app/v3/api/system/health`, `/app/v3/api/system/ready`, `/backend/v3/api/system/health`, `/backend/v3/api/system/ready`) are reserved for the standard health route owner. Business capabilities `MUST` use capability-specific paths and must not claim these common system paths.
@@ -1278,7 +1314,7 @@ ForumTopicSearchRequest:
 | Replace | `PUT` | `/<collection>/{id}` | typed full body | auth; `If-Match` when optimistic concurrency is required |
 | Patch | `PATCH` | `/<collection>/{id}` | typed partial body | auth; `If-Match` when optimistic concurrency is required |
 | Delete | `DELETE` | `/<collection>/{id}` | path `id` only; no JSON body | auth |
-| Command | `POST` | `/<collection>/{id}/<action>` or `/<collection>:<action>` | typed command body | auth; `Idempotency-Key` when retriable |
+| Command | `POST` | `/<collection>/{id}/<action>`, `/<collection>/{id}:<action>`, or `/<collection>:<action>` | typed command body | auth; `Idempotency-Key` when retriable |
 | Bulk command | `POST` | `/<collection>:bulk<Action>` | typed bulk body | auth; `Idempotency-Key` when retriable |
 
 Rules:
@@ -1752,8 +1788,8 @@ Every L2+ business operation `MUST` map to one of the standard contract patterns
 | Replace | `update` | `PUT` | `/<resources>/{id}` | full body | `SdkWorkApiResponse` | `200` | `SdkWorkResourceData.item` |
 | Patch | `update` | `PATCH` | `/<resources>/{id}` | partial body | `SdkWorkApiResponse` | `200` | `SdkWorkResourceData.item` |
 | Delete | `delete` | `DELETE` | `/<resources>/{id}` | path id only | no JSON body | `204` | header-only `traceId` |
-| Command | `<action>` | `POST` | `/<resources>/{id}/<action>` or `/<resources>:<action>` | command body | `SdkWorkApiResponse` | `200` | `SdkWorkCommandData` |
-| Async command | `<action>` | `POST` | `/<resources>/{id}/<action>` or `/<resources>:<action>` | command body | `SdkWorkApiResponse` | `202` | `SdkWorkAsyncData` |
+| Command | `<action>` | `POST` | `/<resources>/{id}/<action>`, `/<resources>/{id}:<action>`, or `/<resources>:<action>` | command body | `SdkWorkApiResponse` | `200` | `SdkWorkCommandData` |
+| Async command | `<action>` | `POST` | `/<resources>/{id}/<action>`, `/<resources>/{id}:<action>`, or `/<resources>:<action>` | command body | `SdkWorkApiResponse` | `202` | `SdkWorkAsyncData` |
 | Bulk command | `bulk<Action>` | `POST` | `/<resources>:bulk<Action>` | bulk body | `SdkWorkApiResponse` | `200` or `202` | `SdkWorkBulkData` or typed bulk result |
 
 Rules:

@@ -229,7 +229,7 @@ and legacy `configs/`, so moving files cannot temporarily bypass the CORS gate.
 - [ ] Concrete environment values live in `etc/`, not app manifests or specs.
 - [ ] `deployments/` contains infrastructure descriptors only.
 - [ ] Browser SDK Base URLs are injected by bootstrap.
-- [ ] Standalone profiles collapse public SDK roots to the application origin when using one ingress.
+- [ ] Standalone profiles collapse public SDK roots only to a canonical API edge origin when one ingress serves every required surface; they do not expose proxy selector path prefixes.
 - [ ] Cloud profiles keep application and API origins explicit.
 - [ ] Every production-like ingress serving app-api has a non-empty exact CORS allowlist covering
       every declared browser and desktop WebView origin.
