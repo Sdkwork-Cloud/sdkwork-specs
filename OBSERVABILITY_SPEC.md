@@ -12,8 +12,8 @@ Rules:
 
 - Every API request `SHOULD` have a `traceId` or correlation ID.
 - Every appbase HTTP request `MUST` have a server-owned request id generated at the request framework boundary.
-- Error responses `SHOULD` include `traceId`.
-- Error responses `SHOULD` include `instance` (`{METHOD} {routeTemplate}`) and `operationId` when the web framework resolves route metadata.
+- SDKWork-owned custom error responses `MUST` include the server-owned `traceId`.
+- SDKWork-owned custom error responses `MUST` include `instance` (`{METHOD} {routeTemplate}` with a redacted-path fallback) and `MUST` include `operationId` when the web framework resolves matched route metadata. Unmatched operations do not fabricate `operationId`.
 - Appbase problem responses `MUST` include the server-owned request id when available.
 - Logs, metrics, traces, audit events, and security events `SHOULD` be correlated.
 - Tenant and organization context may be logged only when allowed by security and privacy rules.

@@ -165,6 +165,13 @@ infrastructure, observability, shutdown, and topology materialization.
 
 Before a gateway installs the Web Framework layer, it `MUST` merge all selected application and dependency contributions, reject route/profile collisions, bind the combined manifest, and build the served OpenAPI from those same selected contributions. No API router may be merged after framework installation.
 
+An assembly contribution is an indivisible runtime contract. A consumer `MUST NOT` project only
+its `router` field, call a deprecated router-only entrypoint, or otherwise discard its route
+manifest, OpenAPI contribution, permission catalog, domain context injectors, or readiness check.
+When a host selects a dependency assembly, tests `MUST` prove that a matched dependency error
+contains the dependency operation's `instance` and `operationId`; an HTTP status or successful
+handler dispatch alone is insufficient integration evidence.
+
 The Web Framework route-manifest contract `MUST` support owned or reference-counted combined route
 inventories. Assemblies and gateways `MUST NOT` use `Box::leak`, leaked allocations, process-lifetime
 global mutation, or source parsing to coerce a runtime-composed manifest into a `'static` slice.

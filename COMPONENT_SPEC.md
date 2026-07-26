@@ -288,6 +288,12 @@ Rules:
   base URL key. Component specs may summarize those prefixes on the service dependency entry with
   an `apiPrefixes` array, but must not invent prefix-specific service ids that do not correspond to
   a real upstream service boundary.
+- When a dependency entry declares `apiPrefixes`, that array and all
+  `apiSurfaces[].prefix` values with the matching `dependencyServiceId` `MUST`
+  be equal as sets. Missing, additional, duplicate, synthetic, or rewritten
+  prefixes are invalid. Verification uses
+  `tools/check-component-api-surface-prefixes.mjs`; successful router assembly
+  does not waive this machine-contract check.
 - Application component specs that consume platform foundation APIs `MUST`
   declare those SDKs through `contracts.sdkDependencies` and their runtime
   availability through `dependencyApiSurfaces`. The application topology owns

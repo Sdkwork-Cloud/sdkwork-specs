@@ -52,6 +52,11 @@ catalogs, or SDK generation.
 
 The host applies exactly one `sdkwork-web-framework` pipeline to the combined router and combined route manifest from all selected assemblies. Framework-owned CORS, authentication, authorization, tenant isolation, problem mapping, audit, and response identity `MUST NOT` be duplicated by gateway-local middleware.
 
+`with_server_request_identity` and equivalent request-id-only helpers are not a Web Framework
+integration. A gateway that dispatches into an embedded dependency router `MUST` preserve that
+dependency's manifest and resolver/context injectors through the selected framework pipeline. It
+`MUST NOT` merge or dispatch `assembly.router` while dropping the remaining assembly contract.
+
 ### 2.1 Vocabulary Discipline
 
 These terms are not interchangeable:
@@ -95,6 +100,17 @@ Rules:
 - A proxy target, upstream URL, or connectivity plane name may be configured
   privately in Node/server runtime config, but it must not be encoded into the
   client-visible request URI.
+- Gateway route registries and component `apiSurfaces` inventories `MUST` list
+  every canonical prefix owned by each selected API authority. If one authority
+  owns multiple prefixes, such as `/app/v3/api/assets` and
+  `/app/v3/api/drive`, every prefix maps to the same authority/service identity;
+  a broad `/app/v3/api` fallback or one listed sibling prefix does not cover the
+  omitted prefix.
+- Contract verification `MUST` compare the registry prefixes for an authority
+  with its declared `apiPrefixes` and executable/OpenAPI route inventory. A
+  router that is mounted but unreachable because its canonical prefix is absent
+  from registry selection is a startup or test failure, not a request-time
+  `502`.
 
 ## 3. Standalone Application Gateway
 

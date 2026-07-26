@@ -205,6 +205,14 @@ Rules:
   deployment path prefix that preserves canonical path assembly. They `MUST NOT`
   receive hidden infrastructure prefixes whose only purpose is selecting an
   upstream.
+- An API authority may own more than one stable canonical resource prefix. The
+  authority OpenAPI remains the path authority, and every gateway registry,
+  component `apiSurfaces` declaration, proxy matcher, runtime mount inventory,
+  and contract test `MUST` preserve every owned prefix. A broad surface prefix
+  or synthetic parent prefix is not evidence for a missing canonical prefix.
+- URI transparency is literal: query parameters may be normalized according to
+  their operation contract, but a client, SDK, adapter, proxy, or gateway
+  `MUST NOT` prepend, remove, duplicate, or rewrite canonical path segments.
 
 ### 4.2 Rust HTTP Route Crate Naming
 
@@ -1650,7 +1658,7 @@ All error responses `MUST` use `application/problem+json` and the standard `Prob
 ProblemDetail:
   type: object
   additionalProperties: true
-  required: [type, title, status, code, traceId]
+  required: [type, title, status, code, traceId, instance]
   properties:
     type:
       type: string
@@ -1721,8 +1729,9 @@ Rules:
 - Do not return stack traces, SQL, credentials, token internals, or internal hostnames.
 - Validation errors `SHOULD` include field-level `errors`.
 - `traceId` `MUST` be present on every error and `MUST` match the success-body correlation semantics.
-- `instance` `SHOULD` identify the failing endpoint as `{METHOD} {routeTemplate}` using the OpenAPI route template when available; raw request paths `MUST` redact user, tenant, file, object, token, and provider identifiers per `OBSERVABILITY_SPEC.md`.
-- `operationId` `SHOULD` be present when the web framework resolves the matched OpenAPI operation for the request.
+- `instance` `MUST` identify the failing endpoint as `{METHOD} {routeTemplate}`. The framework `MUST` use the matched OpenAPI route template when available; otherwise it `MUST` use a bounded, redacted request path that removes user, tenant, file, object, token, and provider identifiers per `OBSERVABILITY_SPEC.md`.
+- `operationId` `MUST` be present when the web framework resolves the matched OpenAPI operation for the request. It `MUST NOT` be accepted from a client header or fabricated for an unmatched method/path; unresolved operations omit the field.
+- SDKWork-owned custom routes `MUST` normalize framework, router, body-limit, media-type, extractor, validation, handler, timeout, and fallback 4xx/5xx responses to `application/problem+json` before the response leaves the Web Framework. Operation-level external protocol routes declared per section 4.5.2 preserve their external error wire instead.
 - Framework-generated authentication, authorization, tenant-isolation, routing, and dependency-availability problems `SHOULD` include `authProfile`, `failedStage`, and a stable non-secret `reason` when the route is known. These fields `MUST NOT` expose token contents, lookup keys, subject secrets, or internal upstream addresses.
 - `code` `MUST` use stable numeric values from §15.3.
 - Missing credentials use `40101`; expired tokens use `40102`; malformed, unverifiable, wrong-issuer, wrong-audience, wrong-purpose, or contradictory tokens use `40103`; revoked sessions use `40104`; authenticated permission/scope/tenant/organization denials use the matching `403xx`; absent routes/resources use `40401`; unavailable dependency surfaces use `50301` or an applicable gateway `502xx`/`504xx`. A missing or unreachable dependency surface `MUST NOT` be reported as route `404`.

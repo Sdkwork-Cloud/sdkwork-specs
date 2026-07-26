@@ -27,7 +27,7 @@ No standard is complete until it is executable.
 | Application layered architecture | Validate `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`: L0-L6 API/service/domain/repository/adapter/runtime/frontend dependency direction, controller/service/repository separation, frontend UI-service-SDK injection, open-closed extension boundaries, route ownership, and common URL path reservation |
 | Composable architecture | Validate `COMPOSABLE_ARCHITECTURE_SPEC.md`: standard closure matrix coverage, component layer roles, provided/required ports, executable runtime entrypoints, frontend core/feature/host package boundaries, Rust service/route/repository Cargo dependency boundaries, generated resolved architecture graph, route ownership, common URL path reservation, and permission inheritance |
 | Supply chain security | Validate `SUPPLY_CHAIN_SECURITY_SPEC.md`: dependency integrity, build integrity, generator authority, SBOM, provenance, signing, checksums, attestations, and supply-chain exceptions |
-| API | OpenAPI validation, strict profile validation, `SdkWorkApiResponse` envelope validation (`check-api-response-envelope.mjs`), route path collision validation (`check-route-path-collisions.mjs`), legacy envelope bootstrap (`align-openapi-response-envelope.mjs`, `align-openapi-response-envelope-workspace.mjs`), request/response examples, Rust route crate naming and route-manifest aggregation checks |
+| API | OpenAPI validation, strict profile validation, canonical URI and multi-prefix component validation (`check-component-api-surface-prefixes.mjs`), `SdkWorkApiResponse` envelope validation (`check-api-response-envelope.mjs`), route path collision validation (`check-route-path-collisions.mjs`), legacy envelope bootstrap (`align-openapi-response-envelope.mjs`, `align-openapi-response-envelope-workspace.mjs`), request/response examples, Rust route crate naming and route-manifest aggregation checks |
 | Web backend | Controller/router path checks, handler/service/repository boundary tests, typed request-context checks, transaction/idempotency tests, static scans for raw credential parsing |
 | RPC | Proto compile, proto lint, breaking-change check, service manifest, unary server/client smoke tests, generated cross-language client checks, RPC framework integration, discovery resolver integration, resilience profile checks |
 | Discovery | Registry upsert/renew/deregister, config publish/effective resolution, watch replay, permission enforcement, production config safety validation |
@@ -102,6 +102,20 @@ Rules:
   surfaces share a root prefix. Tests must show fixed IAM/provider routes and more specific
   dependency prefixes resolve before broad fallback split surfaces, and that split fallback surfaces
   are validated through upstream/base-url config rather than fake Cargo feature evidence.
+- Gateway component verification `MUST` compare each dependency
+  `apiPrefixes` set with the matching `apiSurfaces` set and fail when any
+  canonical authority prefix is omitted, added, duplicated, rewritten, or
+  replaced by a synthetic routing prefix. A mounted router, broad surface
+  fallback, or successful health check is not sufficient evidence.
+- Every protected API surface `MUST` include an unauthenticated request test
+  that reaches a representative canonical operation and returns
+  `application/problem+json` with the contract status/code. The process and
+  request worker `MUST` remain alive; panic, connection reset, empty reply,
+  HTML fallback, synthetic-prefix redirect, or gateway route-not-found is a
+  failed contract test even when a later request succeeds.
+- Rust HTTP response tests and `check-rust-http-header-standard.mjs` `MUST`
+  reject display-cased constants passed to `HeaderName::from_static` and prove
+  static header keys are lowercase ASCII.
 - Dependency API export verification `MUST` prove dependency APIs are not re-exported by default.
   When `dependencyApiExports` is configured, tests must prove every entry references a declared
   `sdkDependencies` workspace, uses an approved export mode, and exposes code only through authored

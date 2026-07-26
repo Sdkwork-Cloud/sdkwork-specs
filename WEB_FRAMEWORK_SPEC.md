@@ -377,6 +377,14 @@ Rules:
 - Java locale resolution `MUST` produce the same logical `WebLocaleContext`, response headers, and localized problem-detail extension fields as the Rust framework profile.
 - Success responses `MUST` be serialized as `SdkWorkApiResponse` from `API_SPEC.md` section 15 for SDKWork-owned business operations on `app-api`, `backend-api`, and business `open-api`. Vendor compatibility `open-api` operations declared with `x-sdkwork-wire-protocol: external` per section 4.5.2 `MAY` preserve upstream wire through documented adapter handlers instead of `SdkWorkApiResponse`. Framework response identity `MUST` inject server-owned `traceId` and success `code` into every JSON success body that uses the SDKWork envelope and `SHOULD` echo `traceId` through `X-SdkWork-Trace-Id`.
 - Handlers `MUST NOT` return legacy envelopes such as `PlusApiResult`, `AppbaseApiResult`, `StoreApiResult`, `SdkWorkResponse`, or per-domain `*ApiResult`. Business failures `MUST` map to `ProblemDetail`, not HTTP 2xx bodies with non-success `code`, `success`, or human `message`. Wire field `requestId` is forbidden.
+- Framework response mapping `MUST` normalize every SDKWork-owned custom 4xx/5xx response, including Axum/Spring extractor or binding rejection, request-size/media-type rejection, router fallback, timeout, and handler error responses, to `application/problem+json`. The normalized body `MUST` contain server-owned `traceId` and `instance`; it `MUST` contain the matched route `operationId` when route metadata resolves. Operations explicitly declared with `x-sdkwork-wire-protocol: external` preserve their external protocol error body.
+- Rust `http::HeaderName::from_static` arguments `MUST` be compile-time lowercase
+  ASCII header keys. Display/OpenAPI names such as `X-SdkWork-Trace-Id` `MUST`
+  be separate from lowercase runtime constants such as
+  `x-sdkwork-trace-id`; display constants `MUST NOT` be passed to
+  `HeaderName::from_static`. Dynamic or display-cased names use a fallible
+  parser such as `HeaderName::from_bytes` or `HeaderName::try_from`, and parse
+  failure must remain a typed response/configuration error rather than panic.
 - Java and Rust implementations of the same `operationId` `MUST` preserve identical auth, tenant, request-context, success-envelope, operation-pattern status, and error semantics.
 - Framework response mapping `MUST` preserve `API_SPEC.md` section 15.4 operation semantics: create maps to `201`, update/retrieve/list/search maps to `200`, delete maps to `204` with no JSON body, async accept maps to `202`, and SDKWork-owned business failures map to `ProblemDetail`.
 
@@ -401,6 +409,11 @@ Business repository after framework integration:
 - Locale context test: public and protected routes receive `WebRequestContext.locale`; unsupported requested locales resolve through the configured fallback chain.
 - Locale response test: localized responses emit `Content-Language`, and language-varying responses emit `Vary: Accept-Language`.
 - Localized problem test: framework errors and validation errors preserve numeric `ProblemDetail.code` and `traceId`, and expose `i18nKey`/`locale` when safe messages exist.
+- Problem routing test: extractor, validation, handler, timeout, and fallback errors contain `instance`; matched SDKWork-owned routes also contain the manifest `operationId`, while unmatched routes do not fabricate one.
+- Header construction test: every static Rust response header key is lowercase;
+  success and Problem Details response construction cannot panic for a valid
+  trace id. Verify authored Rust sources with
+  `tools/check-rust-http-header-standard.mjs`.
 - Bootstrap smoke test: gateway or migration-only API server mounts routes through framework bootstrap.
 - OpenAPI check: every operation declares `x-sdkwork-request-context: WebRequestContext`, canonical `x-sdkwork-api-surface`, and exactly one auth profile; `security`, auth profile, route metadata, and SDK transport policy agree.
 - Operation pattern check: SDKWork-owned operations preserve the `API_SPEC.md` section 15.4 method/path/status/data matrix; delete routes return `204` without JSON bodies and create routes return `201`.
