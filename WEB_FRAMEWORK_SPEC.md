@@ -175,7 +175,7 @@ Rules:
 | --- | --- | --- | --- |
 | app-api | `/app/v3/api` | `anonymous`, `credential-entry-bootstrap`, `refresh-token`, or `dual-token` | Route-profile resolver + `WebRequestContext` |
 | backend-api | `/backend/v3/api` | `dual-token` or an explicitly governed internal/agent profile | Route-profile resolver + `WebRequestContext` |
-| open-api | Approved domain prefix, for example `/im/v3/api` | `anonymous`, `api-key`, `oauth`, `open-api-flexible`, or `compatibility` | Header-driven credential resolution + `WebRequestContext` |
+| open-api | Approved domain prefix, for example `/im/v3/api` | `anonymous`, `api-key`, `oauth`, `open-api-flexible`, `api-key-or-dual-token`, or `compatibility` | Header-driven credential resolution + `WebRequestContext` |
 | gateway-api/internal-api | Gateway-owned prefixes | `ingress-token` or an explicitly declared profile | Context resolution before proxy/composition |
 
 Rules:
@@ -197,12 +197,14 @@ Protected open-api routes `MUST` declare one of these route-level auth modes:
 | `api-key` | `ApiKey` | `X-Api-Key` | `WebRequestContextResolver::resolve_api_key` + `ApiKeyLookupService` |
 | `oauth` | `OAuth` | `Authorization: Bearer <token>` without `Access-Token` | `WebRequestContextResolver::resolve_oauth_bearer` + `OAuthTokenLookupService` |
 | `open-api-flexible` | `OpenApiFlexible` | API key and/or OAuth bearer headers | `OpenApiCredentialSchemeDetector` chooses scheme, then dispatches to the matching resolver |
+| `api-key-or-dual-token` | `ApiKeyOrDualToken` | `X-API-Key` alone, or `Authorization: Bearer <auth_token>` together with `Access-Token` | Exact credential-combination guard chooses API-key lookup or dual-token resolution |
 | `public` | `Public` | none | anonymous `WebRequestContext` |
 
 Rules:
 
 - Credential scheme detection for open-api `MUST` be header-driven. When `Access-Token` is present, the request `MUST NOT` be classified as open-api OAuth bearer; app-api/backend-api dual-token rules take precedence on those surfaces.
 - `OpenApiFlexible` default preference when both `X-Api-Key` and OAuth bearer are present is API key first. Applications `MAY` override `OpenApiCredentialSchemeDetector` through framework runtime assembly.
+- `ApiKeyOrDualToken` accepts exactly one complete branch. `X-API-Key` by itself selects API-key resolution. `Authorization` plus `Access-Token` selects dual-token resolution. API key mixed with either token, either token without its pair, and missing credentials `MUST` fail in the credential-contamination/presence guard before resolver or handler execution.
 - Open-api credential modes and app-api/backend-api dual-token mode `MUST` be mutually exclusive for one request.
 - Dual-token resolution on app-api/backend-api surfaces `MUST` require both `Authorization: Bearer <JWT auth_token>` and `Access-Token: <JWT access_token>` when the route declares `dual-token` mode and the client runtime has both credentials available.
 - Credential-entry bootstrap routes `MUST` require `Access-Token: <JWT access_token>` and resolve tenant/app isolation from that token while rejecting `Authorization` and every other non-profile credential.
@@ -420,7 +422,7 @@ Business repository after framework integration:
 - Credential-entry check: pre-session operations use `CredentialEntryBootstrap`, require only `AccessToken`, materialize the canonical profile/guard metadata, reject every non-profile credential before handler logic, and return a diagnostic missing-bootstrap problem without reaching the handler.
 - Route/OpenAPI parity check: the executable router, bound route manifest, served OpenAPI, and SDK generation authority have identical normalized `(surface, method, path, operationId, authProfile)` inventory for the selected deployment profile.
 - Manifest ownership check: static route manifests and runtime-composed manifests bind through the same Framework API; composition does not use `Box::leak` or another lifetime-forcing allocation leak.
-- Open-api auth check: protected routes declare `api-key`, `oauth`, or `open-api-flexible`; security vectors cover missing credentials, API key resolution, OAuth bearer resolution, and flexible scheme selection.
+- Open-api auth check: protected routes declare `api-key`, `oauth`, `open-api-flexible`, or `api-key-or-dual-token`; security vectors cover missing credentials, API key resolution, OAuth bearer resolution, flexible scheme selection, valid dual-token selection, incomplete token pairs, and API key/token contamination.
 - SDK generation check: authority OpenAPI and derived `*.sdkgen.*` inputs preserve request-context and surface extensions.
 - Java profile check, when Java is present: typed context argument resolution, interceptor order, and problem-detail mapping match this standard.
 
@@ -443,7 +445,7 @@ Detailed test requirements: `TEST_SPEC.md` section 2.3.1.
 - [ ] Localized responses emit standard locale headers and problem-detail localization metadata without changing numeric error semantics.
 - [ ] Business adapters implement framework traits; no parallel HTTP context framework in appbase or application repositories.
 - [ ] Java controllers, when present, preserve equivalent typed context, interceptor semantics, route metadata, and problem-detail behavior.
-- [ ] Protected open-api routes declare `api-key`, `oauth`, or `open-api-flexible` auth mode and resolve credentials through framework extension traits, not handler-local header parsing.
+- [ ] Protected open-api routes declare `api-key`, `oauth`, `open-api-flexible`, or `api-key-or-dual-token` auth mode and resolve credentials through framework extension traits, not handler-local header parsing.
 - [ ] The executable router, bound manifest, served OpenAPI, and SDK authority use one selected-profile route inventory with no missing or extra operation.
 - [ ] One framework layer owns CORS, authentication, authorization, tenant isolation, problem mapping, and response identity for every mounted API route.
 - [ ] `HttpRouteManifest` natively owns or shares runtime-composed inventories; assembly and gateway code contains no leaked manifest allocation.

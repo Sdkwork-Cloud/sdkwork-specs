@@ -237,13 +237,14 @@ Public naming migrations for application identity and commerce capabilities foll
 | bare `gateway` in crate/script names | `api-standalone-gateway`, platform `api-cloud-gateway`, or responsibility-specific edge ingress | name the owner and responsibility |
 | bare `catalog` (i18n normative) | `message catalog` / `i18n catalog fragment` | commerce `catalog` capability |
 | `identity` domain packages | `iam` | identity projection headers |
+| `nativeSessionId` / `native_session_id` / native Session activity | `providerSessionId` / `provider_session_id` / provider Session activity | pre-launch breaking rename across kernel SPI, Agents persistence/API/SDK, and application consumers; no compatibility alias |
 | `PRODUCT_OR_PLATFORM` env formula | `PLATFORM_OR_APPLICATION_CODE` or `SDKWORK_<APPLICATION_CODE>_` | — |
 
 Rules:
 
 - New standards and packages must use canonical terms only.
 - Compatibility aliases may exist during the compatibility window but must record removal dates and fail verification after cutover.
-- Verification uses `tools/check-identity-naming.mjs` plus existing Rust crate naming scans in `TEST_SPEC.md`.
+- Verification uses `tools/check-identity-naming.mjs`, `tools/check-provider-session-identity.mjs`, plus existing Rust crate naming scans in `TEST_SPEC.md`.
 
 ## 9. Package Directory Migration
 

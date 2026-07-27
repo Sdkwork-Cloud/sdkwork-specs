@@ -20,6 +20,7 @@ export const CREDENTIAL_MODES = new Set([
   'protected-open-api-api-key',
   'protected-open-api-oauth',
   'protected-open-api-flexible',
+  'protected-open-api-api-key-or-dual-token',
   'public-open-api',
   'local-native',
   'test-fake',

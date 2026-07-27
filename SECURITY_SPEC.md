@@ -10,7 +10,7 @@ Security is a cross-cutting requirement. It must be enforced by backend services
 
 Rules:
 
-- Every HTTP operation `MUST` use exactly one authentication profile declared by its route manifest and OpenAPI contract. Protected app-api and backend-api operations require `dual-token`; protected open-api operations require `api-key`, `oauth`, or `open-api-flexible`; pre-session credential-entry uses `credential-entry-bootstrap`; refresh uses `refresh-token`; internal/agent operations use their explicit profile. Credential presence must never change the declared profile.
+- Every HTTP operation `MUST` use exactly one authentication profile declared by its route manifest and OpenAPI contract. Protected app-api and backend-api operations require `dual-token`; protected open-api operations require `api-key`, `oauth`, `open-api-flexible`, or `api-key-or-dual-token`; pre-session credential-entry uses `credential-entry-bootstrap`; refresh uses `refresh-token`; internal/agent operations use their explicit profile. Credential presence must never change the declared profile.
 - Protected RPC methods `MUST` require the equivalent `authorization` and `access-token` metadata unless the method is explicitly public or internal mTLS-only.
 - Application login/session integration, AuthGate behavior, generated SDK token wiring, logout clearing, and Rust AppContext validation `MUST` follow `IAM_LOGIN_INTEGRATION_SPEC.md`.
 - Public endpoints `MUST` explicitly declare `security: []` and `x-sdkwork-auth-mode: anonymous`, and generated SDKs `MUST` skip every automatic credential for those operations. Credential-entry endpoints are not anonymous: they require only bootstrap `AccessToken` and use `x-sdkwork-auth-mode: credential-entry-bootstrap`.
@@ -26,6 +26,7 @@ Rules:
 - Tokens and secrets `MUST NOT` be logged.
 - Protected open-api requests `MUST` resolve API keys through a server-side API key lookup service when the route declares `api-key` or flexible mode selects API key. The API key record, not the raw submitted key alone, supplies tenant, organization, user, app, data scope, and permission scope.
 - Protected open-api requests `MUST` resolve OAuth bearer tokens through a server-side OAuth token lookup service when the route declares `oauth` or flexible mode selects OAuth bearer. Verified token/session metadata, not the raw bearer value alone, supplies tenant, organization, user, app, data scope, and permission scope.
+- Protected open-api requests using `api-key-or-dual-token` `MUST` accept only an API key alone or a complete matching auth/access token pair. API key/token mixtures and incomplete token pairs are credential contamination and `MUST` be rejected before authentication or business logic. The dual-token branch uses the same signature, claim-consistency, tenant/app isolation, expiry, revocation, and scope validation required by `dual-token`.
 - API key and OAuth bearer lookup implementations `MUST` support different storage backends through service boundaries. The standard may use IAM tables, tenant-local stores, encrypted secret stores, caches, or remote IAM services.
 - Web backend handlers, controller methods, services, repositories, and provider adapters `MUST` follow `WEB_BACKEND_SPEC.md`: they consume typed request context and must not reparse raw credential headers after framework context resolution.
 
@@ -170,6 +171,7 @@ Rules:
 - [ ] Multi-organization login uses a continuation challenge and validates selected membership before issuing business tokens.
 - [ ] API key open-api validation resolves a server-side API key record before context injection.
 - [ ] OAuth bearer open-api validation resolves a server-side token/session record before context injection.
+- [ ] `api-key-or-dual-token` open-api validation accepts both valid branches and rejects API key/token mixtures, incomplete token pairs, and missing credentials before handler execution.
 - [ ] Protected HTTP routers for open-api, app-api, and backend-api run the standard interceptor chain through `sdkwork-web-framework` (Rust) or an equivalent framework (Java), or a stricter documented superset.
 - [ ] Generated RPC SDK clients support metadata providers for auth, access token, trace, idempotency, and request hash metadata.
 - [ ] RPC SDK examples use metadata providers and do not hard-code live tokens.

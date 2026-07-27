@@ -75,6 +75,7 @@ Rules:
 
 - App-surface root or core-package `specs/component.spec.json` must include `contracts.permissionComposition` when HTTP `sdkDependencies` or modular permissions apply.
 - Core package `component.spec.json` must include `contracts.sdkDependencies` with explicit `surface` and `credentialMode`.
+- Protected open-api dependencies use the credential mode matching the authority contract: `protected-open-api-api-key`, `protected-open-api-oauth`, `protected-open-api-flexible` for API-key-or-OAuth, or `protected-open-api-api-key-or-dual-token` for the mutually exclusive API-key/dual-token profile.
 - Backend-only App Standard v3 roots must declare release/runtime SDK inventory through root
   `specs/component.spec.json#contracts.sdkDependencies`; they must not restore the retired top-level
   manifest field. Legacy v2 roots may retain `sdkwork.app.config.json#sdkDependencies` only until

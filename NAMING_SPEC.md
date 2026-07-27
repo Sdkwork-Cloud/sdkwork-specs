@@ -77,6 +77,7 @@ After `product`, these words are the most common sources of naming drift. Each r
 | `foundation` | shared foundation **domain/module** tier (L3); foundation dependency SDKs | package name `foundation` without domain | `sdkwork-<domain>-*` or `shared foundation module` |
 | `portal` | browser **portal** public config (`PORTAL_PUBLIC_*`, `[portal.public]`); static portal assets | application code; IAM domain | `PORTAL_PUBLIC_*`, `browser public runtime` |
 | `identity` | prose "identity projection" in HTTP headers | domain name instead of `iam` | domain `iam` |
+| provider Session identity | provider-owned resumable Session, tree, lineage, directory-reconciliation, activity, and transcript identifiers | `nativeSessionId`, `native_session_id`, `native Session`, or provider/native identity | `providerSessionId` in APIs/code, `provider_session_id` in databases, and `provider Session` in prose; use the same `providerSession*` family for related fields |
 | `core` | reserved package role `*-core` (runtime/bootstrap) | business capability token; forbidden `sdkwork-<application-code>-core` crate | `*-core` role or `sdkwork-<domain>-<capability>-service` |
 | `common` / `manager` | prose adjective or responsibility-specific type suffix only | capability or crate catch-alls | concrete domain capability |
 | `open` | approved **open-api** prefix/path; `open-api` surface | shorthand package name `open` | `open-api`, `sdkwork-<domain>-open-api` |
