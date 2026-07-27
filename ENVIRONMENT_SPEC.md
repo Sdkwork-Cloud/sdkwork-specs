@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: environment variables, runtime config files, public browser runtime config, secrets, database selection, standalone/cloud deployment profiles, desktop/server/container/H5/Flutter/mini-program/native Android/native iOS/native Harmony runtime targets, SDK base URLs, locale strategy, Access-Token and TokenManager credential config rules, RPC endpoints
-- Related: `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `REGION_SPEC.md`, `DATABASE_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RUST_RPC_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
+- Related: `CONFIG_SPEC.md`, `SOURCE_CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `REGION_SPEC.md`, `DATABASE_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RUST_RPC_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the canonical environment and runtime configuration model for SDKWork applications. It exists to prevent each application from inventing different `.env` names, database defaults, SDK base URL rules, config file locations, and secret handling behavior.
 
@@ -13,7 +13,9 @@ This standard defines the canonical environment and runtime configuration model 
 Environment configuration must satisfy these goals:
 
 - One application can run in development, test, staging, and production without code changes.
-- `dev`, `test`, `staging`, and `prod` file profiles can be used by scripts while application runtime normalizes them to `development`, `test`, `staging`, and `production`.
+- `dev`, `test`, `staging`, and `prod` may be accepted as command aliases while
+  application runtime normalizes them before composing the canonical profile
+  id. They are not canonical env file suffixes.
 - One product can support `standalone` and `cloud` deployment profiles with
   explicit browser, H5, desktop, tablet, Capacitor, Flutter, native mobile,
   mini program, service/server, container, and test-runner runtime targets.
@@ -34,7 +36,7 @@ Environment configuration must satisfy these goals:
 | Term | Meaning |
 | --- | --- |
 | Environment | Lifecycle stage: `development`, `test`, `staging`, or `production`. |
-| Environment profile alias | Short file/script profile: `dev`, `test`, `staging`, or `prod`. `dev` maps to `development`; `prod` maps to `production`. |
+| Environment profile alias | Legacy command/operator alias: `dev`, `test`, `staging`, or `prod`. `dev` maps to `development`; `prod` maps to `production`; aliases are normalized before canonical profile selection. |
 | Deployment profile | Application deployment architecture: `standalone` or `cloud`. |
 | Runtime target | Code execution target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, or `test-runner`. |
 | Build mode | Build tool mode such as Vite mode, Tauri build target, or Spring profile alias. It is not sufficient as the full runtime environment model. |
@@ -134,7 +136,7 @@ These variables form the baseline for SDKWork applications.
 | Variable | Visibility | Required | Description |
 | --- | --- | --- | --- |
 | `SDKWORK_<APPLICATION_CODE>_ENVIRONMENT` | private | SHOULD | Lifecycle stage: `development`, `test`, `staging`, `production`. |
-| `SDKWORK_<APPLICATION_CODE>_CONFIG_PROFILE` | private | SHOULD | File/script profile alias: `dev`, `test`, `staging`, `prod`. Startup must normalize it to `SDKWORK_<APPLICATION_CODE>_ENVIRONMENT`. |
+| `SDKWORK_<APPLICATION_CODE>_CONFIG_PROFILE` | private | SHOULD | Legacy command/operator profile alias: `dev`, `test`, `staging`, `prod`. Startup must normalize it before canonical profile selection. |
 | `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE` | private | SHOULD | Application deployment architecture: `standalone` or `cloud`. |
 | `SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET` | private | SHOULD | Execution target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, `test-runner`. |
 | `SDKWORK_<APPLICATION_CODE>_BUILD_MODE` | private/public by tool | MAY | Build tool mode. It must not replace `ENVIRONMENT`, `DEPLOYMENT_PROFILE`, or `RUNTIME_TARGET`. |
@@ -209,92 +211,288 @@ These variables form the baseline for SDKWork applications.
 
 Application-specific variables may be added only when they have an owner, validation rule, and documentation entry.
 
-## 5.1 Environment Profiles And Config Files
+## 5.1 Canonical Profile Id And Env File Standard
 
-SDKWork uses canonical lifecycle environment names in code and may use short
-profile aliases in scripts and file names.
+SDKWork env files use one canonical profile id:
 
-| Script/file profile | Canonical environment | Required validation |
+```text
+<deploymentProfile>.<environment>
+```
+
+The complete standard matrix is:
+
+| Profile id | Deployment topology | Lifecycle tier |
 | --- | --- | --- |
-| `dev` | `development` | Local-only defaults allowed; dev secrets must be marked development-only. |
-| `test` | `test` | Database, Redis, logs, cache, temp files, and tenant data must be isolated. |
-| `staging` | `staging` | Production-like validation, no local defaults, production-style secret handling. |
-| `prod` | `production` | No placeholders, no developer paths, no localhost unless explicitly approved for a local appliance. |
+| `standalone.development` | Application-owned standalone ingress | Development |
+| `standalone.test` | Application-owned standalone ingress | Isolated automated or manual test |
+| `standalone.staging` | Application-owned standalone ingress | Production-like rehearsal |
+| `standalone.production` | Application-owned standalone ingress | Production |
+| `cloud.development` | Explicit deployed cloud surfaces | Development |
+| `cloud.test` | Explicit deployed cloud surfaces | Isolated cloud test |
+| `cloud.staging` | Explicit deployed cloud surfaces | Production-like cloud rehearsal |
+| `cloud.production` | Explicit deployed cloud surfaces | Production cloud |
 
-Checked-in root templates for an application may include:
+Rules:
+
+- Profile ids `MUST` contain exactly two segments. The first segment is only
+  `standalone` or `cloud`; the second is only `development`, `test`, `staging`,
+  or `production`.
+- A deployable application that declares both deployment profiles and all four
+  lifecycle environments `MUST` provide all eight source profiles. A root that
+  intentionally supports a smaller matrix `MUST` declare the supported
+  combinations in `etc/sdkwork.deployment.config.json` and its release metadata;
+  missing combinations fail selection rather than falling back.
+- `dev` and `prod` are command compatibility aliases for `development` and
+  `production`. New env file names, profile ids, persisted config, artifacts,
+  and evidence `MUST NOT` use `.dev`, `.prod`, `local`, `private`, `saas`, or
+  `self-hosted` as substitutes for a canonical profile id.
+- File names select a candidate profile, but content remains authoritative only
+  after it declares matching `environment`, `deploymentProfile`, `profileId`,
+  and `runtimeTarget` values. A mismatch fails before SDK construction or host
+  startup.
+- `cloud.development` never inherits `standalone.development`, loopback API
+  endpoints, or `cloud.production`. Required remote surface URLs are explicit.
+
+### 5.1.1 Four Configuration Layers
+
+Every application architecture separates these layers:
+
+| Layer | Standard owner | Examples | Rule |
+| --- | --- | --- | --- |
+| Source authority | `<deployable-root>/etc/` | `sdkwork.deployment.config.json`, `topology/cloud.production.env` | Reviewed topology and safe values; one authority per deployment unit. |
+| Materialized application env | Application root | `.env.cloud.production`, `env/sdkwork.cloud.production.json`, `config/mini-program/runtime-env.cloud.production.json` | Deterministic derivative selected by profile id and runtime target. |
+| Host-local/private overlay | Ignored local file or secure store | `.env.cloud.development.local`, `sdkwork.cloud.development.bootstrap.local.json`, `project.private.config.json` | Secrets, developer overrides, platform credentials; never committed. |
+| Runtime/operator override | Process env, installed config, secret manager, CLI | `/etc/sdkwork/...`, mounted secret, one-shot flag | Explicit late override with validation and provenance. |
+
+`sdkwork.app.config.json` declares application identity, supported runtimes, and
+release capabilities. It does not own concrete URLs, ports, environment maps, or
+per-profile env values. `SOURCE_CONFIG_SPEC.md` owns source materialization and
+precedence.
+
+### 5.1.2 Required Identity Keys
+
+Every materialized profile exposes the equivalent of these values in the
+framework's canonical namespace:
+
+| Logical field | Canonical value |
+| --- | --- |
+| `environment` | `development`, `test`, `staging`, or `production` |
+| `deploymentProfile` | `standalone` or `cloud` |
+| `profileId` | Exact concatenation `<deploymentProfile>.<environment>` |
+| `runtimeTarget` | Exact `CONFIG_SPEC.md` runtime target |
+| application ingress | Application-owned public HTTP origin or base URL |
+| platform/dependency surfaces | Explicit only when the selected SDK inventory requires them |
+
+Application-scoped env keys use uppercase snake case with a normalized
+`<APPLICATION_CODE>` segment. New materializers should emit both generic SDKWork
+identity keys and application-scoped keys when application-specific bootstrap
+code consumes them:
 
 ```text
-.env.example
-.env.development.example
-.env.test.example
-.env.staging.example
-.env.production.example
-.env.postgres.example
-config/<application-code>.toml.example
-config/<application-code>.development.toml.example
-config/<application-code>.test.toml.example
-config/<application-code>.staging.toml.example
-config/<application-code>.production.toml.example
+SDKWORK_ENVIRONMENT=development
+SDKWORK_DEPLOYMENT_PROFILE=standalone
+SDKWORK_PROFILE_ID=standalone.development
+SDKWORK_RUNTIME_TARGET=browser
+SDKWORK_<APPLICATION_CODE>_ENVIRONMENT=development
+SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE=standalone
+SDKWORK_<APPLICATION_CODE>_PROFILE_ID=standalone.development
+SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET=browser
 ```
 
-Ignored host-local files must include:
+Browser/Vite projections prefix public keys with `VITE_`. Flutter and private
+Node/runtime projections use `SDKWORK_`. Native mini program JSON uses
+`SDKWORK_` field names because it is a generated runtime document rather than a
+process environment. Compatibility keys such as `API_BASE_URL`, `FLUTTER_ENV`,
+or unprefixed legacy application keys are migration aliases only.
 
-```text
-.env.local
-.env.development.local
-.env.test.local
-.env.staging.local
-.env.production.local
-.env.postgres
-.env.release.local
-config/*.local.toml
+### 5.1.3 Architecture File Matrix
+
+| Application architecture | Canonical tracked materialization | Local/private overlay | Runtime consumption |
+| --- | --- | --- | --- |
+| PC browser / Vite renderer | `.env.<profile-id>` | `.env.<profile-id>.local` or `.env.<profile-id>.bootstrap.local` | `vite --mode <profile-id>` and `import.meta.env.VITE_*` |
+| H5 / Vite / Capacitor renderer | `.env.<profile-id>` | `.env.<profile-id>.local` or `.env.<profile-id>.bootstrap.local` | Same Vite contract; Capacitor host metadata remains separate |
+| Flutter | `env/sdkwork.<profile-id>.json` | `env/sdkwork.<profile-id>.bootstrap.local.json` | `--dart-define-from-file=...` and `String.fromEnvironment` |
+| WeChat native mini program | `config/mini-program/runtime-env.<profile-id>.json` | `project.private.config.json` and an ignored bootstrap overlay when required | Build copies exactly one selected safe JSON document into the platform output |
+| uni-app multi-platform mini program | `.env.<profile-id>` | `.env.<profile-id>.local` | Vite/uni-app build mode; `UNI_PLATFORM` or an explicit target flag remains a separate axis |
+| Native Android | `config/app/runtime-env.<profile-id>.json` | `local.properties`, ignored signing files, secure CI inputs | Build validates and packages one selected non-secret resource; host values remain Gradle/manifest config |
+| Native iOS | `config/app/runtime-env.<profile-id>.json` | user `.xcconfig`, keychain/signing profiles, secure CI inputs | Build validates and packages one selected non-secret resource; host values remain Xcode/plist config |
+| Native HarmonyOS | `config/app/runtime-env.<profile-id>.json` | ignored signing/profile files and secure CI inputs | hvigor projects one selected non-secret resource; host values remain JSON5/module config |
+| Desktop native host | `config/desktop/<application-code>.<profile-id>.toml.example` | installed user-private TOML and OS secure storage | Host bootstrap; renderer still follows the PC Vite row |
+| Node server | `.env.<profile-id>.example` or typed `etc/` JSON/TOML | `.env.<profile-id>.local`, installed config, secret manager | `SDKWORK_*` through process bootstrap |
+| Spring Boot server | `application-<deployment-profile>-<environment>.yml.example` | external YAML, process env, secret manager | Spring profile is an adapter and must normalize to the canonical profile id |
+| Rust server/container | `etc/<process>.<profile-id>.toml` or a referenced topology env | installed/mounted TOML, process env, secret files | Typed bootstrap with lower snake case config keys |
+
+Libraries, generated SDKs, UI packages, and embedded-only modules do not own
+profile files. They receive typed configuration from the deployable bootstrap.
+Lifecycle-only host metadata examples such as `capacitor.production.example.json`,
+`flutter.production.example.json`, or `mp-weixin.production.example.json` are
+not env authorities. They may remain one-dimensional only when their package,
+permission, signing-reference, or store metadata is identical for standalone
+and cloud; endpoint and topology values never belong in those host files.
+
+### 5.1.4 PC And H5 Vite Format
+
+PC browser and H5 roots use Vite public env files as deterministic derivatives:
+
+```dotenv
+# .env.standalone.development
+VITE_SDKWORK_ENVIRONMENT=development
+VITE_SDKWORK_DEPLOYMENT_PROFILE=standalone
+VITE_SDKWORK_PROFILE_ID=standalone.development
+VITE_SDKWORK_RUNTIME_TARGET=browser
+VITE_SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL=http://127.0.0.1:10240
 ```
 
-PC browser/desktop/tablet roots should use this grouped config layout when the
-application supports multiple runtime targets:
-
-```text
-apps/sdkwork-<application-code>-pc/
-  config/
-    browser/
-      runtime-env.development.example.json
-      runtime-env.test.example.json
-      runtime-env.staging.example.json
-      runtime-env.production.example.json
-    desktop/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
-    server/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
-    container/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
-    tauri/
-      tauri.conf.json
-      tauri.windows.conf.json
-      tauri.macos.conf.json
-      tauri.linux.conf.json
-      tauri.ios.conf.json
-      tauri.android.conf.json
+```dotenv
+# .env.cloud.production
+VITE_SDKWORK_ENVIRONMENT=production
+VITE_SDKWORK_DEPLOYMENT_PROFILE=cloud
+VITE_SDKWORK_PROFILE_ID=cloud.production
+VITE_SDKWORK_RUNTIME_TARGET=browser
+VITE_SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL=https://app.example.com
+VITE_SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL=https://api.example.com
 ```
 
 Rules:
 
-- The file suffix selects the profile template; the file content must still declare and validate `[runtime].environment`, `[runtime].deployment_profile`, and `[runtime].runtime_target`.
-- `development` and `test` config may include disposable local placeholders. `staging` and `production` examples must show secret file or secret-manager references, not direct real secrets.
-- Vite `.env`, `.env.local`, `.env.[mode]`, and `.env.[mode].local` files are build/dev-server inputs only. Only `VITE_` variables may reach browser code, and those variables must be non-secret.
-- Public browser values should be emitted by `/runtime-env.js` or an equivalent JSON document when a built artifact is promoted from test to staging to production.
-- Java/Spring server modules may provide profile examples such as `application-dev.yml.example`, `application-test.yml.example`, `application-staging.yml.example`, and `application-prod.yml.example`. These are server profile examples only; they do not replace the SDKWork typed runtime config model.
-- Rust server, desktop, standalone service, and cloud service packages should prefer TOML runtime config with lower snake case keys.
-- Tauri target config files may be copied into `config/tauri/` for templates or live under `src-tauri/` in the desktop package. In both cases they are platform packaging config, not secret-bearing runtime config.
-- Production runtime config should be provisioned by installer, service manager, container orchestration, or release tooling. It must not require a committed `.env.production`.
+- `VITE_*` is the canonical renderer namespace. Non-`VITE_` values loaded by
+  Node-side orchestration are private to the build/bootstrap process and must
+  not be read from browser modules.
+- `vite --mode standalone.development` loads
+  `.env.standalone.development`; `vite build --mode cloud.production` loads
+  `.env.cloud.production`.
+- If one immutable browser artifact is promoted across environments, build env
+  selects only safe build facts and deploy tooling emits `/runtime-env.js` or
+  `/runtime-env.json` with the same logical fields. Runtime config loads before
+  SDK clients.
+- Browser-visible env contains no `SDKWORK_ACCESS_TOKEN`, auth token, refresh
+  token, API key, database URL, Redis URL, signing value, or private endpoint.
+
+### 5.1.5 Flutter Dart-Define JSON Format
+
+Flutter roots use JSON because `--dart-define-from-file` is the native build
+input:
+
+```json
+{
+  "SDKWORK_ENVIRONMENT": "development",
+  "SDKWORK_DEPLOYMENT_PROFILE": "standalone",
+  "SDKWORK_PROFILE_ID": "standalone.development",
+  "SDKWORK_RUNTIME_TARGET": "flutter-android",
+  "SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL": "http://10.0.2.2:10240"
+}
+```
+
+Example commands:
+
+```text
+flutter run --dart-define-from-file=env/sdkwork.standalone.development.json
+flutter build appbundle --dart-define-from-file=env/sdkwork.cloud.production.json
+flutter build ipa --dart-define-from-file=env/sdkwork.cloud.production.json
+```
+
+Rules:
+
+- `SDKWORK_*` is the canonical Flutter namespace and is read through
+  `String.fromEnvironment(...)` or a typed wrapper.
+- Android emulator, iOS simulator, physical-device, LAN, and cloud origins are
+  explicit source values. A materializer must not guess host-loopback aliases.
+- A live bootstrap token may exist only in the ignored
+  `sdkwork.<profile-id>.bootstrap.local.json` development/test overlay and must
+  never enter a release artifact.
+
+### 5.1.6 Mini Program Formats
+
+WeChat native mini program roots use a generated runtime JSON document:
+
+```json
+{
+  "SDKWORK_ENVIRONMENT": "production",
+  "SDKWORK_DEPLOYMENT_PROFILE": "cloud",
+  "SDKWORK_PROFILE_ID": "cloud.production",
+  "SDKWORK_RUNTIME_TARGET": "mini-program",
+  "SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL": "https://mini.example.com",
+  "SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL": "https://api.example.com"
+}
+```
+
+The build command selects the profile explicitly and records it in a build
+manifest:
+
+```text
+node scripts/build-mini-program.mjs --deployment-profile cloud --environment production
+```
+
+Rules for WeChat native mini programs:
+
+- The selected `config/mini-program/runtime-env.<profile-id>.json` is copied or
+  compiled into one deterministic public runtime module before `App()` starts.
+- `project.config.json` owns safe shared WeChat tooling metadata.
+  `project.private.config.json` owns developer-local IDE settings and stays
+  ignored. App secrets, upload private keys, and signing credentials stay in
+  platform/CI secret storage.
+- Source packages do not call `wx.request` as a config fallback and do not read
+  arbitrary process env at runtime.
+
+uni-app multi-platform mini program roots use the Vite naming contract:
+
+```dotenv
+# .env.cloud.production
+VITE_SDKWORK_ENVIRONMENT=production
+VITE_SDKWORK_DEPLOYMENT_PROFILE=cloud
+VITE_SDKWORK_PROFILE_ID=cloud.production
+VITE_SDKWORK_RUNTIME_TARGET=mini-program
+VITE_SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL=https://mini.example.com
+```
+
+Example:
+
+```text
+uni build -p mp-weixin --mode cloud.production
+uni build -p mp-alipay --mode cloud.production
+```
+
+`mp-weixin`, `mp-alipay`, `mp-dingtalk`, and other platform values are target
+platforms, not profile-id segments. One mini program root selects exactly one
+framework authority: native WeChat for `weixin-mini-program`, or uni-app for a
+declared multi-platform matrix. It must not keep both as competing source trees.
+
+### 5.1.7 Local Overrides, Secrets, And Migration
+
+Ignored files include, as applicable:
+
+```text
+.env.local
+.env.<profile-id>.local
+.env.<profile-id>.bootstrap.local
+env/sdkwork.<profile-id>.bootstrap.local.json
+etc/**/*.local.*
+etc/secrets/
+config/**/*.local.*
+project.private.config.json
+local.properties
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+```
+
+Rules:
+
+- Tracked materialized env files are safe, deterministic build/runtime inputs.
+  They contain no live credential values, even when a key name is present as an
+  empty documented placeholder.
+- Development/test bootstrap credentials come from the correct backend/app
+  login context and are written only to ignored bootstrap overlays.
+- `staging` and `production` secrets come from secret managers, mounted secret
+  files, protected process env, OS secure storage, or platform signing systems.
+- Legacy `.env.development`, `.env.production`, `runtime-env.production.json`,
+  `sdkwork.prod.json`, and similar one-dimensional files must migrate to the
+  canonical two-dimensional name. Compatibility readers may warn during a
+  bounded migration but must not dual-write old and new authorities.
+- Reference examples live under `templates/environment/`; application-specific
+  values are materialized from that application's `etc/`, not copied back into
+  the standards repository.
 
 ## 5.2 Desktop, Server, Container, And Browser Config Profiles
 
@@ -640,6 +838,7 @@ TOML is the preferred runtime config file format for SDKWork Rust and desktop/se
 [runtime]
 environment = "production"
 deployment_profile = "standalone"
+profile_id = "standalone.production"
 runtime_target = "server"
 config_profile = "prod"
 
@@ -692,7 +891,10 @@ sdk_archive_root = "/var/lib/sdkwork/router/sdk-archives"
 Rules:
 
 - Config files should use lower snake case.
-- `[runtime].environment`, `[runtime].deployment_profile`, and `[runtime].runtime_target` are required in non-example release config.
+- `[runtime].environment`, `[runtime].deployment_profile`, `[runtime].profile_id`,
+  and `[runtime].runtime_target` are required in non-example release config.
+  `profile_id` must equal
+  `<deployment_profile>.<environment>`.
 - `[runtime].config_profile` is optional and exists only for operator readability or script traceability.
 - Environment variables should use upper snake case.
 - The mapping between file keys and env keys must be documented and tested.
@@ -710,6 +912,7 @@ Development server profile:
 [runtime]
 environment = "development"
 deployment_profile = "standalone"
+profile_id = "standalone.development"
 runtime_target = "server"
 config_profile = "dev"
 
@@ -743,6 +946,7 @@ Test server profile:
 [runtime]
 environment = "test"
 deployment_profile = "standalone"
+profile_id = "standalone.test"
 runtime_target = "test-runner"
 config_profile = "test"
 
@@ -779,6 +983,7 @@ Production server profile:
 [runtime]
 environment = "production"
 deployment_profile = "standalone"
+profile_id = "standalone.production"
 runtime_target = "server"
 config_profile = "prod"
 
@@ -814,6 +1019,7 @@ Installed desktop production profile:
 [runtime]
 environment = "production"
 deployment_profile = "standalone"
+profile_id = "standalone.production"
 runtime_target = "desktop"
 config_profile = "prod"
 
@@ -932,6 +1138,7 @@ Example desktop config:
 [runtime]
 environment = "production"
 deployment_profile = "standalone"
+profile_id = "standalone.production"
 runtime_target = "desktop"
 
 [database]
@@ -1160,6 +1367,7 @@ Example Linux desktop config:
 [runtime]
 environment = "production"
 deployment_profile = "standalone"
+profile_id = "standalone.production"
 runtime_target = "desktop"
 config_profile = "prod"
 
@@ -1227,6 +1435,7 @@ Example Linux server config:
 [runtime]
 environment = "production"
 deployment_profile = "standalone"
+profile_id = "standalone.production"
 runtime_target = "server"
 config_profile = "prod"
 
@@ -1345,6 +1554,13 @@ Every application that adopts this standard should provide:
 
 - Unit tests for env parsing and default resolution.
 - Profile normalization tests for `dev -> development`, `prod -> production`, and rejection of unknown profile names.
+- Canonical matrix tests for the eight
+  `<deploymentProfile>.<environment>` combinations, undeclared-profile
+  rejection, no cross-profile fallback, and source/materialized identity
+  equality.
+- Architecture format tests for PC/H5 Vite, Flutter dart-define JSON, native
+  WeChat runtime JSON, uni-app Vite env, and every native/mobile format the
+  application declares.
 - Runtime target tests for browser, desktop, tablet, Capacitor, Flutter, mini program, native Android, native iOS, native Harmony, server, container, and test-runner defaults.
 - Config file parsing tests for canonical and explicit paths.
 - Release preflight validation for required production variables.
@@ -1361,8 +1577,13 @@ Every application that adopts this standard should provide:
 Acceptance checklist:
 
 - [ ] Env names follow the product and capability prefix rules.
-- [ ] `SDKWORK_<APPLICATION_CODE>_ENVIRONMENT`, `SDKWORK_<APPLICATION_CODE>_CONFIG_PROFILE`, `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE`, and `SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET` are normalized and validated separately.
-- [ ] Dev/test/staging/prod example files exist where applicable and local overrides are ignored.
+- [ ] Generic and application-scoped environment, deployment profile, profile id, and runtime target fields are normalized and validated together.
+- [ ] Supported canonical profile files exist with
+      `<deploymentProfile>.<environment>` names and local overrides are ignored.
+- [ ] PC/H5 use `.env.<profile-id>`, Flutter uses
+      `env/sdkwork.<profile-id>.json`, native WeChat uses
+      `config/mini-program/runtime-env.<profile-id>.json`, and uni-app uses the
+      Vite contract when those architectures are declared.
 - [ ] Public values are separated from private and secret values.
 - [ ] Generated SDK base URLs resolve from declared application/platform
   surfaces, with an optional proven common API edge origin and per-surface or

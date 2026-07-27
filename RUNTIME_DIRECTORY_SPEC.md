@@ -371,6 +371,7 @@ TOML is preferred for SDKWork Rust services and desktop/server packages.
 [runtime]
 environment = "production"
 deployment_profile = "standalone"
+profile_id = "standalone.production"
 runtime_target = "server"
 app_code = "router"
 process_name = "clawrouter"

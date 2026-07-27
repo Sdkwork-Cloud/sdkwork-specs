@@ -217,17 +217,24 @@ Desktop apps normally support more than one runtime mode.
 Rules:
 
 - Environment variables and runtime config follow `ENVIRONMENT_SPEC.md` and `CONFIG_SPEC.md`.
-- Lifecycle environment, profile alias, deployment profile, build mode, and runtime target `MUST` be modeled separately. Tauri target, Vite mode, or Spring profile must not be used as the entire runtime decision.
+- Lifecycle environment, profile alias, deployment profile, canonical profile
+  id, build mode, and runtime target `MUST` be modeled separately. Tauri
+  target, Vite mode, or Spring profile must not be used as the entire runtime
+  decision.
 - Runtime directories, logs, cache, user-private files, and local database paths follow `RUNTIME_DIRECTORY_SPEC.md`.
 - Declared desktop client-local data uses SQLite by default, and tablet-local
   data uses SQLite or approved platform-local encrypted storage. Every backend
   service launched by desktop development commands uses the PostgreSQL profile;
   an explicit SQLite command may validate only client-local persistence.
 - Installed desktop config uses `environment = "production"`,
-  `deployment_profile = "standalone"`, and `runtime_target = "desktop"` by
-  default unless the installer is explicitly producing a cloud-managed desktop
-  profile.
-- Desktop development config uses `environment = "development"` and `runtime_target = "desktop"` for the native shell, while any launched backend service uses a separate `runtime_target = "server"` config.
+  `deployment_profile = "standalone"`,
+  `profile_id = "standalone.production"`, and
+  `runtime_target = "desktop"` by default unless the installer is explicitly
+  producing a cloud-managed desktop profile.
+- Desktop development config uses `environment = "development"`, matching
+  `deployment_profile` and `profile_id`, and `runtime_target = "desktop"` for
+  the native shell, while any launched backend service uses a separate
+  `runtime_target = "server"` config.
 - Desktop and tablet test config uses `environment = "test"` and isolates SQLite files, logs, cache, temp files, local service ports, and backend test databases.
 - Release builds `MUST NOT` hard-code localhost API or websocket endpoints.
 - Development defaults may use localhost only in development-prunable branches or explicit local profiles.
@@ -241,15 +248,9 @@ Standard desktop/native config files:
 apps/sdkwork-<application-code>-pc/
   config/
     desktop/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
     server/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
     tauri/
       tauri.conf.json
       tauri.windows.conf.json
@@ -269,10 +270,11 @@ apps/sdkwork-<application-code>-pc/
 
 Rules:
 
-- `config/desktop/*.toml.example` describes installed desktop/tablet runtime defaults: local host mode, secure storage provider, local service lifecycle, user-private directories, and SQLite or encrypted local storage.
+- `config/desktop/*.toml.example` describes installed desktop/tablet runtime defaults: local host mode, secure storage provider, local service lifecycle, user-private directories, and SQLite or encrypted local storage. Each supported file uses the canonical `<deployment-profile>.<environment>` profile id and declares matching `environment`, `deployment_profile`, `profile_id`, and `runtime_target` values.
 - `config/server/*.toml.example` describes backend/service defaults used by
   `pnpm dev:server`, desktop-started services, service releases, and
-  customer-owned or cloud deployments.
+  customer-owned or cloud deployments. Server examples use the same canonical
+  profile id while declaring `runtime_target = "server"`.
 - `config/tauri/*` or `src-tauri/tauri.*.conf.json` describes platform packaging metadata: bundle identifier, package name, window metadata, permissions, capabilities, icons, mobile/tablet target metadata, updater metadata, and signing references.
 - Tauri config may contain signing key references, keychain names, environment variable names, or CI secret identifiers. It must not contain signing private keys, auth tokens, refresh tokens, database passwords, API keys, or private endpoints.
 - Tauri platform-specific config files may override target-specific packaging values and permissions. They must not override app/console/admin route ownership, generated SDK packages, API path contracts, TokenManager wiring, or appbase IAM behavior.
@@ -416,7 +418,7 @@ pnpm --filter @sdkwork/<application-code>-pc-desktop build:tablet-android
 - [ ] Remote business calls use generated SDK clients or approved wrappers.
 - [ ] Native host commands are narrow, typed, least-privilege, and local-only.
 - [ ] Desktop-local user data uses SQLite, tablet-local user data uses SQLite or approved encrypted platform storage, while desktop/tablet-started backend services use the PostgreSQL dev profile by default.
-- [ ] Desktop user runtime config, desktop-started server config, browser public runtime config, container runtime config, and Tauri platform config are separated for development, test, staging, and production.
+- [ ] Desktop user runtime config, desktop-started server config, browser public runtime config, and container runtime config use canonical `<deployment-profile>.<environment>` identities; Tauri platform config remains a separate host-packaging axis.
 - [ ] Tauri platform config contains only packaging metadata, permissions, capabilities, and signing references; secrets and business API contracts are excluded.
 - [ ] Tauri config, permissions, capabilities, icons, and bundle metadata are explicit.
 - [ ] iPadOS and Android tablet package metadata, signing references, safe-area/lifecycle behavior, and build commands are explicit when tablet targets are enabled.

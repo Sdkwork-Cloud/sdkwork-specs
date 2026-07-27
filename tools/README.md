@@ -31,6 +31,21 @@ Rules:
   `etc/sdkwork.deployment.config.json` from an existing topology v5 profile
   inventory. It never copies URLs, rejects profiles outside `etc/`, and writes
   only with explicit `--write` after deployment review.
+- `materialize-client-env.mjs` reads a repository-owned
+  `etc/client-env.materialization.json` declaration and deterministically
+  projects the root deployment profile matrix into tracked Vite, Flutter, and
+  native mini-program client files. It emits generic and application-scoped
+  profile identity, rejects secret-bearing keys and cloud loopback URLs, and
+  supports `--check` for stale-file verification.
+- `check-source-config-standard.mjs` validates deployable-root `etc/`
+  ownership, canonical `standalone|cloud` x
+  `development|test|staging|production` profile ids, default-profile
+  membership, in-`etc/` references, referenced-file existence, secret
+  boundaries, retired `configs/` debt, and production gateway CORS. Add
+  `--enforce-profile-identity` whenever env profiles or materializers are
+  created or changed; it requires matching `environment`,
+  `deploymentProfile`/`deployment_profile`, and `profileId`/`profile_id` in
+  dotenv, JSON, TOML, or YAML source profiles.
 - `resolve-app-runtime-plan.mjs` resolves a v5 topology into the canonical
   runtime plan shape, including local processes, remote surfaces, URL
   provenance, data stores, health checks, and forbidden cloud-development

@@ -180,7 +180,7 @@ IAM uses two tokens for protected operations:
 Rules:
 
 - Protected APIs `MUST` require both tokens unless a documented machine/API-key mode is explicitly selected.
-- Protected app-api and backend-api clients `MUST` send `Access-Token: <JWT access_token>` on every non-open-api request, including public and refresh-token entrypoints, when an access token is available from bootstrap or authenticated session state.
+- Protected app-api and backend-api clients `MUST` send `Access-Token: <JWT access_token>` on credential-entry-bootstrap and protected dual-token requests. Anonymous and refresh-token entrypoints `MUST NOT` inherit `Access-Token`, `Authorization`, or other stored credential headers; refresh proof is supplied only through the declared request body or dedicated refresh-token channel.
 - Protected app-api and backend-api clients `MUST` send `Authorization: Bearer <JWT auth_token>` on every protected dual-token request when an auth token is available from bootstrap or authenticated session state.
 - `Access-Token` values `MUST` be JWT compact serialization (`header.payload.signature`). Semicolon claim-string tokens, raw JSON objects, and query-string tokens are forbidden on v3 app-api/backend-api contracts.
 - `auth_token` parsers `MUST` validate principal identity, session identity, tenant identity, organization identity, login scope, auth strength, expiry, issuer, and revocation.

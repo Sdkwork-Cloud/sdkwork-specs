@@ -16,12 +16,154 @@ function write(root, relative, value) {
   fs.writeFileSync(file, value);
 }
 
+function writeDeploymentIndex(root, profiles = ['standalone.development']) {
+  const entries = {};
+  for (const profileId of profiles) {
+    const [deploymentProfile, environment] = profileId.split('.');
+    const relative = `topology/${profileId}.env`;
+    entries[profileId] = { config: relative };
+    write(root, `etc/${relative}`, [
+      `SDKWORK_ENVIRONMENT=${environment}`,
+      `SDKWORK_DEPLOYMENT_PROFILE=${deploymentProfile}`,
+      `SDKWORK_PROFILE_ID=${profileId}`,
+      '',
+    ].join('\n'));
+  }
+  write(root, 'etc/sdkwork.deployment.config.json', `${JSON.stringify({
+    schemaVersion: 1,
+    kind: 'sdkwork.deployment-index',
+    application: 'sdkwork-demo',
+    defaultProfile: profiles[0],
+    profiles: entries,
+  }, null, 2)}\n`);
+}
+
 test('accepts a deployable root with etc authority', () => {
   const root = fixture();
   write(root, 'sdkwork.app.config.json', '{"schemaVersion":3,"kind":"sdkwork.app"}\n');
   write(root, 'etc/README.md', '# Config\n');
-  write(root, 'etc/sdkwork.deployment.config.json', '{"schemaVersion":1,"kind":"sdkwork.deployment-index"}\n');
+  writeDeploymentIndex(root);
   assert.deepEqual(checkSourceConfigStandard(root), []);
+});
+
+test('accepts the complete canonical profile matrix', () => {
+  const root = fixture();
+  write(root, 'sdkwork.app.config.json', '{"schemaVersion":3,"kind":"sdkwork.app"}\n');
+  write(root, 'etc/README.md', '# Config\n');
+  writeDeploymentIndex(root, [
+    'standalone.development',
+    'standalone.test',
+    'standalone.staging',
+    'standalone.production',
+    'cloud.development',
+    'cloud.test',
+    'cloud.staging',
+    'cloud.production',
+  ]);
+  assert.deepEqual(checkSourceConfigStandard(root), []);
+});
+
+test('rejects invalid profile ids, missing files, and identity drift', () => {
+  const root = fixture();
+  write(root, 'sdkwork.app.config.json', '{}\n');
+  write(root, 'etc/README.md', '# Config\n');
+  write(root, 'etc/topology/cloud.production.env', [
+    'SDKWORK_ENVIRONMENT=staging',
+    'SDKWORK_DEPLOYMENT_PROFILE=standalone',
+    'SDKWORK_PROFILE_ID=standalone.staging',
+    '',
+  ].join('\n'));
+  write(root, 'etc/sdkwork.deployment.config.json', JSON.stringify({
+    schemaVersion: 1,
+    kind: 'sdkwork.deployment-index',
+    defaultProfile: 'cloud.production',
+    profiles: {
+      'cloud.production': { config: 'topology/cloud.production.env' },
+      'saas.prod': { config: 'topology/missing.env' },
+      'standalone.test': { config: 'topology/missing.env' },
+    },
+  }));
+  const issues = checkSourceConfigStandard(root);
+  assert.ok(issues.some((issue) => issue.includes('profile id must use')));
+  assert.ok(issues.some((issue) => issue.includes('target does not exist')));
+  assert.ok(issues.some((issue) => issue.includes('#environment')));
+  assert.ok(issues.some((issue) => issue.includes('#deploymentProfile')));
+  assert.ok(issues.some((issue) => issue.includes('#profileId')));
+});
+
+test('rejects deployment profile paths that escape etc', () => {
+  const root = fixture();
+  write(root, 'sdkwork.app.config.json', '{}\n');
+  write(root, 'etc/README.md', '# Config\n');
+  write(root, 'outside.env', 'SDKWORK_ENVIRONMENT=development\n');
+  write(root, 'etc/sdkwork.deployment.config.json', JSON.stringify({
+    schemaVersion: 1,
+    kind: 'sdkwork.deployment-index',
+    defaultProfile: 'standalone.development',
+    profiles: {
+      'standalone.development': { config: '../outside.env' },
+    },
+  }));
+  assert.ok(checkSourceConfigStandard(root).some((issue) => issue.includes('must stay within etc/')));
+});
+
+test('supports legacy identity-free profiles only outside strict migration mode', () => {
+  const root = fixture();
+  write(root, 'sdkwork.app.config.json', '{}\n');
+  write(root, 'etc/README.md', '# Config\n');
+  write(root, 'etc/topology/standalone.development.env', 'PORT=10240\n');
+  write(root, 'etc/sdkwork.deployment.config.json', JSON.stringify({
+    schemaVersion: 1,
+    kind: 'sdkwork.deployment-index',
+    defaultProfile: 'standalone.development',
+    profiles: {
+      'standalone.development': { config: 'topology/standalone.development.env' },
+    },
+  }));
+  assert.deepEqual(checkSourceConfigStandard(root), []);
+  const strictIssues = checkSourceConfigStandard(root, { enforceProfileIdentity: true });
+  assert.ok(strictIssues.some((issue) => issue.includes('canonical profile identity is required')));
+});
+
+test('accepts canonical identity in TOML, nested JSON, and YAML profiles', () => {
+  const root = fixture();
+  write(root, 'sdkwork.app.config.json', '{}\n');
+  write(root, 'etc/README.md', '# Config\n');
+  write(root, 'etc/topology/standalone.development.toml', `
+[runtime]
+environment = "development"
+deployment_profile = "standalone"
+profile_id = "standalone.development"
+runtime_target = "server"
+`);
+  write(root, 'etc/topology/cloud.test.json', `${JSON.stringify({
+    runtime: {
+      environment: 'test',
+      deployment_profile: 'cloud',
+      profile_id: 'cloud.test',
+      runtime_target: 'server',
+    },
+  }, null, 2)}\n`);
+  write(root, 'etc/topology/cloud.staging.yml', `
+sdkwork:
+  environment: staging
+  deployment-profile: cloud
+  profile-id: cloud.staging
+`);
+  write(root, 'etc/sdkwork.deployment.config.json', JSON.stringify({
+    schemaVersion: 1,
+    kind: 'sdkwork.deployment-index',
+    defaultProfile: 'standalone.development',
+    profiles: {
+      'standalone.development': { config: 'topology/standalone.development.toml' },
+      'cloud.test': { config: 'topology/cloud.test.json' },
+      'cloud.staging': { config: 'topology/cloud.staging.yml' },
+    },
+  }));
+  assert.deepEqual(
+    checkSourceConfigStandard(root, { enforceProfileIdentity: true }),
+    [],
+  );
 });
 
 test('rejects manifest environment debt and retired configs', () => {

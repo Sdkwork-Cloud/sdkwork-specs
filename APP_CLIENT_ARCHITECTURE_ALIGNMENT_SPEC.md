@@ -313,6 +313,19 @@ architecture, and artifact format.
 
 Rules:
 
+- Env file names and formats follow `ENVIRONMENT_SPEC.md` section 5.1. Every
+  client root uses canonical profile id
+  `<deploymentProfile>.<environment>` and materializes framework-specific files
+  from its own or delegated `etc/` authority.
+- PC and H5 Vite roots use `.env.<profile-id>`; Flutter uses
+  `env/sdkwork.<profile-id>.json`; native WeChat mini programs use
+  `config/mini-program/runtime-env.<profile-id>.json`; uni-app uses the Vite
+  `.env.<profile-id>` contract; native mobile roots use
+  `config/app/runtime-env.<profile-id>.json`.
+- Every materialized client env repeats matching `environment`,
+  `deploymentProfile`, `profileId`, and exact `runtimeTarget`. Build mode,
+  native platform, device, signing identity, and store channel remain separate
+  axes.
 - Browser-visible public runtime config belongs in `config/browser/` or an architecture-approved equivalent and may contain only non-secret values.
 - Host/platform config belongs in `config/host/` or the host package's platform config directory. It owns bundle ids, package ids, app ids, schemes, permissions, capabilities, associated domains/app links, signing references, and store profile references.
 - Host/platform config `MUST NOT` contain signing private keys, auth tokens, refresh tokens, database credentials, API keys, SDK package ownership, or business route constants.

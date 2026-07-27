@@ -80,6 +80,7 @@ export type SdkworkRuntimeTarget =
 
 export interface SdkworkRuntimeConfig {
   environment: SdkworkEnvironment;
+  profileId: `${SdkworkDeploymentProfile}.${SdkworkEnvironment}`;
   configProfile?: SdkworkConfigProfile;
   buildMode?: SdkworkBuildMode;
   deploymentProfile: SdkworkDeploymentProfile;
@@ -282,7 +283,12 @@ export interface SdkworkRedisConfig {
 Rules:
 
 - `environment` describes lifecycle stage.
-- `configProfile` is a file/profile alias used by scripts and config file names. `dev` maps to `development`; `prod` maps to `production`. Application code should normalize to `environment`.
+- `profileId` is the canonical two-dimensional identifier and must equal
+  `${deploymentProfile}.${environment}`. Bootstrap rejects mismatches before
+  SDK construction.
+- `configProfile` is an optional legacy command/operator alias used for script
+  compatibility or traceability. `dev` maps to `development`; `prod` maps to
+  `production`. New env file names use `profileId`, not `configProfile`.
 - `buildMode` describes the bundler/build tool mode. It is useful for Vite or native package scripts, but it is not the lifecycle authority for runtime behavior.
 - `deploymentProfile` describes application deployment architecture and is only
   `standalone` or `cloud`. It is the one active API/runtime topology for this
@@ -580,7 +586,7 @@ Rules:
 
 ## 4. Environment Names And Files
 
-Standard environments:
+Canonical environments:
 
 ```text
 development
@@ -589,99 +595,69 @@ staging
 production
 ```
 
-Standard profile aliases and file suffixes:
+Canonical deployment profiles:
 
-| Profile alias | Canonical environment | Allowed file suffixes | Typical use |
+```text
+standalone
+cloud
+```
+
+Canonical profile id:
+
+```text
+<deploymentProfile>.<environment>
+```
+
+`ENVIRONMENT_SPEC.md` section 5.1 is the file-format authority for the complete
+eight-profile matrix and the PC/H5 Vite, Flutter, native WeChat mini program,
+uni-app, native mobile, desktop, Node, Spring Boot, and Rust projections.
+
+Profile aliases remain command compatibility only:
+
+| Profile alias | Canonical environment | Allowed use |
 | --- | --- | --- | --- |
-| `dev` | `development` | `.dev`, `.development` | Local development, dev services, desktop dev shell |
-| `test` | `test` | `.test` | Automated tests, isolated test databases, CI smoke runs |
-| `staging` | `staging` | `.staging` | Production-like rehearsal, release verification |
-| `prod` | `production` | `.prod`, `.production` | Production release/runtime |
+| `dev` | `development` | Command input normalized before profile selection |
+| `test` | `test` | Command input or exact canonical environment |
+| `staging` | `staging` | Command input or exact canonical environment |
+| `prod` | `production` | Command input normalized before profile selection |
 
-Recommended checked-in templates:
-
-```text
-.env.example
-.env.development.example
-.env.test.example
-.env.staging.example
-.env.production.example
-.env.postgres.example
-config/<application-code>.toml.example
-config/<application-code>.development.toml.example
-config/<application-code>.test.toml.example
-config/<application-code>.staging.toml.example
-config/<application-code>.production.toml.example
-```
-
-Recommended host-local ignored overrides:
+Every materialized config must resolve these fields before bootstrap continues:
 
 ```text
-.env.local
-.env.development.local
-.env.test.local
-.env.staging.local
-.env.production.local
-.env.postgres
-.env.release.local
-config/*.local.toml
+environment
+deploymentProfile
+profileId
+runtimeTarget
 ```
 
-PC/browser/desktop application roots should keep deployment-target templates grouped when the app has more than one runtime target:
+The invariant is:
 
 ```text
-config/
-  browser/
-    runtime-env.development.example.json
-    runtime-env.test.example.json
-    runtime-env.staging.example.json
-    runtime-env.production.example.json
-  desktop/
-    <application-code>.development.toml.example
-    <application-code>.test.toml.example
-    <application-code>.staging.toml.example
-    <application-code>.production.toml.example
-  server/
-    <application-code>.development.toml.example
-    <application-code>.test.toml.example
-    <application-code>.staging.toml.example
-    <application-code>.production.toml.example
-  container/
-    <application-code>.development.toml.example
-    <application-code>.test.toml.example
-    <application-code>.staging.toml.example
-    <application-code>.production.toml.example
-  tauri/
-    tauri.conf.json
-    tauri.windows.conf.json
-    tauri.macos.conf.json
-    tauri.linux.conf.json
-    tauri.ios.conf.json
-    tauri.android.conf.json
+profileId == deploymentProfile + "." + environment
 ```
-
-H5/Capacitor, Flutter, mini program, native Android, native iOS, and native Harmony roots use the equivalent grouped layout defined by their root architecture standards. Browser-based H5 roots use `config/browser/`; Flutter and native mobile roots use `config/app/`; mini program roots use `config/mini-program/`; all mobile roots keep platform metadata in `config/host/` and server/container templates outside public app config.
-
-Java/Spring server packages may additionally provide checked-in examples such as
-`application-dev.yml.example`, `application-test.yml.example`, and
-`application-prod.yml.example`. Rust server packages should prefer TOML runtime
-config. The profile names are an integration convenience; SDKWork code still
-normalizes them into `SdkworkEnvironment`.
 
 Rules:
 
-- The runtime must validate the declared `environment`; it must not infer production safety from a file name alone.
-- `dev` and `prod` are file/profile aliases only. Persisted runtime config should use `development` and `production`.
-- `development`, `test`, `staging`, and `production` templates may be checked in only as examples with safe placeholders.
-- `.env.local` and developer machine config must not be required for CI.
-- Vite `.env`, `.env.local`, `.env.[mode]`, and `.env.[mode].local` files are build/dev-server inputs. Only `VITE_` values are exposed to browser code, and `VITE_*` must contain only public non-secret values.
+- Runtime validates the content and the selected file name; it does not infer
+  production safety from either one alone.
+- `dev` and `prod` must normalize to `development` and `production` before
+  composing `profileId`. New file names do not use `.dev` or `.prod`.
+- Unknown environment names, deployment profiles, profile ids, and runtime
+  targets fail closed. A missing profile never falls back to another
+  environment or deployment profile.
+- Vite uses `.env.<profile-id>` and `VITE_*`; Flutter uses
+  `env/sdkwork.<profile-id>.json` and `SDKWORK_*`; native WeChat mini programs
+  use `config/mini-program/runtime-env.<profile-id>.json`; uni-app uses the
+  Vite `.env.<profile-id>` contract.
+- Host/platform config is not an env authority. Tauri config, Capacitor config,
+  `project.config.json`, Gradle/manifest config, Xcode/plist/xcconfig, and
+  Harmony JSON5 may own package identity, permissions, capabilities, signing
+  references, and build metadata only.
 - A private `SDKWORK_ACCESS_TOKEN` may be read by Node-side development/test orchestration, but it must not be renamed to `VITE_*`, emitted into public runtime config, or frozen into staging/production output. Development/test browser handoff follows `IAM_CREDENTIAL_ENTRY_SPEC.md` only.
 - Browser deploy-time SDK URLs should be served through `/runtime-env.js` or an equivalent public runtime config document instead of being frozen into a hashed bundle when the same build artifact is promoted across environments.
 - Server production config must come from process env, an administrator-managed runtime config file, deployment infrastructure, or a secret manager, not from a committed `.env.production`.
 - Test config must isolate database names or schemas, Redis key prefixes, log directories, cache directories, and temp directories from development and production.
 - Desktop installed runtime config must live in the SDKWork user private config directory and default declared client-local data to SQLite. Desktop/Tauri development service config is a separate server config profile and uses PostgreSQL.
-- Tauri platform config files may own bundle identifiers, icons, permissions, capabilities, window metadata, mobile/tablet target metadata, and signing references. They must not contain secrets, business API route contracts, or SDK ownership decisions.
-- Native Android, iOS, and Harmony host config files may own application ids, bundle ids, module ids, icons, permissions, capabilities, app links/universal links/wants, push profiles, store profiles, signing reference names, and OS version requirements. They must not contain signing private keys, tokens, business API route contracts, or SDK ownership decisions.
 - `.env.postgres.example` is the checked-in local PostgreSQL template for apps
   that support PostgreSQL development. It must use structured fields such as
   `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE=postgresql` and
@@ -716,7 +692,9 @@ Rules:
 
 - [ ] Runtime config is typed.
 - [ ] Shared modules do not read env/global config directly.
-- [ ] Lifecycle environment, profile alias, deployment profile, build mode, and runtime target are normalized separately.
+- [ ] Lifecycle environment, compatibility profile alias, deployment profile,
+      canonical profile id, build mode, and runtime target are normalized
+      separately.
 - [ ] Dev/test/staging/prod example files are checked in only as safe templates, and local overrides are ignored.
 - [ ] Browser public runtime config, desktop user config, H5/Capacitor config, Flutter config, mini program config, native Android config, native iOS config, native Harmony config, server config, container config, and Tauri platform config are separated.
 - [ ] Database env parsing maps `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` to typed config and rejects `DATABASE_PROVIDER`/`DATABASE_SSLMODE`.

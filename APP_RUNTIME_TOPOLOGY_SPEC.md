@@ -340,6 +340,10 @@ Topology schema v5 orchestration processes `MUST` declare one canonical
 role authority. `edge-runtime` is reserved for the responsibility-specific
 device/edge protocol process defined by `NAMING_SPEC.md` section 4.3; background
 jobs that terminate no edge ingress remain `worker`.
+Client processes `MAY` declare a repository-relative `applicationRoot` when
+the client is an independently configured application surface. The path must
+stay inside the repository and contain its own `sdkwork.app.config.json`;
+non-client processes must not declare this field.
 The retired `api-listener` role is not valid in schema v5; HTTP API processes
 must be represented by the single `api-standalone-gateway` role.
 `cloud.development` allows only `client` and explicitly configured `tunnel`

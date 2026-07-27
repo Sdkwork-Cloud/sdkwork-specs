@@ -86,10 +86,15 @@ Every deployable root uses this minimum layout:
   etc/
     README.md
     sdkwork.deployment.config.json # profile index when the root supports deployment profiles
-    deployments/
-      standalone.development.json
-      cloud.development.json
-      cloud.production.json
+    topology/
+      standalone.development.env
+      standalone.test.env
+      standalone.staging.env
+      standalone.production.env
+      cloud.development.env
+      cloud.test.env
+      cloud.staging.env
+      cloud.production.env
 ```
 
 Process hosts may additionally use typed runtime files:
@@ -97,8 +102,10 @@ Process hosts may additionally use typed runtime files:
 ```text
 <process-host>/etc/
   README.md
-  gateway.development.toml
-  gateway.production.toml
+  gateway.standalone.development.toml
+  gateway.standalone.production.toml
+  gateway.cloud.development.toml
+  gateway.cloud.production.toml
 ```
 
 Rules:
@@ -107,6 +114,13 @@ Rules:
   schema authority, local override policy, secret sources, materialization target, and validation command.
 - Profile ids use `<deployment-profile>.<environment>` where deployment profile is `standalone` or
   `cloud` and environment is `development`, `test`, `staging`, or `production`.
+- `etc/sdkwork.deployment.config.json` `MUST` be a profile index, not a second
+  environment-value store. Each owned profile entry points to one source file
+  under `etc/`; the referenced file path stays relative to `etc/` and cannot
+  escape the deployable root.
+- The canonical full matrix contains eight profile ids. A root may declare a
+  smaller supported matrix only when its application/release contracts exclude
+  the missing combinations. Selection of an undeclared profile fails closed.
 - A pnpm-managed application root `MUST` provide both
   `standalone.development` and `cloud.development` source profiles.
   `standalone.development` owns local application surface values;
@@ -137,6 +151,47 @@ Rules:
   `etc/sdkwork.deployment.config.json`. Both targets `MUST` exist in the same repository, and the
   topology target `MUST` be a topology v5 contract. The child `MUST NOT` copy parent profile env files
   or own a competing `specs/topology.spec.json`.
+
+Canonical deployment index example:
+
+```json
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.deployment-index",
+  "application": "sdkwork-<application-code>",
+  "defaultProfile": "standalone.development",
+  "profiles": {
+    "standalone.development": { "config": "topology/standalone.development.env" },
+    "standalone.test": { "config": "topology/standalone.test.env" },
+    "standalone.staging": { "config": "topology/standalone.staging.env" },
+    "standalone.production": { "config": "topology/standalone.production.env" },
+    "cloud.development": { "config": "topology/cloud.development.env" },
+    "cloud.test": { "config": "topology/cloud.test.env" },
+    "cloud.staging": { "config": "topology/cloud.staging.env" },
+    "cloud.production": { "config": "topology/cloud.production.env" }
+  }
+}
+```
+
+Each source profile declares matching identity values:
+
+```dotenv
+# etc/topology/cloud.production.env
+SDKWORK_ENVIRONMENT=production
+SDKWORK_DEPLOYMENT_PROFILE=cloud
+SDKWORK_PROFILE_ID=cloud.production
+SDKWORK_<APPLICATION_CODE>_ENVIRONMENT=production
+SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE=cloud
+SDKWORK_<APPLICATION_CODE>_PROFILE_ID=cloud.production
+SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL=https://app.example.com
+SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL=https://api.example.com
+```
+
+Surface materializers transform this authority into the exact architecture
+format defined by `ENVIRONMENT_SPEC.md` section 5.1. They `MUST` be
+deterministic, preserve the selected profile id and source-path provenance,
+write no secrets, and support a check mode that fails when tracked output is
+missing or stale.
 
 ## 5. Application Manifest Boundary
 
@@ -170,6 +225,13 @@ Rules:
 - Environment variables are override and container-injection surfaces, not the primary source of
   checked-in environment topology.
 - Browser-visible runtime config is materialized from safe `etc/` values and contains no secrets.
+- Materialized output `MUST` declare matching `environment`,
+  `deploymentProfile`, `profileId`, and `runtimeTarget` fields using the target
+  framework's canonical names. Build/release evidence records the same selected
+  profile id.
+- Vite mode, Flutter flavor, Spring profile, native build variant, mini program
+  platform, or package target is an adapter/orthogonal axis. None replaces the
+  canonical profile id.
 - Shared libraries and SDK packages receive typed configuration from bootstrap and do not discover
   `etc/`, environment variables, or OS paths themselves.
 - Linux installed config uses `/etc/sdkwork/<application-code>/`; source `<deployable-root>/etc/` is
@@ -212,10 +274,19 @@ Required checks for configuration ownership changes:
 
 ```bash
 node <sdkwork-specs>/tools/check-source-config-standard.mjs --root <deployable-root>
+node <sdkwork-specs>/tools/check-source-config-standard.mjs --root <deployable-root> --enforce-profile-identity
 node <sdkwork-specs>/tools/check-agent-workflow-standard.mjs --root <repository-root>
 ```
 
+The strict profile-identity form is required when creating or modifying env
+profiles or their materializer. The default form temporarily reads a legacy
+profile that declares none of `environment`, `deploymentProfile`, or
+`profileId`; once any identity field exists, all fields must be complete and
+consistent. Migration tooling must not create new identity-free profiles.
+
 The source-config validator must verify deployable-root `etc/` presence, README/index discovery,
+canonical profile ids, in-`etc/` profile references, referenced-file existence,
+default-profile membership, profile identity consistency in strict mode,
 forbidden committed secret patterns, retired `configs/` usage, manifest environment-value debt, and
 production gateway CORS invariants. For component deployment roots it must also verify parent
 deployment/topology delegation, topology v5, repository containment, and single topology authority.

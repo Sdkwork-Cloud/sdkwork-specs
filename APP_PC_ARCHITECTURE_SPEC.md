@@ -58,27 +58,19 @@ apps/sdkwork-<application-code>-pc/
     windows/
     linux/
     macos/
+  etc/
+    README.md
+    sdkwork.deployment.config.json
+  .env.<deployment-profile>.<environment>
   config/
     browser/
-      runtime-env.development.example.json
-      runtime-env.test.example.json
-      runtime-env.staging.example.json
-      runtime-env.production.example.json
+      runtime-env.<deployment-profile>.<environment>.example.json
     desktop/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
     server/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
     container/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
     tauri/
   docs/
   public/
@@ -160,7 +152,7 @@ mode, and runtime target separate.
 | Concern | Standard values | Owner |
 | --- | --- | --- |
 | Lifecycle environment | `development`, `test`, `staging`, `production` | `CONFIG_SPEC.md` typed runtime config |
-| Profile alias | `dev`, `test`, `staging`, `prod` | scripts and config file names only |
+| Profile alias | `dev`, `test`, `staging`, `prod` | legacy command/operator compatibility only |
 | Build mode | Vite/Tauri/Spring/build-tool mode | build scripts and tool config |
 | Deployment profile | `standalone`, `cloud` | runtime/bootstrap |
 | Runtime target | `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `server`, `container`, `test-runner` | runtime/bootstrap |
@@ -169,19 +161,30 @@ Standard config ownership:
 
 | Config family | Example files | Owns | Must not own |
 | --- | --- | --- | --- |
-| Browser public runtime | `config/browser/runtime-env.<profile>.example.json`, `/runtime-env.js` | public SDK base URLs, public feature flags, public app metadata | secrets, database URLs, Redis URLs, tokens, private service endpoints |
-| Desktop user runtime | `config/desktop/<application-code>.<profile>.toml.example`, user `~/.sdkwork/<application-code>/config/<application-code>.toml` | installed desktop mode, local service toggle, declared client-local user-private SQLite path, secure storage provider | server PostgreSQL defaults for dev services, API route constants, signing secrets |
-| Server runtime | `config/server/<application-code>.<profile>.toml.example`, `/etc/sdkwork/<application-code>/<process>.toml` | bind address, PostgreSQL, Redis, reverse proxy trust, service paths | browser-only `VITE_*`, Tauri packaging metadata |
-| Container runtime | `config/container/<application-code>.<profile>.toml.example`, mounted `/etc/sdkwork/...` | container service config, mounted secrets, external services, volumes | image-baked secrets or mutable database state |
+| Vite/browser build env | `.env.<deployment-profile>.<environment>` | public `VITE_*` profile identity, SDK base URLs, public flags | secrets, tokens, database/Redis config, host packaging metadata |
+| Browser deploy-time runtime | `config/browser/runtime-env.<deployment-profile>.<environment>.example.json`, `/runtime-env.js` | promotable public SDK base URLs, public feature flags, public app metadata | secrets, database URLs, Redis URLs, tokens, private service endpoints |
+| Desktop user runtime | `config/desktop/<application-code>.<deployment-profile>.<environment>.toml.example`, user `~/.sdkwork/<application-code>/config/<application-code>.toml` | installed desktop mode, local service toggle, declared client-local user-private SQLite path, secure storage provider | server PostgreSQL defaults for dev services, API route constants, signing secrets |
+| Server runtime | `config/server/<application-code>.<deployment-profile>.<environment>.toml.example`, `/etc/sdkwork/<application-code>/<process>.toml` | bind address, PostgreSQL, Redis, reverse proxy trust, service paths | browser-only `VITE_*`, Tauri packaging metadata |
+| Container runtime | `config/container/<application-code>.<deployment-profile>.<environment>.toml.example`, mounted `/etc/sdkwork/...` | container service config, mounted secrets, external services, volumes | image-baked secrets or mutable database state |
 | Tauri platform | `src-tauri/tauri.*.conf.json`, optional `config/tauri/` templates | bundle id, package id, icons, permissions, capabilities, window metadata, signing references | business API contracts, SDK ownership, auth tokens, private keys |
 
 Rules:
 
 - PC roots `MUST` provide safe example config for every runtime target they support. `development`, `test`, `staging`, and `production` examples are required for server/container targets; browser and desktop targets should provide the same set unless the target is explicitly dev-only.
-- `dev` and `prod` are script/file aliases only. Runtime config content should use `development` and `production`.
+- PC Vite renderers `MUST` use `.env.<deploymentProfile>.<environment>` and
+  `vite --mode <deploymentProfile>.<environment>` as defined by
+  `ENVIRONMENT_SPEC.md` section 5.1. Root `.env.*` files are materialized from
+  `etc/`; they are not a second source authority.
+- The env content `MUST` expose matching `VITE_SDKWORK_ENVIRONMENT`,
+  `VITE_SDKWORK_DEPLOYMENT_PROFILE`, `VITE_SDKWORK_PROFILE_ID`, and
+  `VITE_SDKWORK_RUNTIME_TARGET=browser` before renderer SDK construction.
+- `dev` and `prod` are command/operator aliases only. Env file names and
+  runtime config use canonical environment and profile-id values.
 - `.env.local`, `.env.<profile>.local`, `.env.postgres`, `.env.release.local`, and `config/*.local.toml` must be ignored.
 - `pnpm dev` starts the browser renderer with browser public runtime config.
-- `pnpm dev:server` starts the backend service with `config/server/<application-code>.development.toml.example` copied or materialized into a host-local dev config.
+- `pnpm dev:server` starts the backend service with the selected
+  `config/server/<application-code>.<deployment-profile>.development.toml.example`
+  copied or materialized into a host-local dev config.
 - `pnpm test` uses an isolated test profile and must not share development or production database/schema, Redis prefix, logs, cache, runtime, or temp directories.
 - `pnpm dev:desktop` starts the desktop host through the standard development
   orchestration profile. It defaults to PostgreSQL, standalone, and

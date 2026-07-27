@@ -544,8 +544,20 @@ Deployable roots validate source configuration ownership with:
 node ../sdkwork-specs/tools/check-source-config-standard.mjs --root .
 ```
 
-This check covers required `etc/` discovery, deployment index presence, app manifest environment
-debt, retired `configs/`, local/private overlays, and obvious committed secret values.
+This check covers required `etc/` discovery, deployment index presence,
+canonical profile ids, safe profile references, referenced-file existence,
+default-profile membership, app manifest environment debt, retired `configs/`,
+local/private overlays, and obvious committed secret values.
+
+Changes that create or modify env profiles or materializers `MUST` also run:
+
+```text
+node ../sdkwork-specs/tools/check-source-config-standard.mjs --root . --enforce-profile-identity
+```
+
+The strict form requires complete, matching profile identity fields. The
+default form retains a bounded read-only compatibility path for old profiles
+that declare no identity fields at all.
 - Framework planner tests `MUST` reject unknown config properties, schema-declared type violations, empty target lists, duplicate target ids, non-canonical target ids, duplicate target formats, unsupported enum values, missing or mismatched Linux native package distributions, mixed Linux native/generic formats, dynamic lifecycle `uses`, unsafe relative paths, dependency checkout path overlaps, unsafe dependency refs, unsupported dependency token secret names, deployment selectors that match no package target, and non-string lifecycle `env` values.
 - Framework planner tests `MUST` prove JSON Schema, planner validation, example configs, generated bootstrap output, reusable workflow policy consumption, and fixed/runtime-configurable/non-deployable target binding behavior remain aligned.
 - Package naming tests `MUST` prove fixed package ids use `<platform>-<architecture>-<deployment-profile>-<profile>-<format-token>`, runtime-configurable clients use `<platform>-<architecture>-dual-<profile>-<format-token>`, Linux native `deb`/`rpm` package ids include distribution, variant ids insert the variant before format, artifact names use `<artifactPrefix>-<packageId>`, and `dual` is rejected as a runtime/deploy profile.
@@ -792,6 +804,22 @@ Rules:
 - Route tests `MUST` prove app, console, and admin route contributions are assembled by their owning shell and do not share hidden route constants or backend API paths.
 - Config tests `MUST` prove PC roots separate browser public runtime config, desktop user runtime config, desktop-started server config, container config, and Tauri platform config.
 - Profile tests `MUST` prove `dev` normalizes to `development`, `prod` normalizes to `production`, unknown profile aliases fail, and Vite/Tauri/Spring build modes do not replace the SDKWork runtime environment model.
+- Env matrix tests `MUST` prove supported profile ids use exactly
+  `<deploymentProfile>.<environment>`, reject extra/missing segments, reject
+  undeclared combinations, and never fall back between standalone/cloud or
+  development/test/staging/production.
+- Env identity tests `MUST` prove every materialized file declares matching
+  `environment`, `deploymentProfile`, `profileId`, and `runtimeTarget`, and that
+  build/release evidence records the same selected profile id.
+- Architecture env tests `MUST` cover PC/H5 `.env.<profile-id>`, Flutter
+  `env/sdkwork.<profile-id>.json`, native WeChat mini program
+  `config/mini-program/runtime-env.<profile-id>.json`, uni-app
+  `.env.<profile-id>`, and native mobile
+  `config/app/runtime-env.<profile-id>.json` when those roots are present.
+- Secret-boundary tests `MUST` prove tracked architecture env files contain no
+  live tokens, refresh tokens, API keys, private keys, signing credentials,
+  database URLs, Redis URLs, or private endpoints; bootstrap credentials exist
+  only in ignored local overlays or secure runtime inputs.
 - SDK base URL tests `MUST` prove private env, browser public runtime env, and Vite dev env resolve independent open-api, app-api, backend-api, and dependency SDK base URLs without falling back to one ambiguous global URL.
 - Platform surface resolution tests `MUST` prove foundation dependency SDK
   defaults use declared platform API surface URLs, application-owned
@@ -864,6 +892,8 @@ Rules:
 - Deep-link tests `MUST` validate expected scheme, host, path, state, nonce, expiry, and unsafe-link rejection.
 - Push lifecycle tests `MUST` cover permission denied, token registration, token refresh, logout unregister/clear, and foreground/background handling when push is enabled.
 - H5 config tests `MUST` prove browser public runtime config loads before SDK construction and contains no secrets, tokens, database URLs, Redis URLs, private endpoints, or signing material.
+- H5 config tests `MUST` prove Vite mode equals the canonical profile id and
+  `.env.<profile-id>` exposes matching `VITE_SDKWORK_*` identity fields.
 - Capacitor host config tests `MUST` prove host config owns only bundle/package ids, schemes, app links/universal links, permissions, capabilities, icons, signing references, and store metadata.
 - H5/Capacitor release preflight tests `MUST` validate H5 URLs, IPA/App Store metadata, APK/AAB/Google Play metadata, governed media, checksums, SBOM/provenance, signing references, and secret absence.
 
@@ -882,6 +912,10 @@ Rules:
 - Flutter route tests `MUST` prove named routes or router entries map to SDKWork route ids and align with cross-client route metadata when the workflow exists elsewhere.
 - Flutter state tests `MUST` prove logout, refresh failure, tenant switch, and account switch clear secure platform storage, token manager, context store, sensitive state, and realtime/session bridges.
 - Flutter release preflight tests `MUST` validate iOS/Android package metadata, signing references, icons, screenshots, checksums/SBOM/provenance, and secret absence.
+- Flutter config tests `MUST` prove
+  `env/sdkwork.<profile-id>.json` is consumed through
+  `--dart-define-from-file`, uses `SDKWORK_*`, and does not place live tokens in
+  tracked or release JSON.
 
 ## 2.4.4 Mini Program Architecture Tests
 
@@ -898,6 +932,14 @@ Rules:
 - Platform host tests `MUST` fail when feature packages call `wx.*`, `my.*`, `dd.*`, `tt.*`, or equivalent platform globals directly.
 - Mini program IAM tests `MUST` prove platform login codes, phone-number grants, scene/query inputs, and provider-specific auth facts are exchanged through approved app-api/appbase flows.
 - Mini program config tests `MUST` prove platform app ids and host metadata are separated from private keys, auth tokens, API keys, database URLs, private endpoints, and business route constants.
+- Native WeChat config tests `MUST` prove
+  `config/mini-program/runtime-env.<profile-id>.json` is selected explicitly,
+  declares matching SDKWork identity fields, is bundled before `App()` starts,
+  and records the same profile id in build evidence.
+- uni-app config tests `MUST` prove `.env.<profile-id>` uses
+  `VITE_SDKWORK_*`, the `-p` platform remains a separate target axis, and one
+  root does not keep native WeChat and uni-app as competing business source
+  authorities.
 - Package-size tests `SHOULD` prove root package and subpackages stay within documented platform limits when tooling supports it.
 
 ## 2.4.5 Mini Program UI Tests
@@ -930,6 +972,9 @@ Rules:
 - Android host adapter tests `MUST` prove feature screens, view models, and services do not call Android framework APIs, Activity result APIs, Play Services clients, or push/camera/secure-storage APIs directly for host capabilities.
 - Android route tests `MUST` prove navigation destinations map to SDKWork route ids and align with cross-client route metadata when the workflow exists elsewhere.
 - Android config tests `MUST` prove application ids, permissions, app links, push metadata, signing references, icons, and store metadata are separated from private keys, auth tokens, API keys, database URLs, private endpoints, and business route constants.
+- Android config tests `MUST` prove one selected
+  `config/app/runtime-env.<profile-id>.json` reaches bootstrap while Gradle
+  build type/flavor and signing remain separate axes.
 - Android release preflight tests `MUST` validate APK/AAB or store package metadata, signing references, icons, screenshots, checksums/SBOM/provenance, and secret absence.
 
 ## 2.4.7 iOS Native Mobile Architecture Tests
@@ -946,6 +991,9 @@ Rules:
 - iOS host adapter tests `MUST` prove feature screens, view models, and services do not call iOS framework APIs, keychain, push, universal-link, camera, biometric, or file APIs directly for host capabilities.
 - iOS route tests `MUST` prove navigation routes map to SDKWork route ids and align with cross-client route metadata when the workflow exists elsewhere.
 - iOS config tests `MUST` prove bundle ids, entitlements, associated domains, push metadata, signing references, icons, and store metadata are separated from private keys, auth tokens, API keys, database URLs, private endpoints, and business route constants.
+- iOS config tests `MUST` prove one selected
+  `config/app/runtime-env.<profile-id>.json` reaches bootstrap while Xcode
+  configuration/scheme and signing remain separate axes.
 - iOS release preflight tests `MUST` validate IPA/App Store/TestFlight or private package metadata, signing references, icons, screenshots, checksums/SBOM/provenance, and secret absence.
 
 ## 2.4.8 Harmony Native Mobile Architecture Tests
@@ -962,6 +1010,9 @@ Rules:
 - Harmony host adapter tests `MUST` prove feature pages, view models, and services do not call HarmonyOS system APIs, ability context, want handling, push, camera, secure-storage, or file APIs directly for host capabilities.
 - Harmony route tests `MUST` prove page/navigation routes map to SDKWork route ids and align with cross-client route metadata when the workflow exists elsewhere.
 - Harmony config tests `MUST` prove bundle/app ids, module metadata, device types, permissions, push metadata, signing references, icons, and store metadata are separated from private keys, auth tokens, API keys, database URLs, private endpoints, and business route constants.
+- Harmony config tests `MUST` prove one selected
+  `config/app/runtime-env.<profile-id>.json` reaches bootstrap while hvigor
+  product/build mode and signing remain separate axes.
 - Harmony release preflight tests `MUST` validate Harmony direct or store package metadata, HAP/APP artifact metadata when represented through `OTHER`, signing references, icons, screenshots, checksums/SBOM/provenance, and secret absence.
 
 ## 2.4.9 Native Mobile UI Tests

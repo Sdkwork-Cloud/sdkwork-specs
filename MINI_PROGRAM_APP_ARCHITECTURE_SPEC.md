@@ -6,6 +6,12 @@
 
 This standard defines the application-root architecture for SDKWork mini program clients, including WeChat Mini Program and future Alipay, DingTalk, Lark, Baidu, QQ, Kuaishou, JD, and other mini program profiles.
 
+The framework authority is explicit. `weixin-mini-program` means a native
+WeChat Mini Program source tree. A declared `uni-app` or equivalent
+multi-platform framework may project one source tree to multiple `MP_*`
+platforms. A root does not keep native WeChat and uni-app as competing business
+source authorities.
+
 SDKWork source packages and mini program platform subpackages are different concepts. SDKWork packages are source, dependency, component, and composition boundaries. Platform `pages` and `subpackages` are runtime packaging and loading boundaries. Business architecture must be expressed through SDKWork packages first, then projected into platform pages/subpackages through route metadata and build tooling.
 
 Use `APP_MINI_PROGRAM_UI_SPEC.md` for detailed mini program pages, components, services, state, i18n, route contribution, and package-local host adapter rules. This file owns the mini program application root, package taxonomy, page/subpackage projection, config, platform host boundary, commands, release, and architecture verification.
@@ -43,27 +49,21 @@ apps/sdkwork-<application-code>-mini-program/
       README.md
     plugins/
       README.md
+  etc/
+    README.md
+    sdkwork.deployment.config.json
   config/
     mini-program/
-      runtime-env.development.example.json
-      runtime-env.test.example.json
-      runtime-env.staging.example.json
-      runtime-env.production.example.json
+      runtime-env.<deployment-profile>.<environment>.json
     host/
       mp-weixin.development.example.json
       mp-weixin.test.example.json
       mp-weixin.staging.example.json
       mp-weixin.production.example.json
     server/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
     container/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
   docs/
   scripts/
   sdks/
@@ -111,6 +111,10 @@ Rules:
 - Business packages should not be named `mp-weixin-*` unless the capability is truly platform-exclusive and approved in a component spec.
 - `src/pages/__generated__/` and `src/subpackages/__generated__/` are projection targets. Application business code should remain in packages.
 - `project.private.config.json` is host-local and must not be committed. A safe `.example` may be committed.
+- Native WeChat roots materialize
+  `config/mini-program/runtime-env.<deployment-profile>.<environment>.json`.
+  uni-app roots materialize `.env.<deployment-profile>.<environment>` using
+  the Vite public-key rules in `ENVIRONMENT_SPEC.md` section 5.1.
 
 ## 3. Package Taxonomy
 
@@ -292,6 +296,17 @@ Rules:
 Rules:
 
 - `config/mini-program/` owns non-secret runtime templates for SDK base URLs, public feature flags, and app metadata.
+- Native WeChat env JSON `MUST` declare matching `SDKWORK_ENVIRONMENT`,
+  `SDKWORK_DEPLOYMENT_PROFILE`, `SDKWORK_PROFILE_ID`, and
+  `SDKWORK_RUNTIME_TARGET=mini-program`. The build selects one profile
+  explicitly, bundles one safe runtime module, and records the profile id in
+  its build manifest before upload.
+- uni-app env files `MUST` use `.env.<profile-id>` and `VITE_SDKWORK_*` keys.
+  `mp-weixin`, `mp-alipay`, `mp-dingtalk`, and other uni-app `-p` values are
+  target platforms, not environment or deployment-profile values.
+- Mini program builds do not contain access tokens, platform secrets, private
+  upload keys, database URLs, Redis URLs, or signing credentials. WeChat IDE
+  developer settings stay in ignored `project.private.config.json`.
 - `config/host/` owns platform app ids, platform profiles, permission references, upload environment, platform package settings, and signing/reference metadata.
 - Host config must not contain platform private keys, auth tokens, refresh tokens, API keys, database credentials, private endpoints, business API constants, or SDK package ownership.
 - `sdkwork.app.config.json` should set `runtime.family = "mini-program"` and a specific `runtime.framework` such as `weixin-mini-program` or `multi-mini-program`.
@@ -319,13 +334,17 @@ pnpm lint
 pnpm test
 pnpm test:config
 pnpm test:routes
+node scripts/build-mini-program.mjs --deployment-profile cloud --environment production
+uni build -p mp-weixin --mode cloud.production
 ```
 
 Rules:
 
 - `pnpm dev` starts the default mini program development flow or watcher.
 - Production build/upload commands must run route projection, config validation, platform package validation, manifest validation, and secret scans before upload.
-- Platform-specific commands should be explicit when more than one mini program platform exists, for example `mp:weixin:build` and `mp:alipay:build`.
+- Platform-specific public commands should remain action-first, for example
+  `build:mini-program:weixin` and `build:mini-program:alipay`; native tool
+  commands may remain internal runner details.
 
 ## 12. Verification
 

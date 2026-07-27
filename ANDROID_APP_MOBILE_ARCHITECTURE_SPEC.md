@@ -43,27 +43,21 @@ apps/sdkwork-<application-code>-android-mobile/
       README.md
     plugins/
       README.md
+  etc/
+    README.md
+    sdkwork.deployment.config.json
   config/
     app/
-      runtime-env.development.example.json
-      runtime-env.test.example.json
-      runtime-env.staging.example.json
-      runtime-env.production.example.json
+      runtime-env.<deployment-profile>.<environment>.json
     host/
       android.development.example.json
       android.test.example.json
       android.staging.example.json
       android.production.example.json
     server/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
     container/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
   docs/
   scripts/
   sdks/
@@ -268,6 +262,14 @@ Rules:
 
 - Android root config separates lifecycle environment, build mode, deployment
   profile, and runtime target according to `CONFIG_SPEC.md`.
+- Native Android runtime env materializes as
+  `config/app/runtime-env.<deploymentProfile>.<environment>.json` and declares
+  matching `environment`, `deploymentProfile`, `profileId`, and
+  `runtimeTarget=android-native`. Gradle build type/flavor, ABI, device, package
+  id, and store channel remain separate axes.
+- The build validates and packages exactly one selected non-secret runtime JSON
+  resource. `local.properties`, signing properties, keystores, and developer
+  endpoint overrides stay ignored or in CI secret storage.
 - `config/app/` and `config/host/` examples must be safe checked-in templates only.
 - Android application id, package name, min/target SDK, ABI targets, permissions, app links, push environment, signing reference names, and store profile references belong to host config or Gradle/manifest templates.
 - Host config must not contain signing private keys, auth tokens, refresh tokens, API keys, database credentials, private service endpoints, SDK ownership, or business route constants.

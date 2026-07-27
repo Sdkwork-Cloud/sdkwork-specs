@@ -216,6 +216,11 @@ Rules:
 - Environment-specific base URLs, feature flags, deployment profile, and runtime target belong in bootstrap config.
 - Shared packages `MUST NOT` hard-code environment URLs.
 - Config keys `SHOULD` be capability-scoped and documented.
+- Env files and materialized runtime documents `MUST` use canonical profile id
+  `<deploymentProfile>.<environment>` and the architecture formats defined by
+  `ENVIRONMENT_SPEC.md` section 5.1. Deployment and environment selection never
+  relies on a one-dimensional `.env.production`, Vite mode, Flutter flavor,
+  Spring profile, or native build variant.
 
 ## 3. Runtime Bootstrap
 

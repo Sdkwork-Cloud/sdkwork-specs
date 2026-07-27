@@ -43,27 +43,21 @@ apps/sdkwork-<application-code>-ios-mobile/
       README.md
     plugins/
       README.md
+  etc/
+    README.md
+    sdkwork.deployment.config.json
   config/
     app/
-      runtime-env.development.example.json
-      runtime-env.test.example.json
-      runtime-env.staging.example.json
-      runtime-env.production.example.json
+      runtime-env.<deployment-profile>.<environment>.json
     host/
       ios.development.example.json
       ios.test.example.json
       ios.staging.example.json
       ios.production.example.json
     server/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
     container/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
   docs/
   scripts/
   sdks/
@@ -256,6 +250,14 @@ Rules:
 
 - iOS root config separates lifecycle environment, build mode, deployment
   profile, and runtime target according to `CONFIG_SPEC.md`.
+- Native iOS runtime env materializes as
+  `config/app/runtime-env.<deploymentProfile>.<environment>.json` and declares
+  matching `environment`, `deploymentProfile`, `profileId`, and
+  `runtimeTarget=ios-native`. Xcode scheme/configuration, simulator/device,
+  bundle id, signing identity, and store channel remain separate axes.
+- The build validates and packages exactly one selected non-secret runtime JSON
+  resource. User `.xcconfig`, provisioning profiles, certificates, private
+  keys, and developer overrides stay ignored or in Apple/CI secure storage.
 - `config/app/` and `config/host/` examples must be safe checked-in templates only.
 - iOS bundle id, minimum supported iOS version, entitlements, permissions, associated domains, universal links, push environment, signing reference names, Apple team/profile references, and store profile references belong to host config or Xcode project templates.
 - Host config must not contain signing private keys, auth tokens, refresh tokens, API keys, database credentials, private service endpoints, SDK ownership, or business route constants.

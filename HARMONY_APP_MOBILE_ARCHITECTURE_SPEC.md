@@ -43,27 +43,21 @@ apps/sdkwork-<application-code>-harmony-mobile/
       README.md
     plugins/
       README.md
+  etc/
+    README.md
+    sdkwork.deployment.config.json
   config/
     app/
-      runtime-env.development.example.json
-      runtime-env.test.example.json
-      runtime-env.staging.example.json
-      runtime-env.production.example.json
+      runtime-env.<deployment-profile>.<environment>.json
     host/
       harmony.development.example.json
       harmony.test.example.json
       harmony.staging.example.json
       harmony.production.example.json
     server/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
     container/
-      <application-code>.development.toml.example
-      <application-code>.test.toml.example
-      <application-code>.staging.toml.example
-      <application-code>.production.toml.example
+      <application-code>.<deployment-profile>.<environment>.toml.example
   docs/
   scripts/
   sdks/
@@ -268,6 +262,14 @@ Rules:
 
 - Harmony root config separates lifecycle environment, build mode, deployment
   profile, and runtime target according to `CONFIG_SPEC.md`.
+- Native HarmonyOS runtime env materializes as
+  `config/app/runtime-env.<deploymentProfile>.<environment>.json` and declares
+  matching `environment`, `deploymentProfile`, `profileId`, and
+  `runtimeTarget=harmony-native`. hvigor product/build mode, device type,
+  bundle/module id, signing profile, and store channel remain separate axes.
+- The build validates and projects exactly one selected non-secret runtime JSON
+  resource. Signing files, private keys, profile credentials, and developer
+  overrides stay ignored or in DevEco/CI secure storage.
 - `config/app/` and `config/host/` examples must be safe checked-in templates only.
 - Harmony bundle id/app id, module ids, supported device types, permissions, app links, push environment, signing reference names, AppGallery/private distribution references, and store profile references belong to host config or platform templates.
 - Host config must not contain signing private keys, auth tokens, refresh tokens, API keys, database credentials, private service endpoints, SDK ownership, or business route constants.

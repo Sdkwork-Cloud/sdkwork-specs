@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 const SECRET_KEY = /(?:password|private[_-]?key|signing[_-]?secret|access[_-]?token|refresh[_-]?token|api[_-]?key)$/iu;
 const SAFE_SECRET_REFERENCE = /(?:file|path|ref|reference)$/iu;
 const PRODUCTION_LIKE_ENVIRONMENT = /^(?:prod|production|stage|staging|live)$/iu;
+const PROFILE_ID = /^(standalone|cloud)\.(development|test|staging|production)$/u;
 
 function findRepositoryRoot(start) {
   let current = path.resolve(start);
@@ -71,6 +72,149 @@ function inspectComponentDeploymentConfig(resolvedRoot, configPath, config, issu
   }
   if (config.parentTopologySpec && fs.existsSync(path.join(resolvedRoot, 'specs', 'topology.spec.json'))) {
     issues.push('specs/topology.spec.json: component root must not own a second topology when parentTopologySpec is declared');
+  }
+}
+
+function envValue(source, key) {
+  const match = source.match(new RegExp(`^\\s*${key}=([^\\r\\n]*)$`, 'mu'));
+  return match?.[1]?.trim() ?? '';
+}
+
+function applicationEnvPrefix(application) {
+  return String(application ?? '')
+    .replace(/^sdkwork-/u, '')
+    .replace(/[^a-z0-9]+/giu, '_')
+    .replace(/^_+|_+$/gu, '')
+    .toUpperCase();
+}
+
+function profileIdentityFromFile(file, application) {
+  if (file.endsWith('.json')) {
+    const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const runtime = value.runtime && typeof value.runtime === 'object'
+      ? value.runtime
+      : {};
+    return {
+      environment: value.environment ?? value.SDKWORK_ENVIRONMENT ?? runtime.environment,
+      deploymentProfile: value.deploymentProfile
+        ?? value.SDKWORK_DEPLOYMENT_PROFILE
+        ?? runtime.deploymentProfile
+        ?? runtime.deployment_profile,
+      profileId: value.profileId
+        ?? value.SDKWORK_PROFILE_ID
+        ?? runtime.profileId
+        ?? runtime.profile_id,
+    };
+  }
+  const source = fs.readFileSync(file, 'utf8');
+  if (file.endsWith('.toml')) {
+    const runtimeSource = tomlSection(source, 'runtime');
+    return {
+      environment: parseTomlString(runtimeSource, 'environment'),
+      deploymentProfile: parseTomlString(runtimeSource, 'deployment_profile')
+        || parseTomlString(runtimeSource, 'deploymentProfile'),
+      profileId: parseTomlString(runtimeSource, 'profile_id')
+        || parseTomlString(runtimeSource, 'profileId'),
+    };
+  }
+  if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+    return {
+      environment: yamlScalarValue(source, 'environment'),
+      deploymentProfile: yamlScalarValue(source, 'deploymentProfile')
+        || yamlScalarValue(source, 'deployment-profile'),
+      profileId: yamlScalarValue(source, 'profileId')
+        || yamlScalarValue(source, 'profile-id'),
+    };
+  }
+  const prefix = applicationEnvPrefix(application);
+  const scoped = prefix ? `SDKWORK_${prefix}` : '';
+  return {
+    environment: envValue(source, 'SDKWORK_ENVIRONMENT')
+      || (scoped ? envValue(source, `${scoped}_ENVIRONMENT`) : ''),
+    deploymentProfile: envValue(source, 'SDKWORK_DEPLOYMENT_PROFILE')
+      || (scoped ? envValue(source, `${scoped}_DEPLOYMENT_PROFILE`) : ''),
+    profileId: envValue(source, 'SDKWORK_PROFILE_ID')
+      || (scoped ? envValue(source, `${scoped}_PROFILE_ID`) : ''),
+  };
+}
+
+function yamlScalarValue(source, key) {
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+  const match = source.match(new RegExp(`^\\s*${escapedKey}\\s*:\\s*["']?([^"'\\s#]+)["']?\\s*(?:#.*)?$`, 'mu'));
+  return match?.[1]?.trim() ?? '';
+}
+
+function tomlSection(source, section) {
+  const escapedSection = section.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+  const heading = new RegExp(`^\\s*\\[${escapedSection}\\]\\s*$`, 'miu');
+  const match = heading.exec(source);
+  if (!match) return '';
+  const remainder = source.slice(match.index + match[0].length);
+  const nextSection = remainder.search(/^\s*\[/mu);
+  return nextSection >= 0 ? remainder.slice(0, nextSection) : remainder;
+}
+
+function inspectDeploymentIndex(resolvedRoot, configPath, config, issues, { enforceProfileIdentity }) {
+  if (config?.kind !== 'sdkwork.deployment-index') return;
+  if (config.schemaVersion !== 1) {
+    issues.push('etc/sdkwork.deployment.config.json#/schemaVersion: deployment index must use version 1');
+  }
+  if (!config.profiles || typeof config.profiles !== 'object' || Array.isArray(config.profiles)) {
+    issues.push('etc/sdkwork.deployment.config.json#/profiles: deployment index requires a profile map');
+    return;
+  }
+  const entries = Object.entries(config.profiles);
+  if (entries.length === 0) {
+    issues.push('etc/sdkwork.deployment.config.json#/profiles: at least one canonical profile is required');
+  }
+  if (typeof config.defaultProfile !== 'string' || !config.profiles[config.defaultProfile]) {
+    issues.push('etc/sdkwork.deployment.config.json#/defaultProfile: must name a declared profile');
+  }
+  for (const [profileId, entry] of entries) {
+    const match = profileId.match(PROFILE_ID);
+    if (!match) {
+      issues.push(`etc/sdkwork.deployment.config.json#/profiles/${profileId}: profile id must use <standalone|cloud>.<development|test|staging|production>`);
+      continue;
+    }
+    if (!entry || typeof entry !== 'object' || typeof entry.config !== 'string' || !entry.config.trim()) {
+      issues.push(`etc/sdkwork.deployment.config.json#/profiles/${profileId}/config: non-empty relative path is required`);
+      continue;
+    }
+    const target = path.resolve(path.dirname(configPath), entry.config);
+    if (!isPathInside(path.dirname(configPath), target)) {
+      issues.push(`etc/sdkwork.deployment.config.json#/profiles/${profileId}/config: must stay within etc/`);
+      continue;
+    }
+    if (!fs.existsSync(target)) {
+      issues.push(`etc/sdkwork.deployment.config.json#/profiles/${profileId}/config: target does not exist (${entry.config})`);
+      continue;
+    }
+    try {
+      const identity = profileIdentityFromFile(target, config.application);
+      const [, deploymentProfile, environment] = match;
+      const declaredIdentityFields = Object.values(identity).filter(Boolean).length;
+      if (declaredIdentityFields === 0 && !enforceProfileIdentity) continue;
+      if (!identity.environment) {
+        issues.push(`${path.relative(resolvedRoot, target).replaceAll(path.sep, '/')}#environment: canonical profile identity is required`);
+      }
+      if (!identity.deploymentProfile) {
+        issues.push(`${path.relative(resolvedRoot, target).replaceAll(path.sep, '/')}#deploymentProfile: canonical profile identity is required`);
+      }
+      if (!identity.profileId) {
+        issues.push(`${path.relative(resolvedRoot, target).replaceAll(path.sep, '/')}#profileId: canonical profile identity is required`);
+      }
+      if (identity.environment !== environment) {
+        issues.push(`${path.relative(resolvedRoot, target).replaceAll(path.sep, '/')}#environment: must equal ${environment}`);
+      }
+      if (identity.deploymentProfile !== deploymentProfile) {
+        issues.push(`${path.relative(resolvedRoot, target).replaceAll(path.sep, '/')}#deploymentProfile: must equal ${deploymentProfile}`);
+      }
+      if (identity.profileId !== profileId) {
+        issues.push(`${path.relative(resolvedRoot, target).replaceAll(path.sep, '/')}#profileId: must equal ${profileId}`);
+      }
+    } catch (error) {
+      issues.push(`${path.relative(resolvedRoot, target).replaceAll(path.sep, '/')}: invalid profile config (${error.message})`);
+    }
   }
 }
 
@@ -165,7 +309,7 @@ function inspectGatewayCors(file, relative, issues) {
   }
 }
 
-export function checkSourceConfigStandard(root, { deployable } = {}) {
+export function checkSourceConfigStandard(root, { deployable, enforceProfileIdentity = false } = {}) {
   const resolvedRoot = path.resolve(root);
   const manifestPath = path.join(resolvedRoot, 'sdkwork.app.config.json');
   const isDeployable = deployable ?? fs.existsSync(manifestPath);
@@ -184,11 +328,19 @@ export function checkSourceConfigStandard(root, { deployable } = {}) {
     issues.push('etc/sdkwork.deployment.config.json: deployment profile index is required');
   } else {
     try {
+      const deploymentConfig = JSON.parse(fs.readFileSync(deploymentConfigPath, 'utf8'));
       inspectComponentDeploymentConfig(
         resolvedRoot,
         deploymentConfigPath,
-        JSON.parse(fs.readFileSync(deploymentConfigPath, 'utf8')),
+        deploymentConfig,
         issues,
+      );
+      inspectDeploymentIndex(
+        resolvedRoot,
+        deploymentConfigPath,
+        deploymentConfig,
+        issues,
+        { enforceProfileIdentity },
       );
     } catch {
       // The generic JSON scan below reports the parse error once.
@@ -248,15 +400,19 @@ function main() {
     options: {
       root: { type: 'string', default: '.' },
       deployable: { type: 'boolean' },
+      'enforce-profile-identity': { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h' },
     },
   });
   if (values.help) {
-    console.log('Usage: node tools/check-source-config-standard.mjs --root <deployable-root> [--deployable]');
+    console.log('Usage: node tools/check-source-config-standard.mjs --root <deployable-root> [--deployable] [--enforce-profile-identity]');
     return;
   }
   const root = path.resolve(values.root);
-  const issues = checkSourceConfigStandard(root, { deployable: values.deployable });
+  const issues = checkSourceConfigStandard(root, {
+    deployable: values.deployable,
+    enforceProfileIdentity: values['enforce-profile-identity'],
+  });
   if (issues.length > 0) {
     console.error(`source config standard failed for ${root}`);
     issues.forEach((issue) => console.error(`- ${issue}`));
