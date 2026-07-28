@@ -10,14 +10,90 @@ import {
 
 export function classifyOpenApiOperationPatterns(text) {
   const issues = [];
-  const { entries } = openApiOperationEntriesFromText(text);
+  const { document, entries } = openApiOperationEntriesFromText(text);
   for (const entry of entries) {
     if (isExternalProtocolOperation(entry.operation)) {
       continue;
     }
+    issues.push(...classifyIdempotencyContract(entry, document));
     issues.push(...classifyOperation(entry));
   }
   return issues;
+}
+
+function classifyIdempotencyContract(entry, document) {
+  const { routePath, method, operation } = entry;
+  const issues = [];
+  const operationLabel = `${method.toUpperCase()} ${routePath}`;
+  const marker = operation['x-sdkwork-idempotent'];
+  const parameters = [
+    ...(Array.isArray(entry.pathParameters) ? entry.pathParameters : []),
+    ...(Array.isArray(operation.parameters) ? operation.parameters : []),
+  ].map((parameter) => resolveParameter(parameter, document));
+  const headers = parameters.filter((parameter) => (
+    parameter
+    && typeof parameter === 'object'
+    && parameter.in === 'header'
+    && typeof parameter.name === 'string'
+    && parameter.name.toLowerCase() === 'idempotency-key'
+  ));
+
+  if (marker !== undefined && typeof marker !== 'boolean') {
+    issues.push({
+      kind: 'invalid-idempotency-marker',
+      detail: `${operationLabel} x-sdkwork-idempotent must be a boolean`,
+    });
+  }
+  if (marker === true && headers.length === 0) {
+    issues.push({
+      kind: 'idempotency-header-missing',
+      detail: `${operationLabel} x-sdkwork-idempotent: true requires a required Idempotency-Key header parameter`,
+    });
+  }
+  if (marker !== true && headers.length > 0) {
+    issues.push({
+      kind: 'idempotency-marker-missing',
+      detail: `${operationLabel} Idempotency-Key requires x-sdkwork-idempotent: true on the same operation`,
+    });
+  }
+  for (const header of headers) {
+    if (header.name !== 'Idempotency-Key') {
+      issues.push({
+        kind: 'idempotency-header-name',
+        detail: `${operationLabel} must use the canonical Idempotency-Key header spelling`,
+      });
+    }
+    if (header.required !== true) {
+      issues.push({
+        kind: 'idempotency-header-required',
+        detail: `${operationLabel} Idempotency-Key must be required`,
+      });
+    }
+    const schema = header.schema && typeof header.schema === 'object' ? header.schema : {};
+    if (
+      schema.type !== 'string'
+      || schema.minLength !== 1
+      || schema.maxLength !== 128
+    ) {
+      issues.push({
+        kind: 'idempotency-header-schema',
+        detail: `${operationLabel} Idempotency-Key schema must be string with minLength 1 and maxLength 128`,
+      });
+    }
+  }
+  return issues;
+}
+
+function resolveParameter(parameter, document) {
+  if (!parameter || typeof parameter !== 'object' || typeof parameter.$ref !== 'string') {
+    return parameter;
+  }
+  const match = parameter.$ref.match(/^#\/components\/parameters\/([^/]+)$/u);
+  if (!match) {
+    return parameter;
+  }
+  const name = decodeURIComponent(match[1].replace(/~1/gu, '/').replace(/~0/gu, '~'));
+  return document?.components?.parameters?.[name] ?? parameter;
 }
 
 function classifyOperation({ routePath, method, operation }) {

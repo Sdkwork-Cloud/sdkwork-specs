@@ -27,6 +27,119 @@ function openApi(paths) {
   );
 }
 
+function idempotencyKeyParameter(overrides = {}) {
+  return {
+    name: 'Idempotency-Key',
+    in: 'header',
+    required: true,
+    schema: { type: 'string', minLength: 1, maxLength: 128 },
+    ...overrides,
+  };
+}
+
+test('classifyOpenApiOperationPatterns rejects idempotency markers without required headers', () => {
+  const issues = classifyOpenApiOperationPatterns(openApi({
+    '/app/v3/api/users': {
+      post: {
+        operationId: 'users.create',
+        'x-sdkwork-idempotent': true,
+        responses: { 201: { description: 'created' } },
+      },
+    },
+  }));
+
+  assert.ok(issues.some((issue) => issue.kind === 'idempotency-header-missing'));
+});
+
+test('classifyOpenApiOperationPatterns rejects idempotency headers without markers', () => {
+  const issues = classifyOpenApiOperationPatterns(openApi({
+    '/app/v3/api/users': {
+      post: {
+        operationId: 'users.create',
+        parameters: [idempotencyKeyParameter()],
+        responses: { 201: { description: 'created' } },
+      },
+    },
+  }));
+
+  assert.ok(issues.some((issue) => issue.kind === 'idempotency-marker-missing'));
+});
+
+test('classifyOpenApiOperationPatterns rejects optional idempotency headers', () => {
+  const issues = classifyOpenApiOperationPatterns(openApi({
+    '/app/v3/api/users': {
+      post: {
+        operationId: 'users.create',
+        'x-sdkwork-idempotent': true,
+        parameters: [idempotencyKeyParameter({ required: false })],
+        responses: { 201: { description: 'created' } },
+      },
+    },
+  }));
+
+  assert.ok(issues.some((issue) => issue.kind === 'idempotency-header-required'));
+});
+
+test('classifyOpenApiOperationPatterns accepts JSON shared idempotency parameters', () => {
+  const document = JSON.parse(openApi({
+    '/app/v3/api/users': {
+      post: {
+        operationId: 'users.create',
+        'x-sdkwork-idempotent': true,
+        parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }],
+        responses: { 201: { description: 'created' } },
+      },
+    },
+  }));
+  document.components.parameters = { IdempotencyKey: idempotencyKeyParameter() };
+
+  assert.deepEqual(classifyOpenApiOperationPatterns(JSON.stringify(document)), []);
+});
+
+test('classifyOpenApiOperationPatterns accepts YAML shared idempotency parameters', () => {
+  const issues = classifyOpenApiOperationPatterns(`
+openapi: 3.1.2
+paths:
+  /app/v3/api/users:
+    post:
+      operationId: users.create
+      x-sdkwork-idempotent: true
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: created
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+`);
+
+  assert.deepEqual(issues, []);
+});
+
+test('classifyOpenApiOperationPatterns exempts external protocol idempotency semantics', () => {
+  const issues = classifyOpenApiOperationPatterns(openApi({
+    '/v1/jobs': {
+      post: {
+        operationId: 'jobsCreate',
+        'x-sdkwork-wire-protocol': 'external',
+        'x-sdkwork-external-protocol-id': 'vendor-v1',
+        'x-sdkwork-idempotent': true,
+        responses: { 200: { description: 'vendor response' } },
+      },
+    },
+  }));
+
+  assert.deepEqual(issues, []);
+});
+
 test('classifyOpenApiOperationPatterns flags create operations that do not return 201', () => {
   const issues = classifyOpenApiOperationPatterns(
     openApi({

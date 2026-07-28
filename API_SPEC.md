@@ -2083,7 +2083,10 @@ Rules:
 
 - Retriable create and payment-like commands `MUST` support `Idempotency-Key`.
 - `Idempotency-Key` values are scoped by tenant, principal, method, and path.
-- OpenAPI operations that require retry safety `MUST` declare an `Idempotency-Key` header parameter or equivalent shared header `$ref`.
+- `x-sdkwork-idempotent: true` and a required `Idempotency-Key` OpenAPI header parameter are a strict pair: either both are present on the effective operation or both are absent. A shared local header `$ref` is allowed.
+- The canonical `Idempotency-Key` parameter `MUST` be a required header with a string schema, `minLength: 1`, and `maxLength: 128`. API materialization and contract checks `MUST` reject marker/header mismatches, optional declarations, non-canonical header spelling, and unbounded schemas.
+- Route manifests, runtime route metadata, derived generator inputs, and generated SDK method surfaces `MUST` preserve the same idempotency requirement as the authority OpenAPI operation. Materializers `MUST NOT` infer idempotency from an operationId substring or HTTP method.
+- Clients `MUST` create one unpredictable idempotency key per logical user or job command, retain that key across transport retries and ambiguous outcomes, and create a new key only for a new logical command. Retry layers `MUST NOT` generate a new key per attempt.
 - A replay with the same idempotency key and the same request fingerprint `SHOULD` return the original success result or current operation status without executing side effects again.
 - A replay with the same idempotency key and a different request fingerprint `MUST` return `40901 CONFLICT`.
 - Non-idempotent commands `MUST` either reject duplicate client submission through domain state checks or document why retries are unsafe.
@@ -2098,6 +2101,7 @@ Rules:
 - Operations that require optimistic concurrency `MUST` document the version source (`version`, `etag`, or domain revision), declare `If-Match` when header preconditions are used, and map missing required preconditions to `42801 PRECONDITION_REQUIRED`.
 - Failed `If-Match`, ETag, or version preconditions `MUST` return `41201 PRECONDITION_FAILED`; domain state conflicts that are not direct precondition failures `MUST` return `40901 CONFLICT` or a registered `60000`-range domain code.
 - Duplicate idempotency keys with different payloads `MUST` return `409`.
+- Runtimes `MUST` reject empty or oversized idempotency keys before store lookup, `MUST NOT` log raw keys, and `MUST` use a distributed durable idempotency store for production high-availability deployments.
 - Idempotency records `SHOULD` follow database rules in `DATABASE_SPEC.md`.
 
 ## 18. Multi-Tenant And Authorization Semantics

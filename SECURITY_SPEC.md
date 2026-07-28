@@ -134,6 +134,8 @@ Rules:
 - SQL injection guards are heuristic request filters. All database access `MUST` still use bind parameters or query builders that bind values, and raw SQL string concatenation with user input is forbidden.
 - CORS and cross-site request protection are separate controls. Passing CORS does not replace authorization, CSRF protection for cookie flows, or tenant isolation.
 - Rate-limit and idempotency implementations must use bounded keys that do not expose raw tokens, API keys, passwords, or PII.
+- Idempotency interceptors `MUST` reject missing, empty, or greater-than-128-byte `Idempotency-Key` values before store access, hash or otherwise scope raw client keys before persistence, and redact raw keys from logs and metrics.
+- Production high-availability runtimes `MUST` use a shared durable idempotency store with atomic reserve/replay/conflict behavior. Process-local memory stores are limited to development, tests, and explicitly standalone non-HA profiles.
 
 ## 6. Secure Logging
 

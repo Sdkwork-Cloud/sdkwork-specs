@@ -485,7 +485,7 @@ Rules:
 - Generated clients `MUST NOT` add flat aliases such as `createUser`, `patchUser`, `replaceUser`, `deleteUserById`, or `batchCreateUsers` for new SDKWork v3 APIs.
 - `PUT` and `PATCH` operations both generate the stable SDK action `update`; request type names and docs distinguish full replace versus partial update.
 - Delete methods `MUST` treat HTTP `204` as success and return `void` or a language-equivalent empty result by default.
-- SDK method options `MAY` expose `idempotencyKey` and `ifMatch` when the OpenAPI operation declares `Idempotency-Key` or `If-Match`, but they `MUST NOT` expose `traceId`, `requestId`, `xRequestId`, tenant selector fields, or manual credential headers.
+- Generated SDK methods `MUST` expose a required language-idiomatic `idempotencyKey` input when the OpenAPI operation declares a required `Idempotency-Key` header, and `MUST` emit that input only as the canonical header. SDK method options may expose `ifMatch` when the operation declares `If-Match`, but they `MUST NOT` expose `traceId`, `requestId`, `xRequestId`, tenant selector fields, or manual credential headers.
 - Bulk SDK methods `MUST` surface typed item results and all-or-nothing metadata when the API allows partial success.
 
 ## 4. Auth Handling
@@ -538,6 +538,8 @@ Rules:
 
 - Frontend and browser SDK consumers MUST NOT generate `traceId` values, `xRequestId` values, `X-Request-Id` headers, or wire field `requestId`.
 - SDK examples MUST pass Idempotency-Key only for idempotent or retriable commands, and must read `traceId` from the success `SdkWorkApiResponse` or `ProblemDetail` when correlation is needed.
+- Generated transport retry logic and composed SDK facades `MUST` reuse the same `idempotencyKey` for every attempt of one logical command. They `MUST NOT` silently synthesize a replacement key after dispatch or on an ambiguous timeout.
+- Consumer facades may generate a cryptographically unpredictable key at the logical command boundary when callers do not already own one, but the resulting stable value `MUST` be observable to the retry orchestration and passed through the generated SDK parameter.
 - Generated app/backend SDKs MUST NOT expose optional `xRequestId` parameters, `X-Request-Id` header plumbing, or response field `requestId`.
 - Service facades `MUST` keep frontend request identity helpers scoped to business idempotency keys and client request numbers; they `MUST NOT` expose `createRequestId` or `createTraceId` helpers.
 - Request body schemas for new commands `MUST NOT` require a client-filled `traceId` or `requestId`. If a resource records an upstream external request id, the field must be named for that domain source, not reused as the SDKWork correlation id.

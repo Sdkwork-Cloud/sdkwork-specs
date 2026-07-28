@@ -38,7 +38,12 @@ export function openApiOperationEntriesFromDocument(document) {
       if (!OPENAPI_HTTP_METHODS.has(normalizedMethod) || !operation || typeof operation !== 'object') {
         continue;
       }
-      entries.push({ routePath, method: normalizedMethod, operation });
+      entries.push({
+        routePath,
+        method: normalizedMethod,
+        operation,
+        pathParameters: Array.isArray(pathItem.parameters) ? pathItem.parameters : [],
+      });
     }
   }
   return entries;
@@ -115,7 +120,12 @@ function parseYamlOperationEntries(text) {
   const lines = text.split(/\r?\n/u);
   let inPaths = false;
   let currentPath = null;
+  let currentPathParameters = [];
   let currentEntry = null;
+  let parameterTarget = null;
+  let parameterPropertyIndent = null;
+  let currentParameter = null;
+  let inParameterSchema = false;
   let inResponses = false;
   let currentStatus = null;
   let currentContentType = null;
@@ -125,7 +135,11 @@ function parseYamlOperationEntries(text) {
     if (/^\S/u.test(line)) {
       inPaths = /^paths:\s*$/u.test(line);
       currentPath = null;
+      currentPathParameters = [];
       currentEntry = null;
+      parameterTarget = null;
+      currentParameter = null;
+      inParameterSchema = false;
       inResponses = false;
       currentStatus = null;
       currentContentType = null;
@@ -141,7 +155,11 @@ function parseYamlOperationEntries(text) {
       const candidate = unquoteYamlScalar(pathMatch[1].trim());
       if (candidate.startsWith('/')) {
         currentPath = candidate;
+        currentPathParameters = [];
         currentEntry = null;
+        parameterTarget = null;
+        currentParameter = null;
+        inParameterSchema = false;
         inResponses = false;
         currentStatus = null;
         currentContentType = null;
@@ -150,14 +168,38 @@ function parseYamlOperationEntries(text) {
       }
     }
 
+    if (/^ {4}parameters:\s*$/u.test(line) && currentPath) {
+      parameterTarget = currentPathParameters;
+      parameterPropertyIndent = 8;
+      currentParameter = null;
+      inParameterSchema = false;
+      continue;
+    }
+
+    if (!currentEntry && parameterTarget === currentPathParameters) {
+      if (parseYamlParameterLine(line, parameterTarget, parameterPropertyIndent, (parameter, inSchema) => {
+        currentParameter = parameter;
+        inParameterSchema = inSchema;
+      }, currentParameter, inParameterSchema)) {
+        continue;
+      }
+      parameterTarget = null;
+      currentParameter = null;
+      inParameterSchema = false;
+    }
+
     const methodMatch = line.match(/^ {4}(get|post|put|patch|delete|head|options|trace):\s*$/u);
     if (methodMatch && currentPath) {
       currentEntry = {
         routePath: currentPath,
         method: methodMatch[1],
         operation: { responses: {} },
+        pathParameters: currentPathParameters,
       };
       entries.push(currentEntry);
+      parameterTarget = null;
+      currentParameter = null;
+      inParameterSchema = false;
       inResponses = false;
       currentStatus = null;
       currentContentType = null;
@@ -183,6 +225,30 @@ function parseYamlOperationEntries(text) {
     if (protocolIdMatch) {
       currentEntry.operation['x-sdkwork-external-protocol-id'] = unquoteYamlScalar(protocolIdMatch[1].trim());
       continue;
+    }
+    const idempotentMatch = line.match(/^ {6}x-sdkwork-idempotent:\s*(.+?)\s*$/u);
+    if (idempotentMatch) {
+      currentEntry.operation['x-sdkwork-idempotent'] = parseYamlScalarValue(idempotentMatch[1].trim());
+      continue;
+    }
+    if (/^ {6}parameters:\s*$/u.test(line)) {
+      currentEntry.operation.parameters = [];
+      parameterTarget = currentEntry.operation.parameters;
+      parameterPropertyIndent = 10;
+      currentParameter = null;
+      inParameterSchema = false;
+      continue;
+    }
+    if (parameterTarget === currentEntry.operation.parameters) {
+      if (parseYamlParameterLine(line, parameterTarget, parameterPropertyIndent, (parameter, inSchema) => {
+        currentParameter = parameter;
+        inParameterSchema = inSchema;
+      }, currentParameter, inParameterSchema)) {
+        continue;
+      }
+      parameterTarget = null;
+      currentParameter = null;
+      inParameterSchema = false;
     }
     if (/^ {6}responses:\s*$/u.test(line)) {
       inResponses = true;
@@ -244,42 +310,74 @@ function parseYamlOperationEntries(text) {
 
 function parseYamlDocumentView(lines) {
   const schemas = {};
+  const parameters = {};
   let inComponents = false;
-  let inSchemas = false;
-  let currentSchemaName = null;
+  let componentSection = null;
+  let currentComponentName = null;
+  let inParameterSchema = false;
 
   for (const line of lines) {
     if (/^\S/u.test(line)) {
       inComponents = /^components:\s*$/u.test(line);
-      inSchemas = false;
-      currentSchemaName = null;
+      componentSection = null;
+      currentComponentName = null;
+      inParameterSchema = false;
       continue;
     }
     if (!inComponents) {
       continue;
     }
     if (/^ {2}schemas:\s*$/u.test(line)) {
-      inSchemas = true;
-      currentSchemaName = null;
+      componentSection = 'schemas';
+      currentComponentName = null;
+      inParameterSchema = false;
       continue;
     }
-    if (!inSchemas) {
+    if (/^ {2}parameters:\s*$/u.test(line)) {
+      componentSection = 'parameters';
+      currentComponentName = null;
+      inParameterSchema = false;
+      continue;
+    }
+    if (!componentSection) {
       continue;
     }
 
-    const schemaMatch = line.match(/^ {4}([^\s:#][^:]*):\s*$/u);
-    if (schemaMatch) {
-      currentSchemaName = unquoteYamlScalar(schemaMatch[1].trim());
-      schemas[currentSchemaName] = schemas[currentSchemaName] ?? {};
+    const componentMatch = line.match(/^ {4}([^\s:#][^:]*):\s*$/u);
+    if (componentMatch) {
+      currentComponentName = unquoteYamlScalar(componentMatch[1].trim());
+      const target = componentSection === 'schemas' ? schemas : parameters;
+      target[currentComponentName] = target[currentComponentName] ?? {};
+      inParameterSchema = false;
       continue;
     }
-    if (!currentSchemaName) {
+    if (!currentComponentName) {
       continue;
     }
+
+    if (componentSection === 'parameters') {
+      const parameter = parameters[currentComponentName];
+      const propertyMatch = line.match(/^ {6}(name|in|required|\$ref):\s*(.+?)\s*$/u);
+      if (propertyMatch) {
+        parameter[propertyMatch[1]] = parseYamlScalarValue(propertyMatch[2].trim());
+        continue;
+      }
+      if (/^ {6}schema:\s*$/u.test(line)) {
+        parameter.schema = {};
+        inParameterSchema = true;
+        continue;
+      }
+      const schemaPropertyMatch = line.match(/^ {8}(type|minLength|maxLength|pattern):\s*(.+?)\s*$/u);
+      if (inParameterSchema && schemaPropertyMatch) {
+        parameter.schema[schemaPropertyMatch[1]] = parseYamlScalarValue(schemaPropertyMatch[2].trim());
+      }
+      continue;
+    }
+
     const refMatch = line.match(/^ {6,}(?:-\s*)?\$ref:\s*(.+?)\s*$/u);
     if (refMatch) {
       const schemaRef = unquoteYamlScalar(refMatch[1].trim());
-      const schema = schemas[currentSchemaName];
+      const schema = schemas[currentComponentName];
       if (typeof schema.$ref !== 'string') {
         schema.$ref = schemaRef;
       }
@@ -288,7 +386,60 @@ function parseYamlDocumentView(lines) {
     }
   }
 
-  return { components: { schemas } };
+  return { components: { schemas, parameters } };
+}
+
+function parseYamlParameterLine(
+  line,
+  target,
+  propertyIndent,
+  updateCurrent,
+  currentParameter,
+  inParameterSchema,
+) {
+  const listIndent = propertyIndent - 2;
+  const listMatch = line.match(new RegExp(`^ {${listIndent}}-\\s*(.*)$`, 'u'));
+  if (listMatch) {
+    const parameter = {};
+    target.push(parameter);
+    const inlineProperty = listMatch[1].match(/^(name|in|required|\$ref):\s*(.+?)\s*$/u);
+    if (inlineProperty) {
+      parameter[inlineProperty[1]] = parseYamlScalarValue(inlineProperty[2].trim());
+    }
+    updateCurrent(parameter, false);
+    return true;
+  }
+  if (!currentParameter) {
+    return false;
+  }
+  const propertyMatch = line.match(new RegExp(`^ {${propertyIndent}}(name|in|required|\\$ref):\\s*(.+?)\\s*$`, 'u'));
+  if (propertyMatch) {
+    currentParameter[propertyMatch[1]] = parseYamlScalarValue(propertyMatch[2].trim());
+    updateCurrent(currentParameter, false);
+    return true;
+  }
+  if (new RegExp(`^ {${propertyIndent}}schema:\\s*$`, 'u').test(line)) {
+    currentParameter.schema = {};
+    updateCurrent(currentParameter, true);
+    return true;
+  }
+  const schemaPropertyMatch = line.match(
+    new RegExp(`^ {${propertyIndent + 2}}(type|minLength|maxLength|pattern):\\s*(.+?)\\s*$`, 'u'),
+  );
+  if (inParameterSchema && schemaPropertyMatch) {
+    currentParameter.schema[schemaPropertyMatch[1]] = parseYamlScalarValue(schemaPropertyMatch[2].trim());
+    updateCurrent(currentParameter, true);
+    return true;
+  }
+  return false;
+}
+
+function parseYamlScalarValue(value) {
+  const scalar = unquoteYamlScalar(value);
+  if (scalar === 'true') return true;
+  if (scalar === 'false') return false;
+  if (/^-?\d+$/u.test(scalar)) return Number.parseInt(scalar, 10);
+  return scalar;
 }
 
 function unquoteYamlScalar(value) {
