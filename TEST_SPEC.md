@@ -1,6 +1,6 @@
 # Test And Verification Standard
 
-- Version: 1.2
+- Version: 1.3
 - Scope: contract tests, SDK/RPC generation tests, backend tests, frontend tests, parity tests, security tests
 - Related: all specs
 
@@ -1117,7 +1117,15 @@ Rules:
   cloud gateway, and requires an explicit mutation scope.
 - Gateway readiness audit tests `MUST` distinguish assembly readiness from
   standalone-host readiness, inspect `apiMode: none` applications instead of
-  skipping them, and make warnings fail under `--strict`.
+  skipping them, make warnings fail under `--strict`, and reject standalone gateway Cargo runtime
+  dependencies on `sdkwork-routes-*`, `sdkwork-*-service`, `sdkwork-*-repository-*`, and
+  `sdkwork-*-database-host` while permitting `sdkwork-database-sqlx`, Web Framework/bootstrap,
+  topology/listener infrastructure, and explicit host adapters.
+- Component port binding tests `MUST` prove `providedPorts[].export` belongs to the current
+  component's `publicExports`, provider-qualified `requiredPorts[].export` resolves against the
+  provider component's `publicExports` or `providedPorts`, and Rust components cannot claim
+  dependency-qualified exports as their own. `sameOriginAllowed: true` alone `MUST NOT` activate
+  embedded runtime checks when `runtimeMode` selects an external service.
 - Profile-specific dependency assembly tests `MUST` prove embedded surfaces select dependency-owned
   assembly exports and matching same-origin component contracts, external surfaces select no local
   dependency router and require an explicit URL/upstream, and missing selected dependencies fail

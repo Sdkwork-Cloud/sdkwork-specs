@@ -3,10 +3,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import {
+  listComponentPortBindingSpecs,
   validateComponentPortBindings,
 } from './lib/component-port-bindings.mjs';
 import {
   collectWorkspaceValidationIssues,
+  listWorkspaceRepositoryRoots,
 } from './lib/workspace-check-runner.mjs';
 
 const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -36,10 +38,18 @@ function main() {
     process.exit(0);
   }
 
-  const issues = values.workspace
+  const workspaceRoot = values.workspace ? path.resolve(values.workspace) : null;
+  const providerRoots = workspaceRoot ? listWorkspaceRepositoryRoots(workspaceRoot) : [];
+  const providerRecords = providerRoots.flatMap((repoRoot) => (
+    listComponentPortBindingSpecs(repoRoot)
+  ));
+  const issues = workspaceRoot
     ? collectWorkspaceValidationIssues(
-      path.resolve(values.workspace),
-      (repoRoot) => validateComponentPortBindings(repoRoot, { strict: values.strict }),
+      workspaceRoot,
+      (repoRoot) => validateComponentPortBindings(repoRoot, {
+        strict: values.strict,
+        providerRecords,
+      }),
     )
     : validateComponentPortBindings(path.resolve(values.root), { strict: values.strict });
   if (issues.length > 0) {

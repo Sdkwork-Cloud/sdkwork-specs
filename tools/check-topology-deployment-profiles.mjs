@@ -401,8 +401,36 @@ function validateStandaloneBrowserDeliveries(repoRoot, spec, rel, issues) {
   }
 }
 
-function requiredProfiles(spec) {
-  const profiles = spec.vocabulary?.deploymentProfile?.allowed ?? ['standalone', 'cloud'];
+function declaredDeploymentProfiles(repoRoot, spec, issues) {
+  const manifestPath = path.join(repoRoot, 'sdkwork.app.config.json');
+  if (fs.existsSync(manifestPath)) {
+    try {
+      const declared = readJson(manifestPath).runtime?.supportedDeploymentProfiles;
+      if (Array.isArray(declared) && declared.length > 0) {
+        const invalid = declared.filter((profile) => !['standalone', 'cloud'].includes(profile));
+        for (const profile of invalid) {
+          issues.push(`${path.relative(repoRoot, manifestPath)}: unsupported deployment profile ${profile}`);
+        }
+        return new Set(declared.filter((profile) => ['standalone', 'cloud'].includes(profile)));
+      }
+    } catch (error) {
+      issues.push(`${path.relative(repoRoot, manifestPath)}: invalid JSON (${error.message})`);
+    }
+  }
+
+  const topologyProfiles = spec.vocabulary?.deploymentProfile?.allowed
+    ?? spec.vocabulary?.hosting?.allowed
+    ?? [];
+  const normalized = topologyProfiles.map((profile) => {
+    if (profile === 'self-hosted') return 'standalone';
+    if (profile === 'cloud-hosted') return 'cloud';
+    return profile;
+  });
+  return new Set(normalized.length > 0 ? normalized : ['standalone', 'cloud']);
+}
+
+function requiredProfiles(spec, deploymentProfiles) {
+  const profiles = [...deploymentProfiles];
   const environments = spec.vocabulary?.environment?.allowed ?? ['development', 'production'];
   const required = [];
   if (profiles.includes('standalone') && environments.includes('development')) {
@@ -480,12 +508,16 @@ function checkSpec(repoRoot, specPath) {
   }
   pushRetiredTopologyIssues(spec, rel, issues);
 
+  const deploymentProfiles = declaredDeploymentProfiles(repoRoot, spec, issues);
+  const supportsStandalone = deploymentProfiles.has('standalone');
+  const supportsCloud = deploymentProfiles.has('cloud');
+
   const profiles =
     spec.vocabulary?.deploymentProfile?.allowed ?? spec.vocabulary?.hosting?.allowed ?? [];
-  if (!profiles.includes('standalone') && !profiles.includes('self-hosted')) {
+  if (supportsStandalone && !profiles.includes('standalone') && !profiles.includes('self-hosted')) {
     issues.push(`${rel}: missing standalone/self-hosted deployment profile in vocabulary`);
   }
-  if (!profiles.includes('cloud') && !profiles.includes('cloud-hosted')) {
+  if (supportsCloud && !profiles.includes('cloud') && !profiles.includes('cloud-hosted')) {
     issues.push(`${rel}: missing cloud/cloud-hosted deployment profile in vocabulary`);
   }
   if (spec.vocabulary?.hosting && !spec.vocabulary?.deploymentProfile) {
@@ -494,12 +526,49 @@ function checkSpec(repoRoot, specPath) {
   if (profiles.includes('self-hosted') || profiles.includes('cloud-hosted')) {
     issues.push(`${rel}: retired hosting deployment values remain in vocabulary`);
   }
+  for (const profile of profiles) {
+    const normalized = profile === 'self-hosted'
+      ? 'standalone'
+      : profile === 'cloud-hosted'
+        ? 'cloud'
+        : profile;
+    if (['standalone', 'cloud'].includes(normalized) && !deploymentProfiles.has(normalized)) {
+      issues.push(`${rel}: topology vocabulary declares unsupported deployment profile ${normalized}`);
+    }
+  }
 
   if (spec.schemaVersion === 5 && spec.cloudIngress) {
     issues.push(`${rel}: schema v5 application topology must not declare retired cloudIngress implementation metadata`);
   }
 
   const platformSurface = spec.surfaces?.['platform.api-gateway'];
+  if (supportsCloud) {
+    if (!platformSurface) {
+      issues.push(`${rel}: cloud deployment capability requires platform.api-gateway surface`);
+    } else {
+      if (!spec.cloudPublicHosts?.['platform.api-gateway']?.httpHost) {
+        issues.push(`${rel}: cloud deployment capability requires a platform.api-gateway cloud public host`);
+      }
+      if (!platformSurface.httpUrlEnv
+        || spec.envKeys?.apiGatewayBaseUrl !== platformSurface.httpUrlEnv) {
+        issues.push(`${rel}: cloud deployment capability requires envKeys.apiGatewayBaseUrl to match platform.api-gateway httpUrlEnv`);
+      }
+      if (platformSurface.clientHttpEnv
+        && spec.envKeys?.clientApiGatewayBaseUrl !== platformSurface.clientHttpEnv) {
+        issues.push(`${rel}: cloud deployment capability requires envKeys.clientApiGatewayBaseUrl to match platform.api-gateway clientHttpEnv`);
+      }
+    }
+  } else {
+    if (platformSurface) {
+      issues.push(`${rel}: standalone-only deployment capability must not declare platform.api-gateway surface`);
+    }
+    if (spec.cloudPublicHosts?.['platform.api-gateway']) {
+      issues.push(`${rel}: standalone-only deployment capability must not declare a platform.api-gateway cloud public host`);
+    }
+    if (spec.envKeys?.apiGatewayBaseUrl || spec.envKeys?.clientApiGatewayBaseUrl) {
+      issues.push(`${rel}: standalone-only deployment capability must not declare platform API gateway env-key aliases`);
+    }
+  }
   if (spec.schemaVersion === 5 && (
     spec.components?.cloudGateway
     || spec.envKeys?.cloudGatewayBind
@@ -514,12 +583,30 @@ function checkSpec(repoRoot, specPath) {
 
   for (const profileId of Object.keys(spec.profileFiles ?? {})) {
     pushProfileIdIssues(profileId, rel, issues);
+    const deploymentProfile = profileId.split('.')[0];
+    if (['standalone', 'cloud'].includes(deploymentProfile)
+      && !deploymentProfiles.has(deploymentProfile)) {
+      issues.push(`${rel}: profileFiles declares unsupported deployment profile ${profileId}`);
+    }
   }
   for (const profileId of Object.keys(spec.orchestration?.profiles ?? {})) {
     pushProfileIdIssues(profileId, rel, issues);
+    const deploymentProfile = profileId.split('.')[0];
+    if (['standalone', 'cloud'].includes(deploymentProfile)
+      && !deploymentProfiles.has(deploymentProfile)) {
+      issues.push(`${rel}: orchestration declares unsupported deployment profile ${profileId}`);
+    }
+  }
+  for (const [key, profileId] of Object.entries(spec.defaults ?? {})) {
+    if (typeof profileId !== 'string' || !key.endsWith('ProfileId')) continue;
+    const deploymentProfile = profileId.split('.')[0];
+    if (['standalone', 'cloud'].includes(deploymentProfile)
+      && !deploymentProfiles.has(deploymentProfile)) {
+      issues.push(`${rel}: defaults.${key} selects unsupported deployment profile ${profileId}`);
+    }
   }
 
-  for (const profileId of requiredProfiles(spec)) {
+  for (const profileId of requiredProfiles(spec, deploymentProfiles)) {
     if (!spec.profileFiles?.[profileId]) {
       issues.push(`${rel}: missing profileFiles entry for ${profileId}`);
     } else {
@@ -531,9 +618,9 @@ function checkSpec(repoRoot, specPath) {
   }
 
   const cloudDev = spec.orchestration?.profiles?.['cloud.development'];
-  if (!cloudDev) {
+  if (supportsCloud && !cloudDev) {
     issues.push(`${rel}: missing cloud.development orchestration profile`);
-  } else {
+  } else if (supportsCloud) {
     if (spec.schemaVersion === 5) {
       for (const process of cloudDev.processes ?? []) {
         if (PROCESS_ROLES.has(process.role) && !['client', 'tunnel'].includes(process.role)) {
@@ -594,9 +681,11 @@ function checkSpec(repoRoot, specPath) {
     const forbiddenPlatformKeys = new Set([
       platformSurface?.httpUrlEnv,
       platformSurface?.clientHttpEnv,
+      spec.envKeys?.apiGatewayBaseUrl,
+      spec.envKeys?.clientApiGatewayBaseUrl,
     ].filter(Boolean));
-    for (const key of forbiddenPlatformKeys) {
-      if (standaloneEnv.has(key)) {
+    for (const key of standaloneEnv.keys()) {
+      if (forbiddenPlatformKeys.has(key) || /_PLATFORM_API_GATEWAY_/u.test(key)) {
         issues.push(
           `${rel}: ${profileId} must not define ${key}; embedded dependency APIs use application.public-ingress`,
         );
@@ -623,7 +712,7 @@ function checkSpec(repoRoot, specPath) {
   }
 
   const cloudDevPath = spec.profileFiles?.['cloud.development'];
-  if (cloudDevPath && fs.existsSync(path.join(repoRoot, cloudDevPath))) {
+  if (supportsCloud && cloudDevPath && fs.existsSync(path.join(repoRoot, cloudDevPath))) {
     const cloudDevEnv = readEnv(path.join(repoRoot, cloudDevPath));
     const requiredSurfaceIds = ['application.public-ingress', 'platform.api-gateway']
       .filter((surfaceId) => spec.surfaces?.[surfaceId]?.protocols?.includes('http'));
@@ -656,10 +745,27 @@ function checkSpec(repoRoot, specPath) {
   const orch = spec.orchestration?.profiles ?? {};
   const hasStandaloneOrch = Object.keys(orch).some((id) => id.startsWith('standalone.'));
   const hasCloudOrch = Object.keys(orch).some((id) => id.startsWith('cloud.'));
-  if (!hasStandaloneOrch) issues.push(`${rel}: missing standalone orchestration profile`);
-  if (!hasCloudOrch) issues.push(`${rel}: missing cloud orchestration profile`);
+  if (supportsStandalone && !hasStandaloneOrch) {
+    issues.push(`${rel}: missing standalone orchestration profile`);
+  }
+  if (supportsCloud && !hasCloudOrch) {
+    issues.push(`${rel}: missing cloud orchestration profile`);
+  }
+
+  for (const [profileId, profile] of Object.entries(orch)) {
+    if (!profileId.startsWith('standalone.')) continue;
+    for (const process of profile.processes ?? []) {
+      if (process.id === 'platform.api-gateway') {
+        issues.push(`${rel}: ${profileId} must not start platform.api-gateway; dependency APIs are embedded behind application.public-ingress`);
+      }
+    }
+    if ((profile.healthSurfaces ?? []).includes('platform.api-gateway')) {
+      issues.push(`${rel}: ${profileId} must not require platform.api-gateway as a health surface`);
+    }
+  }
 
   if (
+    supportsCloud &&
     (spec.archetype === 'application-http-gateway' ||
       spec.archetype === 'realtime-application-platform') &&
     !spec.surfaces?.['platform.api-gateway']

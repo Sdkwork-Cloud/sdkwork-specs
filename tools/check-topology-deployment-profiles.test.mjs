@@ -61,7 +61,15 @@ function standardTopology() {
       'platform.api-gateway': {
         protocols: ['http'],
         httpUrlEnv: 'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL',
+        clientHttpEnv: 'VITE_DEMO_PLATFORM_API_GATEWAY_HTTP_URL',
       },
+    },
+    envKeys: {
+      apiGatewayBaseUrl: 'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL',
+      clientApiGatewayBaseUrl: 'VITE_DEMO_PLATFORM_API_GATEWAY_HTTP_URL',
+    },
+    cloudPublicHosts: {
+      'platform.api-gateway': { httpHost: 'api.sdkwork.com' },
     },
     orchestration: {
       profiles: {
@@ -101,7 +109,15 @@ function sameOriginBrowserTopology() {
         connectivityPlane: 'platform',
         protocols: ['http'],
         httpUrlEnv: 'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL',
+        clientHttpEnv: 'VITE_DEMO_PLATFORM_API_GATEWAY_HTTP_URL',
       },
+    },
+    envKeys: {
+      apiGatewayBaseUrl: 'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL',
+      clientApiGatewayBaseUrl: 'VITE_DEMO_PLATFORM_API_GATEWAY_HTTP_URL',
+    },
+    cloudPublicHosts: {
+      'platform.api-gateway': { httpHost: 'api.sdkwork.com' },
     },
     orchestration: {
       profiles: {
@@ -203,6 +219,122 @@ function sameOriginBrowserFiles({
     }),
   };
 }
+
+function appManifestFile(supportedDeploymentProfiles) {
+  return {
+    'sdkwork.app.config.json': JSON.stringify({
+      runtime: { supportedDeploymentProfiles },
+    }),
+  };
+}
+
+function standaloneOnlyBrowserTopology() {
+  const topology = sameOriginBrowserTopology();
+  topology.vocabulary.deploymentProfile.allowed = ['standalone'];
+  delete topology.profileFiles['cloud.development'];
+  delete topology.profileFiles['cloud.production'];
+  delete topology.surfaces['platform.api-gateway'];
+  delete topology.envKeys.apiGatewayBaseUrl;
+  delete topology.envKeys.clientApiGatewayBaseUrl;
+  delete topology.cloudPublicHosts['platform.api-gateway'];
+  delete topology.orchestration.profiles['cloud.development'];
+  delete topology.orchestration.profiles['cloud.production'];
+  return topology;
+}
+
+test('accepts a manifest-declared standalone-only same-origin topology', () => {
+  const files = {
+    ...sameOriginBrowserFiles(),
+    ...appManifestFile(['standalone']),
+  };
+  delete files['etc/topology/cloud.development.env'];
+  delete files['etc/topology/cloud.production.env'];
+  const { workspace } = makeWorkspace(
+    'sdkwork-demo',
+    standaloneOnlyBrowserTopology(),
+    files,
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('rejects stale cloud profile declarations from a standalone-only manifest', () => {
+  const topology = standaloneOnlyBrowserTopology();
+  topology.vocabulary.deploymentProfile.allowed.push('cloud');
+  topology.profileFiles['cloud.development'] = 'etc/topology/cloud.development.env';
+  topology.orchestration.profiles['cloud.development'] = {
+    processes: [],
+    healthSurfaces: [],
+  };
+  topology.defaults ??= {};
+  topology.defaults.productionProfileId = 'cloud.production';
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, {
+    ...sameOriginBrowserFiles(),
+    ...appManifestFile(['standalone']),
+    'etc/topology/cloud.development.env': '',
+  });
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /topology vocabulary declares unsupported deployment profile cloud/u);
+  assert.match(result.stderr, /profileFiles declares unsupported deployment profile cloud\.development/u);
+  assert.match(result.stderr, /orchestration declares unsupported deployment profile cloud\.development/u);
+  assert.match(result.stderr, /defaults\.productionProfileId selects unsupported deployment profile cloud\.production/u);
+});
+
+test('accepts mixed capability while standalone profiles remain platform-isolated', () => {
+  const { workspace } = makeWorkspace('sdkwork-demo', sameOriginBrowserTopology(), {
+    ...sameOriginBrowserFiles(),
+    ...appManifestFile(['standalone', 'cloud']),
+  });
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('rejects declared cloud capability without its platform surface contract', () => {
+  const topology = sameOriginBrowserTopology();
+  delete topology.surfaces['platform.api-gateway'];
+  delete topology.cloudPublicHosts['platform.api-gateway'];
+  delete topology.envKeys.apiGatewayBaseUrl;
+  delete topology.envKeys.clientApiGatewayBaseUrl;
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, {
+    ...sameOriginBrowserFiles(),
+    ...appManifestFile(['standalone', 'cloud']),
+  });
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /cloud deployment capability requires platform\.api-gateway surface/u);
+});
+
+test('rejects platform references from standalone profiles in a mixed-capability app', () => {
+  const topology = sameOriginBrowserTopology();
+  const standalone = topology.orchestration.profiles['standalone.development'];
+  standalone.processes.push({ id: 'platform.api-gateway', role: 'client' });
+  standalone.healthSurfaces.push('platform.api-gateway');
+  standalone.browserDeliveries[0].apiSurfaceId = 'platform.api-gateway';
+  const files = {
+    ...sameOriginBrowserFiles(),
+    ...appManifestFile(['standalone', 'cloud']),
+  };
+  files['etc/topology/standalone.development.env'] +=
+    'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=http://127.0.0.1:3900\n';
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, files);
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /standalone\.development must not start platform\.api-gateway/u);
+  assert.match(result.stderr, /standalone\.development must not require platform\.api-gateway as a health surface/u);
+  assert.match(result.stderr, /must use apiSurfaceId application\.public-ingress/u);
+  assert.match(result.stderr, /standalone\.development must not define SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL/u);
+});
 
 test('accepts standalone and cloud two-segment topology profiles', () => {
   const { workspace } = makeWorkspace('sdkwork-demo', standardTopology(), {

@@ -30,12 +30,37 @@ function canonicalProfileIds(spec) {
   return ids;
 }
 
+function declaredDeploymentProfiles(repoRoot, spec) {
+  const manifestPath = path.join(repoRoot, 'sdkwork.app.config.json');
+  const manifestProfiles = fs.existsSync(manifestPath)
+    ? readJson(manifestPath).runtime?.supportedDeploymentProfiles
+    : undefined;
+  const topologyProfiles = spec.vocabulary?.deploymentProfile?.allowed;
+  const profileFileProfiles = Object.keys(spec.profileFiles ?? {})
+    .map((profileId) => migrateProfileId(profileId).split('.')[0]);
+  const candidates = Array.isArray(manifestProfiles) && manifestProfiles.length > 0
+    ? manifestProfiles
+    : Array.isArray(topologyProfiles) && topologyProfiles.length > 0
+      ? topologyProfiles
+      : profileFileProfiles.length > 0
+        ? profileFileProfiles
+        : ['standalone', 'cloud'];
+  const normalized = candidates.map((profile) => HOSTING_TO_PROFILE[profile] ?? profile);
+  const deploymentProfiles = ['standalone', 'cloud'].filter((profile) => (
+    normalized.includes(profile)
+  ));
+  if (deploymentProfiles.length === 0) {
+    throw new Error('topology must explicitly support standalone, cloud, or both deployment profiles');
+  }
+  return deploymentProfiles;
+}
+
 function usage() {
   return [
     'Usage: node tools/align-app-topology-deployment-profiles.mjs [--workspace <path>] [--dry-run] [--repo <name>] [--bootstrap-missing]',
     '',
     'Migrates hosting vocabulary to deploymentProfile, renames profile env files,',
-    'ensures standalone + cloud profileFiles/orchestration, and updates app manifests.',
+    'aligns declared standalone/cloud profile files and orchestration, and updates app manifests.',
   ].join('\n');
 }
 
@@ -130,41 +155,46 @@ function loopbackUrlFromBind(bind) {
   return match ? `http://127.0.0.1:${match[1]}` : null;
 }
 
-function alignStandaloneDevelopmentEnv(spec, repoRoot, dryRun, actions) {
-  const relativePath = spec.profileFiles?.['standalone.development'];
-  if (!relativePath) return;
-  const abs = path.join(repoRoot, relativePath);
-  if (!fs.existsSync(abs)) return;
-  let content = fs.readFileSync(abs, 'utf8');
-  const original = content;
-  const env = new Map();
-  for (const line of content.split(/\r?\n/u)) {
-    const match = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/u.exec(line.trim());
-    if (match) env.set(match[1], match[2].trim());
-  }
-  const healthSurfaces = spec.orchestration?.profiles?.['standalone.development']?.healthSurfaces ?? [];
-  for (const surfaceId of healthSurfaces) {
-    const surface = spec.surfaces?.[surfaceId];
-    if (!surface?.protocols?.includes('http') || !surface.httpUrlEnv) continue;
-    if (env.get(surface.httpUrlEnv)) continue;
-    const bind = (surface.bindEnv ? env.get(surface.bindEnv) : null)
-      ?? (surfaceId === 'application.public-ingress' ? spec.defaults?.gatewayBind : null);
-    const url = loopbackUrlFromBind(bind);
-    if (!url) continue;
-    if (surface.bindEnv && !env.get(surface.bindEnv)) {
-      content = replaceEnvValue(content, surface.bindEnv, bind);
-      env.set(surface.bindEnv, bind);
+function stripPlatformGatewayEnv(content) {
+  return content.replace(
+    /^\s*[A-Z][A-Z0-9_]*_PLATFORM_API_GATEWAY_[A-Z0-9_]+=.*(?:\r?\n|$)/gmu,
+    '',
+  );
+}
+
+function alignStandaloneEnvFiles(spec, repoRoot, dryRun, actions) {
+  for (const [profileId, relativePath] of Object.entries(spec.profileFiles ?? {})) {
+    if (!profileId.startsWith('standalone.')) continue;
+    const abs = path.join(repoRoot, relativePath);
+    if (!fs.existsSync(abs)) continue;
+    const original = fs.readFileSync(abs, 'utf8');
+    let content = stripPlatformGatewayEnv(original);
+    const env = new Map();
+    for (const line of content.split(/\r?\n/u)) {
+      const match = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/u.exec(line.trim());
+      if (match) env.set(match[1], match[2].trim());
     }
-    content = replaceEnvValue(content, surface.httpUrlEnv, url);
-    env.set(surface.httpUrlEnv, url);
-    if (surface.clientHttpEnv && !env.get(surface.clientHttpEnv)) {
-      content = replaceEnvValue(content, surface.clientHttpEnv, url);
-      env.set(surface.clientHttpEnv, url);
+    const publicIngress = spec.surfaces?.['application.public-ingress'];
+    if (publicIngress?.protocols?.includes('http') && publicIngress.httpUrlEnv) {
+      const bind = (publicIngress.bindEnv ? env.get(publicIngress.bindEnv) : null)
+        ?? spec.defaults?.gatewayBind;
+      const url = loopbackUrlFromBind(bind);
+      if (url) {
+        if (publicIngress.bindEnv && !env.get(publicIngress.bindEnv)) {
+          content = replaceEnvValue(content, publicIngress.bindEnv, bind);
+        }
+        if (!env.get(publicIngress.httpUrlEnv)) {
+          content = replaceEnvValue(content, publicIngress.httpUrlEnv, url);
+        }
+        if (publicIngress.clientHttpEnv && !env.get(publicIngress.clientHttpEnv)) {
+          content = replaceEnvValue(content, publicIngress.clientHttpEnv, url);
+        }
+      }
     }
+    if (content === original) continue;
+    actions.push(`align ${relativePath} standalone same-origin URLs`);
+    if (!dryRun) fs.writeFileSync(abs, content, 'utf8');
   }
-  if (content === original) return;
-  actions.push(`align ${relativePath} standalone health URLs`);
-  if (!dryRun) fs.writeFileSync(abs, content, 'utf8');
 }
 
 function migrateProfileId(profileId) {
@@ -279,7 +309,7 @@ function normalizeProcessInvocation(process) {
   return process;
 }
 
-function ensureDeploymentVocabulary(spec) {
+function ensureDeploymentVocabulary(spec, deploymentProfiles) {
   spec.schemaVersion = 5;
   spec.vocabulary ??= {};
   if (spec.vocabulary.serviceLayout) {
@@ -287,12 +317,12 @@ function ensureDeploymentVocabulary(spec) {
   }
 
   if (spec.vocabulary?.deploymentProfile?.allowed) {
-    spec.vocabulary.deploymentProfile.allowed = ['standalone', 'cloud'];
+    spec.vocabulary.deploymentProfile.allowed = [...deploymentProfiles];
     spec.profilePattern = '{deploymentProfile}.{environment}.env';
   } else {
     delete spec.vocabulary.hosting;
     spec.vocabulary.deploymentProfile = {
-      allowed: ['standalone', 'cloud'],
+      allowed: [...deploymentProfiles],
     };
   }
   delete spec.cloudIngress;
@@ -336,29 +366,48 @@ function migrateEnvKeys(spec) {
   return spec;
 }
 
-function migrateDefaults(spec) {
+function migrateDefaults(spec, deploymentProfiles) {
   spec.defaults ??= {};
   for (const key of ['developmentProfileId', 'productionProfileId', 'desktopBuildProfileId']) {
     if (spec.defaults[key]) spec.defaults[key] = migrateProfileId(spec.defaults[key]);
   }
-  if (!spec.defaults.productionProfileId?.startsWith('cloud.')) {
-    spec.defaults.productionProfileId = 'cloud.production';
+  const productionProfile = deploymentProfiles.includes('cloud')
+    ? 'cloud.production'
+    : 'standalone.production';
+  const developmentProfile = deploymentProfiles.includes('standalone')
+    ? 'standalone.development'
+    : 'cloud.development';
+  if (!deploymentProfiles.some((profile) => (
+    spec.defaults.productionProfileId?.startsWith(`${profile}.`)
+  ))) {
+    spec.defaults.productionProfileId = productionProfile;
   }
-  if (!spec.defaults.developmentProfileId?.startsWith('standalone.')) {
-    spec.defaults.developmentProfileId = 'standalone.development';
+  if (!deploymentProfiles.some((profile) => (
+    spec.defaults.developmentProfileId?.startsWith(`${profile}.`)
+  ))) {
+    spec.defaults.developmentProfileId = developmentProfile;
   }
-  if (!spec.defaults.desktopBuildProfileId?.startsWith('standalone.')) {
-    spec.defaults.desktopBuildProfileId = 'standalone.production';
+  if (!deploymentProfiles.some((profile) => (
+    spec.defaults.desktopBuildProfileId?.startsWith(`${profile}.`)
+  ))) {
+    spec.defaults.desktopBuildProfileId = productionProfile;
   }
   return spec;
 }
 
-function ensurePlatformSurface(spec) {
+function ensurePlatformSurface(spec, deploymentProfiles) {
   const archetype = spec.archetype ?? 'application-http-gateway';
-  if (archetype === 'application-rest-edge-device') return spec;
   spec.surfaces ??= {};
   const appPrefix = appPrefixFromSpec(spec);
   const clientPrefix = clientPrefixFromSpec(spec, appPrefix);
+  if (!deploymentProfiles.includes('cloud')) {
+    delete spec.surfaces['platform.api-gateway'];
+    delete spec.cloudPublicHosts?.['platform.api-gateway'];
+    delete spec.envKeys?.clientApiGatewayBaseUrl;
+    delete spec.envKeys?.apiGatewayBaseUrl;
+    return spec;
+  }
+  if (archetype === 'application-rest-edge-device') return spec;
   if (!spec.surfaces['platform.api-gateway']) {
     spec.surfaces['platform.api-gateway'] = {
       connectivityPlane: 'platform',
@@ -371,6 +420,9 @@ function ensurePlatformSurface(spec) {
   delete platformSurface.owner;
   delete platformSurface.bindEnv;
   delete platformSurface.autostartEnv;
+  spec.envKeys ??= {};
+  spec.envKeys.apiGatewayBaseUrl = platformSurface.httpUrlEnv;
+  spec.envKeys.clientApiGatewayBaseUrl = platformSurface.clientHttpEnv;
   spec.cloudPublicHosts ??= {};
   if (!spec.cloudPublicHosts['platform.api-gateway']) {
     spec.cloudPublicHosts['platform.api-gateway'] = { httpHost: 'api.sdkwork.com' };
@@ -526,7 +578,32 @@ function ensureOrchestrationProfiles(spec) {
     }
   }
 
+  for (const [profileId, profile] of Object.entries(spec.orchestration.profiles)) {
+    if (!profileId.startsWith('standalone.')) continue;
+    profile.processes = (profile.processes ?? []).filter(
+      (process) => process.id !== 'platform.api-gateway',
+    );
+    profile.healthSurfaces = (profile.healthSurfaces ?? []).filter(
+      (surfaceId) => surfaceId !== 'platform.api-gateway',
+    );
+    profile.browserDeliveries = (profile.browserDeliveries ?? []).map((delivery) => (
+      delivery.apiSurfaceId === 'platform.api-gateway'
+        ? { ...delivery, apiSurfaceId: 'application.public-ingress' }
+        : delivery
+    ));
+  }
+
   return pruneOrchestrationProfiles(spec);
+}
+
+function pruneUnsupportedProfileFiles(spec, deploymentProfiles) {
+  for (const profileId of Object.keys(spec.profileFiles ?? {})) {
+    const migratedProfileId = migrateProfileId(profileId);
+    if (!deploymentProfiles.some((profile) => migratedProfileId.startsWith(`${profile}.`))) {
+      delete spec.profileFiles[profileId];
+    }
+  }
+  return spec;
 }
 
 function ensureProfileFiles(spec, repoRoot) {
@@ -584,16 +661,30 @@ function createMissingEnvFiles(spec, repoRoot, dryRun, actions) {
       content = migrateEnvFileContent(template, spec, 'standalone.development', profileId);
     } else {
       const [deploymentProfile, environment] = profileId.split('.');
-      content = [
+      const lines = [
         `# ${profileId}`,
         `${appPrefix}_DEPLOYMENT_PROFILE=${deploymentProfile}`,
         `${appPrefix}_ENVIRONMENT=${environment}`,
         `${appPrefix}_PROFILE_ID=${profileId}`,
         '',
-        `${appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL=http://127.0.0.1:3900`,
-        '',
-      ].join('\n');
+      ];
+      if (deploymentProfile === 'standalone') {
+        const publicIngress = spec.surfaces?.['application.public-ingress'];
+        const bind = spec.defaults?.gatewayBind;
+        const origin = loopbackUrlFromBind(bind);
+        if (publicIngress?.bindEnv && bind) lines.push(`${publicIngress.bindEnv}=${bind}`);
+        if (publicIngress?.httpUrlEnv && origin) {
+          lines.push(`${publicIngress.httpUrlEnv}=${origin}`);
+        }
+        if (publicIngress?.clientHttpEnv && origin) {
+          lines.push(`${publicIngress.clientHttpEnv}=${origin}`);
+        }
+      }
+      lines.push('');
+      content = lines.join('\n');
     }
+
+    if (profileId.startsWith('standalone.')) content = stripPlatformGatewayEnv(content);
 
     actions.push(`create env ${relativePath}`);
     if (!dryRun) {
@@ -652,13 +743,16 @@ function migrateProfileFilesKeys(spec) {
   return spec;
 }
 
-function updateAppConfig(repoRoot, dryRun, actions) {
+function updateAppConfig(repoRoot, deploymentProfiles, dryRun, actions) {
   const manifestPath = path.join(repoRoot, 'sdkwork.app.config.json');
   if (!fs.existsSync(manifestPath)) return;
   const manifest = readJson(manifestPath);
   manifest.runtime ??= {};
   const current = manifest.runtime.supportedDeploymentProfiles ?? [];
-  const next = [...new Set([...current, 'standalone', 'cloud'])];
+  const next = current.length > 0
+    ? [...new Set(current.map((profile) => HOSTING_TO_PROFILE[profile] ?? profile))]
+      .filter((profile) => deploymentProfiles.includes(profile))
+    : [...deploymentProfiles];
   if (JSON.stringify(current) !== JSON.stringify(next)) {
     manifest.runtime.supportedDeploymentProfiles = next;
     actions.push('update sdkwork.app.config.json supportedDeploymentProfiles');
@@ -666,7 +760,7 @@ function updateAppConfig(repoRoot, dryRun, actions) {
   }
 }
 
-function ensureRootAppConfig(repoRoot, meta, dryRun, actions) {
+function ensureRootAppConfig(repoRoot, meta, deploymentProfiles, dryRun, actions) {
   const rootPath = path.join(repoRoot, 'sdkwork.app.config.json');
   if (fs.existsSync(rootPath)) return;
 
@@ -694,18 +788,18 @@ function ensureRootAppConfig(repoRoot, meta, dryRun, actions) {
   manifest.app ??= {};
   manifest.app.key = meta.appId;
   manifest.runtime ??= {};
-  manifest.runtime.supportedDeploymentProfiles = [
-    ...new Set([...(manifest.runtime.supportedDeploymentProfiles ?? []), 'standalone', 'cloud']),
-  ];
+  manifest.runtime.supportedDeploymentProfiles = [...deploymentProfiles];
   if (!manifest.runtime.defaultDeploymentProfile) {
-    manifest.runtime.defaultDeploymentProfile = 'cloud';
+    manifest.runtime.defaultDeploymentProfile = deploymentProfiles.includes('cloud')
+      ? 'cloud'
+      : deploymentProfiles[0];
   }
 
   actions.push('create sdkwork.app.config.json at repository root');
   if (!dryRun) writeJson(rootPath, manifest, false);
 }
 
-function ensurePackageScripts(repoRoot, dryRun, actions) {
+function ensurePackageScripts(repoRoot, deploymentProfiles, dryRun, actions) {
   const pkgPath = path.join(repoRoot, 'package.json');
   if (!fs.existsSync(pkgPath)) return;
   const pkg = readJson(pkgPath);
@@ -716,13 +810,20 @@ function ensurePackageScripts(repoRoot, dryRun, actions) {
   };
   const dispatcherExists = fs.existsSync(path.join(repoRoot, 'scripts/sdkwork-command.mjs'));
   if (pkg.scripts.dev && dispatcherExists) {
-    additions['dev:standalone'] =
-      'node scripts/sdkwork-command.mjs dev --deployment-profile standalone --environment development';
-    additions['dev:cloud'] =
-      'node scripts/sdkwork-command.mjs dev --deployment-profile cloud --environment development';
-    if (pkg.scripts.dev !== 'pnpm dev:standalone') {
-      pkg.scripts.dev = 'pnpm dev:standalone';
-      actions.push('delegate package.json script dev to dev:standalone');
+    if (deploymentProfiles.includes('standalone')) {
+      additions['dev:standalone'] =
+        'node scripts/sdkwork-command.mjs dev --deployment-profile standalone --environment development';
+    }
+    if (deploymentProfiles.includes('cloud')) {
+      additions['dev:cloud'] =
+        'node scripts/sdkwork-command.mjs dev --deployment-profile cloud --environment development';
+    }
+    const defaultDevProfile = deploymentProfiles.includes('standalone')
+      ? 'standalone'
+      : deploymentProfiles[0];
+    if (defaultDevProfile && pkg.scripts.dev !== `pnpm dev:${defaultDevProfile}`) {
+      pkg.scripts.dev = `pnpm dev:${defaultDevProfile}`;
+      actions.push(`delegate package.json script dev to dev:${defaultDevProfile}`);
     }
   }
   for (const [key, value] of Object.entries(additions)) {
@@ -780,6 +881,8 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
   const meta = deriveAppMeta(repoRoot);
   const api = findApiServer(repoRoot);
   if (!meta || !api) return false;
+  const deploymentProfiles = declaredDeploymentProfiles(repoRoot, {});
+  const supportsCloud = deploymentProfiles.includes('cloud');
 
   const appSlug = meta.appId.replace(/^sdkwork-/, '');
   const spec = {
@@ -790,13 +893,15 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
     profileRoot: 'etc/topology',
     profilePattern: '{deploymentProfile}.{environment}.env',
     vocabulary: {
-      deploymentProfile: { allowed: ['standalone', 'cloud'] },
+      deploymentProfile: { allowed: deploymentProfiles },
       environment: { allowed: ['development', 'production'] },
     },
     defaults: {
       developmentProfileId: 'standalone.development',
-      productionProfileId: 'cloud.production',
-      desktopBuildProfileId: 'standalone.production',
+      productionProfileId: supportsCloud ? 'cloud.production' : 'standalone.production',
+      desktopBuildProfileId: deploymentProfiles.includes('standalone')
+        ? 'standalone.production'
+        : 'cloud.production',
       gatewayBind: '127.0.0.1:8080',
     },
     profileFiles: {},
@@ -806,8 +911,10 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
       profileId: `${meta.appPrefix}_PROFILE_ID`,
       clientDeploymentProfile: `VITE_${meta.appPrefix}_DEPLOYMENT_PROFILE`,
       standaloneGatewayBind: `${meta.appPrefix}_APPLICATION_PUBLIC_INGRESS_BIND`,
-      clientApiGatewayBaseUrl: `VITE_${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
-      apiGatewayBaseUrl: `${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
+      ...(supportsCloud ? {
+        clientApiGatewayBaseUrl: `VITE_${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
+        apiGatewayBaseUrl: `${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
+      } : {}),
     },
     surfaces: {
       'application.public-ingress': {
@@ -817,16 +924,20 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
         httpUrlEnv: `${meta.appPrefix}_APPLICATION_PUBLIC_HTTP_URL`,
         clientHttpEnv: `VITE_${meta.appPrefix}_APPLICATION_PUBLIC_HTTP_URL`,
       },
-      'platform.api-gateway': {
-        connectivityPlane: 'platform',
-        protocols: ['http'],
-        httpUrlEnv: `${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
-        clientHttpEnv: `VITE_${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
-      },
+      ...(supportsCloud ? {
+        'platform.api-gateway': {
+          connectivityPlane: 'platform',
+          protocols: ['http'],
+          httpUrlEnv: `${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
+          clientHttpEnv: `VITE_${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
+        },
+      } : {}),
     },
     cloudPublicHosts: {
       'application.public-ingress': { httpHost: `${appSlug}.sdkwork.com` },
-      'platform.api-gateway': { httpHost: 'api.sdkwork.com' },
+      ...(supportsCloud ? {
+        'platform.api-gateway': { httpHost: 'api.sdkwork.com' },
+      } : {}),
     },
     database: { appPrefix: meta.appPrefix },
     components: {
@@ -849,26 +960,28 @@ function alignRepo(repoRoot, dryRun) {
   let spec = fs.existsSync(specPath) ? readJson(specPath) : bootstrapTopology(repoRoot, dryRun, actions);
   if (!spec) return actions;
   if (isDeclaredLibraryOnlyLegacyTopology(spec)) return actions;
+  const deploymentProfiles = declaredDeploymentProfiles(repoRoot, spec);
 
-  spec = ensureDeploymentVocabulary(spec);
+  spec = ensureDeploymentVocabulary(spec, deploymentProfiles);
   spec = migrateEnvKeys(spec);
-  spec = migrateDefaults(spec);
+  spec = migrateDefaults(spec, deploymentProfiles);
+  spec = pruneUnsupportedProfileFiles(spec, deploymentProfiles);
   migrateEnvFilesOnDisk(spec, repoRoot, dryRun, actions);
   spec = migrateProfileFilesKeys(spec);
   spec = migrateOrchestrationKeys(spec);
-  spec = ensurePlatformSurface(spec);
+  spec = ensurePlatformSurface(spec, deploymentProfiles);
   spec = ensurePublicIngressCloudHost(spec);
   spec = removeApplicationCloudGatewayImplementation(spec);
   spec = ensureProfileFiles(spec, repoRoot);
   spec = ensureOrchestrationProfiles(spec);
 
   createMissingEnvFiles(spec, repoRoot, dryRun, actions);
-  alignStandaloneDevelopmentEnv(spec, repoRoot, dryRun, actions);
+  alignStandaloneEnvFiles(spec, repoRoot, dryRun, actions);
   alignCloudDevelopmentEnv(spec, repoRoot, dryRun, actions);
   const meta = deriveAppMeta(repoRoot);
-  if (meta) ensureRootAppConfig(repoRoot, meta, dryRun, actions);
-  updateAppConfig(repoRoot, dryRun, actions);
-  ensurePackageScripts(repoRoot, dryRun, actions);
+  if (meta) ensureRootAppConfig(repoRoot, meta, deploymentProfiles, dryRun, actions);
+  updateAppConfig(repoRoot, deploymentProfiles, dryRun, actions);
+  ensurePackageScripts(repoRoot, deploymentProfiles, dryRun, actions);
 
   const nextSpecText = `${JSON.stringify(spec, null, 2)}\n`;
   if (originalSpecText !== nextSpecText) {

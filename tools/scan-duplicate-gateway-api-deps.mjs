@@ -7,7 +7,6 @@ import { parseArgs } from 'node:util';
 import { listWorkspaceRepositories } from './align-repository-docs-lib.mjs';
 import {
   assemblyPackageName,
-  discoverRouteCrates,
   findGatewaySourceFiles,
   readText,
   resolveApplicationCode,
@@ -30,11 +29,47 @@ function gatewayHostCargoPaths(root, applicationCode) {
   return paths;
 }
 
-function listRouteCrateDeps(cargo) {
-  return [...new Set(
-    [...cargo.matchAll(/(?:^|\n)(sdkwork[-_][a-z0-9_-]*routes[a-z0-9_-]*)\s*=/gimu)]
-      .map((match) => match[1].replace(/_/g, '-')),
-  )];
+function listRuntimeDependencyPackages(cargo) {
+  const dependencies = [];
+  let section = '';
+  let tableDependency = null;
+  for (const rawLine of cargo.split(/\r?\n/u)) {
+    const line = rawLine.replace(/\s+#.*$/u, '').trim();
+    const sectionMatch = /^\[([^\]]+)\]$/u.exec(line);
+    if (sectionMatch) {
+      section = sectionMatch[1];
+      tableDependency = /^dependencies\.([A-Za-z0-9_-]+)$/u.exec(section)?.[1]
+        ?? /^target\..+\.dependencies\.([A-Za-z0-9_-]+)$/u.exec(section)?.[1]
+        ?? null;
+      if (tableDependency) dependencies.push(tableDependency.replaceAll('_', '-'));
+      continue;
+    }
+    if (tableDependency) {
+      const packageOverride = /^package\s*=\s*"([^"]+)"/u.exec(line)?.[1];
+      if (packageOverride) dependencies.push(packageOverride.replaceAll('_', '-'));
+      continue;
+    }
+    if (section !== 'dependencies' && !/^target\..+\.dependencies$/u.test(section)) {
+      continue;
+    }
+    const dependencyMatch = /^([A-Za-z0-9_-]+)(?:\.workspace)?\s*=\s*(.+)$/u.exec(line);
+    if (!dependencyMatch) continue;
+    const packageOverride = /\bpackage\s*=\s*"([^"]+)"/u.exec(dependencyMatch[2])?.[1];
+    dependencies.push((packageOverride ?? dependencyMatch[1]).replaceAll('_', '-'));
+  }
+  return [...new Set(dependencies)];
+}
+
+function isAssemblyPackage(packageName) {
+  return /^sdkwork-api-[a-z0-9-]+-assembly$/u.test(packageName);
+}
+
+function isAssemblyOwnedImplementation(packageName) {
+  if (packageName === 'sdkwork-database-sqlx') return false;
+  return packageName.startsWith('sdkwork-routes-')
+    || /^sdkwork-[a-z0-9-]+-service$/u.test(packageName)
+    || /^sdkwork-[a-z0-9-]+-repository-[a-z0-9-]+$/u.test(packageName)
+    || /^sdkwork-[a-z0-9-]+-database-host$/u.test(packageName);
 }
 
 function usesAssemblyInSource(sourceFiles, applicationCode) {
@@ -61,23 +96,20 @@ export function scanDuplicateGatewayApiDepsRepo(root) {
   const assemblyName = assemblyPackageName(applicationCode);
   const issues = [];
   const warnings = [];
-  const assemblyRoutePackages = new Set(
-    discoverRouteCrates(root, applicationCode).map((route) => route.packageName),
-  );
-
   for (const cargoPath of gatewayHostCargoPaths(root, applicationCode)) {
     const cargo = readText(cargoPath);
-    if (!cargo.includes(assemblyName)) {
-      continue;
-    }
-    const routeDeps = listRouteCrateDeps(cargo).filter((dep) => assemblyRoutePackages.has(dep));
-    if (routeDeps.length === 0) {
+    const runtimeDependencies = listRuntimeDependencyPackages(cargo);
+    if (!runtimeDependencies.some(isAssemblyPackage)) {
       continue;
     }
     const host = path.basename(path.dirname(cargoPath));
-    issues.push(
-      `${host}/Cargo.toml: duplicate deps - api-assembly and application route crates (${routeDeps.join(', ')})`,
-    );
+    const implementationDeps = runtimeDependencies.filter(isAssemblyOwnedImplementation);
+    if (implementationDeps.length > 0) {
+      issues.push(
+        `${host}/Cargo.toml: thin standalone gateway bypasses API assemblies with direct `
+        + `route/service/repository/database implementation dependencies (${implementationDeps.join(', ')})`,
+      );
+    }
   }
 
   const sourceFiles = findGatewaySourceFiles(root, applicationCode);

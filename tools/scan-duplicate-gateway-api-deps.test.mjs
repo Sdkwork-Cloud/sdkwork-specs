@@ -73,7 +73,74 @@ test('rejects assembly-owned route dependencies from the standalone gateway host
   const report = scanDuplicateGatewayApiDepsRepo(root);
 
   assert.equal(report.issues.length, 1);
-  assert.match(report.issues[0], /api-assembly and application route crates/u);
+  assert.match(report.issues[0], /thin standalone gateway bypasses API assemblies/u);
+});
+
+test('rejects direct assembly-owned implementation dependencies from a thin gateway', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-host-thin-deps-'));
+  const root = path.join(workspace, 'sdkwork-demo');
+  write(
+    path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/Cargo.toml'),
+    [
+      '[package]',
+      'name = "sdkwork-api-demo-standalone-gateway"',
+      'version = "0.0.0"',
+      '',
+      '[dependencies]',
+      'sdkwork-api-demo-assembly = { workspace = true }',
+      'sdkwork-routes-chat-app-api = { workspace = true }',
+      'sdkwork-demo-chat-service = { workspace = true }',
+      'chat_repo = { workspace = true, package = "sdkwork-demo-chat-repository-sqlx" }',
+      'sdkwork-demo-database-host = { workspace = true }',
+      '',
+      '[dependencies.audit_repo]',
+      'package = "sdkwork-demo-audit-repository-sqlx"',
+      'workspace = true',
+      '',
+    ].join('\n'),
+  );
+  write(
+    path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/src/main.rs'),
+    'sdkwork_api_demo_assembly::assemble_api_router();\n',
+  );
+
+  const report = scanDuplicateGatewayApiDepsRepo(root);
+
+  assert.equal(report.issues.length, 1);
+  assert.match(report.issues[0], /sdkwork-routes-chat-app-api/u);
+  assert.match(report.issues[0], /sdkwork-demo-chat-service/u);
+  assert.match(report.issues[0], /sdkwork-demo-chat-repository-sqlx/u);
+  assert.match(report.issues[0], /sdkwork-demo-audit-repository-sqlx/u);
+  assert.match(report.issues[0], /sdkwork-demo-database-host/u);
+});
+
+test('allows process infrastructure and explicit host adapters in a thin gateway', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-host-thin-adapters-'));
+  const root = path.join(workspace, 'sdkwork-demo');
+  write(
+    path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/Cargo.toml'),
+    [
+      '[package]',
+      'name = "sdkwork-api-demo-standalone-gateway"',
+      'version = "0.0.0"',
+      '',
+      '[dependencies]',
+      'sdkwork-api-demo-assembly = { workspace = true }',
+      'sdkwork-database-sqlx = { workspace = true }',
+      'sdkwork-web-bootstrap = { workspace = true }',
+      'sdkwork-web-framework = { workspace = true }',
+      'sdkwork-webserver-http-host = { workspace = true }',
+      '',
+    ].join('\n'),
+  );
+  write(
+    path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/src/main.rs'),
+    'sdkwork_api_demo_assembly::assemble_api_router();\n',
+  );
+
+  const report = scanDuplicateGatewayApiDepsRepo(root);
+
+  assert.deepEqual(report.issues, []);
 });
 
 test('accepts an environment assembly function imported by the gateway host', () => {

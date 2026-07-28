@@ -1,6 +1,6 @@
 ﻿# Component Specs Standard
 
-- Version: 1.0
+- Version: 1.1
 - Scope: local `specs/` directories for apps, reusable packages, language modules, SDK families, services, host adapters, and componentized integration units under `apps/`
 - Related: `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `AGENTS_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `MODULE_SPEC.md`, `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `WEB_BACKEND_SPEC.md`, `FRONTEND_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`, `APP_MINI_PROGRAM_UI_SPEC.md`, `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, `APP_HARMONY_NATIVE_UI_SPEC.md`, `BACKEND_UI_SPEC.md`, `SDK_SPEC.md`, `CONFIG_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
@@ -71,7 +71,7 @@ Rules:
     "layerRole": "frontend-feature",
     "publicExports": ["."],
     "providedPorts": [{ "name": "exampleServices", "export": "." }],
-    "requiredPorts": [{ "name": "appSdk", "export": "." }],
+    "requiredPorts": [{ "name": "appSdk", "export": ".", "provider": "@sdkwork/example-app-sdk" }],
     "runtimeEntrypoints": ["package.json#scripts.typecheck"],
     "routeManifest": null,
     "sdkClients": [],
@@ -105,7 +105,10 @@ Rules:
 - `canonicalSpecs` must link to actual root spec files.
 - `canonicalSpecs` must include `CODE_STYLE_SPEC.md` and `NAMING_SPEC.md` when the component owns authored source code.
 - `canonicalSpecs` must include language-specific specs only for languages declared in `component.languages`.
-- `contracts.publicExports` lists supported integration entrypoints, not internal source paths.
+- `contracts.publicExports` lists supported integration entrypoints owned and actually exported by
+  the current component, not internal source paths or dependency-owned entrypoints. A Rust
+  component `MUST NOT` list `other_crate::symbol` as its own public export; dependency assembly,
+  SDK, service, and host exports belong in `requiredPorts`.
 - `contracts.layerRole` classifies the component in the L0-L6 application layering profile from
   `APPLICATION_LAYERED_ARCHITECTURE_SPEC.md` and the composable architecture profile from
   `COMPOSABLE_ARCHITECTURE_SPEC.md`: for example `frontend-core`, `frontend-feature`,
@@ -116,7 +119,13 @@ Rules:
   object `MUST` include `name` and `export`, and `export` must reference `contracts.publicExports`.
 - `contracts.requiredPorts` lists named SDK, service, host, runtime, or provider ports the component
   needs from its composition root or dependency modules. Each object `MUST` include `name` and
-  should reference a public export, SDK dependency, or documented host/service adapter.
+  `export`; it should include `provider` when the provider cannot be inferred from the qualified
+  export or a matching `dependencyApiSurfaces[].cargoDependency`. A provider-qualified export
+  `MUST` resolve to the provider component's `publicExports` or `providedPorts` contract. Legacy
+  binding-form aliases such as `crate-root`, `binary`, or a component path are not provider export
+  identities and remain compatibility inputs until their component contracts are normalized. A
+  required port does not become a public export of the consuming component unless that component
+  implements and exports its own adapter under its own entrypoint.
 - `contracts.runtimeEntrypoints` lists executable integration entrypoints, service builders, router
   builders, scripts, or host adapters that a consumer can actually run or mount. Route metadata,
   OpenAPI files, and README examples are not executable runtime entrypoints.
@@ -141,6 +150,10 @@ Rules:
 - `contracts.dependencyApiSurfaces` lists dependency-owned HTTP API surfaces that this runtime
   component serves, proxies, or requires as an external service. It is required for app shells,
   web-backend services, and Rust/native runtimes that declare HTTP `sdkDependencies`.
+- `dependencyApiSurfaces[].sameOriginAllowed` declares capability only. It does not select an
+  embedded runtime. Only a normalized same-origin/embedded `runtimeMode` (or its governed legacy
+  alias during migration) activates executable `requiredPorts`, standalone profile coverage, and
+  no-external-base-URL validation.
 - Runtime gateway components may add native integration evidence to each dependency surface, such as
   `cargoFeature`, `cargoDependency`, and `embeddedExecutableExport`, when a Rust Cargo workspace
   owns the executable mount. These fields supplement native build-tool metadata; they must not

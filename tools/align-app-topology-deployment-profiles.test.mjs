@@ -6,8 +6,9 @@ import path from 'node:path';
 import test from 'node:test';
 
 const ALIGNER = path.resolve('tools/align-app-topology-deployment-profiles.mjs');
+const TOPOLOGY_VALIDATOR = path.resolve('tools/check-topology-deployment-profiles.mjs');
 
-function makeWorkspace() {
+function makeWorkspace({ supportedDeploymentProfiles = ['standalone', 'cloud'] } = {}) {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-align-topology-'));
   const repoRoot = path.join(workspace, 'sdkwork-demo');
   fs.mkdirSync(path.join(repoRoot, 'specs'), { recursive: true });
@@ -18,10 +19,30 @@ function makeWorkspace() {
       schemaVersion: 3,
       kind: 'sdkwork.app',
       app: { key: 'sdkwork-demo', name: 'Demo' },
-      runtime: { supportedDeploymentProfiles: ['standalone', 'cloud'] },
+      runtime: { supportedDeploymentProfiles },
     }, null, 2)}\n`,
   );
   return { workspace, repoRoot };
+}
+
+function installStandaloneGateway(repoRoot) {
+  const gatewayRoot = path.join(repoRoot, 'crates', 'sdkwork-api-demo-standalone-gateway');
+  fs.mkdirSync(gatewayRoot, { recursive: true });
+  fs.writeFileSync(path.join(repoRoot, 'Cargo.toml'), [
+    '[workspace]',
+    'members = [',
+    '  "crates/sdkwork-api-demo-standalone-gateway",',
+    ']',
+    '',
+  ].join('\n'));
+  fs.writeFileSync(path.join(gatewayRoot, 'Cargo.toml'), [
+    '[package]',
+    'name = "sdkwork-api-demo-standalone-gateway"',
+    '[[bin]]',
+    'name = "sdkwork-api-demo-standalone-gateway"',
+    'path = "src/main.rs"',
+    '',
+  ].join('\n'));
 }
 
 function writeJson(filePath, value) {
@@ -37,8 +58,20 @@ function runAligner(workspace, repo = 'sdkwork-demo') {
   );
 }
 
+function runTopologyValidator(repoRoot) {
+  return spawnSync(
+    process.execPath,
+    [TOPOLOGY_VALIDATOR, '--root', repoRoot],
+    { cwd: path.resolve('.'), encoding: 'utf8' },
+  );
+}
+
 test('migrates topology specs from retired serviceLayout profiles to two-segment profiles', () => {
   const { workspace, repoRoot } = makeWorkspace();
+  const appManifestPath = path.join(repoRoot, 'sdkwork.app.config.json');
+  const appManifest = JSON.parse(fs.readFileSync(appManifestPath, 'utf8'));
+  appManifest.runtime.supportedDeploymentProfiles = ['self-hosted', 'cloud-hosted'];
+  fs.writeFileSync(appManifestPath, `${JSON.stringify(appManifest, null, 2)}\n`);
   fs.mkdirSync(path.join(repoRoot, 'scripts'), { recursive: true });
   fs.writeFileSync(path.join(repoRoot, 'scripts/gateway-cloud-bundle.mjs'), '');
   writeJson(path.join(repoRoot, 'package.json'), { scripts: {} });
@@ -101,7 +134,30 @@ test('migrates topology specs from retired serviceLayout profiles to two-segment
               crate: 'sdkwork-api-demo-standalone-gateway',
               binary: 'sdkwork-api-demo-standalone-gateway',
             },
+            {
+              id: 'demo-browser',
+              role: 'client',
+              script: '_sdkwork:client:browser:standalone',
+              applicationRoot: 'apps/sdkwork-demo-pc',
+              bindEnv: 'SDKWORK_DEMO_BROWSER_BIND',
+              runtimeTargets: ['browser'],
+              clientArchitectures: ['pc-web'],
+              required: true,
+            },
           ],
+          browserDeliveries: [
+            {
+              id: 'demo-browser',
+              applicationRoot: 'apps/sdkwork-demo-pc',
+              clientArchitectures: ['pc-web'],
+              originMode: 'same-origin',
+              deliveryMode: 'dev-server-proxy',
+              apiSurfaceId: 'platform.api-gateway',
+              clientProcessId: 'demo-browser',
+              preserveCanonicalPaths: true,
+            },
+          ],
+          healthSurfaces: ['application.public-ingress', 'platform.api-gateway'],
         },
       },
     },
@@ -114,6 +170,8 @@ test('migrates topology specs from retired serviceLayout profiles to two-segment
       'SDKWORK_DEMO_SERVICE_LAYOUT=unified-process',
       'SDKWORK_DEMO_ENVIRONMENT=development',
       'SDKWORK_DEMO_PROFILE_ID=standalone.unified-process.development',
+      'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=http://127.0.0.1:3900',
+      'VITE_SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=http://127.0.0.1:3900',
       '',
     ].join('\r\n'),
   );
@@ -150,18 +208,38 @@ test('migrates topology specs from retired serviceLayout profiles to two-segment
   assert.equal(topology.envKeys.serviceLayout, undefined);
   assert.equal(topology.defaults.developmentProfileId, 'standalone.development');
   assert.equal(topology.defaults.productionProfileId, 'cloud.production');
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(appManifestPath, 'utf8')).runtime.supportedDeploymentProfiles,
+    ['standalone', 'cloud'],
+  );
+  assert.ok(topology.surfaces['platform.api-gateway']);
+  assert.equal(
+    topology.envKeys.apiGatewayBaseUrl,
+    'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL',
+  );
   assert.ok(topology.orchestration.profiles['standalone.development']);
   assert.equal(
     topology.orchestration.profiles['standalone.development'].processes[0].role,
     'api-standalone-gateway',
   );
   assert.ok(topology.orchestration.profiles['cloud.production']);
+  for (const profileId of ['standalone.development', 'standalone.production']) {
+    const profile = topology.orchestration.profiles[profileId];
+    assert.doesNotMatch(JSON.stringify(profile), /platform\.api-gateway/u);
+    assert.equal(profile.browserDeliveries[0].apiSurfaceId, 'application.public-ingress');
+  }
   assert.equal(fs.existsSync(path.join(repoRoot, 'etc/topology/standalone.unified-process.development.env')), false);
   assert.equal(fs.existsSync(path.join(repoRoot, 'etc/topology/cloud.split-services.production.env')), false);
   const standaloneEnv = fs.readFileSync(path.join(repoRoot, 'etc/topology/standalone.development.env'), 'utf8');
   assert.doesNotMatch(standaloneEnv, /\r/u);
   assert.match(standaloneEnv, /SDKWORK_DEMO_PROFILE_ID=standalone\.development/);
   assert.doesNotMatch(standaloneEnv, /SERVICE_LAYOUT|unified-process|split-services/);
+  assert.doesNotMatch(standaloneEnv, /PLATFORM_API_GATEWAY|:3900/u);
+  const standaloneProductionEnv = fs.readFileSync(
+    path.join(repoRoot, 'etc/topology/standalone.production.env'),
+    'utf8',
+  );
+  assert.doesNotMatch(standaloneProductionEnv, /PLATFORM_API_GATEWAY|:3900/u);
   const cloudDevelopmentEnv = fs.readFileSync(
     path.join(repoRoot, 'etc/topology/cloud.development.env'),
     'utf8',
@@ -244,25 +322,11 @@ test('does not invent a v5 executable gateway for an explicitly declared domain 
   assert.equal(fs.readFileSync(path.join(repoRoot, 'specs', 'topology.spec.json'), 'utf8'), before);
 });
 
-test('bootstraps from a unique standalone gateway binary', () => {
-  const { workspace, repoRoot } = makeWorkspace();
-  const gatewayRoot = path.join(repoRoot, 'crates', 'sdkwork-api-demo-standalone-gateway');
-  fs.mkdirSync(gatewayRoot, { recursive: true });
-  fs.writeFileSync(path.join(repoRoot, 'Cargo.toml'), [
-    '[workspace]',
-    'members = [',
-    '  "crates/sdkwork-api-demo-standalone-gateway",',
-    ']',
-    '',
-  ].join('\n'));
-  fs.writeFileSync(path.join(gatewayRoot, 'Cargo.toml'), [
-    '[package]',
-    'name = "sdkwork-api-demo-standalone-gateway"',
-    '[[bin]]',
-    'name = "sdkwork-api-demo-standalone-gateway"',
-    'path = "src/main.rs"',
-    '',
-  ].join('\n'));
+test('bootstraps standalone-only topology without platform gateway configuration', () => {
+  const { workspace, repoRoot } = makeWorkspace({
+    supportedDeploymentProfiles: ['standalone'],
+  });
+  installStandaloneGateway(repoRoot);
 
   const result = runAligner(workspace);
 
@@ -272,4 +336,90 @@ test('bootstraps from a unique standalone gateway binary', () => {
     crate: 'sdkwork-api-demo-standalone-gateway',
     binary: 'sdkwork-api-demo-standalone-gateway',
   });
+  assert.deepEqual(topology.vocabulary.deploymentProfile.allowed, ['standalone']);
+  assert.deepEqual(Object.keys(topology.profileFiles).sort(), [
+    'standalone.development',
+    'standalone.production',
+  ]);
+  assert.equal(topology.surfaces['platform.api-gateway'], undefined);
+  assert.equal(topology.cloudPublicHosts['platform.api-gateway'], undefined);
+  assert.equal(topology.envKeys.apiGatewayBaseUrl, undefined);
+  assert.equal(topology.envKeys.clientApiGatewayBaseUrl, undefined);
+
+  for (const profileId of ['standalone.development', 'standalone.production']) {
+    const source = fs.readFileSync(
+      path.join(repoRoot, `etc/topology/${profileId}.env`),
+      'utf8',
+    );
+    assert.match(source, /SDKWORK_DEMO_APPLICATION_PUBLIC_INGRESS_BIND=127\.0\.0\.1:8080/u);
+    assert.match(source, /SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL=http:\/\/127\.0\.0\.1:8080/u);
+    assert.doesNotMatch(source, /PLATFORM_API_GATEWAY|:3900/u);
+    assert.doesNotMatch(
+      JSON.stringify(topology.orchestration.profiles[profileId]),
+      /platform\.api-gateway/u,
+    );
+  }
+
+  const topologyAfterFirstRun = fs.readFileSync(
+    path.join(repoRoot, 'specs/topology.spec.json'),
+    'utf8',
+  );
+  const secondResult = runAligner(workspace);
+  assert.equal(secondResult.status, 0, secondResult.stderr);
+  assert.equal(
+    fs.readFileSync(path.join(repoRoot, 'specs/topology.spec.json'), 'utf8'),
+    topologyAfterFirstRun,
+  );
+  assert.match(secondResult.stdout, /Total actions: 0/u);
+});
+
+test('keeps mixed cloud capability isolated from standalone profiles and passes validation', () => {
+  const { workspace, repoRoot } = makeWorkspace();
+  installStandaloneGateway(repoRoot);
+
+  const result = runAligner(workspace);
+  assert.equal(result.status, 0, result.stderr);
+
+  const topology = JSON.parse(
+    fs.readFileSync(path.join(repoRoot, 'specs/topology.spec.json'), 'utf8'),
+  );
+  assert.ok(topology.surfaces['platform.api-gateway']);
+  assert.equal(
+    topology.envKeys.apiGatewayBaseUrl,
+    'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL',
+  );
+  for (const profileId of ['standalone.development', 'standalone.production']) {
+    assert.doesNotMatch(
+      JSON.stringify(topology.orchestration.profiles[profileId]),
+      /platform\.api-gateway/u,
+    );
+    const source = fs.readFileSync(
+      path.join(repoRoot, `etc/topology/${profileId}.env`),
+      'utf8',
+    );
+    assert.doesNotMatch(source, /PLATFORM_API_GATEWAY|:3900/u);
+  }
+  const cloudDevelopmentEnv = fs.readFileSync(
+    path.join(repoRoot, 'etc/topology/cloud.development.env'),
+    'utf8',
+  );
+  assert.match(
+    cloudDevelopmentEnv,
+    /SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=https:\/\/api\.sdkwork\.com/u,
+  );
+
+  const validation = runTopologyValidator(repoRoot);
+  assert.equal(validation.status, 0, validation.stderr);
+
+  const topologyAfterFirstRun = fs.readFileSync(
+    path.join(repoRoot, 'specs/topology.spec.json'),
+    'utf8',
+  );
+  const secondResult = runAligner(workspace);
+  assert.equal(secondResult.status, 0, secondResult.stderr);
+  assert.equal(
+    fs.readFileSync(path.join(repoRoot, 'specs/topology.spec.json'), 'utf8'),
+    topologyAfterFirstRun,
+  );
+  assert.match(secondResult.stdout, /Total actions: 0/u);
 });

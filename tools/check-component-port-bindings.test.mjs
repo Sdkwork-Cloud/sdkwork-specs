@@ -173,10 +173,7 @@ test('accepts a canonical Rust assembly contribution embedded in a standalone ga
     },
     contracts: {
       layerRole: 'runtime-gateway',
-      publicExports: [
-        'crate-root',
-        'sdkwork_api_iam_assembly::assemble_app_api_contribution',
-      ],
+      publicExports: ['crate-root'],
       runtimeEntrypoints: ['crate-root#build_router'],
       providedPorts: [],
       requiredPorts: [
@@ -199,6 +196,171 @@ test('accepts a canonical Rust assembly contribution embedded in a standalone ga
           coverageEvidence: ['src/profile.rs'],
         },
       ],
+    },
+  });
+
+  assert.deepEqual(validateComponentPortBindings(root, { strict: true }), []);
+});
+
+test('required ports resolve provider exports without polluting consumer publicExports', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-component-ports-provider-'));
+  writeText(path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/Cargo.toml'), [
+    '[package]',
+    'name = "sdkwork-api-demo-standalone-gateway"',
+    '',
+  ].join('\n'));
+  writeJson(path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/specs/component.spec.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component.spec',
+    component: {
+      name: 'sdkwork-api-demo-standalone-gateway',
+      type: 'rust-api-standalone-gateway',
+      root: 'crates/sdkwork-api-demo-standalone-gateway',
+      languages: ['rust'],
+    },
+    contracts: {
+      layerRole: 'runtime-gateway',
+      publicExports: ['crate-root'],
+      providedPorts: [],
+      requiredPorts: [{
+        name: 'driveAppApiContribution',
+        export: 'sdkwork_api_drive_assembly::assemble_app_api_contribution',
+        provider: 'sdkwork-api-drive-assembly',
+      }],
+    },
+  });
+  writeText(path.join(root, 'crates/sdkwork-api-drive-assembly/Cargo.toml'), [
+    '[package]',
+    'name = "sdkwork-api-drive-assembly"',
+    '',
+  ].join('\n'));
+  writeJson(path.join(root, 'crates/sdkwork-api-drive-assembly/specs/component.spec.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component.spec',
+    component: {
+      name: 'sdkwork-api-drive-assembly',
+      type: 'rust-api-assembly',
+      root: 'crates/sdkwork-api-drive-assembly',
+      languages: ['rust'],
+    },
+    contracts: {
+      layerRole: 'runtime-composition',
+      publicExports: ['.'],
+      providedPorts: [{
+        name: 'driveAppApiContribution',
+        export: '.',
+        target: 'sdkwork_api_drive_assembly::assemble_app_api_contribution',
+      }],
+      requiredPorts: [],
+    },
+  });
+
+  assert.deepEqual(validateComponentPortBindings(root, { strict: true }), []);
+});
+
+test('rejects required ports that the resolved provider does not expose', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-component-ports-provider-missing-'));
+  writeJson(path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/specs/component.spec.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component.spec',
+    component: {
+      name: 'sdkwork-api-demo-standalone-gateway',
+      type: 'rust-api-standalone-gateway',
+      languages: ['rust'],
+    },
+    contracts: {
+      layerRole: 'runtime-gateway',
+      publicExports: ['crate-root'],
+      providedPorts: [],
+      requiredPorts: [{
+        name: 'iamAppApiContribution',
+        export: 'sdkwork_api_iam_assembly::assemble_app_api_contribution',
+        provider: 'sdkwork-api-iam-assembly',
+      }],
+    },
+  });
+  writeJson(path.join(root, 'crates/sdkwork-api-iam-assembly/specs/component.spec.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component.spec',
+    component: {
+      name: 'sdkwork-api-iam-assembly',
+      type: 'rust-api-assembly',
+      languages: ['rust'],
+    },
+    contracts: {
+      layerRole: 'runtime-composition',
+      publicExports: ['sdkwork_api_iam_assembly::assemble_owner_api_surfaces'],
+      providedPorts: [{
+        name: 'iamOwnerApiAssembly',
+        export: 'sdkwork_api_iam_assembly::assemble_owner_api_surfaces',
+      }],
+      requiredPorts: [],
+    },
+  });
+
+  const issues = validateComponentPortBindings(root, { strict: true });
+
+  assert.ok(issues.some((issue) => issue.includes('does not expose it through publicExports/providedPorts')));
+});
+
+test('rejects dependency crate paths falsely declared as Rust component public exports', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-component-ports-virtual-export-'));
+  writeText(path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/Cargo.toml'), [
+    '[package]',
+    'name = "sdkwork-api-demo-standalone-gateway"',
+    '',
+  ].join('\n'));
+  writeJson(path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/specs/component.spec.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component.spec',
+    component: {
+      name: 'sdkwork-api-demo-standalone-gateway',
+      type: 'rust-api-standalone-gateway',
+      languages: ['rust'],
+    },
+    contracts: {
+      layerRole: 'runtime-gateway',
+      publicExports: [
+        'crate-root',
+        'crate::build_router',
+        'routing::build_router',
+        'sdkwork_api_iam_assembly::assemble_app_api_contribution',
+      ],
+      providedPorts: [],
+      requiredPorts: [{
+        name: 'iamAppApiContribution',
+        export: 'sdkwork_api_iam_assembly::assemble_app_api_contribution',
+      }],
+    },
+  });
+
+  const issues = validateComponentPortBindings(root, { strict: true });
+
+  assert.equal(issues.filter((issue) => issue.includes('declares dependency export')).length, 1);
+});
+
+test('sameOriginAllowed capability does not select same-origin runtime mode', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-component-ports-external-'));
+  writeJson(path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/specs/component.spec.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component.spec',
+    component: {
+      name: 'sdkwork-api-demo-standalone-gateway',
+      type: 'rust-api-standalone-gateway',
+      languages: ['rust'],
+    },
+    contracts: {
+      layerRole: 'runtime-gateway',
+      publicExports: ['crate-root'],
+      providedPorts: [],
+      requiredPorts: [],
+      runtimeEntrypoints: [],
+      dependencyApiSurfaces: [{
+        workspace: 'sdkwork-iam',
+        runtimeMode: 'external-service',
+        sameOriginAllowed: true,
+        requiredBaseUrlKey: 'SDKWORK_IAM_APP_API_BASE_URL',
+      }],
     },
   });
 
@@ -262,4 +424,102 @@ test('CLI scans child repositories with --workspace', () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /sdkwork-demo/u);
   assert.match(result.stderr, /contracts\.layerRole is required/u);
+});
+
+test('workspace mode resolves provider-qualified ports across sibling repositories', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-component-ports-siblings-'));
+  const web = path.join(workspace, 'sdkwork-web');
+  const iam = path.join(workspace, 'sdkwork-iam');
+  const drive = path.join(workspace, 'sdkwork-drive');
+  for (const repo of [web, iam, drive]) {
+    writeText(path.join(repo, 'AGENTS.md'), '# Repository Guidelines\n');
+  }
+
+  writeText(path.join(web, 'crates/sdkwork-api-web-standalone-gateway/Cargo.toml'), [
+    '[package]',
+    'name = "sdkwork-api-web-standalone-gateway"',
+    '',
+  ].join('\n'));
+  writeJson(path.join(web, 'crates/sdkwork-api-web-standalone-gateway/specs/component.spec.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component.spec',
+    component: {
+      name: 'sdkwork-api-web-standalone-gateway',
+      type: 'rust-api-standalone-gateway',
+      languages: ['rust'],
+    },
+    contracts: {
+      layerRole: 'runtime-gateway',
+      publicExports: ['crate-root'],
+      providedPorts: [],
+      requiredPorts: [
+        {
+          name: 'iamAppApiContribution',
+          export: 'sdkwork_api_iam_assembly::assemble_app_api_contribution',
+          provider: 'sdkwork-api-iam-assembly',
+        },
+        {
+          name: 'driveAppApiContribution',
+          export: 'sdkwork_api_drive_assembly::assemble_app_api_contribution',
+          provider: 'sdkwork-api-drive-assembly',
+        },
+      ],
+    },
+  });
+
+  writeText(path.join(iam, 'crates/sdkwork-api-iam-assembly/Cargo.toml'), [
+    '[package]',
+    'name = "sdkwork-api-iam-assembly"',
+    '',
+  ].join('\n'));
+  writeJson(path.join(iam, 'crates/sdkwork-api-iam-assembly/specs/component.spec.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component.spec',
+    component: {
+      name: 'sdkwork-api-iam-assembly',
+      type: 'rust-api-assembly',
+      languages: ['rust'],
+    },
+    contracts: {
+      layerRole: 'runtime-composition',
+      publicExports: ['sdkwork_api_iam_assembly::assemble_app_api_contribution'],
+      providedPorts: [{
+        name: 'iamAppApiContribution',
+        export: 'sdkwork_api_iam_assembly::assemble_app_api_contribution',
+      }],
+      requiredPorts: [],
+    },
+  });
+
+  writeText(path.join(drive, 'crates/sdkwork-api-drive-assembly/Cargo.toml'), [
+    '[package]',
+    'name = "sdkwork-api-drive-assembly"',
+    '',
+  ].join('\n'));
+  writeJson(path.join(drive, 'crates/sdkwork-api-drive-assembly/specs/component.spec.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component.spec',
+    component: {
+      name: 'sdkwork-api-drive-assembly',
+      type: 'rust-api-assembly',
+      languages: ['rust'],
+    },
+    contracts: {
+      layerRole: 'runtime-composition',
+      publicExports: ['.'],
+      providedPorts: [{
+        name: 'driveAppApiContribution',
+        export: '.',
+        target: 'sdkwork_api_drive_assembly::assemble_app_api_contribution',
+      }],
+      requiredPorts: [],
+    },
+  });
+
+  const result = spawnSync(process.execPath, [CHECKER, '--workspace', workspace, '--strict'], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /component port binding check passed/u);
 });

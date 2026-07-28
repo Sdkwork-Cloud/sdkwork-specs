@@ -229,7 +229,13 @@ platform gateway TOML files, or platform gateway packaging assets.
 | Standalone gateway | `rust-api-standalone-gateway` | `sdkwork-api-<application-code>-assembly` |
 | Platform cloud gateway | `rust-platform-cloud-gateway` | Approved API assembly set or upstream registry |
 
-Standalone gateway component contracts additionally declare required ports for every selected dependency assembly and matching `dependencyApiSurfaces` entries. Direct dependency route-crate imports and undeclared same-origin mounts are invalid even when they compile.
+Standalone gateway component contracts additionally declare required ports for every selected
+dependency assembly and matching `dependencyApiSurfaces` entries. A dependency assembly export
+remains provider-owned: the gateway lists it in `requiredPorts`, never in the gateway's own
+`publicExports`. Direct route, service, repository, or database-host implementation dependencies
+and undeclared same-origin mounts are invalid even when they compile; process-wide Web Framework,
+database-pool, topology, listener, and explicit host-adapter dependencies remain valid thin-host
+infrastructure.
 
 ## 8. Pnpm Commands
 

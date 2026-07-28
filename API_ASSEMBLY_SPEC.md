@@ -311,6 +311,14 @@ The standalone gateway `MUST NOT` depend on route, service, repository, or
 database implementation crates already owned by an assembly. All such
 dependencies enter through assemblies.
 
+The thin-host Cargo gate rejects direct runtime dependencies matching
+`sdkwork-routes-*`, `sdkwork-*-service`, `sdkwork-*-repository-*`, or
+`sdkwork-*-database-host` whenever the gateway selects an API assembly.
+Process infrastructure such as `sdkwork-database-sqlx`, Web Framework/bootstrap
+crates, and responsibility-specific host adapters remain allowed when they
+serve listener, framework, topology, or process-lifecycle concerns rather than
+duplicating assembly-owned API construction.
+
 Standalone dependency composition rules:
 
 - The gateway declares each selected dependency assembly as a required component port and matching `dependencyApiSurfaces` entry with `runtimeMode: same-origin`, `sameOriginAllowed: true`, API authority, SDK family, prefix, executable assembly export, and profile coverage.

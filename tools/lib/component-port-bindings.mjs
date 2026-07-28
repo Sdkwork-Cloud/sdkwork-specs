@@ -55,6 +55,42 @@ function componentLabel(record) {
   return `${record.relativePath}: ${record.spec.component?.name ?? '(unnamed component)'}`;
 }
 
+function componentRoot(record) {
+  return path.dirname(path.dirname(record.specPath));
+}
+
+function cargoIdentity(cargo) {
+  let section = '';
+  let packageName = null;
+  let libName = null;
+  for (const rawLine of cargo.split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    const sectionMatch = /^\[([^\]]+)\]$/u.exec(line);
+    if (sectionMatch) {
+      section = sectionMatch[1];
+      continue;
+    }
+    const name = /^name\s*=\s*"([^"]+)"/u.exec(line)?.[1];
+    if (!name) continue;
+    if (section === 'package') packageName = name;
+    if (section === 'lib') libName = name;
+  }
+  return { packageName, libName };
+}
+
+function rustCrateNames(record) {
+  if (!(record.spec.component?.languages ?? []).includes('rust')) return new Set();
+  const cargoPath = path.join(componentRoot(record), 'Cargo.toml');
+  if (!fs.existsSync(cargoPath)) return new Set();
+
+  const { packageName, libName } = cargoIdentity(fs.readFileSync(cargoPath, 'utf8'));
+  return new Set(
+    [libName, packageName, record.spec.component?.name]
+      .filter((value) => typeof value === 'string' && !value.startsWith('@'))
+      .map((value) => value.replaceAll('-', '_')),
+  );
+}
+
 function isFrontendComponent(componentSpec) {
   const type = componentSpec?.component?.type;
   const languages = componentSpec?.component?.languages ?? [];
@@ -142,11 +178,102 @@ function validatePortList(record, fieldName, options) {
     if (typeof entry.export !== 'string' || entry.export.length === 0) {
       issues.push(`${label}: contracts.${fieldName}[${index}].export is required`);
     }
-    if (entry.export && !contracts.publicExports?.includes(entry.export)) {
+    if (
+      fieldName === 'providedPorts'
+      && entry.export
+      && !contracts.publicExports?.includes(entry.export)
+    ) {
       issues.push(`${label}: contracts.${fieldName}[${index}].export must reference contracts.publicExports`);
     }
   }
 
+  return issues;
+}
+
+function validateRustPublicExports(record) {
+  const issues = [];
+  const crateNames = rustCrateNames(record);
+  if (crateNames.size === 0) return issues;
+
+  const label = componentLabel(record);
+  for (const [index, value] of (record.spec.contracts?.publicExports ?? []).entries()) {
+    if (typeof value !== 'string') continue;
+    const cratePath = /^(sdkwork_[a-z0-9_]*)::/u.exec(value)?.[1];
+    if (cratePath && !crateNames.has(cratePath)) {
+      issues.push(
+        `${label}: contracts.publicExports[${index}] declares dependency export ${value}; `
+        + 'publicExports may only name exports of the current component (declare dependency exports in requiredPorts)',
+      );
+    }
+  }
+  return issues;
+}
+
+function providerIndex(records) {
+  const index = new Map();
+  for (const record of records) {
+    const names = new Set([
+      record.spec.component?.name,
+      ...rustCrateNames(record),
+    ]);
+    for (const name of names) {
+      if (typeof name !== 'string' || !name) continue;
+      index.set(name, record);
+      index.set(name.replaceAll('_', '-'), record);
+    }
+  }
+  return index;
+}
+
+function inferredProviderName(record, port) {
+  if (typeof port.provider === 'string' && port.provider) return port.provider;
+  const surface = (record.spec.contracts?.dependencyApiSurfaces ?? []).find(
+    (candidate) => isObject(candidate)
+      && surfaceExecutableExport(candidate) === port.export
+      && typeof candidate.cargoDependency === 'string',
+  );
+  if (surface) return surface.cargoDependency;
+  return /^([a-z][a-z0-9_]*)::/u.exec(port.export ?? '')?.[1] ?? null;
+}
+
+function providerOffersPort(provider, requiredPort) {
+  const contracts = provider.spec.contracts ?? {};
+  if ((contracts.publicExports ?? []).includes(requiredPort.export)) return true;
+  const requiredCrate = /^([a-z][a-z0-9_]*)::/u.exec(requiredPort.export)?.[1];
+  if (
+    requiredCrate
+    && rustCrateNames(provider).has(requiredCrate)
+    && (contracts.publicExports ?? []).some((value) => value === '.' || value === 'crate-root')
+  ) {
+    return true;
+  }
+  return (contracts.providedPorts ?? []).some((providedPort) => (
+    isObject(providedPort)
+    && (
+      providedPort.export === requiredPort.export
+      || providedPort.target === requiredPort.export
+    )
+  ));
+}
+
+function validateRequiredPortProviders(record, providers) {
+  const issues = [];
+  const label = componentLabel(record);
+  for (const [index, port] of (record.spec.contracts?.requiredPorts ?? []).entries()) {
+    if (!isObject(port) || typeof port.export !== 'string') continue;
+    if (!/^([a-z][a-z0-9_]*)::/u.test(port.export)) continue;
+    const providerName = inferredProviderName(record, port);
+    if (!providerName) continue;
+    const provider = providers.get(providerName)
+      ?? providers.get(providerName.replaceAll('_', '-'));
+    if (!provider || provider === record) continue;
+    if (!providerOffersPort(provider, port)) {
+      issues.push(
+        `${label}: contracts.requiredPorts[${index}] requests ${port.export} from ${providerName}, `
+        + `but ${componentLabel(provider)} does not expose it through publicExports/providedPorts`,
+      );
+    }
+  }
   return issues;
 }
 
@@ -155,8 +282,7 @@ function isSameOriginSurface(surface) {
   return mode === 'same-origin-mounted'
     || mode === 'same-origin-embedded'
     || mode === 'same-origin'
-    || mode === 'embedded'
-    || surface?.sameOriginAllowed === true;
+    || mode === 'embedded';
 }
 
 function surfaceExecutableExport(surface) {
@@ -223,10 +349,19 @@ function validateDependencyApiSurfaces(record) {
 export function validateComponentPortBindings(repoRoot, options = {}) {
   const strict = options.strict ?? false;
   const issues = [];
-  for (const record of listComponentSpecs(repoRoot)) {
+  const records = listComponentSpecs(repoRoot);
+  const providerRecords = [
+    ...records,
+    ...(options.providerRecords ?? []),
+    ...(options.providerRoots ?? []).flatMap((root) => listComponentSpecs(root)),
+  ];
+  const providers = providerIndex(providerRecords);
+  for (const record of records) {
     issues.push(...validateLayerRole(record, { strict }));
     issues.push(...validatePortList(record, 'providedPorts', { strict }));
     issues.push(...validatePortList(record, 'requiredPorts', { strict }));
+    issues.push(...validateRustPublicExports(record));
+    issues.push(...validateRequiredPortProviders(record, providers));
     issues.push(...validateDependencyApiSurfaces(record));
   }
   return issues;
