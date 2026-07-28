@@ -128,7 +128,7 @@ export function loadSdkFamilyManifestFromFamilyMetadata(repoRoot, workspace) {
 }
 
 export function loadSdkFamilyManifestForWorkspaceConsumer(repoRoot, workspace) {
-  const domain = workspace.match(/^sdkwork-([^-]+)-(?:app|backend)-sdk$/u)?.[1]
+  const domain = workspace.match(/^sdkwork-([^-]+)-(?:app|backend|internal)-sdk$/u)?.[1]
     ?? workspace.match(/^sdkwork-([^-]+)-sdk$/u)?.[1];
   if (domain) {
     const siblingRoot = path.resolve(repoRoot, '..', `sdkwork-${domain}`);

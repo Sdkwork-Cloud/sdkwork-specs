@@ -154,6 +154,7 @@ function isSameOriginSurface(surface) {
   const mode = surface?.runtimeMode ?? surface?.mode ?? surface?.mountMode;
   return mode === 'same-origin-mounted'
     || mode === 'same-origin-embedded'
+    || mode === 'same-origin'
     || mode === 'embedded'
     || surface?.sameOriginAllowed === true;
 }
@@ -188,6 +189,17 @@ function validateDependencyApiSurfaces(record) {
     const executableExport = surfaceExecutableExport(surface);
     if (!executableExport) {
       issues.push(`${label}: contracts.dependencyApiSurfaces[${index}] same-origin surface requires an executable public export`);
+    } else if (!(contracts.requiredPorts ?? []).some((port) => (
+      isObject(port) && port.export === executableExport
+    ))) {
+      issues.push(`${label}: contracts.dependencyApiSurfaces[${index}] executable public export must have a matching requiredPorts entry`);
+    }
+
+    if (!Array.isArray(surface.profileCoverage) || !surface.profileCoverage.includes('standalone')) {
+      issues.push(`${label}: contracts.dependencyApiSurfaces[${index}] same-origin surface requires standalone profileCoverage`);
+    }
+    if (surface.requiredBaseUrlKey) {
+      issues.push(`${label}: contracts.dependencyApiSurfaces[${index}] same-origin surface must not require an external base URL key`);
     }
 
     const runtimeEntrypoints = contracts.runtimeEntrypoints ?? [];

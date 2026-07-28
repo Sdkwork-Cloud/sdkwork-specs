@@ -4,7 +4,7 @@
   "title": "SDKWork Resolved Runtime Plan v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "kind", "appId", "activeProfile", "deploymentProfile", "environment", "runtimeTarget", "localProcesses", "localGateway", "remoteSurfaces", "resolvedBaseUrls", "endpointProvenance", "localDataStores", "healthChecks", "configSources", "forbiddenProcessRoles", "forbiddenProcesses"],
+  "required": ["schemaVersion", "kind", "appId", "activeProfile", "deploymentProfile", "environment", "runtimeTarget", "localProcesses", "localGateway", "remoteSurfaces", "resolvedBaseUrls", "endpointProvenance", "browserDeliveries", "localDataStores", "healthChecks", "configSources", "forbiddenProcessRoles", "forbiddenProcesses"],
   "properties": {
     "schemaVersion": { "const": 1 },
     "kind": { "const": "sdkwork.runtime-plan" },
@@ -45,6 +45,67 @@
           "source": { "type": "string", "minLength": 1 },
           "key": { "type": "string", "minLength": 1 }
         }
+      }
+    },
+    "browserDeliveries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "applicationRoot", "clientArchitectures", "originMode", "deliveryMode", "apiSurfaceId", "browserVisibleOrigin", "apiTargetOrigin"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.-]*$" },
+          "applicationRoot": { "type": "string", "minLength": 1 },
+          "clientArchitectures": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "enum": ["pc-web", "h5", "capacitor", "flutter", "tauri", "electron", "android-native", "ios-native", "harmony-native", "mini-program"] }
+          },
+          "originMode": { "const": "same-origin" },
+          "deliveryMode": { "enum": ["dev-server-proxy", "gateway-static"] },
+          "apiSurfaceId": { "const": "application.public-ingress" },
+          "browserVisibleOrigin": { "type": "string", "format": "uri", "pattern": "^https?://[^/?#]+$" },
+          "apiTargetOrigin": { "type": "string", "format": "uri", "pattern": "^https?://[^/?#]+$" },
+          "clientProcessId": { "type": "string", "minLength": 1 },
+          "hostProcessId": { "type": "string", "minLength": 1 },
+          "preserveCanonicalPaths": { "const": true },
+          "buildOutput": { "type": "string", "minLength": 1 },
+          "runtimeRootEnv": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+          "runtimeRoot": { "type": "string", "minLength": 1 },
+          "mountPath": { "const": "/" },
+          "spaFallback": { "const": "/index.html" }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "deliveryMode": { "const": "dev-server-proxy" } }, "required": ["deliveryMode"] },
+            "then": {
+              "required": ["clientProcessId", "preserveCanonicalPaths"],
+              "not": {
+                "anyOf": [
+                  { "required": ["hostProcessId"] },
+                  { "required": ["buildOutput"] },
+                  { "required": ["runtimeRootEnv"] },
+                  { "required": ["runtimeRoot"] },
+                  { "required": ["mountPath"] },
+                  { "required": ["spaFallback"] }
+                ]
+              }
+            }
+          },
+          {
+            "if": { "properties": { "deliveryMode": { "const": "gateway-static" } }, "required": ["deliveryMode"] },
+            "then": {
+              "required": ["hostProcessId", "buildOutput", "runtimeRootEnv", "runtimeRoot", "mountPath", "spaFallback"],
+              "not": {
+                "anyOf": [
+                  { "required": ["clientProcessId"] },
+                  { "required": ["preserveCanonicalPaths"] }
+                ]
+              }
+            }
+          }
+        ]
       }
     },
     "localDataStores": {

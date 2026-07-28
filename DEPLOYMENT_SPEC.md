@@ -1,6 +1,6 @@
 # Deployment And Runtime Standard
 
-- Version: 1.0
+- Version: 1.1
 - Scope: standalone/cloud application deployment profiles, Java Spring, Rust backend, HTTP/RPC runtime bootstrap, frontend bootstrap, environment config
 - Related: `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `REGION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `RELEASE_SPEC.md`, `API_SPEC.md`, `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `RUST_RPC_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `SDK_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`
 
@@ -59,10 +59,12 @@ Rules:
   `WebRequestContext`; tenant and organization context come from auth/access
   token validation, API key records, or server-side request context, not from
   generated `tenant_id` or `tenantId` SDK inputs.
-- Dependency APIs may be embedded, mounted same-origin, proxied, or consumed by
-  generated dependency SDK clients only when `dependencyApiSurfaces` declares
-  the mode and verification evidence required by `CONFIG_SPEC.md` and
-  `SDK_SPEC.md`.
+- Dependency APIs selected as standalone same-origin are dependency-owned
+  assembly contributions linked into the application gateway process. An
+  external dependency remains explicit. A browser dev-server proxy is only a
+  same-origin transport in front of the current application ingress; it does
+  not replace dependency assembly evidence or authorize a dependency gateway
+  process or alternate loopback API listener.
 - Standalone server packages default to PostgreSQL. Standalone desktop
   client-local data targets may default to SQLite under the SDKWork
   user-private directory.
@@ -72,6 +74,20 @@ Rules:
 - Standalone release artifacts may be archives, OS services, desktop
   installers, or single-container packages, but all of them remain one
   application deployment unit.
+- When an embedded dependency assembly reads owner-controlled database,
+  registry, policy, template, or other filesystem runtime assets, the
+  standalone artifact `MUST` package those assets under a stable owner-scoped
+  runtime root and bind that root explicitly. Installed startup `MUST NOT`
+  fall back to a dependency source checkout or a build-machine
+  `CARGO_MANIFEST_DIR`. Package validation and extracted-artifact smoke tests
+  `MUST` fail when a required owner runtime root is missing or incomplete.
+- A standalone deployment that declares a browser application `MUST` expose
+  the page and browser API requests through one browser-visible origin.
+  Development may retain separate internal renderer and API listeners only
+  through a declared canonical-path `dev-server-proxy`. Production packages
+  include the browser build output and serve it through the application
+  ingress with declared runtime root, `/` mount, and `/index.html` SPA fallback
+  evidence.
 - A desktop host that owns a local standalone gateway `MUST` supervise only
   its application-scoped process, bind loopback by default, allocate a
   collision-safe port, wait for bounded readiness, use user-private runtime
@@ -118,7 +134,7 @@ it is not a second enum.
 
 | Application mode | Runtime target values | Allowed deployment profiles | Primary config owner | Release behavior |
 | --- | --- | --- | --- | --- |
-| Browser web | `browser` | `standalone`, `cloud`, or runtime-configurable for both | Public runtime config from `CONFIG_SPEC.md` and `ENVIRONMENT_SPEC.md` | Web URL, static bundle, or private/offline shell with public SDK base URLs and asset rollback evidence. |
+| Browser web | `browser` | `standalone`, `cloud`, or runtime-configurable for both | Public runtime config plus topology `browserDeliveries` from `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, and `APP_RUNTIME_TOPOLOGY_SPEC.md` | Standalone development uses a same-origin dev proxy; standalone production packages static assets into the application ingress; cloud uses a declared Web URL/static bundle with profile-specific rollout evidence. |
 | PC desktop | `desktop` | `standalone`, `cloud`, or runtime-configurable for both | Desktop/user runtime config plus platform host config | Signed installer or app bundle; standalone may supervise a local gateway, cloud must not. |
 | Large-screen tablet | `tablet-ipados`, `tablet-android` | `standalone`, `cloud`, or runtime-configurable for both | PC renderer config plus tablet host config | IPA/APK/AAB or platform package evidence; hosted tablet Web uses `browser`. |
 | H5 and Capacitor mobile | `browser`, `capacitor-ios`, `capacitor-android` | `standalone`, `cloud`, or runtime-configurable for both | H5 public config plus optional Capacitor host config | H5 is a Web URL/static package; Capacitor produces IPA/APK/AAB. |
@@ -150,6 +166,9 @@ Rules:
 - Pure client packages do not have to expose HTTP ingress. Any API surface they
   serve, proxy, or compose still follows `WEB_FRAMEWORK_SPEC.md`,
   `API_SPEC.md`, and `WebRequestContext` rules.
+- Browser artifacts with multiple implementations such as `pc-web` and `h5`
+  carry architecture-specific delivery evidence. Runtime selection must not
+  serve one architecture's proxy, static root, or SPA shell for another.
 
 ### 1.4 Development, Release, And Deployment Boundaries
 
@@ -492,6 +511,9 @@ Claw Router upstream is `http://127.0.0.1:3900`, and certificate material uses
 - [ ] SDK construction is isolated in bootstrap.
 - [ ] Shared modules do not hard-code backend type.
 - [ ] Standalone/cloud API parity is tested.
+- [ ] Standalone browser profiles prove one browser-visible page/API origin,
+      canonical-path development proxying, architecture selection, and
+      production static/SPA packaging through the application ingress.
 - [ ] Standalone/cloud RPC parity is tested when shared proto services are exposed.
 - [ ] Discovery endpoint and registration lifecycle are declared when dynamic RPC resolution is enabled.
 - [ ] RPC framework integration is verified for RPC-enabled service hosts.

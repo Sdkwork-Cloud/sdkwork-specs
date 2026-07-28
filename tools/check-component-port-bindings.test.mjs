@@ -119,7 +119,7 @@ test('frontend port declarations must be arrays of named public-export-backed po
   assert.ok(issues.some((issue) => issue.includes('requiredPorts[0].name')));
 });
 
-test('same-origin dependency surfaces require executable runtime entrypoints', () => {
+test('same-origin dependency surfaces require an executable port and standalone coverage', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-component-ports-runtime-'));
   writeJson(path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/specs/component.spec.json'), {
     schemaVersion: 1,
@@ -141,8 +141,9 @@ test('same-origin dependency surfaces require executable runtime entrypoints', (
           workspace: 'sdkwork-iam-app-sdk',
           surface: 'app-api',
           apiPrefix: '/app/v3/api/iam',
-          runtimeMode: 'same-origin-mounted',
+          runtimeMode: 'same-origin',
           embeddedExecutableExport: 'build_sdkwork_iam_app_api_router',
+          requiredBaseUrlKey: 'SDKWORK_DEMO_IAM_APP_API_BASE_URL',
         },
       ],
     },
@@ -152,6 +153,56 @@ test('same-origin dependency surfaces require executable runtime entrypoints', (
 
   assert.ok(issues.some((issue) => issue.includes('runtimeEntrypoints')));
   assert.ok(issues.some((issue) => issue.includes('route metadata is not executable')));
+  assert.ok(issues.some((issue) => issue.includes('matching requiredPorts entry')));
+  assert.ok(issues.some((issue) => issue.includes('standalone profileCoverage')));
+  assert.ok(issues.some((issue) => issue.includes('must not require an external base URL key')));
+});
+
+test('accepts a canonical Rust assembly contribution embedded in a standalone gateway', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-component-ports-embedded-'));
+  writeJson(path.join(root, 'crates/sdkwork-api-demo-standalone-gateway/specs/component.spec.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.component.spec',
+    component: {
+      name: 'sdkwork-api-demo-standalone-gateway',
+      type: 'rust-standalone-gateway',
+      root: 'crates/sdkwork-api-demo-standalone-gateway',
+      domain: 'demo',
+      capability: 'gateway',
+      languages: ['rust'],
+    },
+    contracts: {
+      layerRole: 'runtime-gateway',
+      publicExports: [
+        'crate-root',
+        'sdkwork_api_iam_assembly::assemble_app_api_contribution',
+      ],
+      runtimeEntrypoints: ['crate-root#build_router'],
+      providedPorts: [],
+      requiredPorts: [
+        {
+          name: 'iamAppApiContribution',
+          export: 'sdkwork_api_iam_assembly::assemble_app_api_contribution',
+        },
+      ],
+      dependencyApiSurfaces: [
+        {
+          workspace: 'sdkwork-iam',
+          sdkFamily: 'sdkwork-iam-app-sdk',
+          surface: 'app-api',
+          apiPrefix: '/app/v3/api',
+          runtimeMode: 'same-origin',
+          sameOriginAllowed: true,
+          cargoDependency: 'sdkwork-api-iam-assembly',
+          embeddedExecutableExport: 'sdkwork_api_iam_assembly::assemble_app_api_contribution',
+          profileCoverage: ['standalone'],
+          coverageEvidence: ['src/profile.rs'],
+        },
+      ],
+    },
+  });
+
+  assert.deepEqual(validateComponentPortBindings(root, { strict: true }), []);
 });
 
 test('CLI reports strict component port binding violations', () => {

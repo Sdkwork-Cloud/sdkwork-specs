@@ -1,6 +1,6 @@
 # Environment Variable And Runtime Configuration Standard
 
-- Version: 1.0
+- Version: 1.2
 - Scope: environment variables, runtime config files, public browser runtime config, secrets, database selection, standalone/cloud deployment profiles, desktop/server/container/H5/Flutter/mini-program/native Android/native iOS/native Harmony runtime targets, SDK base URLs, locale strategy, Access-Token and TokenManager credential config rules, RPC endpoints
 - Related: `CONFIG_SPEC.md`, `SOURCE_CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `REGION_SPEC.md`, `DATABASE_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `SECURITY_SPEC.md`, `SDK_SPEC.md`, `RPC_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RUST_RPC_SPEC.md`, `APPLICATION_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`, `TEST_SPEC.md`
 
@@ -139,6 +139,7 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_<APPLICATION_CODE>_CONFIG_PROFILE` | private | SHOULD | Legacy command/operator profile alias: `dev`, `test`, `staging`, `prod`. Startup must normalize it before canonical profile selection. |
 | `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE` | private | SHOULD | Application deployment architecture: `standalone` or `cloud`. |
 | `SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET` | private | SHOULD | Execution target: `browser`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program`, `server`, `container`, `test-runner`. |
+| `SDKWORK_<APPLICATION_CODE>_BROWSER_ORIGIN_MODE` | private/public projection | SHOULD for browser targets | Browser page/API origin relationship: `same-origin` for standalone; `same-origin` or explicitly governed `cross-origin` for cloud. |
 | `SDKWORK_<APPLICATION_CODE>_BUILD_MODE` | private/public by tool | MAY | Build tool mode. It must not replace `ENVIRONMENT`, `DEPLOYMENT_PROFILE`, or `RUNTIME_TARGET`. |
 | `SDKWORK_<APPLICATION_CODE>_CONFIG_FILE` | private | MAY | Explicit runtime config file path. |
 | `SDKWORK_<APPLICATION_CODE>_SERVER_CONFIG_FILE` | private | MAY | Explicit server process config file path when a PC/desktop root also owns server profiles. Defaults to `CONFIG_FILE` when absent. |
@@ -340,7 +341,8 @@ VITE_SDKWORK_ENVIRONMENT=development
 VITE_SDKWORK_DEPLOYMENT_PROFILE=standalone
 VITE_SDKWORK_PROFILE_ID=standalone.development
 VITE_SDKWORK_RUNTIME_TARGET=browser
-VITE_SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL=http://127.0.0.1:10240
+VITE_SDKWORK_<APPLICATION_CODE>_BROWSER_ORIGIN_MODE=same-origin
+VITE_<APP_CODE>_SDK_BASE_URL=/
 ```
 
 ```dotenv
@@ -367,6 +369,9 @@ Rules:
   SDK clients.
 - Browser-visible env contains no `SDKWORK_ACCESS_TOKEN`, auth token, refresh
   token, API key, database URL, Redis URL, signing value, or private endpoint.
+- Standalone Vite output contains no absolute application-ingress target URL.
+  The Node-side dev server reads that target from the parent topology profile;
+  browser modules receive same-origin SDK paths only.
 
 ### 5.1.5 Flutter Dart-Define JSON Format
 
@@ -541,7 +546,29 @@ Rules:
 Development profile routing rules:
 
 - `standalone.development` Base URLs resolve to the local standalone
-  application ingress and any explicitly embedded or local platform adapter.
+  `application.public-ingress`. Dependency APIs classified as same-origin are
+  dependency-owned Rust assembly contributions linked into that gateway process;
+  they do not receive a separate gateway origin or listener.
+- For a standalone browser delivery, private server/Node Base URLs resolve to
+  `application.public-ingress`, while browser public/Vite Base URLs resolve to
+  the browser-visible origin. Development normally represents the latter with
+  `/` and routes it through the declared canonical-path dev-server proxy.
+- Every standalone browser runtime source declares
+  `browserOriginMode = same-origin`. Its public/Vite SDK Base URL values are
+  root-relative paths, never absolute renderer, application-ingress,
+  dependency, or loopback URLs; browser bootstrap resolves the paths against
+  `window.location.origin`.
+- Standalone production browser public config also uses same-origin paths. The
+  `gateway-static` host serves those paths and the application APIs on the same
+  `application.public-ingress` origin.
+- `platform.api-gateway` server and browser URL keys are cloud-only. They `MUST`
+  be absent from standalone env profiles and from materialized standalone
+  runtime config.
+- Environment resolvers that replace database URL, credential, schema, or
+  module identity keys from a canonical source file `MUST` preserve process
+  database governance keys such as `SDKWORK_DATABASE_TEMPORARY_*`. These keys
+  control capacity reservation before canonical pool creation and are not
+  database identity overrides.
 - `cloud.development` Base URLs resolve to already deployed cloud application
   and platform surfaces. They must be explicit source config values and must
   not inherit standalone loopback defaults or production endpoints.
@@ -573,9 +600,9 @@ otherwise application and platform surfaces resolve independently.
 | SDKWork business open-api SDK or vendor compatibility open-api surface | `SDKWORK_<APPLICATION_CODE>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_OPEN_API_BASE_URL` | Resolved from its declared application/platform surface or a proven common API edge origin. |
 | App/user SDK | `SDKWORK_<APPLICATION_CODE>_APP_API_BASE_URL` | `PORTAL_PUBLIC_APP_API_BASE_URL` | `VITE_<APP_CODE>_APP_API_BASE_URL` | Resolved from `application.public-ingress`, optionally through a proven common API edge origin. |
 | `backend-admin` SDK | `SDKWORK_<APPLICATION_CODE>_BACKEND_API_BASE_URL` | `PORTAL_PUBLIC_BACKEND_API_BASE_URL` | `VITE_<APP_CODE>_BACKEND_API_BASE_URL` | Resolved from the owning application/platform surface; browser exposure still requires `backend-admin`. |
-| Dependency open-api SDK | `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | Resolved from `platform.api-gateway` unless an explicit dependency surface override applies. |
-| Dependency app-api SDK | `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_APP_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_APP_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_APP_API_BASE_URL` | Resolved from `platform.api-gateway`, or application same-origin only with verified embedding. |
-| Dependency backend-api SDK | `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_BACKEND_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_BACKEND_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_BACKEND_API_BASE_URL` | Resolved from `platform.api-gateway`, or application same-origin only with verified backend mount coverage. |
+| Dependency open-api SDK | `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_OPEN_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_OPEN_API_BASE_URL` | Cloud: resolved from `platform.api-gateway` unless an explicit dependency surface override applies. Standalone same-origin: resolved from `application.public-ingress` with verified assembly mount coverage. |
+| Dependency app-api SDK | `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_APP_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_APP_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_APP_API_BASE_URL` | Cloud: resolved from `platform.api-gateway`. Standalone same-origin: resolved from `application.public-ingress` with verified assembly mount coverage. |
+| Dependency backend-api SDK | `SDKWORK_<APPLICATION_CODE>_<DEPENDENCY>_BACKEND_API_BASE_URL` | `PORTAL_PUBLIC_<DEPENDENCY>_BACKEND_API_BASE_URL` | `VITE_<APP_CODE>_<DEPENDENCY>_BACKEND_API_BASE_URL` | Cloud: resolved from `platform.api-gateway`. Standalone same-origin: resolved from `application.public-ingress` with verified backend assembly mount coverage. |
 
 Rules:
 
@@ -588,7 +615,14 @@ Rules:
   cloud or customer-owned multi-host deployments.
 - Appbase, Drive, IM, payment, media, or other dependency SDK override variables must be keyed by dependency SDK family/app code. Do not hide dependency base URLs behind an application-local `API_BASE_URL` when the dependency can be deployed independently.
 - Browser public runtime config may expose SDK base URLs only when the browser is allowed to call that SDK surface directly. `backend-admin` base URLs must not be exposed to user-facing app UI or PC user console UI unless that route surface is explicitly `backend-admin`.
-- Defaults should be same-origin paths in browser deployments so remote browsers are not given loopback addresses, but dependency SDK same-origin defaults are allowed only when `dependencyApiSurfaces` records verified mount coverage for that dependency surface.
+- Standalone browser Base URLs `MUST` be same-origin paths so remote browsers
+  are not given loopback or internal listener addresses. An absolute URL is not
+  a valid standalone source value even when it currently matches the page
+  origin. Cloud browser defaults
+  should also be same-origin paths when one edge serves all surfaces.
+  Dependency SDK same-origin defaults are allowed only when
+  `dependencyApiSurfaces` records verified mount coverage for that dependency
+  surface.
 - Dependency backend-api SDK override variables such as
   `SDKWORK_<APPLICATION_CODE>_APPBASE_BACKEND_API_BASE_URL`,
   `PORTAL_PUBLIC_APPBASE_BACKEND_API_BASE_URL`, and
@@ -1072,6 +1106,7 @@ Recommended public runtime config:
   "environment": "production",
   "deploymentProfile": "cloud",
   "runtimeTarget": "browser",
+  "browserOriginMode": "same-origin",
   "openApiBaseUrl": "/v1",
   "appApiBaseUrl": "/app/v3/api",
   "backendApiBaseUrl": "/backend/v3/api"
@@ -1565,6 +1600,9 @@ Every application that adopts this standard should provide:
 - Config file parsing tests for canonical and explicit paths.
 - Release preflight validation for required production variables.
 - Browser runtime env tests that verify public values load before SDK clients are constructed.
+- Standalone browser env tests that verify `browserOriginMode = same-origin`,
+  public/Vite SDK Base URLs resolve against the page origin, and no internal
+  application-ingress target URL is emitted.
 - Browser public runtime tests that verify no secret, database URL, Redis URL, token, signing key, or private endpoint is emitted through `/runtime-env.js`, `PORTAL_PUBLIC_*`, or `VITE_*`.
 - I18n runtime config tests that verify env/public config contains only locale strategy, active locale list, message-catalog manifest references, and version identifiers, not translated message content or app/root/package locale monoliths.
 - Database seed i18n env tests that verify seed locale/version values map only to database lifecycle config and do not override runtime locale negotiation.

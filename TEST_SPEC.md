@@ -1,6 +1,6 @@
 # Test And Verification Standard
 
-- Version: 1.0
+- Version: 1.2
 - Scope: contract tests, SDK/RPC generation tests, backend tests, frontend tests, parity tests, security tests
 - Related: all specs
 
@@ -1125,6 +1125,10 @@ Rules:
 - Runtime-plan tests `MUST` prove renderer bind/port, spawned command arguments, access endpoint,
   CORS origin, session registry binding, and credential-entry bootstrap provider output come from
   one resolved plan; hard-coded package-script ports or registry/process disagreement are failures.
+- Runtime-plan tests for browser profiles `MUST` project only
+  `browserDeliveries` matching the selected `clientArchitecture`. They must
+  report `browserVisibleOrigin` separately from `apiTargetOrigin`; an internal
+  development listener count is not a browser-visible origin count.
 - Workspace hosting-debt checks `MUST` run
   `node tools/check-app-runtime-hosting-debt.mjs --workspace ..` and pass for
   every application repository with active dev scripts, packaging targets, or
@@ -1192,6 +1196,40 @@ Rules:
   API, edge-runtime, data, migration, seed, or deployed-service worker roles. The tests must
   inspect canonical v5 `process.role` values and config provenance rather than
   only names; missing or unknown roles fail validation.
+- Standalone same-origin dependency tests `MUST` prove dependency-owned Rust API
+  assembly contributions are linked and mounted by the current application
+  standalone gateway process. They must fail when standalone server or browser
+  profiles define `platform.api-gateway` URLs, when a dependency gateway/child
+  process or alternate loopback API listener is required, or when an executable
+  contribution lacks matching `requiredPorts` and standalone profile coverage.
+- Standalone browser topology tests `MUST` require one same-origin
+  `dev-server-proxy` delivery for each development browser client and one
+  architecture-matching `gateway-static` delivery for each corresponding
+  production browser artifact. They must reject missing/duplicate evidence,
+  any origin mode other than `same-origin`, any API surface other than
+  `application.public-ingress`, client/delivery architecture drift, a wrong
+  client or gateway host process, a non-canonical-path proxy, a static root
+  outside the application root, an unresolved runtime root env key, a non-root
+  mount, or a SPA fallback other than `/index.html`.
+- Standalone browser runtime tests `MUST` prove server/Node API targets resolve
+  to `application.public-ingress`, while browser SDK Base URLs resolve to the
+  page's `browserVisibleOrigin`. Every standalone browser runtime source must
+  declare `browserOriginMode = same-origin` and reject absolute renderer,
+  application-ingress, dependency, or loopback SDK URLs before SDK client
+  construction, even when an absolute URL currently matches the page origin.
+  Production `gateway-static` must resolve the page and APIs to the same
+  application-ingress origin.
+- Standalone browser network tests `MUST` prove canonical API request paths
+  remain unchanged through the dev proxy, no proxy selector path appears in
+  the browser trace, and production API/OpenAPI/health routes take precedence
+  over static lookup and SPA fallback. Missing production assets or
+  `/index.html` must fail startup/readiness rather than return an API `404`.
+- Standalone release tests `MUST` validate a bounded, hashed archive containing
+  the browser distribution and every filesystem runtime asset required by
+  selected embedded owner assemblies. Extracted-artifact smoke tests `MUST`
+  start from outside the source workspace, resolve only packaged owner roots,
+  preserve the pre-existing data-plane smoke, and prove both the browser shell
+  and at least one dependency-owned API route on the same ingress origin.
 - Topology role tests `MUST` prove responsibility-specific device/edge protocol
   processes use `edge-runtime`, are rejected from `cloud.development`, and are
   not disguised as `worker` or a gateway role.
@@ -1297,7 +1335,7 @@ Rules:
 - App, user-console, and internal-admin packages for PC React, H5 mobile React, Flutter, mini program, Android native, iOS native, Harmony native, and standalone backend/admin React packages `MUST` run the package placement and SDK boundary checks required by `UI_ARCHITECTURE_SPEC.md`, their root architecture standard, and their detailed UI/package spec.
 - Architecture SDK checks `MUST` verify TypeScript SDKs stay in React and mini program packages, Dart/Flutter SDKs stay in Flutter packages, Kotlin/Java SDKs stay in Android native packages, Swift SDKs stay in iOS native packages, ArkTS/TypeScript Harmony SDKs stay in Harmony native packages, Rust SDKs or Rust service clients stay in Rust/native runtime code, and no package imports another architecture's UI/runtime wrapper to bypass a missing SDK method.
 - Public runtime env checks `MUST` fail if `/runtime-env.js`, `/runtime-env.json`, `PORTAL_PUBLIC_*`, `VITE_*`, `PUBLIC_*`, or `NEXT_PUBLIC_*` exposes secrets, database URLs, Redis URLs, tokens, signing keys, private service endpoints, or backend-only credentials.
-- Browser bootstrap tests `MUST` prove public runtime config loads before generated SDK clients are constructed and that open-api, app-api, and backend-api base URLs remain independent.
+- Browser bootstrap tests `MUST` prove public runtime config loads before generated SDK clients are constructed, that open-api, app-api, and backend-api base URLs remain independent, and that standalone values are same-origin paths or resolve to `window.location.origin`.
 - TokenManager bootstrap tests `MUST` prove base URLs and SDK inventory classification are resolved before SDK construction, the same global TokenManager is injected into appbase app SDKs, application/dependency app SDKs, explicit `backend-admin` backend SDKs, and approved composed SDK clients for the same authenticated session context, and protected open-api SDKs use declared open-api credential providers instead.
 - `backend-admin` UI verification `MUST` fail if business pages, services, or repositories are placed in `@sdkwork/react-backend-ui`, `@sdkwork/react-backend-core`, or one catch-all backend package instead of `@sdkwork/react-backend-<domain>`.
 - PC application architecture verification `MUST` fail if new app, console, or admin packages omit the `pc` segment or if `pc-console` and `pc-admin` packages import each other's business internals.

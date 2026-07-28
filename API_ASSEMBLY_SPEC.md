@@ -1,6 +1,6 @@
 # API Assembly Standard
 
-- Version: 1.0
+- Version: 1.1
 - Scope: application-owned HTTP API composition, host-neutral assembly crates, route-surface completeness, gateway dependency direction, manifests, pnpm commands, migration, and verification
 - Related: `APPLICATION_GATEWAY_SPEC.md`, `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, `COMPONENT_SPEC.md`, `NAMING_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `MIGRATION_SPEC.md`, `TEST_SPEC.md`
 
@@ -317,6 +317,8 @@ Standalone dependency composition rules:
 - The gateway calls dependency-owned assembly entrypoints; it does not import `sdkwork-routes-*`, duplicate dependency service wiring, or reclassify dependency ownership.
 - The combined executable router, combined `HttpRouteManifest`, served OpenAPI, permission catalog, and readiness set are constructed as one selected-profile unit before the single Web Framework layer is applied.
 - A configured same-origin dependency whose assembly cannot initialize causes startup/readiness failure with `50301`; the gateway does not start a partial route surface that later returns 404.
+- A standalone client `MUST` use the application public-ingress origin for every selected same-origin dependency SDK. The standalone profile `MUST NOT` publish a platform API gateway URL, dependency sidecar URL, alternate loopback port, or `VITE_*` platform-gateway URL for that dependency.
+- Selecting a dependency assembly means linking and initializing its Rust backend contribution inside the current application standalone gateway process. It `MUST NOT` start the dependency's standalone gateway binary or require a second HTTP listener.
 
 ### 6.2 Cloud
 

@@ -29,6 +29,7 @@ import { loadSdkFamilyManifestForWorkspaceConsumer } from './sdk-manifest-standa
 
 const APP_API_PREFIX = '/app/v3/api';
 const BACKEND_API_PREFIX = '/backend/v3/api';
+const INTERNAL_API_PREFIX = '/internal/v3/api';
 
 const SKIP_ARCHITECTURE_DIRS = new Set(['.git', 'node_modules', 'target', 'dist', 'build']);
 const ALLOWED_INTEGRATION_OVERRIDE_KEYS = new Set(['baseUrl', 'runtimeMode']);
@@ -45,7 +46,7 @@ function readJsonIfExists(filePath) {
 }
 
 function domainFromSdkWorkspace(workspace) {
-  const match = String(workspace).match(/^sdkwork-([^-]+)-(?:app|backend)-sdk$/u);
+  const match = String(workspace).match(/^sdkwork-([^-]+)-(?:app|backend|internal)-sdk$/u);
   if (match) return match[1];
   const openMatch = String(workspace).match(/^sdkwork-([^-]+)-sdk$/u);
   if (openMatch) return openMatch[1];
@@ -55,12 +56,14 @@ function domainFromSdkWorkspace(workspace) {
 function surfaceFromWorkspace(workspace) {
   if (/-backend-sdk$/u.test(workspace)) return 'backend-api';
   if (/-app-sdk$/u.test(workspace)) return 'app-api';
+  if (/-internal-sdk$/u.test(workspace)) return 'internal-api';
   return 'open-api';
 }
 
 function defaultCredentialMode(surface) {
   if (surface === 'backend-api') return 'authenticated-backend-admin';
   if (surface === 'app-api') return 'authenticated-app-api';
+  if (surface === 'internal-api') return 'ingress-token';
   return 'protected-open-api-flexible';
 }
 
@@ -68,6 +71,7 @@ function defaultPrefix(surface, manifestDiscovery) {
   if (manifestDiscovery?.apiPrefix) return manifestDiscovery.apiPrefix;
   if (surface === 'backend-api') return BACKEND_API_PREFIX;
   if (surface === 'app-api') return APP_API_PREFIX;
+  if (surface === 'internal-api') return INTERNAL_API_PREFIX;
   return null;
 }
 
@@ -219,6 +223,7 @@ function baseUrlEnvKey(workspace) {
   const domainKey = domain === 'iam' ? 'APPBASE' : domain.toUpperCase().replace(/-/g, '_');
   if (surface === 'backend-api') return `VITE_SDKWORK_${domainKey}_BACKEND_API_BASE_URL`;
   if (surface === 'app-api') return `VITE_SDKWORK_${domainKey}_APP_API_BASE_URL`;
+  if (surface === 'internal-api') return `SDKWORK_${domainKey}_INTERNAL_API_BASE_URL`;
   return `VITE_SDKWORK_${domainKey}_OPEN_API_BASE_URL`;
 }
 
@@ -395,7 +400,7 @@ function findIntegrationOverride(overridesByCore, workspace) {
 function findVerifiedEmbeddedSurface(architecture, workspace, surface) {
   return architecture.runtime.dependencyApiSurfaces.find((candidate) => {
     if (candidate.sdkFamily !== workspace || candidate.surface !== surface) return false;
-    if (candidate.runtimeMode !== 'same-origin-mounted') return false;
+    if (!['same-origin', 'same-origin-mounted'].includes(candidate.runtimeMode)) return false;
     if (!candidate.cargoDependency || !candidate.embeddedExecutableExport) return false;
     if (!Array.isArray(candidate.coverageEvidence) || candidate.coverageEvidence.length === 0) return false;
     const cargoDependency = candidate.cargoDependency.replaceAll('_', '-');

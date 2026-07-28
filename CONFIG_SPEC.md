@@ -1,6 +1,6 @@
 # Configuration And Environment Standard
 
-- Version: 1.0
+- Version: 1.2
 - Scope: environment config, SDK client initialization, secrets, feature flags, typed runtime config, dev/test/staging/prod profiles, desktop/server/container/web/H5/Flutter/mini-program/native Android/native iOS/native Harmony switching
 - Related: `SOURCE_CONFIG_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `REGION_SPEC.md`, `SDK_SPEC.md`, `SECURITY_SPEC.md`, `APPLICATION_SPEC.md`, `APP_MANIFEST_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `APP_H5_ARCHITECTURE_SPEC.md`, `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md`, `ANDROID_APP_MOBILE_ARCHITECTURE_SPEC.md`, `IOS_APP_MOBILE_ARCHITECTURE_SPEC.md`, `HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`, `I18N_SPEC.md`
 
@@ -56,6 +56,7 @@ export type SdkworkEnvironment = "development" | "test" | "staging" | "productio
 export type SdkworkConfigProfile = "dev" | "test" | "staging" | "prod";
 export type SdkworkBuildMode = "development" | "test" | "staging" | "production";
 export type SdkworkDeploymentProfile = "standalone" | "cloud";
+export type SdkworkBrowserOriginMode = "same-origin" | "cross-origin";
 export type SdkworkGatewayPlacement =
   | "local-child-process"
   | "embedded"
@@ -87,6 +88,7 @@ export interface SdkworkRuntimeConfig {
   runtimeTarget: SdkworkRuntimeTarget;
   targetPlatform?: string;
   clientArchitecture?: string;
+  browserOriginMode?: SdkworkBrowserOriginMode;
   gatewayPlacement?: SdkworkGatewayPlacement;
   openApiBaseUrl?: string;
   appApiBaseUrl: string;
@@ -179,6 +181,7 @@ export interface SdkworkI18nRuntimeConfig {
 }
 
 export interface SdkworkPublicRuntimeConfig {
+  browserOriginMode?: SdkworkBrowserOriginMode;
   sdkBaseUrl?: string;
   apiBaseUrl?: string;
   openApiBaseUrl?: string;
@@ -301,6 +304,14 @@ Rules:
 - H5 in an iOS or Android browser remains `runtimeTarget = browser` and does
   not imply an IPA/APK. Capacitor, Flutter, and native targets produce platform
   binaries according to their architecture standards.
+- `browserOriginMode` describes browser security origin behavior. Every
+  `standalone` runtime with `runtimeTarget = "browser"` `MUST` resolve it to
+  `"same-origin"`. Cloud browser deployments may use `"cross-origin"` only
+  when explicit API origins, CORS, CSP, cookie, and credential policy allow it.
+- `browserOriginMode` is independent from
+  `dependencyApiSurfaces[].runtimeMode`. The latter proves whether a dependency
+  API assembly is embedded or external; it does not describe where the browser
+  page was loaded.
 - Application runtime config does not carry a cloud gateway strategy or
   implementation identity. `gatewayPlacement` is required only when a
   standalone client owns or locates its application standalone gateway.
@@ -347,6 +358,11 @@ Rules:
 - `publicRuntime` is browser-visible and may contain only non-secret values such
   as normalized `deploymentProfile`, `runtimeTarget`, public SDK base URLs, and
   feature flags. Browser bundles must not read private process config.
+- A standalone browser public runtime source uses root-relative SDK Base URLs.
+  Browser bootstrap may resolve those paths against `window.location.origin`
+  before SDK construction. Checked-in or materialized standalone public config
+  `MUST NOT` contain an absolute renderer, application-ingress, dependency, or
+  loopback origin, even when that origin currently matches the page.
 - `server` owns process bind, public URL, reverse-proxy trust, and service profile config. It must not own renderer-only build settings.
 - `desktop` owns native host, user config, local service lifecycle, and secure storage provider. It must not own remote business API contracts.
 - `tablet` owns iPadOS/Android tablet package identity and platform config references. It must not own phone-first H5 behavior or business SDK bypasses.
@@ -492,13 +508,26 @@ Rules:
   an application same-origin app/backend default only when the
   application runtime declares `dependencyApiSurfaces` mount coverage for that dependency SDK
   family, surface, and prefix. A route contract or `sdkDependencies` entry alone is not enough.
-- Browser development may use the browser's same-origin API edge origin for
-  both application-owned and platform dependency SDK clients only when the
-  dev-server proxy routes canonical API paths internally to the declared
-  `application.public-ingress`, `platform.api-gateway`, or explicit dependency
-  upstream without changing the client-visible URI. This is not an application
-  same-origin dependency mount and does not satisfy `sameOriginAllowed` or
-  `runtimeMode: "same-origin"` coverage.
+- In a `standalone` profile, every dependency surface declared with
+  `runtimeMode: "same-origin"` `MUST` resolve from the current application's
+  `application.public-ingress`. Its owner API assembly is linked into the
+  current Rust standalone gateway process. Standalone source profiles, resolved
+  runtime config, and browser runtime config `MUST NOT` define a
+  `platform.api-gateway` URL or an alternate dependency loopback origin for that
+  surface.
+- Standalone browser development `MUST` use the browser's dev-server origin for
+  application-owned and embedded dependency SDK clients. The declared
+  `dev-server-proxy` routes canonical API paths internally to
+  `application.public-ingress` without changing the client-visible URI. Its
+  target URL is private Node/server configuration and is never materialized
+  into public/Vite SDK Base URL values. This transport proxy is not dependency
+  assembly mount evidence and does not satisfy `sameOriginAllowed` or
+  `runtimeMode: "same-origin"` coverage by itself.
+- Standalone production browser config `MUST` use the
+  `application.public-ingress` page origin exposed by the declared
+  `gateway-static` delivery. The static asset runtime root, `/` mount, and
+  `/index.html` SPA fallback are server/package config, not browser SDK URL
+  overrides.
 - `dependencyApiSurfaces` entries with `runtimeMode: "same-origin"` `MUST` set
   `sameOriginAllowed: true`, name the executable router/controller/service export or equivalent
   runtime adapter, and record `coverage: "verified"` before SDK clients may inherit the application
@@ -507,6 +536,10 @@ Rules:
   `dependencyApiSurfaces` `SHOULD` also name the Cargo feature and Cargo dependency that activate
   that executable integration. The feature/dependency evidence must resolve through Cargo metadata;
   a separate gateway catalog file is not accepted as the source of these facts.
+- An embedded executable export is a host-neutral assembly contribution called
+  by the application standalone gateway. It `MUST NOT` be satisfied by launching
+  the dependency repository's standalone gateway binary, binding a second HTTP
+  listener, or proxying to an undeclared loopback dependency port.
 - When the platform cloud gateway proxies an external upstream dependency service, the dependency
   surface names the upstream/base-url config instead of Cargo feature/dependency evidence. Split
   proxy coverage proves gateway routing and upstream configuration; it does not prove same-process
@@ -521,7 +554,7 @@ Rules:
   owning both `/app/v3/api/comments` and `/app/v3/api/engagement`. Runtime config `MUST` declare
   each prefix as a separate dependency API surface while sharing the same service id and
   `requiredBaseUrlKey`, so route matching stays precise without broad fallback ownership.
-- Application runtime config that consumes the platform connectivity plane
+- Cloud application runtime config that consumes the platform connectivity plane
   (`APP_RUNTIME_TOPOLOGY_NAMING.md` surface `platform.api-gateway`) `SHOULD`
   use that surface origin as the default platform dependency base URL source.
   Direct dependency module URLs are per-surface overrides for explicit
@@ -533,7 +566,7 @@ Rules:
 - Application-local runtime env `MUST NOT` materialize per-module foundation upstream defaults beside a
   configured platform API surface origin. Appbase, Drive, commerce, search, voice, image, comments, course,
   messaging, or other foundation module URLs are explicit upstream overrides only.
-- Launch/config tests for applications that consume `platform.api-gateway`
+- Cloud launch/config tests for applications that consume `platform.api-gateway`
   `MUST` prove dependency SDK defaults derive from that surface while application-owned app/backend/open SDK base URLs remain
   application-owned.
 - When dependency API surfaces overlap by prefix, runtime config or the component spec `MUST`

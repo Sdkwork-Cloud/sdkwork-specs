@@ -1,6 +1,6 @@
 # Application Runtime Topology Standard
 
-- Version: 4.1
+- Version: 4.3
 - Scope: cross-application deployment entrypoints, multi-plane routing, multi-protocol surfaces, dev orchestration contracts, and client bootstrap URL authority
 - Related: `APPLICATION_GATEWAY_SPEC.md`, `NAMING_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `CONFIG_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `../sdkwork-app-topology/README.md`
 
@@ -34,6 +34,8 @@ Applications `MUST` use these axes.
 | Deployment profile | `deploymentProfile` | `standalone`, `cloud` | What deployment architecture is this application using? |
 | Environment tier | `environment` | `development`, `test`, `staging`, `production` | Which lifecycle stage is active? |
 | Connectivity plane | `connectivityPlane` | `application`, `platform`, `operations`, `edge` | Who owns this route? |
+| Browser origin mode | `browserDeliveries[].originMode` | `same-origin` | Do the page and browser-visible API requests share one origin? |
+| Browser delivery mode | `browserDeliveries[].deliveryMode` | `dev-server-proxy`, `gateway-static` | How does that browser origin reach the application ingress in this profile? |
 
 Examples in conversation:
 
@@ -59,6 +61,10 @@ Rules:
 - Internal process count, binary count, and upstream fan-out `MUST NOT` appear
   in profile ids, SDK package names, public scripts, browser env keys, or
   application integration contracts.
+- `dependencyApiSurfaces[].runtimeMode = "same-origin"` describes executable
+  dependency API assembly composition. It does not prove that a browser page
+  and its API requests share one browser-visible origin. That separate fact is
+  declared by `browserDeliveries[].originMode`.
 
 ## 3. Connectivity Planes
 
@@ -72,8 +78,10 @@ Rules:
 Rules:
 
 - Application realtime WebSocket `MUST` terminate on `application.public-ingress`.
-- Platform APIs `MUST` use `platform.api-gateway` URLs in client bootstrap
-  unless the standalone profile explicitly embeds an approved platform adapter.
+- External platform APIs use `platform.api-gateway` URLs only in cloud client
+  bootstrap. A standalone profile embeds every selected same-origin dependency
+  as an owner assembly contribution behind `application.public-ingress` and
+  `MUST NOT` resolve a `platform.api-gateway` URL.
 - Edge protocols `MUST NOT` be routed through `sdkwork-api-cloud-gateway` unless a
   future platform spec adds an edge tier.
 - Each plane `MUST` have distinct env keys from `APP_RUNTIME_TOPOLOGY_NAMING.md`.
@@ -174,6 +182,71 @@ Protocol-specific edge/realtime ingress requires an ADR and separate topology
 surface. The machine authority is `schemas/sdkwork.app.topology.schema.v5.json`.
 Schema v4 remains readable only during the migration window.
 
+### Browser Delivery Evidence
+
+A standalone topology v5 orchestration profile that delivers a browser
+application uses `browserDeliveries`. Every entry declares a stable `id`, repository-relative
+`applicationRoot`, non-empty canonical `clientArchitectures`,
+`originMode: "same-origin"`, one `deliveryMode`, and
+`apiSurfaceId: "application.public-ingress"`.
+
+Standalone development with a browser client uses:
+
+```json
+{
+  "id": "webserver-pc",
+  "applicationRoot": "apps/sdkwork-webserver-pc",
+  "clientArchitectures": ["pc-web"],
+  "originMode": "same-origin",
+  "deliveryMode": "dev-server-proxy",
+  "clientProcessId": "webserver-pc-browser",
+  "apiSurfaceId": "application.public-ingress",
+  "preserveCanonicalPaths": true
+}
+```
+
+The selected client process owns the development renderer listener. The
+browser opens that renderer origin, and the renderer proxy forwards canonical
+API paths to the topology-resolved application ingress. The API target listener
+is internal transport for this browser flow; it is not emitted as a browser SDK
+Base URL.
+
+Standalone production with a browser application uses:
+
+```json
+{
+  "id": "webserver-pc",
+  "applicationRoot": "apps/sdkwork-webserver-pc",
+  "clientArchitectures": ["pc-web"],
+  "originMode": "same-origin",
+  "deliveryMode": "gateway-static",
+  "hostProcessId": "application.public-ingress",
+  "apiSurfaceId": "application.public-ingress",
+  "buildOutput": "apps/sdkwork-webserver-pc/dist",
+  "runtimeRootEnv": "SDKWORK_WEB_PC_STATIC_ROOT",
+  "mountPath": "/",
+  "spaFallback": "/index.html"
+}
+```
+
+`buildOutput` is release input evidence; `runtimeRootEnv` resolves the packaged
+or installed asset root. The gateway serves immutable assets and the SPA shell
+on the same origin as the APIs. API, OpenAPI, health, and operations routes take
+precedence over static lookup and SPA fallback.
+
+Rules:
+
+- Every standalone browser client process `MUST` have exactly one matching
+  development delivery for its `applicationRoot` and architecture selection.
+- Every corresponding standalone production browser artifact `MUST` have
+  exactly one `gateway-static` delivery per selected client architecture.
+- A delivery's `clientArchitectures` `MUST` match its development client
+  process. Runtime-plan resolution projects only entries matching the selected
+  `clientArchitecture`, so `pc-web` and `h5` may coexist without sharing the
+  wrong renderer, proxy, or build output.
+- `browserDeliveries` contains no concrete bind, port, URL, or installed path.
+  Those values remain in the selected source `etc/` profile.
+
 ### Repository Files
 
 ```text
@@ -213,13 +286,28 @@ topology spec, or start a second standalone gateway.
 
 ## 7. Client Bootstrap
 
-- IAM login uses `platform.api-gateway` when the platform plane is external.
-- Embedded standalone IAM adapters must preserve the same SDK contract,
-  credential rules, and `WebRequestContext` behavior.
+- IAM login uses `platform.api-gateway` only in a `cloud` profile where the
+  platform plane is external.
+- In `standalone`, IAM and every other same-origin dependency API are linked as
+  dependency-owned Rust API assembly contributions into the current
+  `sdkwork-api-<application-code>-standalone-gateway` process. They preserve the
+  same SDK contract, credential rules, and `WebRequestContext` behavior while
+  being served by `application.public-ingress`; they are not dependency gateway
+  processes, child processes, or alternate loopback listeners.
+- Server and browser `platform.api-gateway` URL keys are cloud-only and `MUST`
+  be absent from standalone source profiles and resolved runtime plans.
 - Each deployment profile `MUST` classify every consumed dependency API surface as exactly one of embedded same-origin or external. Embedded selects the dependency-owned API assembly and proves mount coverage; external selects a declared platform/dependency URL and does not mount the dependency assembly locally.
-- Application open-api and app-api SDKs use `application.public-ingress` HTTP URL.
+- Server/native open-api and app-api SDKs use the
+  `application.public-ingress` HTTP URL. Browser deliveries preserve that API
+  surface while using their declared browser-visible origin.
 - Realtime SDKs use `application.public-ingress` WebSocket URL.
 - Client env keys mirror server keys with the configured browser prefix.
+- A standalone browser delivery resolves browser SDK Base URLs from the
+  browser-visible origin. Checked-in and materialized public runtime source
+  values use root-relative same-origin paths; browser bootstrap may then resolve
+  them against `window.location.origin` before SDK construction. No standalone
+  public runtime source exposes or hard-codes an absolute renderer,
+  application-ingress, dependency, or loopback origin.
 - Credential-entry bootstrap is a lifecycle precondition, not a feature-level env read. Development renderers receive the approved private bootstrap handoff before application modules execute; production browsers use the approved short-lived IAM bootstrap exchange or trusted host channel from `IAM_CREDENTIAL_ENTRY_SPEC.md`.
 
 Forbidden:
@@ -287,8 +375,16 @@ pnpm dev:cloud
 ```
 
 `dev:standalone` selects `standalone.development`. Its orchestration profile may
-start the local application ingress, an approved embedded platform adapter,
-declared local dependencies, and local developer-facing clients.
+start the local application ingress, non-HTTP local dependencies, and local
+developer-facing clients. HTTP dependency API surfaces classified as embedded
+same-origin are linked Rust assembly contributions inside the application
+standalone gateway; orchestration `MUST NOT` start their gateway binaries or
+allocate dependency API ports.
+
+When that profile selects a browser client, its renderer/dev-server listener is
+a local client-tooling listener, not a second application API listener. The
+browser sees the renderer origin only; canonical API requests traverse the
+declared `dev-server-proxy` delivery to `application.public-ingress`.
 
 `dev:cloud` selects `cloud.development` as a remote-consumer development
 profile. It starts local developer-facing clients only. The profile:
@@ -320,8 +416,9 @@ pnpm topology:plan --deployment-profile <standalone|cloud> --environment <enviro
 ```
 
 The plan includes active profile/environment, local client processes, local
-gateway identity, remote surfaces, Base URLs with source provenance, local
-data stores, health checks, config inputs, and forbidden process roles.
+gateway identity, remote surfaces, Base URLs with source provenance, selected
+browser deliveries with distinct `browserVisibleOrigin` and `apiTargetOrigin`,
+local data stores, health checks, config inputs, and forbidden process roles.
 Validation operates on the resolved plan rather than only process-name
 matching.
 
@@ -376,16 +473,20 @@ one application HTTP ingress:
 
 For `deploymentProfile=standalone`, orchestration `MUST` start only the
 application ingress process for application-plane HTTP APIs. Internal route
-crates may be embedded in that ingress process, and dev/runtime contracts `MUST
-NOT` require extra loopback API ports to make application-plane APIs reachable.
+crates and dependency-owned API assembly contributions are embedded in that
+ingress process, and dev/runtime contracts `MUST NOT` require extra loopback API
+ports to make application or embedded dependency APIs reachable.
 
 For every profile, orchestration `MUST` treat HTTP API ingress as **single-bind
-per plane**:
+per plane**. A development renderer listener is counted as client tooling, not
+as another API ingress:
 
 - `application.public-ingress` is the only application-plane HTTP listener that
   dev scripts, client bootstrap, and default smoke tests may require.
 - `platform.api-gateway` is the only platform-plane HTTP listener that dev
-  scripts and client bootstrap may require when platform APIs are in scope.
+  scripts and client bootstrap may require when external platform APIs are in
+  scope in a cloud profile. It `MUST NOT` resolve or appear in a standalone
+  profile; standalone dependency SDKs use `application.public-ingress`.
 - Additional HTTP surface ids such as `application.backend-http`,
   `application.open-http`, or per-service listener binaries `MUST NOT` appear
   as separately required orchestration processes when a gateway already
@@ -405,7 +506,7 @@ Adoption steps: `APP_RUNTIME_TOPOLOGY_ADOPTION.md`.
 
 | Deployment profile | Runtime target coverage |
 | --- | --- |
-| `standalone` | `server`, `container`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program` when packaged as a private/platform-local app, and `test-runner` |
+| `standalone` | `browser`, `server`, `container`, `desktop`, `tablet-ipados`, `tablet-android`, `capacitor-ios`, `capacitor-android`, `flutter-ios`, `flutter-android`, `android-native`, `ios-native`, `harmony-native`, `mini-program` when packaged as a private/platform-local app, and `test-runner` |
 | `cloud` | `container`, `server`, `browser`, `mini-program`, H5 browser surfaces, cloud-served public runtime config, and `test-runner` |
 
 Rules:
@@ -413,9 +514,10 @@ Rules:
 - `server`, `container`, `desktop`, `browser`, tablet, Capacitor, Flutter,
   native mobile, mini-program, and `test-runner` values from `CONFIG_SPEC.md`
   are runtime targets, not deployment profiles.
-- Client runtime targets may be standalone release artifacts while their SDK
-  base URLs point at cloud services. This does not create a third deployment
-  profile.
+- Non-browser client runtime targets may be standalone release artifacts while
+  explicitly external SDK surfaces point at cloud services. This does not
+  create a third deployment profile. Standalone browser targets still require
+  the same-origin `browserDeliveries` contract from section 5.
 - `browser` and H5 cloud surfaces normally connect to `application.public-ingress`
   and `platform.api-gateway` through public runtime config. Native, desktop,
   tablet, Flutter, Capacitor, and mini program packages connect through the
@@ -466,6 +568,16 @@ Rules:
   bootstrap still receives one application ingress URL.
 - Credential-entry lifecycle tests must prove bootstrap provider completion precedes renderer spawn, missing provider output fails before the login UI becomes actionable, and production/public artifacts contain no bootstrap token.
 - Runtime-plan tests must prove declared renderer bindings, spawned command arguments, access endpoints, CORS origins, and session registry bindings are identical.
+- Standalone browser runtime-plan tests must prove `browserVisibleOrigin` and
+  `apiTargetOrigin` are distinct only for `dev-server-proxy`, browser SDK URLs
+  resolve to the former, and production `gateway-static` resolves both to
+  `application.public-ingress`.
+- Topology validation must reject a standalone browser client without matching
+  browser delivery evidence, a non-same-origin mode, a non-application API
+  surface, architecture drift, any absolute browser SDK Base URL, a proxy that
+  does not preserve canonical paths, or a production static delivery without
+  gateway host, app-owned build output, runtime root, root mount, and SPA
+  fallback evidence.
 - Single HTTP ingress checks must pass:
   `node ../sdkwork-specs/tools/check-single-http-ingress.mjs --root .` per
   application root and

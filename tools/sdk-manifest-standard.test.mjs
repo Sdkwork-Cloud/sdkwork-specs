@@ -4,7 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { collectParallelSdkRegistryViolations } from './lib/sdk-manifest-standard.mjs';
+import {
+  collectParallelSdkRegistryViolations,
+  loadSdkFamilyManifestForWorkspaceConsumer,
+} from './lib/sdk-manifest-standard.mjs';
 
 const removedFileName = ['.sdkwork', 'assembly.json'].join('-');
 
@@ -26,6 +29,41 @@ test('SDK manifest standard rejects removed parallel registries at every level',
       },
     ]);
     assert.equal(fs.existsSync(forbiddenPath), true, 'read-only validation must not mutate the workspace');
+  } finally {
+    fs.rmSync(workspace, { force: true, recursive: true });
+  }
+});
+
+test('workspace consumers resolve sibling internal SDK family ownership', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-sdk-manifest-internal-'));
+  try {
+    const consumer = path.join(workspace, 'sdkwork-web');
+    const owner = path.join(workspace, 'sdkwork-drive');
+    fs.mkdirSync(path.join(consumer, 'specs'), { recursive: true });
+    fs.mkdirSync(path.join(owner, 'specs'), { recursive: true });
+    fs.mkdirSync(path.join(owner, 'sdks', 'sdkwork-drive-internal-sdk'), { recursive: true });
+    fs.writeFileSync(path.join(consumer, 'specs', 'component.spec.json'), '{}\n', 'utf8');
+    fs.writeFileSync(path.join(owner, 'specs', 'component.spec.json'), '{}\n', 'utf8');
+    fs.writeFileSync(
+      path.join(owner, 'sdks', 'sdkwork-drive-internal-sdk', 'sdk-manifest.json'),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        workspace: 'sdkwork-drive-internal-sdk',
+        sdkOwner: 'sdkwork-drive',
+        apiAuthority: 'sdkwork-drive-internal-api',
+      }, null, 2)}\n`,
+      'utf8',
+    );
+
+    assert.deepEqual(
+      loadSdkFamilyManifestForWorkspaceConsumer(consumer, 'sdkwork-drive-internal-sdk'),
+      {
+        schemaVersion: 1,
+        workspace: 'sdkwork-drive-internal-sdk',
+        sdkOwner: 'sdkwork-drive',
+        apiAuthority: 'sdkwork-drive-internal-api',
+      },
+    );
   } finally {
     fs.rmSync(workspace, { force: true, recursive: true });
   }

@@ -76,6 +76,134 @@ function standardTopology() {
   };
 }
 
+function sameOriginBrowserTopology() {
+  return {
+    schemaVersion: 5,
+    kind: 'sdkwork.app.topology',
+    appId: 'sdkwork-demo',
+    vocabulary: {
+      deploymentProfile: { allowed: ['standalone', 'cloud'] },
+      environment: { allowed: ['development', 'production'] },
+    },
+    profileFiles: {
+      'standalone.development': 'etc/topology/standalone.development.env',
+      'standalone.production': 'etc/topology/standalone.production.env',
+      'cloud.development': 'etc/topology/cloud.development.env',
+      'cloud.production': 'etc/topology/cloud.production.env',
+    },
+    surfaces: {
+      'application.public-ingress': {
+        connectivityPlane: 'application',
+        protocols: ['http'],
+        httpUrlEnv: 'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL',
+      },
+      'platform.api-gateway': {
+        connectivityPlane: 'platform',
+        protocols: ['http'],
+        httpUrlEnv: 'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL',
+      },
+    },
+    orchestration: {
+      profiles: {
+        'standalone.development': {
+          processes: [
+            { id: 'application.public-ingress', role: 'api-standalone-gateway' },
+            {
+              id: 'demo-pc-browser',
+              role: 'client',
+              applicationRoot: 'apps/sdkwork-demo-pc',
+              bindEnv: 'SDKWORK_DEMO_PC_DEV_BIND',
+              runtimeTargets: ['browser'],
+              clientArchitectures: ['pc-web'],
+            },
+          ],
+          healthSurfaces: ['application.public-ingress'],
+          browserDeliveries: [{
+            id: 'demo-pc',
+            applicationRoot: 'apps/sdkwork-demo-pc',
+            clientArchitectures: ['pc-web'],
+            originMode: 'same-origin',
+            deliveryMode: 'dev-server-proxy',
+            clientProcessId: 'demo-pc-browser',
+            apiSurfaceId: 'application.public-ingress',
+            preserveCanonicalPaths: true,
+          }],
+        },
+        'standalone.production': {
+          processes: [
+            { id: 'application.public-ingress', role: 'api-standalone-gateway' },
+          ],
+          healthSurfaces: ['application.public-ingress'],
+          browserDeliveries: [{
+            id: 'demo-pc',
+            applicationRoot: 'apps/sdkwork-demo-pc',
+            clientArchitectures: ['pc-web'],
+            originMode: 'same-origin',
+            deliveryMode: 'gateway-static',
+            hostProcessId: 'application.public-ingress',
+            apiSurfaceId: 'application.public-ingress',
+            buildOutput: 'apps/sdkwork-demo-pc/dist',
+            runtimeRootEnv: 'SDKWORK_DEMO_PC_STATIC_ROOT',
+            mountPath: '/',
+            spaFallback: '/index.html',
+          }],
+        },
+        'cloud.development': {
+          processes: [],
+          healthSurfaces: ['application.public-ingress', 'platform.api-gateway'],
+        },
+        'cloud.production': { processes: [] },
+      },
+    },
+  };
+}
+
+function sameOriginBrowserFiles({
+  developmentApiBaseUrl = '/',
+  developmentBrowserOriginMode = 'same-origin',
+  productionApiBaseUrl = '/',
+  productionBrowserOriginMode = 'same-origin',
+} = {}) {
+  return {
+    'etc/topology/standalone.development.env': [
+      'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL=http://127.0.0.1:3800',
+      'SDKWORK_DEMO_PC_DEV_BIND=127.0.0.1:5182',
+      '',
+    ].join('\n'),
+    'etc/topology/standalone.production.env': [
+      'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL=http://127.0.0.1:3800',
+      'SDKWORK_DEMO_PC_STATIC_ROOT=apps/sdkwork-demo-pc/dist',
+      '',
+    ].join('\n'),
+    'etc/topology/cloud.development.env': [
+      'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL=https://demo.dev.sdkwork.com',
+      'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=https://api.dev.sdkwork.com',
+      '',
+    ].join('\n'),
+    'etc/topology/cloud.production.env': '',
+    'apps/sdkwork-demo-pc/etc/sdkwork.deployment.config.json': JSON.stringify({
+      schemaVersion: 1,
+      kind: 'sdkwork.component-deployment',
+      profiles: {
+        'standalone.development': { source: 'browser/runtime-env.development.json' },
+        'standalone.production': { source: 'browser/runtime-env.production.json' },
+      },
+    }),
+    'apps/sdkwork-demo-pc/etc/browser/runtime-env.development.json': JSON.stringify({
+      environment: 'development',
+      deploymentProfile: 'standalone',
+      browserOriginMode: developmentBrowserOriginMode,
+      appApiBaseUrl: developmentApiBaseUrl,
+    }),
+    'apps/sdkwork-demo-pc/etc/browser/runtime-env.production.json': JSON.stringify({
+      environment: 'production',
+      deploymentProfile: 'standalone',
+      browserOriginMode: productionBrowserOriginMode,
+      appApiBaseUrl: productionApiBaseUrl,
+    }),
+  };
+}
+
 test('accepts standalone and cloud two-segment topology profiles', () => {
   const { workspace } = makeWorkspace('sdkwork-demo', standardTopology(), {
     'etc/topology/standalone.development.env': '',
@@ -113,6 +241,267 @@ test('accepts the canonical --root single-application interface', () => {
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /1 repositories scanned/u);
+});
+
+test('accepts standalone browser same-origin dev proxy and production static evidence', () => {
+  const { workspace } = makeWorkspace(
+    'sdkwork-demo',
+    sameOriginBrowserTopology(),
+    sameOriginBrowserFiles(),
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('rejects a standalone browser client without same-origin delivery evidence', () => {
+  const topology = sameOriginBrowserTopology();
+  delete topology.orchestration.profiles['standalone.development'].browserDeliveries;
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, sameOriginBrowserFiles());
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /browser client demo-pc-browser requires exactly one same-origin dev-server-proxy delivery/u);
+});
+
+test('rejects browser delivery with the wrong origin mode', () => {
+  const topology = sameOriginBrowserTopology();
+  topology.orchestration.profiles['standalone.development']
+    .browserDeliveries[0].originMode = 'cross-origin';
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, sameOriginBrowserFiles());
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must use originMode same-origin/u);
+});
+
+test('rejects browser delivery that targets a non-application API surface', () => {
+  const topology = sameOriginBrowserTopology();
+  topology.orchestration.profiles['standalone.development']
+    .browserDeliveries[0].apiSurfaceId = 'platform.api-gateway';
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, sameOriginBrowserFiles());
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must use apiSurfaceId application.public-ingress/u);
+});
+
+test('rejects dev proxy delivery that references the wrong client process', () => {
+  const topology = sameOriginBrowserTopology();
+  topology.orchestration.profiles['standalone.development']
+    .browserDeliveries[0].clientProcessId = 'missing-browser';
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, sameOriginBrowserFiles());
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must reference its browser client process with bindEnv/u);
+});
+
+test('rejects browser runtime config that exposes the internal standalone API listener', () => {
+  const { workspace } = makeWorkspace(
+    'sdkwork-demo',
+    sameOriginBrowserTopology(),
+    sameOriginBrowserFiles({ developmentApiBaseUrl: 'http://127.0.0.1:3800' }),
+  );
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must use a root-relative same-origin path, not http:\/\/127\.0\.0\.1:3800 \(it exposes the internal API listener origin\)/u);
+});
+
+test('rejects an absolute browser-origin URL in standalone public runtime config', () => {
+  const { workspace } = makeWorkspace(
+    'sdkwork-demo',
+    sameOriginBrowserTopology(),
+    sameOriginBrowserFiles({ developmentApiBaseUrl: 'http://127.0.0.1:5182' }),
+  );
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must use a root-relative same-origin path, not http:\/\/127\.0\.0\.1:5182/u);
+});
+
+test('rejects a production loopback URL in standalone public runtime config', () => {
+  const { workspace } = makeWorkspace(
+    'sdkwork-demo',
+    sameOriginBrowserTopology(),
+    sameOriginBrowserFiles({ productionApiBaseUrl: 'http://127.0.0.1:3800' }),
+  );
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /standalone\.production browser runtime appApiBaseUrl must use a root-relative same-origin path/u);
+});
+
+test('rejects a standalone browser runtime without same-origin mode', () => {
+  const { workspace } = makeWorkspace(
+    'sdkwork-demo',
+    sameOriginBrowserTopology(),
+    sameOriginBrowserFiles({ developmentBrowserOriginMode: 'cross-origin' }),
+  );
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /browser runtime must declare browserOriginMode same-origin/u);
+});
+
+test('rejects browser delivery architecture drift from its development client', () => {
+  const topology = sameOriginBrowserTopology();
+  topology.orchestration.profiles['standalone.development']
+    .browserDeliveries[0].clientArchitectures = ['h5'];
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, sameOriginBrowserFiles());
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /clientArchitectures must match client process demo-pc-browser/u);
+});
+
+test('rejects a dev proxy that does not preserve canonical API paths', () => {
+  const topology = sameOriginBrowserTopology();
+  topology.orchestration.profiles['standalone.development']
+    .browserDeliveries[0].preserveCanonicalPaths = false;
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, sameOriginBrowserFiles());
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must set preserveCanonicalPaths=true/u);
+});
+
+test('rejects browser deliveries that mix dev-proxy and gateway-static fields', () => {
+  const topology = sameOriginBrowserTopology();
+  topology.orchestration.profiles['standalone.development']
+    .browserDeliveries[0].hostProcessId = 'application.public-ingress';
+  topology.orchestration.profiles['standalone.production']
+    .browserDeliveries[0].clientProcessId = 'demo-pc-browser';
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, sameOriginBrowserFiles());
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /dev-server-proxy must not declare hostProcessId/u);
+  assert.match(result.stderr, /gateway-static must not declare clientProcessId/u);
+});
+
+test('rejects missing standalone production static and SPA delivery evidence', () => {
+  const topology = sameOriginBrowserTopology();
+  delete topology.orchestration.profiles['standalone.production'].browserDeliveries;
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, sameOriginBrowserFiles());
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /architecture pc-web requires exactly one same-origin gateway-static delivery/u);
+});
+
+test('rejects production static delivery with an unresolved runtime root', () => {
+  const files = sameOriginBrowserFiles();
+  files['etc/topology/standalone.production.env'] =
+    'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL=http://127.0.0.1:3800\n';
+  const { workspace } = makeWorkspace('sdkwork-demo', sameOriginBrowserTopology(), files);
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /runtimeRootEnv must resolve in its source profile/u);
+});
+
+test('rejects production browser delivery with the wrong delivery mode', () => {
+  const topology = sameOriginBrowserTopology();
+  topology.orchestration.profiles['standalone.production']
+    .browserDeliveries[0].deliveryMode = 'dev-server-proxy';
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, sameOriginBrowserFiles());
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /standalone\.production browser delivery demo-pc must use gateway-static/u);
+});
+
+test('rejects production static delivery with a non-gateway host', () => {
+  const topology = sameOriginBrowserTopology();
+  topology.orchestration.profiles['standalone.production'].processes.push({
+    id: 'static-worker',
+    role: 'worker',
+  });
+  topology.orchestration.profiles['standalone.production']
+    .browserDeliveries[0].hostProcessId = 'static-worker';
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, sameOriginBrowserFiles());
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must reference an api-standalone-gateway host process/u);
+});
+
+test('rejects production static delivery outside its app root or canonical SPA mount', () => {
+  const topology = sameOriginBrowserTopology();
+  const delivery = topology.orchestration.profiles['standalone.production'].browserDeliveries[0];
+  delivery.buildOutput = 'dist/sdkwork-demo-pc';
+  delivery.mountPath = '/pc';
+  delivery.spaFallback = '/shell.html';
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, sameOriginBrowserFiles());
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /buildOutput must stay inside applicationRoot/u);
+  assert.match(result.stderr, /must mount \/ with SPA fallback \/index\.html/u);
+});
+
+test('rejects standalone server and browser platform gateway URL keys', () => {
+  const topology = standardTopology();
+  topology.surfaces['platform.api-gateway'].clientHttpEnv = 'VITE_DEMO_PLATFORM_API_GATEWAY_HTTP_URL';
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, {
+    'etc/topology/standalone.development.env': [
+      'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=http://127.0.0.1:3900',
+      'VITE_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=http://127.0.0.1:3900',
+      '',
+    ].join('\n'),
+    'etc/topology/cloud.development.env': [
+      'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL=https://demo.dev.sdkwork.com',
+      'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=https://api.dev.sdkwork.com',
+      '',
+    ].join('\n'),
+    'etc/topology/cloud.production.env': '',
+  });
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /standalone\.development must not define SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL/u);
+  assert.match(result.stderr, /standalone\.development must not define VITE_DEMO_PLATFORM_API_GATEWAY_HTTP_URL/u);
+});
+
+test('rejects platform gateway URL keys from standalone production profiles', () => {
+  const topology = sameOriginBrowserTopology();
+  topology.surfaces['platform.api-gateway'].clientHttpEnv =
+    'VITE_DEMO_PLATFORM_API_GATEWAY_HTTP_URL';
+  const files = sameOriginBrowserFiles();
+  files['etc/topology/standalone.production.env'] = [
+    'SDKWORK_DEMO_APPLICATION_PUBLIC_HTTP_URL=http://127.0.0.1:3800',
+    'SDKWORK_DEMO_PC_STATIC_ROOT=apps/sdkwork-demo-pc/dist',
+    'SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=http://127.0.0.1:3900',
+    'VITE_DEMO_PLATFORM_API_GATEWAY_HTTP_URL=http://127.0.0.1:3900',
+    '',
+  ].join('\n');
+  const { workspace } = makeWorkspace('sdkwork-demo', topology, files);
+
+  const result = runChecker(workspace);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /standalone\.production must not define SDKWORK_DEMO_PLATFORM_API_GATEWAY_HTTP_URL/u);
+  assert.match(result.stderr, /standalone\.production must not define VITE_DEMO_PLATFORM_API_GATEWAY_HTTP_URL/u);
 });
 
 test('does not require an HTTP URL for a gRPC-only public ingress', () => {
@@ -450,6 +839,21 @@ test('topology schema v5 forbids cloudIngress and the retired api-listener role'
   assert.equal(roles.includes('api-listener'), false);
   assert.equal(roles.includes('api-standalone-gateway'), true);
   assert.equal(roles.includes('edge-runtime'), true);
+  const browserDelivery = schema.properties.orchestration.properties.profiles.patternProperties[
+    '^(standalone|cloud)\\.[a-z0-9-]+$'
+  ].properties.browserDeliveries.items;
+  assert.equal(
+    schema.properties.orchestration.properties.profiles.patternProperties[
+      '^(standalone|cloud)\\.[a-z0-9-]+$'
+    ].properties.browserDeliveries.minItems,
+    1,
+  );
+  assert.ok(browserDelivery.required.includes('clientArchitectures'));
+  assert.deepEqual(browserDelivery.properties.originMode, { const: 'same-origin' });
+  assert.deepEqual(
+    browserDelivery.properties.deliveryMode.enum,
+    ['dev-server-proxy', 'gateway-static'],
+  );
 });
 
 test('rejects cloud development that starts local API and gateway processes', () => {

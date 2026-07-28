@@ -201,7 +201,22 @@ function validateProcess(root, processContract, fail) {
         fail(`temporary driver exception ${field} must be non-empty`);
       }
     }
-    for (const evidence of exception.evidence ?? []) {
+    const combinedBudget = exception.combinedConnectionBudget;
+    const validCombinedBudget = Number.isInteger(combinedBudget)
+      ? combinedBudget > 0
+      : isNonEmptyString(combinedBudget) && /^[A-Z][A-Z0-9_]+$/u.test(combinedBudget);
+    if (!validCombinedBudget) {
+      fail('temporary driver exception combinedConnectionBudget must be a positive integer or environment key');
+    }
+    const adr = readEvidence(root, exception.adr, fail);
+    if (adr && !/(?:^|\n)-?\s*Status:\s*(?:accepted|temporary exception)\s*(?:\n|$)/iu.test(adr)) {
+      fail(`temporary driver exception ADR ${exception.adr} must have accepted or temporary exception status`);
+    }
+    const evidenceItems = Array.isArray(exception.evidence) ? exception.evidence : [];
+    if (evidenceItems.length === 0) {
+      fail('temporary driver exception evidence must be non-empty');
+    }
+    for (const evidence of evidenceItems) {
       const content = readEvidence(root, evidence, fail);
       if (content || fs.existsSync(resolveEvidencePath(root, evidence))) {
         exceptionFiles.add(resolveEvidencePath(root, evidence));

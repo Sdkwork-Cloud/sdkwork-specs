@@ -1,6 +1,6 @@
 # Application Gateway Standard
 
-- Version: 2.1
+- Version: 2.3
 - Scope: application standalone and platform cloud HTTP gateway hosts, listener ownership, naming, topology binding, thin-host boundaries, pnpm commands, migration, and verification
 - Related: `API_ASSEMBLY_SPEC.md`, `NAMING_SPEC.md` section 4.3.1, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `COMPONENT_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `MIGRATION_SPEC.md`, `TEST_SPEC.md`
 
@@ -68,6 +68,8 @@ These terms are not interchangeable:
 | Application standalone gateway | Application-owned standalone HTTP process | `sdkwork-api-<application-code>-standalone-gateway` |
 | Platform cloud gateway | Platform-owned cloud HTTP process | `sdkwork-api-cloud-gateway` |
 | Gateway host | A statement that intentionally applies to both canonical process roles | No client/runtime-config identity |
+| Browser-visible origin | Origin used by the page and browser network requests | `browserDeliveries[].originMode` and the resolved `browserVisibleOrigin` |
+| API target origin | Internal or public origin that receives proxied API traffic | Resolved `browserDeliveries[].apiTargetOrigin` |
 
 Active standards, manifests, and application documentation `MUST NOT` use
 bare phrases such as "the gateway", "shared gateway", or "SDKWork API
@@ -92,11 +94,13 @@ Rules:
   `/proxy/platform`, `/gateway/platform`, or `/platform/app/v3/api` `MUST NOT`
   appear in public runtime config, generated SDK base URLs, documentation
   examples, browser network traces, or client-visible API contracts.
-- When one browser development origin serves both application-owned and
-  dependency-owned APIs, the dev server `MUST` route by canonical path
-  precedence: exact and dependency-owned route namespaces first, then broad
-  application-owned surface fallbacks such as `/app`, `/backend`, or open-api
-  prefixes.
+- A standalone development profile with a browser client `MUST` expose one
+  browser-visible origin through its declared `dev-server-proxy` delivery. The
+  dev server `MUST` route application-owned and dependency-owned APIs by
+  canonical path precedence: exact and dependency-owned route namespaces first,
+  then broad application-owned surface fallbacks such as `/app`, `/backend`, or
+  open-api prefixes. Canonical `/openapi.json`, `/healthz`, `/readyz`, `/livez`,
+  and `/metrics` paths are forwarded without a synthetic proxy prefix.
 - A proxy target, upstream URL, or connectivity plane name may be configured
   privately in Node/server runtime config, but it must not be encoded into the
   client-visible request URI.
@@ -131,6 +135,20 @@ dependencies; or start per-surface HTTP sidecars.
 
 The selected standalone profile `MUST` determine whether each dependency surface is embedded through its dependency assembly or external through an explicit platform/dependency URL. The gateway fails startup when the profile selects embedded mode without an executable dependency assembly, or external mode without a resolvable upstream/base URL.
 
+An embedded owner contribution that reads filesystem runtime assets `MUST`
+receive an explicit owner-scoped runtime root from the application package.
+The package contains the dependency-owned database manifests, migrations,
+registry/module contracts, and other startup-required assets selected by that
+owner. Production startup and release smoke tests `MUST NOT` resolve those
+assets from sibling source repositories or compile-time source paths.
+
+For a production `gateway-static` browser delivery, the standalone gateway
+also serves the declared built browser asset root. API/OpenAPI/health/operations
+routes `MUST` be matched before static assets, and static assets `MUST` be
+matched before the `/index.html` SPA fallback. A production browser delivery
+fails startup or readiness when its declared runtime asset root or index file
+is missing; it must not silently degrade into an API-only `404` application.
+
 ## 4. Platform Cloud Gateway
 
 `sdkwork-api-cloud-gateway` is owned only by the platform gateway repository.
@@ -146,7 +164,7 @@ process infrastructure is mounted once.
 ## 5. Single HTTP Ingress
 
 Standalone application development and deployment allows exactly one
-application-plane HTTP listener:
+application-plane **API** listener:
 
 ```text
 sdkwork-api-<application-code>-standalone-gateway
@@ -158,6 +176,13 @@ but default standalone orchestration `MUST NOT` start them as HTTP sidecars.
 An assembly may count a route surface as served only when its mount contributes
 an executable `axum::Router`; route manifests and descriptors never establish
 runtime HTTP capability by themselves.
+
+A Vite or equivalent development renderer may own a second internal HTTP
+listener as a `client` process. That listener is not another API host: the
+browser sees it as the sole page/API origin, and it forwards canonical API
+paths to the one standalone gateway listener declared as its `apiTargetOrigin`.
+Production `gateway-static` delivery removes that renderer listener and serves
+the page and APIs through the application ingress itself.
 
 An RPC, gRPC, worker, or service host that has no application HTTP API may own
 an operations-only listener for canonical `/healthz`, `/readyz`, and `/metrics`
@@ -227,7 +252,17 @@ Application topology declares its standalone gateway and surface-oriented
 remote URLs. It does not declare a cloud gateway crate, binary, repository,
 owner, bind variable, config path, or autostart flag.
 
-Renderer bind/port, access endpoint, SDK base URL, CORS origin, credential-entry bootstrap handoff, and gateway bind `MUST` resolve from the same runtime plan. Package scripts may consume the resolved values but must not override them with hard-coded ports.
+Renderer bind/port, access endpoint, SDK base URL, browser delivery, CORS origin, credential-entry bootstrap handoff, and gateway bind `MUST` resolve from the same runtime plan. Package scripts may consume the resolved values but must not override them with hard-coded ports.
+
+For standalone production, `application.public-ingress` is the browser-visible
+page and API origin. During standalone development, a declared client dev
+server may be the browser-visible origin while
+`application.public-ingress` remains its internal API target. Same-origin
+dependency assemblies run inside that gateway process, so standalone profile
+files and materialized client config `MUST NOT` resolve
+`platform.api-gateway`, set its public/Vite URL keys, point dependency SDKs at
+a second local port, or expose the internal API target origin to browser code.
+`platform.api-gateway` URL resolution is cloud-profile-only.
 
 Canonical roles are `api-standalone-gateway` in an application topology and
 `platform-cloud-gateway` in the platform gateway topology. Application client
@@ -270,5 +305,11 @@ node ../sdkwork-specs/tools/check-api-runtime-parity.mjs --root .
 - [ ] Gateway hosts are thin and mount process infrastructure once.
 - [ ] All selected application/dependency routers are merged before one Web Framework layer; no API router or duplicate CORS/auth middleware is added afterward.
 - [ ] Served OpenAPI is built from the same selected assembly contributions and auth profiles as the executable router.
-- [ ] Standalone has one application HTTP listener.
+- [ ] Standalone has one application API listener; an optional development
+      renderer listener is declared only as client tooling behind one
+      browser-visible origin.
+- [ ] A standalone browser client declares same-origin development proxy and
+      production static/SPA delivery evidence for every selected architecture.
+- [ ] Browser SDK URLs use the browser-visible origin; internal development API
+      targets remain private to the dev-server process.
 - [ ] Cloud development starts no local API-plane process.

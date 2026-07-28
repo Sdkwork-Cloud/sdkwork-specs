@@ -524,3 +524,61 @@ test('standards repositories are exempt from consumer SDK dependency requirement
 
   assert.equal(resolution.issues.includes('no sdkDependencies found in consumer core component.spec.json files'), false);
 });
+
+test('resolveComposition classifies sibling internal SDKs on the internal service plane', () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-composition-internal-'));
+  const root = path.join(workspaceRoot, 'sdkwork-demo');
+  const appRoot = path.join(root, 'apps/sdkwork-demo-pc');
+  writeJson(path.join(root, 'sdkwork.app.config.json'), {
+    schemaVersion: 3,
+    kind: 'sdkwork.app',
+    app: { key: 'sdkwork-demo' },
+  });
+  writeJson(path.join(appRoot, 'sdkwork.app.config.json'), {
+    schemaVersion: 3,
+    kind: 'sdkwork.app',
+    app: { key: 'sdkwork-demo' },
+  });
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-core/package.json'), {
+    name: '@sdkwork/demo-pc-core',
+    version: '0.0.0',
+  });
+  writeJson(path.join(appRoot, 'packages/sdkwork-demo-pc-core/specs/component.spec.json'), {
+    component: {
+      name: '@sdkwork/demo-pc-core',
+      type: 'frontend-core',
+      surface: 'app',
+    },
+    contracts: {
+      sdkDependencies: [{ workspace: 'sdkwork-drive-internal-sdk' }],
+    },
+  });
+  createSdkFamily(path.join(workspaceRoot, 'sdkwork-drive'), 'sdkwork-drive-internal-sdk', {
+    sdkOwner: 'sdkwork-drive',
+    apiAuthority: 'sdkwork-drive-internal-api',
+    sdkTarget: 'internal',
+    apiPrefix: '/internal/v3/api',
+  });
+
+  try {
+    const resolution = resolveComposition(root);
+    const internal = resolution.integrations.find(
+      (entry) => entry.workspace === 'sdkwork-drive-internal-sdk',
+    );
+
+    assert.deepEqual(resolution.issues, []);
+    assert.ok(internal);
+    assert.equal(internal.surface, 'internal-api');
+    assert.equal(internal.apiPrefix, '/internal/v3/api');
+    assert.equal(internal.sdkOwner, 'sdkwork-drive');
+    assert.equal(internal.connectivityPlane, 'platform');
+    assert.equal(internal.runtimeMode, 'external-via-platform-surface');
+    assert.equal(internal.envKey, 'SDKWORK_DRIVE_INTERNAL_API_BASE_URL');
+    assert.equal(
+      resolution.meta.credentialModes['sdkwork-drive-internal-sdk'],
+      'ingress-token',
+    );
+  } finally {
+    fs.rmSync(workspaceRoot, { force: true, recursive: true });
+  }
+});

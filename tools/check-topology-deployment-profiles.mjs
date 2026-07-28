@@ -16,6 +16,13 @@ const PROCESS_ROLES = new Set([
   'edge-runtime', 'database', 'redis', 'migration',
   'seed', 'worker', 'tunnel',
 ]);
+const CLIENT_ARCHITECTURES = new Set([
+  'pc-web', 'h5', 'capacitor', 'flutter', 'tauri', 'electron',
+  'android-native', 'ios-native', 'harmony-native', 'mini-program',
+]);
+const BROWSER_API_CONFIG_KEY = /(?:sdk|api)baseurl$|applicationpublichttpurl$/iu;
+const BROWSER_API_ENV_KEY = /(?:_SDK_BASE_URL|_(?:OPEN|APP|BACKEND)_API_BASE_URL|_APPLICATION_PUBLIC_HTTP_URL)$/u;
+const BROWSER_ORIGIN_MODE_ENV_KEY = /_BROWSER_ORIGIN_MODE$/u;
 
 function readEnv(file) {
   const values = new Map();
@@ -47,6 +54,350 @@ function isPlaceholderUrl(value) {
       || hostname.endsWith('.example.com');
   } catch {
     return true;
+  }
+}
+
+function isPathInside(root, target) {
+  const relative = path.relative(root, target);
+  return relative === '' || (!relative.startsWith(`..${path.sep}`)
+    && relative !== '..'
+    && !path.isAbsolute(relative));
+}
+
+function originFromUrl(value, label, issues) {
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('unsupported protocol');
+    return url.origin;
+  } catch {
+    issues.push(`${label} must be an absolute HTTP(S) URL`);
+    return null;
+  }
+}
+
+function originFromBind(value, label, issues) {
+  const binding = String(value ?? '').trim();
+  const bracketed = /^\[([^\]]+)\]:(\d+)$/u.exec(binding);
+  const plain = /^([^:]+):(\d+)$/u.exec(binding);
+  const match = bracketed ?? plain;
+  if (!match) {
+    issues.push(`${label} must resolve to <host>:<port>`);
+    return null;
+  }
+  const port = Number(match[2]);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    issues.push(`${label} must resolve to a valid TCP port`);
+    return null;
+  }
+  const rawHost = match[1];
+  const host = ['0.0.0.0', '::'].includes(rawHost) ? '127.0.0.1' : rawHost;
+  const formattedHost = host.includes(':') ? `[${host}]` : host;
+  return `http://${formattedHost}:${port}`;
+}
+
+function isBrowserClient(process) {
+  return process?.role === 'client'
+    && Array.isArray(process.runtimeTargets)
+    && process.runtimeTargets.includes('browser')
+    && Array.isArray(process.clientArchitectures)
+    && process.clientArchitectures.length > 0
+    && typeof process.applicationRoot === 'string'
+    && process.applicationRoot.trim() !== '';
+}
+
+function sameStringSet(left, right) {
+  return Array.isArray(left)
+    && Array.isArray(right)
+    && left.length === right.length
+    && left.every((value) => right.includes(value));
+}
+
+function collectJsonBrowserApiValues(value, prefix = '', results = []) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return results;
+  for (const [key, entry] of Object.entries(value)) {
+    const field = prefix ? `${prefix}.${key}` : key;
+    if (typeof entry === 'string' && BROWSER_API_CONFIG_KEY.test(key)) {
+      results.push({ key: field, value: entry });
+      continue;
+    }
+    collectJsonBrowserApiValues(entry, field, results);
+  }
+  return results;
+}
+
+function emptyBrowserRuntimeSource() {
+  return { apiValues: [], browserOriginMode: null };
+}
+
+function readBrowserRuntimeSource(repoRoot, applicationRoot, profileId, rel, issues) {
+  const appRoot = path.resolve(repoRoot, applicationRoot);
+  if (!isPathInside(repoRoot, appRoot) || !fs.existsSync(appRoot)) {
+    issues.push(`${rel}: ${profileId} browser applicationRoot must exist inside the repository: ${applicationRoot}`);
+    return emptyBrowserRuntimeSource();
+  }
+  const deploymentPath = path.join(appRoot, 'etc', 'sdkwork.deployment.config.json');
+  if (!fs.existsSync(deploymentPath)) {
+    issues.push(`${rel}: ${profileId} browser application ${applicationRoot} requires etc/sdkwork.deployment.config.json`);
+    return emptyBrowserRuntimeSource();
+  }
+  let deployment;
+  try {
+    deployment = readJson(deploymentPath);
+  } catch (error) {
+    issues.push(`${rel}: ${profileId} browser deployment config is invalid JSON (${error.message})`);
+    return emptyBrowserRuntimeSource();
+  }
+  const entry = deployment.profiles?.[profileId];
+  const sourcePath = String(entry?.source ?? entry?.config ?? '').trim();
+  if (!sourcePath) {
+    issues.push(`${rel}: ${profileId} browser application ${applicationRoot} must declare a public runtime source`);
+    return emptyBrowserRuntimeSource();
+  }
+  const etcRoot = path.dirname(deploymentPath);
+  const source = path.resolve(etcRoot, sourcePath);
+  if (!isPathInside(etcRoot, source) || !fs.existsSync(source)) {
+    issues.push(`${rel}: ${profileId} browser runtime source must exist inside ${applicationRoot}/etc: ${sourcePath}`);
+    return emptyBrowserRuntimeSource();
+  }
+  try {
+    if (source.endsWith('.json')) {
+      const config = readJson(source);
+      return {
+        apiValues: collectJsonBrowserApiValues(config),
+        browserOriginMode: String(config.browserOriginMode ?? '').trim() || null,
+      };
+    }
+    const values = readEnv(source);
+    const originMode = [...values.entries()]
+      .find(([key]) => BROWSER_ORIGIN_MODE_ENV_KEY.test(key));
+    return {
+      apiValues: [...values.entries()]
+        .filter(([key]) => BROWSER_API_ENV_KEY.test(key))
+        .map(([key, value]) => ({ key, value })),
+      browserOriginMode: String(originMode?.[1] ?? '').trim() || null,
+    };
+  } catch (error) {
+    issues.push(`${rel}: ${profileId} browser runtime source cannot be parsed (${error.message})`);
+    return emptyBrowserRuntimeSource();
+  }
+}
+
+function validateBrowserApiValues({
+  repoRoot,
+  applicationRoot,
+  profileId,
+  browserOrigin,
+  apiTargetOrigin,
+  rel,
+  issues,
+}) {
+  if (!browserOrigin) return;
+  const runtimeSource = readBrowserRuntimeSource(
+    repoRoot,
+    applicationRoot,
+    profileId,
+    rel,
+    issues,
+  );
+  if (runtimeSource.browserOriginMode !== 'same-origin') {
+    issues.push(`${rel}: ${profileId} browser runtime must declare browserOriginMode same-origin`);
+  }
+  for (const entry of runtimeSource.apiValues) {
+    const raw = String(entry.value ?? '').trim();
+    if (!raw) continue;
+    let resolved = null;
+    try {
+      const url = new URL(raw, browserOrigin);
+      if (!['http:', 'https:'].includes(url.protocol)) throw new Error('unsupported protocol');
+      resolved = url.origin;
+    } catch {
+      issues.push(`${rel}: ${profileId} browser runtime ${entry.key} must be a root-relative same-origin path`);
+      continue;
+    }
+    if (!raw.startsWith('/') || raw.startsWith('//') || resolved !== browserOrigin) {
+      const targetDetail = resolved === apiTargetOrigin && apiTargetOrigin !== browserOrigin
+        ? ' (it exposes the internal API listener origin)'
+        : '';
+      issues.push(`${rel}: ${profileId} browser runtime ${entry.key} must use a root-relative same-origin path, not ${raw}${targetDetail}`);
+    }
+  }
+}
+
+function validateStandaloneBrowserDeliveries(repoRoot, spec, rel, issues) {
+  if (spec.schemaVersion !== 5) return;
+  const profiles = spec.orchestration?.profiles ?? {};
+  const devProfile = profiles['standalone.development'];
+  const devBrowserClients = (devProfile?.processes ?? []).filter(isBrowserClient);
+  const devRoots = new Set(devBrowserClients.map((process) => process.applicationRoot));
+  const devArchitectures = new Map();
+  for (const client of devBrowserClients) {
+    const architectures = devArchitectures.get(client.applicationRoot) ?? new Set();
+    client.clientArchitectures.forEach((architecture) => architectures.add(architecture));
+    devArchitectures.set(client.applicationRoot, architectures);
+  }
+
+  for (const [profileId, profile] of Object.entries(profiles)) {
+    if (!profileId.startsWith('standalone.')) continue;
+    const profilePath = spec.profileFiles?.[profileId];
+    const profileEnv = profilePath && fs.existsSync(path.join(repoRoot, profilePath))
+      ? readEnv(path.join(repoRoot, profilePath))
+      : new Map();
+    const deliveries = profile.browserDeliveries ?? [];
+    const deliveryIds = new Set();
+    for (const delivery of deliveries) {
+      if (!delivery?.id || deliveryIds.has(delivery.id)) {
+        issues.push(`${rel}: ${profileId} browser delivery ids must be non-empty and unique`);
+        continue;
+      }
+      deliveryIds.add(delivery.id);
+      if (delivery.originMode !== 'same-origin') {
+        issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} must use originMode same-origin`);
+      }
+      if (!Array.isArray(delivery.clientArchitectures)
+        || delivery.clientArchitectures.length === 0
+        || new Set(delivery.clientArchitectures).size !== delivery.clientArchitectures.length
+        || delivery.clientArchitectures.some((value) => !CLIENT_ARCHITECTURES.has(value))) {
+        issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} requires non-empty unique canonical clientArchitectures`);
+      }
+      if (delivery.apiSurfaceId !== 'application.public-ingress') {
+        issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} must use apiSurfaceId application.public-ingress`);
+      }
+      const applicationRoot = String(delivery.applicationRoot ?? '').trim();
+      const appRoot = path.resolve(repoRoot, applicationRoot);
+      if (!applicationRoot || !isPathInside(repoRoot, appRoot) || !fs.existsSync(appRoot)) {
+        issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} applicationRoot must exist inside the repository`);
+      }
+      const apiSurface = spec.surfaces?.['application.public-ingress'];
+      const apiUrl = apiSurface?.httpUrlEnv ? profileEnv.get(apiSurface.httpUrlEnv) : null;
+      if (!apiUrl) {
+        issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} must resolve application.public-ingress`);
+      }
+      const apiTargetOrigin = apiUrl
+        ? originFromUrl(apiUrl, `${rel}: ${profileId} application.public-ingress`, issues)
+        : null;
+
+      if (profileId === 'standalone.development'
+        && delivery.deliveryMode !== 'dev-server-proxy') {
+        issues.push(`${rel}: standalone.development browser delivery ${delivery.id} must use dev-server-proxy`);
+      }
+      if (profileId === 'standalone.production'
+        && delivery.deliveryMode !== 'gateway-static') {
+        issues.push(`${rel}: standalone.production browser delivery ${delivery.id} must use gateway-static`);
+      }
+
+      if (delivery.deliveryMode === 'dev-server-proxy') {
+        for (const field of ['hostProcessId', 'buildOutput', 'runtimeRootEnv', 'mountPath', 'spaFallback']) {
+          if (delivery[field] !== undefined) {
+            issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} dev-server-proxy must not declare ${field}`);
+          }
+        }
+        const client = (profile.processes ?? []).find((process) => process.id === delivery.clientProcessId);
+        if (!isBrowserClient(client) || client.applicationRoot !== applicationRoot || !client.bindEnv) {
+          issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} must reference its browser client process with bindEnv`);
+          continue;
+        }
+        if (!sameStringSet(delivery.clientArchitectures, client.clientArchitectures)) {
+          issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} clientArchitectures must match client process ${client.id}`);
+        }
+        if (delivery.preserveCanonicalPaths !== true) {
+          issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} must set preserveCanonicalPaths=true`);
+        }
+        const browserOrigin = originFromBind(
+          profileEnv.get(client.bindEnv),
+          `${rel}: ${profileId} ${client.bindEnv}`,
+          issues,
+        );
+        if (apiSurface?.clientHttpEnv && profileEnv.has(apiSurface.clientHttpEnv)) {
+          const publicOrigin = originFromUrl(
+            profileEnv.get(apiSurface.clientHttpEnv),
+            `${rel}: ${profileId} ${apiSurface.clientHttpEnv}`,
+            issues,
+          );
+          if (publicOrigin && browserOrigin && publicOrigin !== browserOrigin) {
+            issues.push(`${rel}: ${profileId} ${apiSurface.clientHttpEnv} must resolve to browser origin ${browserOrigin}`);
+          }
+        }
+        validateBrowserApiValues({
+          repoRoot,
+          applicationRoot,
+          profileId,
+          browserOrigin,
+          apiTargetOrigin,
+          rel,
+          issues,
+        });
+        continue;
+      }
+
+      if (delivery.deliveryMode === 'gateway-static') {
+        for (const field of ['clientProcessId', 'preserveCanonicalPaths']) {
+          if (delivery[field] !== undefined) {
+            issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} gateway-static must not declare ${field}`);
+          }
+        }
+        const host = (profile.processes ?? []).find((process) => process.id === delivery.hostProcessId);
+        if (!host || host.role !== 'api-standalone-gateway') {
+          issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} must reference an api-standalone-gateway host process`);
+        }
+        const buildOutput = path.resolve(repoRoot, String(delivery.buildOutput ?? ''));
+        if (!delivery.buildOutput || !isPathInside(appRoot, buildOutput)) {
+          issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} buildOutput must stay inside applicationRoot`);
+        }
+        if (!/^[A-Z][A-Z0-9_]+$/u.test(String(delivery.runtimeRootEnv ?? ''))
+          || !profileEnv.get(delivery.runtimeRootEnv)) {
+          issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} runtimeRootEnv must resolve in its source profile`);
+        }
+        if (delivery.mountPath !== '/' || delivery.spaFallback !== '/index.html') {
+          issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} must mount / with SPA fallback /index.html`);
+        }
+        validateBrowserApiValues({
+          repoRoot,
+          applicationRoot,
+          profileId,
+          browserOrigin: apiTargetOrigin,
+          apiTargetOrigin,
+          rel,
+          issues,
+        });
+        continue;
+      }
+
+      issues.push(`${rel}: ${profileId} browser delivery ${delivery.id} uses unsupported deliveryMode ${delivery.deliveryMode}`);
+    }
+
+    if (profileId === 'standalone.development') {
+      for (const client of devBrowserClients) {
+        const matches = deliveries.filter((delivery) => (
+          delivery.deliveryMode === 'dev-server-proxy'
+          && delivery.clientProcessId === client.id
+          && delivery.applicationRoot === client.applicationRoot
+          && sameStringSet(delivery.clientArchitectures, client.clientArchitectures)
+        ));
+        if (matches.length !== 1) {
+          issues.push(`${rel}: standalone.development browser client ${client.id} requires exactly one same-origin dev-server-proxy delivery`);
+        }
+      }
+    }
+  }
+
+  if (devRoots.size > 0 && spec.vocabulary?.environment?.allowed?.includes('production')) {
+    const production = profiles['standalone.production'];
+    if (!production || !spec.profileFiles?.['standalone.production']) {
+      issues.push(`${rel}: standalone browser clients require a standalone.production topology profile`);
+      return;
+    }
+    for (const applicationRoot of devRoots) {
+      for (const architecture of devArchitectures.get(applicationRoot) ?? []) {
+        const matches = (production.browserDeliveries ?? []).filter((delivery) => (
+          delivery.deliveryMode === 'gateway-static'
+          && delivery.applicationRoot === applicationRoot
+          && delivery.clientArchitectures?.includes(architecture)
+        ));
+        if (matches.length !== 1) {
+          issues.push(`${rel}: standalone.production browser application ${applicationRoot} architecture ${architecture} requires exactly one same-origin gateway-static delivery`);
+        }
+      }
+    }
   }
 }
 
@@ -235,6 +586,24 @@ function checkSpec(repoRoot, specPath) {
     }
   }
 
+  for (const [profileId, profilePath] of Object.entries(spec.profileFiles ?? {})) {
+    if (!profileId.startsWith('standalone.')) continue;
+    const envPath = path.join(repoRoot, profilePath);
+    if (!fs.existsSync(envPath)) continue;
+    const standaloneEnv = readEnv(envPath);
+    const forbiddenPlatformKeys = new Set([
+      platformSurface?.httpUrlEnv,
+      platformSurface?.clientHttpEnv,
+    ].filter(Boolean));
+    for (const key of forbiddenPlatformKeys) {
+      if (standaloneEnv.has(key)) {
+        issues.push(
+          `${rel}: ${profileId} must not define ${key}; embedded dependency APIs use application.public-ingress`,
+        );
+      }
+    }
+  }
+
   const standaloneDevPath = spec.profileFiles?.['standalone.development'];
   const standaloneDev = spec.orchestration?.profiles?.['standalone.development'];
   if (standaloneDevPath && fs.existsSync(path.join(repoRoot, standaloneDevPath))) {
@@ -297,6 +666,8 @@ function checkSpec(repoRoot, specPath) {
   ) {
     issues.push(`${rel}: missing platform.api-gateway surface`);
   }
+
+  validateStandaloneBrowserDeliveries(repoRoot, spec, rel, issues);
 
   return issues;
 }

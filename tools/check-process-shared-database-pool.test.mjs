@@ -105,4 +105,42 @@ const schemaMismatch = validateProcessSharedDatabasePool(schemaMismatchRoot);
 assert.equal(schemaMismatch.ok, false);
 assert.ok(schemaMismatch.failures.some((failure) => failure.includes('profile schema mismatch')));
 
+const missingBudgetRoot = scaffold();
+write(
+  missingBudgetRoot,
+  'docs/architecture/decisions/ADR-temporary-driver.md',
+  '# Temporary driver\n\nStatus: accepted\n',
+);
+write(
+  missingBudgetRoot,
+  'crates/sdkwork-api-demo-standalone-gateway/src/compatibility.rs',
+  'fn compatibility_pool() { let _pool = AnyPoolOptions::new(); }\n',
+);
+const missingBudgetContractPath = path.join(
+  missingBudgetRoot,
+  'specs/process-database-pool.spec.json',
+);
+const missingBudgetContract = JSON.parse(
+  fs.readFileSync(missingBudgetContractPath, 'utf8'),
+);
+missingBudgetContract.processes[0].temporaryDriverPoolCountEnv =
+  'SDKWORK_DATABASE_TEMPORARY_DRIVER_POOL_COUNT';
+missingBudgetContract.processes[0].temporaryDriverExceptions = [{
+  driver: 'sqlx::AnyPool',
+  owner: 'demo maintainers',
+  removalMilestone: 'before the next production release',
+  adr: 'docs/architecture/decisions/ADR-temporary-driver.md',
+  evidence: ['crates/sdkwork-api-demo-standalone-gateway/src/compatibility.rs'],
+}];
+fs.writeFileSync(
+  missingBudgetContractPath,
+  `${JSON.stringify(missingBudgetContract, null, 2)}\n`,
+  'utf8',
+);
+const missingBudget = validateProcessSharedDatabasePool(missingBudgetRoot);
+assert.equal(missingBudget.ok, false);
+assert.ok(
+  missingBudget.failures.some((failure) => failure.includes('combinedConnectionBudget')),
+);
+
 process.stdout.write('check-process-shared-database-pool.test.mjs passed\n');
