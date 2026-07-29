@@ -9,6 +9,32 @@ test('accepts the canonical shared development identity', () => {
   assert.equal(inspectLine('SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_dev', filePath), null);
   assert.equal(inspectLine('SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_dev', filePath), null);
   assert.equal(inspectLine('SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_dev', filePath), null);
+  assert.equal(inspectLine('SDKWORK_DEMO_DATABASE_NAME=sdkwork_ai_dev', filePath), null);
+  assert.equal(inspectLine('SDKWORK_DEMO_DATABASE_SCHEMA=sdkwork_ai_dev', filePath), null);
+  assert.equal(inspectLine('SDKWORK_DEMO_DATABASE_USERNAME=sdkwork_ai_dev', filePath), null);
+});
+
+test('requires exact shared identities in every application development profile', () => {
+  const filePath = 'sdkwork-demo/etc/topology/standalone.development.env';
+  assert.match(
+    inspectLine('SDKWORK_DEMO_DATABASE_NAME=postgres', filePath),
+    /expected sdkwork_ai_dev/u,
+  );
+  assert.match(
+    inspectLine('SDKWORK_DEMO_DATABASE_SCHEMA=sdkwork_ai_prod', filePath),
+    /expected sdkwork_ai_dev/u,
+  );
+  assert.match(
+    inspectLine('SDKWORK_DEMO_DATABASE_USERNAME=postgres', filePath),
+    /expected sdkwork_ai_dev/u,
+  );
+  assert.match(
+    inspectLine(
+      'SDKWORK_DEMO_DATABASE_URL=postgresql://sdkwork_ai_prod:secret@db:5432/sdkwork_ai_prod',
+      filePath,
+    ),
+    /expected sdkwork_ai_dev/u,
+  );
 });
 
 test('rejects application-specific development databases and schemas', () => {
@@ -46,6 +72,13 @@ test('keeps production identity distinct from development identity', () => {
   );
   assert.match(
     inspectLine('SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_dev', productionPath),
+    /expected sdkwork_ai_prod/u,
+  );
+  assert.match(
+    inspectLine(
+      'SDKWORK_DEMO_DATABASE_URL=postgresql://sdkwork_ai_dev:secret@db:5432/sdkwork_ai_dev',
+      productionPath,
+    ),
     /expected sdkwork_ai_prod/u,
   );
 });

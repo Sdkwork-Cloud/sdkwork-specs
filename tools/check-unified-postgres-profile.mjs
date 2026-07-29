@@ -76,7 +76,7 @@ function collectFiles(dir, files = []) {
   return files;
 }
 
-function expectedClawIdentity(filePath) {
+function expectedConnectionIdentity(filePath) {
   const normalized = filePath.replace(/\\/gu, '/').toLowerCase();
   if (normalized.includes('production')) {
     return 'sdkwork_ai_prod';
@@ -111,7 +111,7 @@ export function inspectLine(line, filePath) {
     const allowed = field === 'USERNAME'
       ? CANONICAL_CONNECTION_USERS
       : CANONICAL_CONNECTION_DATABASES;
-    const expected = expectedClawIdentity(filePath);
+    const expected = expectedConnectionIdentity(filePath);
     if (!allowed.has(value) || (expected && value !== expected)) {
       return `non-canonical SDKWORK_CLAW_DATABASE_${field}=${value}; expected ${expected ?? 'sdkwork_ai_dev or sdkwork_ai_prod'}`;
     }
@@ -120,28 +120,38 @@ export function inspectLine(line, filePath) {
   const envName = trimmed.match(/^SDKWORK_(?!CLAW)([A-Z0-9_]+)_DATABASE_NAME=(.+)$/u);
   if (envName) {
     const value = envName[2].trim();
-    if (!CANONICAL_DEV.has(value) && !CANONICAL_PROD.has(value)) {
-      return `non-canonical SDKWORK_${envName[1]}_DATABASE_NAME=${value}`;
+    const expected = expectedConnectionIdentity(filePath);
+    if (
+      (expected && value !== expected)
+      || (!expected && !CANONICAL_DEV.has(value) && !CANONICAL_PROD.has(value))
+    ) {
+      return `non-canonical SDKWORK_${envName[1]}_DATABASE_NAME=${value}; expected ${expected ?? 'sdkwork_ai_dev or sdkwork_ai_prod'}`;
     }
   }
 
   const envUser = trimmed.match(/^SDKWORK_(?!CLAW)([A-Z0-9_]+)_DATABASE_USERNAME=(.+)$/u);
   if (envUser) {
     const value = envUser[2].trim();
-    if (!CANONICAL_USER.has(value)) {
-      return `non-canonical SDKWORK_${envUser[1]}_DATABASE_USERNAME=${value}`;
+    const expected = expectedConnectionIdentity(filePath);
+    if ((expected && value !== expected) || (!expected && !CANONICAL_USER.has(value))) {
+      return `non-canonical SDKWORK_${envUser[1]}_DATABASE_USERNAME=${value}; expected ${expected ?? 'a canonical workspace PostgreSQL user'}`;
     }
   }
 
   const envSchema = trimmed.match(/^SDKWORK_(?!CLAW)([A-Z0-9_]+)_DATABASE_SCHEMA=(.+)$/u);
   if (envSchema) {
     const value = envSchema[2].trim();
+    const expected = expectedConnectionIdentity(filePath);
     if (
-      !CANONICAL_DEV.has(value)
-      && !CANONICAL_PROD.has(value)
-      && !value.includes('_test')
+      (expected && value !== expected)
+      || (
+        !expected
+        && !CANONICAL_DEV.has(value)
+        && !CANONICAL_PROD.has(value)
+        && !value.includes('_test')
+      )
     ) {
-      return `non-canonical SDKWORK_${envSchema[1]}_DATABASE_SCHEMA=${value}`;
+      return `non-canonical SDKWORK_${envSchema[1]}_DATABASE_SCHEMA=${value}; expected ${expected ?? 'a canonical workspace PostgreSQL schema'}`;
     }
   }
 
@@ -183,12 +193,17 @@ export function inspectLine(line, filePath) {
   );
   if (databaseUrlMatch) {
     const value = decodeURIComponent(databaseUrlMatch[1]);
+    const expected = expectedConnectionIdentity(filePath);
     if (
-      !CANONICAL_CONNECTION_DATABASES.has(value)
-      && !ALLOWED_TEST_DB.has(value)
-      && !value.includes('_test')
+      (expected && value !== expected)
+      || (
+        !expected
+        && !CANONICAL_CONNECTION_DATABASES.has(value)
+        && !ALLOWED_TEST_DB.has(value)
+        && !value.includes('_test')
+      )
     ) {
-      return `non-canonical PostgreSQL URL database=${value}`;
+      return `non-canonical PostgreSQL URL database=${value}; expected ${expected ?? 'a canonical workspace PostgreSQL database'}`;
     }
   }
 
