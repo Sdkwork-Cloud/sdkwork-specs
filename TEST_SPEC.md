@@ -438,6 +438,9 @@ Rules:
 - Authoritative server layout tests `MUST` fail when `database/migrations/sqlite/` or `database/ddl/baseline/sqlite/` is introduced to claim engine parity.
 - Database framework tests `MUST` verify root `db:validate`, `db:migrate`, `db:status`, `db:materialize:contract`, and `db:bootstrap` scripts exist when database lifecycle is active.
 - Database framework tests `MUST` fail when crate-local `migrations/` remain the only migration source without an approved exception or adoption plan.
+- Workspace PostgreSQL profile tests `MUST` require development database `sdkwork_ai_dev` and schema `sdkwork_ai_dev`, and `MUST` reject application-specific development identities such as `sdkwork_<application-code>_dev` in split fields, URLs, topology profiles, runtime templates, or service aliases. The canonical validator is `node tools/check-unified-postgres-profile.mjs` from the standards root or `node ../sdkwork-specs/tools/check-unified-postgres-profile.mjs` from an application root.
+- Authoritative application baseline and migration tests `MUST` reject `CREATE DATABASE`, `DROP DATABASE`, `ALTER DATABASE`, `CREATE SCHEMA`, `DROP SCHEMA`, and `ALTER SCHEMA`. Workspace provisioning tools may create the canonical shared database/schema, but application lifecycle assets and `pnpm dev`/`db:*` commands may manage only module-owned objects inside it.
+- Shared-schema upgrade tests `MUST` prove an existing incompatible object, unknown migration, checksum mismatch, or drift failure cannot trigger a fallback to a new database/schema. Repair evidence `MUST` use a reviewed forward, module-owned migration and preserve lifecycle history.
 - Application repositories may call the canonical validator with:
 
 ```text

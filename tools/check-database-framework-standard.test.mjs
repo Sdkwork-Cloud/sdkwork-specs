@@ -167,6 +167,31 @@ assert.ok(
   'failure should identify cross-engine baseline provenance',
 );
 
+const applicationSchemaProvisioningRoot = fs.mkdtempSync(
+  path.join(os.tmpdir(), 'sdkwork-db-framework-'),
+);
+scaffoldValidDatabaseRoot(applicationSchemaProvisioningRoot);
+fs.appendFileSync(
+  path.join(
+    applicationSchemaProvisioningRoot,
+    'database/ddl/baseline/postgres/0001_demo_baseline.sql',
+  ),
+  '\nCREATE SCHEMA sdkwork_demo_dev;\n',
+  'utf8',
+);
+const applicationSchemaProvisioning = validateDatabaseModuleContract(
+  path.join(applicationSchemaProvisioningRoot, 'database'),
+);
+assert.equal(
+  applicationSchemaProvisioning.ok,
+  false,
+  'application baselines must not provision a database or schema',
+);
+assert.ok(
+  applicationSchemaProvisioning.failures.some((item) => item.includes('CREATE SCHEMA')),
+  'failure should identify forbidden application-owned schema provisioning',
+);
+
 const bomPackageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
 scaffoldValidDatabaseRoot(bomPackageRoot);
 const bomPackagePath = path.join(bomPackageRoot, 'package.json');

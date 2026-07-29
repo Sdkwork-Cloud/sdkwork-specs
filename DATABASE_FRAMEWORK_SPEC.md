@@ -40,6 +40,8 @@ Rules:
 - Every database module `MUST` declare `databaseRole`. Server/application-root lifecycle modules use `authoritative-server` and PostgreSQL. Client/native modules use `client-local` and SQLite. One module `MUST NOT` claim both roles.
 - Every baseline and migration tree `MUST` be engine-pure. Files under `ddl/baseline/postgres` or `migrations/postgres` may contain only PostgreSQL DDL and may be materialized only from PostgreSQL sources; SQLite trees follow the equivalent SQLite rule. Bootstrap and consolidation tools `MUST` fail closed when a source glob, include, or provenance marker crosses engine boundaries. Copying both dialects into one baseline is forbidden even when individual statements appear portable.
 - Every physical table in a shared PostgreSQL schema `MUST` have exactly one application/module owner. Application roots `MUST` use an ownership-specific prefix declared consistently by `database.manifest.json#tablePrefix`, `contract/schema.yaml#table_prefix`, and `contract/prefix-registry.json`; broad domain prefixes such as `ai_` are forbidden when independent modules share the schema. A bootstrap `MUST` fail closed on an existing same-name table whose column/type contract does not match its owner contract. It `MUST NOT` mutate the foreign table into compatibility.
+- Workspace development lifecycle `MUST` run in the shared PostgreSQL database and schema named `sdkwork_ai_dev`. Application-specific databases or schemas such as `sdkwork_<application-code>_dev` are forbidden; database and schema provisioning belongs to the workspace PostgreSQL administration tooling defined by `ENVIRONMENT_SPEC.md` section 7.1.
+- Application baselines, migrations, seeds, bootstrap commands, and dev runners `MUST` manage only module-owned objects inside the already-provisioned shared schema. They `MUST NOT` issue `CREATE DATABASE`, `DROP DATABASE`, `ALTER DATABASE`, `CREATE SCHEMA`, `DROP SCHEMA`, or `ALTER SCHEMA`, and they `MUST NOT` switch to a new database/schema after an ownership or drift failure.
 - Table and column semantics `MUST` still follow `DATABASE_SPEC.md`. Lifecycle assets `MUST NOT` redefine naming or logical-type rules.
 - All connection pools `MUST` still be created through `sdkwork-database` as defined in `DATABASE_SPEC.md` section 32.
 - Every application ingress, internal service, or worker process `MUST` install one PostgreSQL process-local pool per normalized database identity before module lifecycle bootstrap. Embedded modules reuse that pool and do not own independent capacity. See `DATABASE_SPEC.md` section 33.5 and `DATABASE_SPEC_PROCESS_SHARED_POOL.md`.
@@ -478,6 +480,7 @@ Rules aligned with `MIGRATION_SPEC.md` and `DATABASE_SPEC.md` section 22:
 - Migration plans `MUST` be linked in release evidence for MAJOR contract changes.
 - PostgreSQL migrations `MUST` be tested on the minimum and maximum supported PostgreSQL major versions when version-specific DDL, planner, extension, or fast-path behavior is used.
 - A release rollback `MUST` prefer compatible application rollback or forward-fix. Automated execution of every available `.down.sql` in reverse order is forbidden.
+- Shared-schema drift or an existing incompatible object `MUST` be repaired with a reviewed forward migration owned by the affected module. Replaying a changed baseline over a non-empty shared schema, deleting lifecycle history, or creating an application-specific database/schema to obtain a clean bootstrap is forbidden.
 
 ## 8. Seed And Locale Standard
 
@@ -570,6 +573,7 @@ Actual schema source:
 | `migration_pending` | error | Files pending apply |
 | `migration_unknown` | error | Database history contains unknown version |
 | `checksum_mismatch` | error | Applied migration content changed after apply |
+| `ownership_conflict` | error | Existing object identity or contract conflicts with the declared module owner |
 
 Severity may be overridden in `drift/policy.yaml`.
 

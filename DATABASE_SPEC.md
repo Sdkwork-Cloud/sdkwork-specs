@@ -840,18 +840,17 @@ Database bootstrap, migration, seed data, drift observation, lifecycle SPI, and 
 
 ### 33.2 Configuration
 
-Database-owning applications `SHOULD` provide service-scoped keys such as:
+Database-owning applications `SHOULD` provide service-scoped pool and lifecycle keys such as:
 
 ```text
-SDKWORK_<SERVICE>_DATABASE_URL
-SDKWORK_<SERVICE>_DATABASE_ENGINE
-SDKWORK_<SERVICE>_DATABASE_PROFILE
 SDKWORK_<SERVICE>_DATABASE_MAX_CONNECTIONS
 SDKWORK_<SERVICE>_DATABASE_MIN_CONNECTIONS
 SDKWORK_<SERVICE>_DATABASE_ACQUIRE_TIMEOUT
 SDKWORK_<SERVICE>_DATABASE_IDLE_TIMEOUT
 SDKWORK_<SERVICE>_DATABASE_MAX_LIFETIME
 ```
+
+Workspace PostgreSQL connection identity comes from `SDKWORK_CLAW_DATABASE_*` according to `ENVIRONMENT_SPEC.md` section 7.1. Service-scoped keys `MUST NOT` redefine the development database, schema, URL, username, password, host, or port. In particular, SDKWork workspace development uses database `sdkwork_ai_dev` and schema `sdkwork_ai_dev`, not `sdkwork_<application-code>_dev`.
 
 The concrete manifest shape, directory layout, and lifecycle hooks are owned by `DATABASE_FRAMEWORK_SPEC.md`.
 
@@ -884,7 +883,7 @@ Rules:
 
 Rules:
 
-- `standalone` profile: each service owns its configured database or schema and must still follow this table contract.
+- `standalone` workspace development: all application services use the shared `sdkwork_ai_dev` database and `sdkwork_ai_dev` schema. Each service or module owns only its declared tables, indexes, constraints, seeds, and migrations; it `MUST NOT` provision a per-application database or schema.
 - `cloud` profile: database configuration comes from managed deployment configuration and must expose lifecycle/drift health.
 - Embedded modules in the same OS process `MUST` share the approved process-level pool for the same normalized database identity and `MUST NOT` open independent pools against the same DSN/schema/driver.
 - External upstream services and worker processes own their lifecycle bootstrap and must not assume local process sharing.

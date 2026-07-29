@@ -33,6 +33,7 @@ const SEMVER_PATTERN = new RegExp(
   ].join(''),
   'u',
 );
+const FORBIDDEN_APPLICATION_PROVISIONING_SQL = /\b(?:CREATE|DROP|ALTER)\s+(?:DATABASE|SCHEMA)\b/iu;
 
 function parseArgs(argv) {
   const args = { root: process.cwd(), layout: 'application' };
@@ -264,6 +265,20 @@ function validateBaselineSourceEngines(moduleRootDir, engine, baselineFiles, fai
         `ddl/baseline/${engine}/${fileName} must not contain ${foreignEngine} source provenance or DDL`,
       );
     }
+    validateApplicationOwnedSql(
+      sql,
+      `ddl/baseline/${engine}/${fileName}`,
+      fail,
+    );
+  }
+}
+
+function validateApplicationOwnedSql(sql, relativePath, fail) {
+  const match = sql.match(FORBIDDEN_APPLICATION_PROVISIONING_SQL);
+  if (match) {
+    fail(
+      `${relativePath} must not contain ${match[0].toUpperCase()}; application lifecycle assets manage only module-owned objects inside the shared schema`,
+    );
   }
 }
 
@@ -466,9 +481,20 @@ function validateMigrationDirectory(moduleRootDir, engine, fail) {
     }
 
     const upPath = path.join(migrationDir, entry);
-    const metadata = migrationMetadata(fs.readFileSync(upPath, 'utf8'));
+    const upSql = fs.readFileSync(upPath, 'utf8');
+    const metadata = migrationMetadata(upSql);
     const downName = entry.replace(/\.up\.sql$/u, '.down.sql');
-    const hasDown = fs.existsSync(path.join(migrationDir, downName));
+    const downPath = path.join(migrationDir, downName);
+    const hasDown = fs.existsSync(downPath);
+
+    validateApplicationOwnedSql(upSql, `migrations/${engine}/${entry}`, fail);
+    if (hasDown) {
+      validateApplicationOwnedSql(
+        fs.readFileSync(downPath, 'utf8'),
+        `migrations/${engine}/${downName}`,
+        fail,
+      );
+    }
 
     if (metadata.engine !== engine) {
       fail(`migrations/${engine}/${entry} metadata engine must be ${engine}`);

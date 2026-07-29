@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 const WORKSPACE_ROOT = path.resolve(
   path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')),
@@ -13,6 +14,8 @@ const WORKSPACE_ROOT = path.resolve(
 const CANONICAL_DEV = new Set(['sdkwork_ai_dev', 'postgres']);
 const CANONICAL_PROD = new Set(['sdkwork_ai_prod', 'postgres']);
 const CANONICAL_USER = new Set(['sdkwork_ai_dev', 'sdkwork_ai_prod', 'postgres', 'sdkworktest']);
+const CANONICAL_CONNECTION_DATABASES = new Set(['sdkwork_ai_dev', 'sdkwork_ai_prod']);
+const CANONICAL_CONNECTION_USERS = new Set(['sdkwork_ai_dev', 'sdkwork_ai_prod']);
 const ALLOWED_TEST_DB = new Set(['sdkwork_drive_test', 'sdkwork_commerce_pc_test']);
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'target', 'dist', 'artifacts', 'external', '.pnpm', '.runtime']);
@@ -73,13 +76,45 @@ function collectFiles(dir, files = []) {
   return files;
 }
 
-function inspectLine(line, filePath) {
+function expectedClawIdentity(filePath) {
+  const normalized = filePath.replace(/\\/gu, '/').toLowerCase();
+  if (normalized.includes('production')) {
+    return 'sdkwork_ai_prod';
+  }
+  if (
+    normalized.includes('development')
+    || path.basename(filePath).toLowerCase() === '.env.postgres.example'
+  ) {
+    return 'sdkwork_ai_dev';
+  }
+  return null;
+}
+
+export function inspectLine(line, filePath) {
   const trimmed = line.trim();
   if (!trimmed || trimmed.startsWith('#') || trimmed.includes('${')) {
     return null;
   }
+  if (trimmed.includes('DEPLOY_INJECT:')) {
+    return null;
+  }
   if (/sqlite:\/\//u.test(trimmed)) {
     return null;
+  }
+
+  const clawIdentity = trimmed.match(
+    /^SDKWORK_CLAW_DATABASE_(NAME|SCHEMA|USERNAME)=(.+)$/u,
+  );
+  if (clawIdentity) {
+    const field = clawIdentity[1];
+    const value = clawIdentity[2].trim();
+    const allowed = field === 'USERNAME'
+      ? CANONICAL_CONNECTION_USERS
+      : CANONICAL_CONNECTION_DATABASES;
+    const expected = expectedClawIdentity(filePath);
+    if (!allowed.has(value) || (expected && value !== expected)) {
+      return `non-canonical SDKWORK_CLAW_DATABASE_${field}=${value}; expected ${expected ?? 'sdkwork_ai_dev or sdkwork_ai_prod'}`;
+    }
   }
 
   const envName = trimmed.match(/^SDKWORK_(?!CLAW)([A-Z0-9_]+)_DATABASE_NAME=(.+)$/u);
@@ -95,6 +130,18 @@ function inspectLine(line, filePath) {
     const value = envUser[2].trim();
     if (!CANONICAL_USER.has(value)) {
       return `non-canonical SDKWORK_${envUser[1]}_DATABASE_USERNAME=${value}`;
+    }
+  }
+
+  const envSchema = trimmed.match(/^SDKWORK_(?!CLAW)([A-Z0-9_]+)_DATABASE_SCHEMA=(.+)$/u);
+  if (envSchema) {
+    const value = envSchema[2].trim();
+    if (
+      !CANONICAL_DEV.has(value)
+      && !CANONICAL_PROD.has(value)
+      && !value.includes('_test')
+    ) {
+      return `non-canonical SDKWORK_${envSchema[1]}_DATABASE_SCHEMA=${value}`;
     }
   }
 
@@ -119,8 +166,40 @@ function inspectLine(line, filePath) {
     }
   }
 
+  const schemaMatch = trimmed.match(/^schema = "([^"]+)"/u);
+  if (schemaMatch) {
+    const value = schemaMatch[1];
+    if (
+      !CANONICAL_DEV.has(value)
+      && !CANONICAL_PROD.has(value)
+      && !value.includes('_test')
+    ) {
+      return `non-canonical schema = "${value}"`;
+    }
+  }
+
+  const databaseUrlMatch = trimmed.match(
+    /^(?:SDKWORK_[A-Z0-9_]+_DATABASE_URL|url)\s*=\s*"?postgres(?:ql)?:\/\/[^/\s"]+\/([^?&\s"]+)/iu,
+  );
+  if (databaseUrlMatch) {
+    const value = decodeURIComponent(databaseUrlMatch[1]);
+    if (
+      !CANONICAL_CONNECTION_DATABASES.has(value)
+      && !ALLOWED_TEST_DB.has(value)
+      && !value.includes('_test')
+    ) {
+      return `non-canonical PostgreSQL URL database=${value}`;
+    }
+  }
+
   const isDatabaseAssignment = /^(?:[A-Z0-9_]*(?:DATABASE|POSTGRES)[A-Z0-9_]*|database|username)\s*=/u
     .test(trimmed);
+  if (
+    isDatabaseAssignment
+    && /sdkwork_(?!ai_(?:dev|prod)\b)[a-z0-9_]+_(?:dev|prod)\b/iu.test(trimmed)
+  ) {
+    return 'application-specific database identity; use sdkwork_ai_dev for development';
+  }
   if (
     isDatabaseAssignment
     && /sdkwork_chat_prod|sdkwork_knowledgebase_(dev|prod)|sdkwork_news_dev|sdkwork_forum_dev|sdkwork_discovery|sdkwork_documents(_dev)?|sdkwork_rtc|sdkwork_ai_prod_ai_dev/u.test(trimmed)
@@ -288,4 +367,9 @@ function main() {
   process.stdout.write('Unified PostgreSQL profile check passed.\n');
 }
 
-main();
+if (
+  process.argv[1]
+  && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))
+) {
+  main();
+}

@@ -714,7 +714,7 @@ it `MUST NOT` select SQLite for a backend service.
 
 ### 7.1 Unified Workspace PostgreSQL Profile
 
-All SDKWork applications in one workspace share one PostgreSQL connection identity for development and production. The canonical profile is owned by `sdkwork-clawrouter` and uses `SDKWORK_CLAW_DATABASE_*` keys.
+All SDKWork applications in one workspace share one PostgreSQL connection identity for development and production. The canonical profile is owned by `sdkwork-clawrouter` and uses `SDKWORK_CLAW_DATABASE_*` keys. In workspace development, the database name and schema are both exactly `sdkwork_ai_dev`; application-specific alternatives such as `sdkwork_clawrouter_dev`, `sdkwork_drive_dev`, or `sdkwork_<application-code>_dev` are forbidden.
 
 Applications MUST NOT define per-app PostgreSQL database names, usernames, passwords, schemas, or URLs that differ from this profile in checked-in `.env.postgres.example`, topology profile env files, release templates, or operator documentation.
 
@@ -731,7 +731,10 @@ Rules:
 - Developer overrides belong in ignored `.env.postgres` at the application root or in `sdkwork-clawrouter/.env.postgres`; do not fork per-app connection identity in source control.
 - Dev orchestration, topology loaders, and IAM env helpers MUST resolve PostgreSQL through `SDKWORK_CLAW_DATABASE_*` before any per-app database fields.
 - Rust services using `sdkwork-database-config` already fall back to `SDKWORK_CLAW_DATABASE_*`; applications must not reintroduce separate default URLs.
-- Table ownership and migrations remain per service; only the PostgreSQL instance and login identity are shared.
+- Application `dev`, bootstrap, init, and migration commands `MUST` use the shared workspace database and schema. They `MUST NOT` create, drop, rename, or switch to an application-specific PostgreSQL database or schema.
+- Provisioning the shared database, shared schema, login role, and required extensions is a workspace administration responsibility. Application lifecycle commands initialize and migrate only their declared module-owned tables, indexes, constraints, seeds, and lifecycle history.
+- Table ownership and migrations remain per module. Isolation comes from the module contract, an ownership-specific table prefix, table registry, migration history, and least-privilege roles; it `MUST NOT` come from per-application development databases or schemas.
+- An existing-table conflict, checksum mismatch, unknown migration, or schema drift `MUST` fail closed and be repaired through a reviewed forward, module-owned migration. Tooling `MUST NOT` bypass the conflict by selecting or creating another database or schema.
 
 Canonical development template:
 
