@@ -180,9 +180,17 @@ function renderCargoToml(
     ? 'tokio.workspace = true'
     : 'tokio = { version = "1.48", features = ["macros", "rt-multi-thread"] }';
   const axumLine = workspaceDepNames.has('axum') ? 'axum.workspace = true' : 'axum = "0.8"';
+  const webBootstrapLine = workspaceDepNames.has('sdkwork-web-bootstrap')
+    ? 'sdkwork-web-bootstrap.workspace = true'
+    : 'sdkwork-web-bootstrap = { path = "../../../sdkwork-web-framework/crates/sdkwork-web-bootstrap" }';
+  const webCoreLine = workspaceDepNames.has('sdkwork-web-core')
+    ? 'sdkwork-web-core.workspace = true'
+    : 'sdkwork-web-core = { path = "../../../sdkwork-web-framework/crates/sdkwork-web-core" }';
   const dependencyLines = dedupeDependencyLines([
     axumLine,
     tokioLine,
+    webBootstrapLine,
+    webCoreLine,
     ...bootstrapDeps,
     ...preservedDeps.split('\n'),
     ...depLines.split('\n'),
@@ -210,11 +218,28 @@ ${dependencyLines}${extraSections ? `\n\n${extraSections}` : ''}
 
 function renderLibRs(applicationCode, routeCrates, bootstrapExists, bootstrapSource = '') {
   if (bootstrapExists) {
-    const exports = /pub\s+(?:async\s+)?fn\s+assemble_api_business_router\b/u.test(
-      bootstrapSource,
-    )
-      ? 'assemble_api_business_router, assemble_api_router, ApiAssembly'
-      : 'assemble_api_router, ApiAssembly';
+    const exports = [
+      /pub\s+(?:async\s+)?fn\s+assemble_api_business_router\b/u.test(bootstrapSource)
+        ? 'assemble_api_business_router'
+        : null,
+      'assemble_api_router',
+      'ApiAssembly',
+      /pub\s+struct\s+ApiAssemblyContext\b/u.test(bootstrapSource)
+        ? 'ApiAssemblyContext'
+        : null,
+      /pub\s+(?:async\s+)?fn\s+assemble_app_api_contribution\b/u.test(bootstrapSource)
+        ? 'assemble_app_api_contribution'
+        : null,
+      /pub\s+(?:async\s+)?fn\s+assemble_backend_api_contribution\b/u.test(bootstrapSource)
+        ? 'assemble_backend_api_contribution'
+        : null,
+      /pub\s+(?:async\s+)?fn\s+assemble_open_api_contribution\b/u.test(bootstrapSource)
+        ? 'assemble_open_api_contribution'
+        : null,
+      /pub\s+(?:async\s+)?fn\s+assemble_internal_api_contribution\b/u.test(bootstrapSource)
+        ? 'assemble_internal_api_contribution'
+        : null,
+    ].filter(Boolean).join(', ');
     return `//! API assembly for sdkwork-${applicationCode}.
 //! Application bootstrap lives in \`bootstrap.rs\`; route inventory is in \`assembly-manifest.json\`.
 
@@ -458,15 +483,12 @@ function renderBootstrapRs(applicationCode, mounts, root, routeCrates) {
     return renderBootstrapEmpty(applicationCode);
   }
 
-  const infraSurfaces = routeCrates.filter((crate) => crate.mountsInfrastructure);
-  const useBusinessMounts = withMount.length > 1 && infraSurfaces.length > 0;
-  const businessMounts = useBusinessMounts
-    ? discoverGatewayBusinessMounts(root, routeCrates).filter((item) => item.mount)
-    : [];
-  const activeMounts =
-    useBusinessMounts && businessMounts.length > 0 ? businessMounts : withMount;
-  const mountFn =
-    useBusinessMounts && businessMounts.length > 0 ? 'gateway_mount_business' : 'gateway_mount';
+  const businessMounts = discoverGatewayBusinessMounts(root, routeCrates).filter(
+    (item) => item.mount,
+  );
+  const useBusinessMounts = businessMounts.length === withMount.length && withMount.length > 0;
+  const activeMounts = useBusinessMounts ? businessMounts : withMount;
+  const mountFn = useBusinessMounts ? 'gateway_mount_business' : 'gateway_mount';
 
   const paramSets = [
     ...new Set(activeMounts.map((item) => normalizeMountParams(item.mount.params))),
@@ -480,20 +502,13 @@ function renderBootstrapRs(applicationCode, mounts, root, routeCrates) {
     );
   }
   const sharedParams = paramSets.length === 1 ? paramSets[0] : '';
-  const needsAsync = activeMounts.some((item) => item.mount.async);
   const extraUses = new Set();
-  if (useBusinessMounts && businessMounts.length > 0) {
-    extraUses.add('use sdkwork_web_bootstrap::assemble_multi_surface_router;');
-  }
   for (const item of activeMounts) {
     const libPath = path.join(root, item.memberDir, 'src', 'lib.rs');
     const libRs = fs.existsSync(libPath) ? readText(libPath) : '';
     for (const typeChunk of item.mount.params.split(',')) {
       if (typeChunk.includes('sqlx::AnyPool')) {
         extraUses.add('use sqlx::AnyPool;');
-      }
-      if (typeChunk.includes('Arc<')) {
-        extraUses.add('use std::sync::Arc;');
       }
       const hostType = /Arc<([A-Za-z0-9_]+)>/u.exec(typeChunk)?.[1];
       if (hostType) {
@@ -514,7 +529,30 @@ function renderBootstrapRs(applicationCode, mounts, root, routeCrates) {
     }
   }
 
-  const mergeLines = activeMounts.map((item) => {
+  const missingManifestAccessors = activeMounts.filter(
+    (item) => !item.hasHttpRouteManifestAccessor,
+  );
+  if (missingManifestAccessors.length > 0) {
+    throw new Error(
+      `route crates must export gateway_route_manifest() -> HttpRouteManifest before automatic assembly materialization: ${missingManifestAccessors
+        .map((item) => item.packageName)
+        .join(', ')}`,
+    );
+  }
+
+  const renderContributionBody = (selectedMounts, contributionTitle) => {
+    const selectedParamNames = [
+      ...new Set(selectedMounts.flatMap((item) => item.mount.paramNames)),
+    ];
+    const destructuredFields = [
+      ...selectedParamNames,
+      'domain_context_injectors',
+      'readiness_check',
+    ].join(', ');
+    const ignoreRemainingFields = selectedParamNames.length
+      < (sharedParams ? activeMounts[0].mount.paramNames.length : 0);
+    const destructure = `    let ApiAssemblyContext { ${destructuredFields}${ignoreRemainingFields ? ', ..' : ''} } = context;`;
+    const mergeLines = selectedMounts.map((item) => {
     const args = item.mount.paramNames
       .map((name) => {
         if (!sharedParams) {
@@ -532,23 +570,60 @@ function renderBootstrapRs(applicationCode, mounts, root, routeCrates) {
     const call = item.mount.async
       ? `${item.libName}::${mountFn}(${args}).await`
       : `${item.libName}::${mountFn}(${args})`;
-    return `    router = router.merge(${call});`;
-  });
+    const resolved = /\bResult\s*</u.test(item.gatewayMountReturn ?? '')
+      ? `${call}.map_err(|error| error.to_string())?`
+      : call;
+    return `    router = router.merge(${resolved});`;
+    });
+    const manifestLines = selectedMounts.map(
+      (item) => `    routes.extend_from_slice(${item.libName}::gateway_route_manifest().routes());`,
+    );
+    return `${destructure}
+    let mut router = Router::new();
+${mergeLines.join('\n')}
+    let mut routes = Vec::new();
+${manifestLines.join('\n')}
+    ApiAssemblyContribution::from_manifest(
+        "sdkwork-${applicationCode}",
+        "${contributionTitle}",
+        router,
+        HttpRouteManifest::from_owned_routes(routes),
+        domain_context_injectors,
+        readiness_check,
+    )`;
+  };
 
-  const bodyLines =
-    useBusinessMounts && businessMounts.length > 0
-      ? [
-          '    let mut business = Router::new();',
-          ...mergeLines.map((line) => line.replace('router = router.merge', 'business = business.merge')),
-          '    let router = assemble_multi_surface_router(',
-          '        [business],',
-          '        sdkwork_web_bootstrap::ServiceRouterConfig::default().with_always_ready(),',
-          '    );',
-        ]
-      : mergeLines;
+  const surfaceFunctionNames = new Map([
+    ['app-api', 'assemble_app_api_contribution'],
+    ['backend-api', 'assemble_backend_api_contribution'],
+    ['open-api', 'assemble_open_api_contribution'],
+    ['internal-api', 'assemble_internal_api_contribution'],
+  ]);
+  const surfaceTitles = new Map([
+    ['app-api', 'App API'],
+    ['backend-api', 'Backend API'],
+    ['open-api', 'Open API'],
+    ['internal-api', 'Internal API'],
+  ]);
+  const surfaceFunctions = [...surfaceFunctionNames.entries()]
+    .map(([surface, functionName]) => {
+      const selectedMounts = activeMounts.filter((item) => item.surface === surface);
+      if (selectedMounts.length === 0) return '';
+      return `
+pub async fn ${functionName}(context: ApiAssemblyContext) -> Result<ApiAssembly, String> {
+${renderContributionBody(
+  selectedMounts,
+  `SDKWork ${applicationCode} ${surfaceTitles.get(surface)}`,
+)}
+}
+`;
+    })
+    .filter(Boolean)
+    .join('');
 
-  const fnSigParams = sharedParams ? sharedParams : '';
-  const fnKeyword = needsAsync ? 'pub async fn' : 'pub fn';
+  const contextFields = sharedParams
+    ? sharedParams.split(',').map((field) => `    pub ${field.trim()},`).join('\n')
+    : '';
   const extraUseBlock = [...extraUses].sort().join('\n');
 
   return `//! Generated API assembly bootstrap for sdkwork-${applicationCode}.
@@ -558,15 +633,21 @@ function renderBootstrapRs(applicationCode, mounts, root, routeCrates) {
 //! so \`/healthz\`, \`/livez\`, \`/readyz\`, and \`/metrics\` are not duplicated per surface.
 
 use axum::Router;
+use std::sync::Arc;
+use sdkwork_web_bootstrap::{ApiAssemblyContribution, ReadinessCheck};
+use sdkwork_web_core::{DomainContextInjector, HttpRouteManifest};
 ${extraUseBlock ? `${extraUseBlock}\n` : ''}
-pub struct ApiAssembly {
-    pub router: Router,
+pub type ApiAssembly = ApiAssemblyContribution;
+
+pub struct ApiAssemblyContext {
+${contextFields ? `${contextFields}\n` : ''}    pub domain_context_injectors: Vec<Arc<dyn DomainContextInjector>>,
+    pub readiness_check: Arc<dyn ReadinessCheck>,
 }
 
-${fnKeyword} assemble_api_router(${fnSigParams}) -> ApiAssembly {
-${useBusinessMounts && businessMounts.length > 0 ? '' : '    let mut router = Router::new();\n'}${bodyLines.join('\n')}
-    ApiAssembly { router }
+pub async fn assemble_api_router(context: ApiAssemblyContext) -> Result<ApiAssembly, String> {
+${renderContributionBody(activeMounts, `SDKWork ${applicationCode} API`)}
 }
+${surfaceFunctions}
 `;
 }
 
@@ -574,15 +655,26 @@ function renderBootstrapEmpty(applicationCode) {
   return `//! API assembly bootstrap for sdkwork-${applicationCode}.
 
 use axum::Router;
+use std::sync::Arc;
+use sdkwork_web_bootstrap::{ApiAssemblyContribution, ReadinessCheck};
+use sdkwork_web_core::{DomainContextInjector, HttpRouteManifest};
 
-pub struct ApiAssembly {
-    pub router: Router,
+pub type ApiAssembly = ApiAssemblyContribution;
+
+pub struct ApiAssemblyContext {
+    pub domain_context_injectors: Vec<Arc<dyn DomainContextInjector>>,
+    pub readiness_check: Arc<dyn ReadinessCheck>,
 }
 
-pub fn assemble_api_router() -> ApiAssembly {
-    ApiAssembly {
-        router: Router::new(),
-    }
+pub async fn assemble_api_router(context: ApiAssemblyContext) -> Result<ApiAssembly, String> {
+    ApiAssemblyContribution::from_manifest(
+        "sdkwork-${applicationCode}",
+        "SDKWork ${applicationCode} API",
+        Router::new(),
+        HttpRouteManifest::from_owned_routes(Vec::new()),
+        context.domain_context_injectors,
+        context.readiness_check,
+    )
 }
 `;
 }
@@ -663,7 +755,8 @@ export function materializeApiAssembly(root) {
   ensureAssemblyComponentSpecs(root, applicationCode);
   const bootstrapSource = generatedBootstrapSource ?? authoredBootstrapSource;
   const bootstrapReady =
-    bootstrapSource.trim().length > 0 && !bootstrapNeedsRegeneration(bootstrapSource);
+    bootstrapSource.trim().length > 0
+    && (generatedBootstrapSource !== null || !bootstrapNeedsRegeneration(bootstrapSource));
   const libPath = path.join(crateDir, 'src', 'lib.rs');
   const existingLib = readText(libPath);
   const preserveAuthoredLib = existingLib.includes('SDKWORK-ASSEMBLY-LIB-CUSTOM');

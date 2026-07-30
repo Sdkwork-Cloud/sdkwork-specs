@@ -43,6 +43,8 @@ const TEXT_EXTENSIONS = new Set([
   '.yml',
 ]);
 
+const MANUAL_STORAGE_FIELDS = new Set(['MODE', 'TABLE_PREFIX']);
+
 function isTextFile(filePath) {
   const base = path.basename(filePath).toLowerCase();
   return base.startsWith('.env') || TEXT_EXTENSIONS.has(path.extname(base));
@@ -134,9 +136,49 @@ function renameDatabaseKeys(content) {
   return content
     .replace(
       /SDKWORK_(?!DATABASE_)([A-Z0-9_]+)_DATABASE_([A-Z0-9_]+)/gu,
-      'SDKWORK_DATABASE_$2',
+      (match, _scope, field) => (
+        MANUAL_STORAGE_FIELDS.has(field) ? match : `SDKWORK_DATABASE_${field}`
+      ),
     )
     .replace(/\bDOCUMENTS_DATABASE_([A-Z0-9_]+)/gu, 'SDKWORK_DATABASE_$1');
+}
+
+function inspectManualStorageKeys(content) {
+  return [...String(content).matchAll(
+    /\bSDKWORK_(?!DATABASE_)[A-Z0-9_]+_DATABASE_(?:MODE|TABLE_PREFIX)\b/gu,
+  )]
+    .map((match) => match[0])
+    .filter((key, index, keys) => keys.indexOf(key) === index)
+    .sort();
+}
+
+function inspectCanonicalKeyCollisions(content) {
+  const sourcesByTarget = new Map();
+  const addSource = (target, source) => {
+    const sources = sourcesByTarget.get(target) ?? new Set();
+    sources.add(source);
+    sourcesByTarget.set(target, sources);
+  };
+
+  for (const match of String(content).matchAll(
+    /\bSDKWORK_(?!DATABASE_)([A-Z0-9_]+)_DATABASE_([A-Z0-9_]+)\b/gu,
+  )) {
+    const field = match[2];
+    if (!MANUAL_STORAGE_FIELDS.has(field)) {
+      addSource(`SDKWORK_DATABASE_${field}`, match[0]);
+    }
+  }
+  for (const match of String(content).matchAll(/\bSDKWORK_DATABASE_[A-Z0-9_]+\b/gu)) {
+    addSource(match[0], match[0]);
+  }
+  for (const match of String(content).matchAll(/\bDOCUMENTS_DATABASE_([A-Z0-9_]+)\b/gu)) {
+    addSource(`SDKWORK_DATABASE_${match[1]}`, match[0]);
+  }
+
+  return [...sourcesByTarget.entries()]
+    .filter(([, sources]) => sources.size > 1)
+    .map(([target]) => target)
+    .sort();
 }
 
 function replaceAssignmentValue(line, pattern, value) {
@@ -229,7 +271,18 @@ function normalizeConfigIdentities(content, filePath) {
   if (!hadTrailingEol && lines.at(-1) === '') {
     lines.pop();
   }
-  return lines.join(eol);
+  let updated = lines.join(eol);
+  if (
+    path.basename(filePath).toLowerCase() === '.env.postgres.example'
+    && /^\s*SDKWORK_DATABASE_SCHEMA\s*=/mu.test(updated)
+    && !/^\s*SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC\s*=/mu.test(updated)
+  ) {
+    updated = updated.replace(
+      /^(\s*SDKWORK_DATABASE_SCHEMA\s*=\s*[^\r\n]+)$/mu,
+      `$1${eol}SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false`,
+    );
+  }
+  return updated;
 }
 
 function inspectCanonicalKeyConflicts(content) {
@@ -251,10 +304,18 @@ function inspectCanonicalKeyConflicts(content) {
 }
 
 export function migratePostgresProfileContent(content, filePath) {
-  const renamed = renameDatabaseKeys(String(content));
+  const source = String(content);
+  const manualMigrations = inspectManualStorageKeys(source);
+  const renamed = renameDatabaseKeys(source);
   const updated = normalizeConfigIdentities(renamed, filePath);
   return {
-    conflicts: inspectCanonicalKeyConflicts(updated),
+    conflicts: [
+      ...new Set([
+        ...inspectCanonicalKeyCollisions(source),
+        ...inspectCanonicalKeyConflicts(updated),
+      ]),
+    ].sort(),
+    manualMigrations,
     content: updated,
     changed: updated !== content,
   };
@@ -332,18 +393,20 @@ export function runMigration(options) {
   const changed = [];
   const blocked = [];
   const conflicts = [];
+  const manualMigrations = [];
   for (const repoRoot of repositoryRoots(options)) {
     const dirtyFiles = gitDirtyFiles(repoRoot);
     for (const filePath of collectFiles(repoRoot)) {
       const original = fs.readFileSync(filePath, 'utf8');
-      if (!/SDKWORK_(?!DATABASE_)[A-Z0-9_]+_DATABASE_|DOCUMENTS_DATABASE_|sdkwork_(?!ai_(?:dev|test|staging|prod)(?:\b|_))[a-z0-9_]+_(?:dev|test|staging|prod(?:uction)?)\b/iu.test(original)) {
+      const result = migratePostgresProfileContent(original, filePath);
+      const relative = path.relative(options.workspace ?? DEFAULT_WORKSPACE_ROOT, filePath);
+      if (result.manualMigrations.length > 0) {
+        manualMigrations.push({ file: relative, keys: result.manualMigrations });
         continue;
       }
-      const result = migratePostgresProfileContent(original, filePath);
       if (!result.changed) {
         continue;
       }
-      const relative = path.relative(options.workspace ?? DEFAULT_WORKSPACE_ROOT, filePath);
       if (result.conflicts.length > 0) {
         conflicts.push({ file: relative, keys: result.conflicts });
         continue;
@@ -358,7 +421,7 @@ export function runMigration(options) {
       changed.push(relative);
     }
   }
-  return { blocked, changed, conflicts };
+  return { blocked, changed, conflicts, manualMigrations };
 }
 
 function main() {
@@ -376,10 +439,19 @@ function main() {
   for (const conflict of result.conflicts) {
     process.stderr.write(`conflict: ${conflict.file} (${conflict.keys.join(', ')})\n`);
   }
+  for (const migration of result.manualMigrations) {
+    process.stderr.write(
+      `manual storage-key migration required: ${migration.file} (${migration.keys.join(', ')})\n`,
+    );
+  }
   for (const file of result.blocked.sort()) {
     process.stderr.write(`dirty file not modified: ${file}\n`);
   }
-  if (result.conflicts.length > 0 || result.blocked.length > 0) {
+  if (
+    result.conflicts.length > 0
+    || result.manualMigrations.length > 0
+    || result.blocked.length > 0
+  ) {
     process.exitCode = 1;
   } else if (!options.write && result.changed.length > 0) {
     process.stdout.write('Dry-run only. Re-run with --write after reviewing the plan.\n');

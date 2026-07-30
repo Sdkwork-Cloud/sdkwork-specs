@@ -251,8 +251,134 @@ function validateProcess(root, processContract, fail) {
 }
 
 function rustProductionSource(content) {
-  const testModuleIndex = content.search(/#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]/u);
-  return testModuleIndex >= 0 ? content.slice(0, testModuleIndex) : content;
+  const cfgTestPattern = /#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]/gu;
+  let cursor = 0;
+  let production = '';
+  for (const match of content.matchAll(cfgTestPattern)) {
+    if (match.index < cursor) {
+      continue;
+    }
+    production += content.slice(cursor, match.index);
+    const itemEnd = findRustItemEnd(content, match.index + match[0].length);
+    const masked = content.slice(match.index, itemEnd).replace(/[^\r\n]/gu, ' ');
+    production += masked;
+    cursor = itemEnd;
+  }
+  return production + content.slice(cursor);
+}
+
+function findRustItemEnd(content, start) {
+  let index = start;
+  while (index < content.length) {
+    index = skipRustWhitespace(content, index);
+    if (content[index] !== '#' || content[index + 1] !== '[') {
+      break;
+    }
+    const attributeEnd = findMatchingRustDelimiter(content, index + 1, '[', ']');
+    if (attributeEnd < 0) {
+      return content.length;
+    }
+    index = attributeEnd + 1;
+  }
+
+  const boundary = findRustItemBoundary(content, index);
+  if (!boundary) {
+    return content.length;
+  }
+  if (boundary.kind === 'semicolon') {
+    return boundary.index + 1;
+  }
+  const blockEnd = findMatchingRustDelimiter(content, boundary.index, '{', '}');
+  return blockEnd < 0 ? content.length : blockEnd + 1;
+}
+
+function skipRustWhitespace(content, start) {
+  let index = start;
+  while (index < content.length && /\s/u.test(content[index])) {
+    index += 1;
+  }
+  return index;
+}
+
+function findRustItemBoundary(content, start) {
+  const state = { blockCommentDepth: 0, lineComment: false, string: false };
+  for (let index = start; index < content.length; index += 1) {
+    const consumed = consumeRustNonCode(content, index, state);
+    if (consumed !== undefined) {
+      index = consumed;
+      continue;
+    }
+    if (content[index] === ';') {
+      return { index, kind: 'semicolon' };
+    }
+    if (content[index] === '{') {
+      return { index, kind: 'block' };
+    }
+  }
+  return undefined;
+}
+
+function findMatchingRustDelimiter(content, start, open, close) {
+  const state = { blockCommentDepth: 0, lineComment: false, string: false };
+  let depth = 0;
+  for (let index = start; index < content.length; index += 1) {
+    const consumed = consumeRustNonCode(content, index, state);
+    if (consumed !== undefined) {
+      index = consumed;
+      continue;
+    }
+    if (content[index] === open) {
+      depth += 1;
+    } else if (content[index] === close) {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+  return -1;
+}
+
+function consumeRustNonCode(content, index, state) {
+  if (state.lineComment) {
+    if (content[index] === '\n') {
+      state.lineComment = false;
+    }
+    return index;
+  }
+  if (state.blockCommentDepth > 0) {
+    if (content[index] === '/' && content[index + 1] === '*') {
+      state.blockCommentDepth += 1;
+      return index + 1;
+    }
+    if (content[index] === '*' && content[index + 1] === '/') {
+      state.blockCommentDepth -= 1;
+      return index + 1;
+    }
+    return index;
+  }
+  if (state.string) {
+    if (content[index] === '\\') {
+      return Math.min(index + 1, content.length - 1);
+    }
+    if (content[index] === '"') {
+      state.string = false;
+    }
+    return index;
+  }
+  if (content[index] === '/' && content[index + 1] === '/') {
+    state.lineComment = true;
+    return index + 1;
+  }
+  if (content[index] === '/' && content[index + 1] === '*') {
+    state.blockCommentDepth = 1;
+    return index + 1;
+  }
+  if (content[index] === '"') {
+    state.string = true;
+    return index;
+  }
+  return undefined;
 }
 
 export function validateProcessSharedDatabasePool(root) {

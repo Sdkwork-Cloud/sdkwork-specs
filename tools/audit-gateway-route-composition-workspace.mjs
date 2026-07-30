@@ -127,6 +127,21 @@ function scanPlatformCloudGatewayEmbed(workspaceRoot) {
   }
   const runtimeSource = readText(runtimePath);
   const embedSource = readText(embedPath);
+  if (/\bassembly\.router\b/u.test(embedSource)) {
+    warnings.push(
+      `${embedPath}: projects assembly.router and discards manifest, OpenAPI, permission, injector, and readiness contributions`,
+    );
+  }
+  if (/GatewayRouteRegistry::from_dependency_surfaces\s*\(/u.test(runtimeSource)) {
+    warnings.push(
+      `${runtimePath}: builds prefix wildcard registry instead of exact normalized assembly manifests`,
+    );
+  }
+  if (/\/(?:\{\*path\}|\*path)/u.test(runtimeSource + embedSource)) {
+    warnings.push(
+      `${runtimePath}: platform cloud gateway contains wildcard path dispatch evidence`,
+    );
+  }
   if (
     /GatewayMode::Embedded/u.test(runtimeSource)
     && !/embedded_dependency_routes/u.test(runtimeSource)

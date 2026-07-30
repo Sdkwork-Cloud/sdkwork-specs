@@ -7,12 +7,12 @@ Follow-up after PLAN-20260629 Steps 0–9.
 | Item | Result |
 | --- | --- |
 | Hybrid `-pc-react` client roots | `listClientAppRoots()` discovers `sdkwork-notes-pc-react/` when core packages exist |
-| Non-root workspace enforcement | `findNonRootPnpmWorkspaces()` flags nested workspaces; `.runtime/` and `external/` allowlisted |
+| Non-root workspace enforcement | Historical result: `findNonRootPnpmWorkspaces()` allowed the retired source-tree runtime directory. REQ-2026-0730 supersedes that behavior; physical runtime-state directories now fail workspace layout validation. `external/` remains an explicit vendor boundary. |
 | `sdkwork-notes` | Repo-root `pnpm-workspace.yaml`; core composition scaffold; `verify-repo` PASS |
 | `sdkwork-kernel` | Repo-root `pnpm-workspace.yaml` (lifted from `sdkwork-kernel-ui/`); `verify-repo` PASS |
 | `check:app-composition` wiring | All client repos: script present + wired into `check`/`verify` |
 | `sdkwork-memory` | Added `sdkDependencies: []` on backend-only manifest |
-| IAM governance | `user-center-command-matrix` PASS; workspace manifest walk skips `.runtime/` |
+| IAM governance | Historical result: `user-center-command-matrix` passed while the manifest walk skipped the retired runtime-state directory. REQ-2026-0730 requires direct physical-directory rejection instead. |
 | Unified PostgreSQL profile | `birdcoder`, `drive`, `discovery`, `memory` `.env.postgres.example` aligned; memory `db:postgres:*` scripts added |
 
 ## Tooling

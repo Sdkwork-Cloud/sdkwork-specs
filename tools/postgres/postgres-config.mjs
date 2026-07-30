@@ -102,7 +102,8 @@ function rejectRetiredDatabaseKeys(env) {
   const retiredKeys = Object.keys(env).filter((key) => (
     /^SDKWORK_(?!DATABASE_)[A-Z0-9_]+_DATABASE_[A-Z0-9_]+$/u.test(key)
     || /^(?:DOCUMENTS|DATABASE)_DATABASE_[A-Z0-9_]+$/u.test(key)
-    || /^SDKWORK_DATABASE_(?:ADMIN_)?SSLMODE$/u.test(key)
+    || /^(?:DATABASE_URL|DATABASE_PROVIDER|DATABASE_SSLMODE)$/u.test(key)
+    || /^SDKWORK_DATABASE_(?:PROVIDER|(?:ADMIN_)?SSLMODE)$/u.test(key)
   ));
   if (retiredKeys.length > 0) {
     throw new Error(
@@ -174,6 +175,45 @@ function validateDatabaseConfig(database) {
   }
   if (missing.length > 0) {
     throw new Error(`PostgreSQL configuration requires ${missing.join(', ')}`);
+  }
+  validateWorkspacePostgresIdentity(database);
+}
+
+function canonicalDatabaseProfile(database) {
+  if (database === 'sdkwork_ai_dev') {
+    return { environment: 'development', username: 'sdkwork_ai_dev' };
+  }
+  if (database === 'sdkwork_ai_test') {
+    return { environment: 'test', username: 'sdkwork_ai_test' };
+  }
+  if (/^sdkwork_ai_test_[A-Za-z0-9_]+$/u.test(database)) {
+    return { environment: 'test', username: 'sdkwork_ai_test' };
+  }
+  if (database === 'sdkwork_ai_staging') {
+    return { environment: 'staging', username: 'sdkwork_ai_staging' };
+  }
+  if (database === 'sdkwork_ai_prod') {
+    return { environment: 'production', username: 'sdkwork_ai_prod' };
+  }
+  return undefined;
+}
+
+export function validateWorkspacePostgresIdentity({ database, schema, username }) {
+  const profile = canonicalDatabaseProfile(database);
+  if (!profile) {
+    throw new Error(
+      `PostgreSQL database ${JSON.stringify(database)} is not a canonical SDKWork workspace identity`,
+    );
+  }
+  if (schema !== database) {
+    throw new Error(
+      `SDKWORK_DATABASE_SCHEMA must equal workspace database ${JSON.stringify(database)}, got ${JSON.stringify(schema)}`,
+    );
+  }
+  if (username !== profile.username) {
+    throw new Error(
+      `${profile.environment} database ${JSON.stringify(database)} requires username ${JSON.stringify(profile.username)}, got ${JSON.stringify(username)}`,
+    );
   }
 }
 
@@ -256,6 +296,7 @@ export function sanitizePostgresDatabaseUrl(value) {
 
 export function workspaceDatabaseEnvFromConfig(config) {
   const database = config.database;
+  validateDatabaseConfig(database);
   const url = buildPostgresDatabaseUrl(database);
   return {
     SDKWORK_DATABASE_ENGINE: 'postgresql',

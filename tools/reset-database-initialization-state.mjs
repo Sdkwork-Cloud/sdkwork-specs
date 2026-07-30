@@ -11,7 +11,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { validateDatabaseFramework } from './check-database-framework-standard.mjs';
 
 const TOOL_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -131,6 +131,36 @@ function sqlAlreadyPresent(needle, haystack) {
   return haystack.replace(/\r\n/g, '\n').includes(normalizedNeedle);
 }
 
+export function sqliteAddColumnMigrationAlreadyPresent(migrationSql, baselineSql) {
+  const alterPattern = /ALTER\s+TABLE\s+([a-z_][a-z0-9_]*)\s+ADD\s+COLUMN\s+([a-z_][a-z0-9_]*)\b[^;]*;/giu;
+  const additions = [...migrationSql.matchAll(alterPattern)];
+  if (additions.length === 0) {
+    return false;
+  }
+
+  const remaining = migrationSql
+    .replace(alterPattern, '')
+    .replace(/^\s*--.*$/gmu, '')
+    .trim();
+  if (remaining) {
+    return false;
+  }
+
+  return additions.every(([, table, column]) => {
+    const createTable = baselineSql.match(
+      new RegExp(
+        `CREATE\\s+TABLE(?:\\s+IF\\s+NOT\\s+EXISTS)?\\s+${table}\\s*\\(([\\s\\S]*?)\\);`,
+        'iu',
+      ),
+    );
+    if (!createTable) {
+      return false;
+    }
+
+    return new RegExp(`(?:^|\\n|,)\\s*${column}\\s+`, 'iu').test(createTable[1]);
+  });
+}
+
 function listMigrationUpFiles(migrationDir) {
   if (!fs.existsSync(migrationDir)) {
     return [];
@@ -194,7 +224,10 @@ function consolidateEngine(databaseDir, moduleId, engine) {
       actions.push(`skip noop migration ${engine}/${fileName}`);
       continue;
     }
-    if (sqlAlreadyPresent(sql, consolidated)) {
+    if (
+      sqlAlreadyPresent(sql, consolidated)
+      || (engine === 'sqlite' && sqliteAddColumnMigrationAlreadyPresent(sql, consolidated))
+    ) {
       actions.push(`skip duplicate migration ${engine}/${fileName}`);
       continue;
     }
@@ -511,4 +544,7 @@ function main() {
   process.exit(exitCode);
 }
 
-main();
+const entryUrl = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : null;
+if (entryUrl === import.meta.url) {
+  main();
+}

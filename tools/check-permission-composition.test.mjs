@@ -102,7 +102,7 @@ test('checker fails when OpenAPI x-sdkwork-permission is absent from inherited c
       moduleCatalogRefs: [
         {
           moduleId: 'shop',
-          manifestRef: '../../../../../sdkwork-shop/specs/iam.module.manifest.json',
+          manifestRef: '../../../../sdkwork-shop/specs/iam.module.manifest.json',
           inheritPermissions: true,
           inheritRoles: true,
         },
@@ -143,7 +143,7 @@ test('checker accepts sdk dependency permission inheritance when OpenAPI codes r
       moduleCatalogRefs: [
         {
           moduleId: 'shop',
-          manifestRef: '../../../../../sdkwork-shop/specs/iam.module.manifest.json',
+          manifestRef: '../../../../sdkwork-shop/specs/iam.module.manifest.json',
           inheritPermissions: true,
           inheritRoles: true,
         },
@@ -199,19 +199,19 @@ test('checker matches legacy SDK dependency aliases to module catalog refs', () 
       moduleCatalogRefs: [
         {
           moduleId: 'shop',
-          manifestRef: '../../../../../sdkwork-shop/specs/iam.module.manifest.json',
+          manifestRef: '../../../../sdkwork-shop/specs/iam.module.manifest.json',
           inheritPermissions: true,
           inheritRoles: true,
         },
         {
           moduleId: 'notes',
-          manifestRef: '../../../../../sdkwork-notes/specs/iam.module.manifest.json',
+          manifestRef: '../../../../sdkwork-notes/specs/iam.module.manifest.json',
           inheritPermissions: true,
           inheritRoles: true,
         },
         {
           moduleId: 'catalog',
-          manifestRef: '../../../../../sdkwork-catalog/specs/iam.module.manifest.json',
+          manifestRef: '../../../../sdkwork-catalog/specs/iam.module.manifest.json',
           inheritPermissions: true,
           inheritRoles: true,
         },
@@ -255,7 +255,7 @@ test('checker matches SDK dependency to sibling IMF module identity', () => {
       moduleCatalogRefs: [
         {
           moduleId: 'intelligence-catalog',
-          manifestRef: '../../../../../sdkwork-models/specs/iam.module.manifest.json',
+          manifestRef: '../../../../sdkwork-models/specs/iam.module.manifest.json',
           inheritPermissions: true,
           inheritRoles: true,
         },

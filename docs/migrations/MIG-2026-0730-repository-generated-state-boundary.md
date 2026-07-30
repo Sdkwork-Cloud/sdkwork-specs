@@ -1,6 +1,6 @@
 # MIG-2026-0730 Repository Generated-State Boundary
 
-Status: in-progress
+Status: completed
 Requirement: REQ-2026-0730
 Decision: ADR-20260730-repository-generated-state-boundary
 Owner: SDKWork platform
@@ -9,7 +9,7 @@ Type: runtime, build, test, release, security
 ```yaml
 id: MIG-2026-0730
 owner: sdkwork-platform
-status: in-progress
+status: completed
 requirement: REQ-2026-0730
 type: contract
 scope:
@@ -45,3 +45,15 @@ rollback:
 - `sdkwork-app-topology` and `sdkwork-im` tests pass with state outside the source checkout.
 - `check-workspace-layout.mjs` and aggregate repository verification pass.
 - The migration, requirement, and Canon architecture status reflect the completed implementation.
+
+## Completion Evidence
+
+- `sdkwork-app-topology` owns canonical repository hashing, private OS/CI runtime-state resolution,
+  atomic JSON writes, and exact cleanup through `@sdkwork/app-topology/runtime-state`.
+- `sdkwork-im` uses `target/sdkwork/` for isolated Cargo output and private OS/CI state for lifecycle
+  sessions, dev-site fallback, generated tsconfig, Flutter configuration, tests, and decoded signing
+  material.
+- Defensive `.gitignore` rules remain in producer and consumer repositories while physical runtime
+  directories fail `check-workspace-layout.mjs`.
+- Targeted Node/Rust tests, app-topology lifecycle tests, pnpm script validation, workspace layout
+  validation, repository verification, and `git diff --check` form the completion gate.

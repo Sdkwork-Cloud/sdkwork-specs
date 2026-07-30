@@ -1,6 +1,6 @@
 # Security Standard
 
-- Version: 1.0
+- Version: 1.1
 - Scope: authentication, authorization, token use, API/RPC security, frontend handling, logging, secrets
 - Related: `SDKWORK_WORKSPACE_SPEC.md`, `API_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `DATABASE_SPEC.md`, `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `DRIVE_SPEC.md`, `IAM_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
 
@@ -68,6 +68,9 @@ Rules:
 - Admin/backend APIs `MUST` use least privilege and audit sensitive operations.
 - Service/use-case code `MUST` enforce business authorization before repository access returns tenant-owned data. Router middleware and UI permission hints are not sufficient.
 - Repositories `MUST` receive tenant, organization, owner, and data-scope inputs from typed context or explicit service parameters; they `MUST NOT` infer authorization from global request state.
+- Ordinary repository access to organization-scoped data `MUST` fail closed unless both tenant and organization scope are present in trusted typed context and bound by the database operation according to `DATABASE_SPEC.md` section 16.
+- Cross-organization system operations are privileged security surfaces. They `MUST` use an explicit service/worker capability or administrative authorization, a fixed bounded operation contract, least-privilege credentials, and an audit record or security-grade operational event that identifies the operation, caller identity, scope, outcome, and trace id.
+- Comments, markers, feature flags, route hiding, and background execution do not authorize cross-organization access. Unknown or undeclared operations `MUST` fail closed before database access.
 
 ## 3. Input And Output Safety
 
@@ -179,6 +182,8 @@ Rules:
 - [ ] RPC SDK examples use metadata providers and do not hard-code live tokens.
 - [ ] RPC reflection and mTLS exposure are controlled by deployment policy.
 - [ ] Web backend handlers/services consume typed request context and do not reparse raw credential, tenant, user, permission, request-id, locale, or language headers.
+- [ ] Organization-scoped repository paths bind trusted tenant and organization context, and negative tests reject either-scope mismatch.
+- [ ] Every cross-organization system operation is independently authorized, bounded, audited, machine-inventoried, and unreachable from ordinary user/API repository paths.
 - [ ] Tenant/object authorization is tested.
 - [ ] Drive upload/download grants are short-lived, authorized, and do not leak provider credentials or signed URL material into logs.
 - [ ] Sensitive fields are write-only or omitted.

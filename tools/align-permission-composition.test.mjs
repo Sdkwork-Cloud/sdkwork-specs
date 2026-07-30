@@ -159,7 +159,7 @@ test('aligner resolves SDK dependency to sibling IMF module identity', () => {
   assert.deepEqual(spec.contracts.permissionComposition.moduleCatalogRefs, [
     {
       moduleId: 'intelligence-catalog',
-      manifestRef: '../../../../../../sdkwork-models/specs/iam.module.manifest.json',
+      manifestRef: '../../../../../sdkwork-models/specs/iam.module.manifest.json',
       inheritPermissions: true,
       inheritRoles: true,
     },

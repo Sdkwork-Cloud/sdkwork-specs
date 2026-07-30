@@ -59,6 +59,10 @@ Ambiguous roots stop at classification and require an owner-approved ADR. Regist
 9. Split legitimate SQLite client-local assets into the owning native/client module. Add local-data policy, separate migrations, security/purge/recovery tests, and sync mapping.
 10. Remove server SQLite commands, driver selection, fallbacks, parity tests, and mechanically converted migrations after the compatibility window.
 11. Enable strict validators and close the migration only when no authoritative writer or server release path targets SQLite.
+12. Inventory organization-scoped tables and authored SQL in repository-local machine contracts. Add missing `tenant_id`/`organization_id` fields and indexes through reviewed expand-contract migrations.
+13. Change ordinary repository methods to require trusted typed tenant and organization scope and bind both in every read or mutation. Remove global replay, list-all, export, or mutation helpers from ordinary runtime ports.
+14. Isolate each required cross-organization system operation behind a typed, independently authorized port with a fixed bounded SQL shape and audit/security-event evidence. Delete marker-only or open-ended exceptions.
+15. Enable zero-threshold static SQL isolation and negative repository tests before pre-launch or commercial release.
 
 ## PostgreSQL Cutover Evidence
 
@@ -68,6 +72,7 @@ Ambiguous roots stop at classification and require an owner-approved ADR. Regist
 - P0/P1 query plans use representative cardinality and record scans, buffers, timing class, and spill behavior.
 - Migration evidence covers locks, timeouts, rewrites, WAL/replica impact, backfill rate/progress, cancellation, and recovery.
 - Roles, TLS, search path, pool budget, monitoring, backups, restore/PITR, RPO, and RTO are verified.
+- Organization-scoped tables and ordinary runtime SQL bind both tenant and organization scope; exact-contract tests cover every approved cross-organization operation and its authorization, bounds, and audit evidence.
 
 ## Client-Local Evidence
 
@@ -92,4 +97,5 @@ Ambiguous roots stop at classification and require an owner-approved ADR. Regist
 - No server startup, development, test, or release path falls back to SQLite.
 - No active tool copies or blindly transliterates PostgreSQL DDL into SQLite DDL.
 - PostgreSQL and client-local quality gates pass independently.
+- Tenant/organization SQL isolation gates report zero unresolved violations and have no known-debt allowance.
 - Human governance review accepts the ADR and migration completion evidence.

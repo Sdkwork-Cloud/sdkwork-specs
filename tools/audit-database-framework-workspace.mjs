@@ -42,6 +42,15 @@ function listSdkworkRepos(workspaceRoot) {
     .sort();
 }
 
+function directoryContainsFiles(directory) {
+  if (!fs.existsSync(directory)) return false;
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.isFile()) return true;
+    if (entry.isDirectory() && directoryContainsFiles(path.join(directory, entry.name))) return true;
+  }
+  return false;
+}
+
 function detectLegacyPaths(repoRoot) {
   const candidates = [
     'deployments/database',
@@ -85,7 +94,7 @@ function scriptCoverage(packageJsonPath) {
 }
 
 function classifyRepo(repoName, repoRoot) {
-  const hasDatabaseDir = fs.existsSync(path.join(repoRoot, 'database'));
+  const hasDatabaseDir = directoryContainsFiles(path.join(repoRoot, 'database'));
   const hasManifest = fs.existsSync(path.join(repoRoot, 'database', 'database.manifest.json'));
   const framework = hasDatabaseDir ? validateDatabaseFramework(repoRoot) : { ok: true, skipped: true, failures: [] };
   const legacyPaths = detectLegacyPaths(repoRoot);

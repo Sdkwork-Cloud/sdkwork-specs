@@ -12,6 +12,8 @@ import {
   mergePostgresDevRuntimeEnv,
 } from './postgres-dev-profile.mjs';
 
+const scopedDatabaseKey = (scope, field) => ['SDKWORK', scope, 'DATABASE', field].join('_');
+
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-postgres-tools-'));
 const envExample = path.join(fixtureRoot, '.env.postgres.example');
 fs.writeFileSync(envExample, `SDKWORK_DATABASE_ENGINE=postgresql
@@ -43,9 +45,25 @@ assert.match(
 
 assert.throws(
   () => parseWorkspacePostgresConfig({
-    configText: 'SDKWORK_CLAW_DATABASE_URL=postgresql://user:secret@db/sdkwork_ai_dev',
+    configText: `SDKWORK_DATABASE_URL=postgresql://sdkwork_ai_dev:secret@db/sdkwork_ai_dev
+SDKWORK_DATABASE_SCHEMA=private_schema
+SDKWORK_DATABASE_ADMIN_USERNAME=postgres`,
   }),
-  /retired database configuration SDKWORK_CLAW_DATABASE_URL/u,
+  /SDKWORK_DATABASE_SCHEMA must equal workspace database/u,
+);
+assert.throws(
+  () => parseWorkspacePostgresConfig({
+    configText: `SDKWORK_DATABASE_URL=postgresql://app_user:secret@db/app_database
+SDKWORK_DATABASE_ADMIN_USERNAME=postgres`,
+  }),
+  /not a canonical SDKWork workspace identity/u,
+);
+
+assert.throws(
+  () => parseWorkspacePostgresConfig({
+    configText: `${scopedDatabaseKey('CLAW', 'URL')}=postgresql://user:secret@db/sdkwork_ai_dev`,
+  }),
+  new RegExp(`retired database configuration ${scopedDatabaseKey('CLAW', 'URL')}`, 'u'),
 );
 assert.throws(
   () => parseWorkspacePostgresConfig({
@@ -58,10 +76,10 @@ SDKWORK_DATABASE_ADMIN_USERNAME=postgres`,
 );
 assert.throws(
   () => mergePostgresDevRuntimeEnv({
-    env: { SDKWORK_IM_DATABASE_URL: 'postgresql://redacted' },
+    env: { [scopedDatabaseKey('IM', 'URL')]: 'postgresql://redacted' },
     fileEnv: {},
   }),
-  /retired database configuration SDKWORK_IM_DATABASE_URL/u,
+  new RegExp(`retired database configuration ${scopedDatabaseKey('IM', 'URL')}`, 'u'),
 );
 
 import { SDKWORK_DEV_POSTGRES_EXTENSIONS } from './postgres-extensions.mjs';

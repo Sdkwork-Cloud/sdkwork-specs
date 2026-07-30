@@ -10,6 +10,8 @@ const GATEWAY_MOUNT_PATTERN = /pub\s+(?:async\s+)?fn\s+gateway_mount\b/u;
 const GATEWAY_MOUNT_BUSINESS_PATTERN = /pub\s+(?:async\s+)?fn\s+gateway_mount_business\b/u;
 const GATEWAY_MANIFEST_PATTERN =
   /pub\s+(?:async\s+)?fn\s+gateway_route_manifest\b|pub\s+const\s+GATEWAY_ROUTE_MANIFEST\b/u;
+const GATEWAY_HTTP_ROUTE_MANIFEST_PATTERN =
+  /pub\s+fn\s+gateway_route_manifest\s*\(\s*\)\s*->\s*(?:sdkwork_web_core::)?HttpRouteManifest\b/u;
 const FORBIDDEN_GATEWAY_MERGE_PATTERN =
   /(?:router\s*=\s*router\s*\.merge\s*\(|\.merge\s*\()\s*(?:sdkwork_routes_|sdkwork-routes-)/u;
 const ROUTE_INFRA_MOUNT_PATTERN =
@@ -239,6 +241,7 @@ export function discoverRouteCrates(root, applicationCode) {
         && EXECUTABLE_ROUTER_RETURN_PATTERN.test(gatewayMountReturn),
       hasGatewayMountBusiness: GATEWAY_MOUNT_BUSINESS_PATTERN.test(libRs),
       hasGatewayRouteManifest: GATEWAY_MANIFEST_PATTERN.test(libRs),
+      hasHttpRouteManifestAccessor: GATEWAY_HTTP_ROUTE_MANIFEST_PATTERN.test(libRs),
       mountsInfrastructure: routeCrateMountsInfrastructure(root, memberDir),
     };
   });

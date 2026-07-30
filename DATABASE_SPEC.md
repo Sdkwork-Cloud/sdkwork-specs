@@ -1,6 +1,6 @@
 # SDKWork Database Contract Standard
 
-- Version: 3.0
+- Version: 3.1
 - Scope: PostgreSQL-first authoritative server persistence, SQLite client-local persistence, relational database contracts, schema registry inputs, table naming, logical data types, tenant and subject isolation, indexes, transactions, schema evolution, repository access, lifecycle orchestration, and database readiness for SDKWork-owned systems
 - Related: `API_SPEC.md`, `PAGINATION_SPEC.md`, `SUBJECT_ID_SPEC.md`, `DATABASE_FRAMEWORK_SPEC.md`, `DATABASE_SPEC_PROCESS_SHARED_POOL.md`, `SCHEMA_REGISTRY_SPEC.md`, `MIGRATION_SPEC.md`, `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `TEST_SPEC.md`
 - Canonical location: `DATABASE_SPEC.md` in the `sdkwork-specs` standards root
@@ -291,7 +291,7 @@ Rules:
 - `tenant_id`, `organization_id`, `user_id`, `created_by`, `updated_by`, `deleted_by`, `owner_id`, and equivalent SDKWork subject references `MUST` be SQL `BIGINT` / logical `int64` when they reference SDKWork IAM, tenant, organization, app, or user subjects.
 - These fields `MUST` store resolved numeric subject ids from the trusted request context, not client-provided opaque strings.
 - Tenant-scoped tables `MUST` include `tenant_id` and tenant-leading indexes for list/search paths.
-- Organization-scoped tables `SHOULD` include `organization_id` when organization isolation affects authorization, listing, or audit.
+- Organization-scoped tables `MUST` include both `tenant_id` and `organization_id`; organization isolation must never depend on an optional payload field, inferred join, process-global state, or post-query filtering.
 - User-owned tables `SHOULD` include `user_id` when user ownership affects authorization, listing, or audit.
 - Cross-tenant platform tables `MUST` document why `tenant_id` is absent or nullable and how access is authorized.
 
@@ -448,7 +448,11 @@ Rules:
 Rules:
 
 - Access-control predicates `MUST` be derived from trusted request context, not client-writable table fields or request bodies.
-- Query paths that list tenant, organization, user, owner, or scoped data `MUST` apply the corresponding predicate before repository results are returned.
+- Ordinary runtime SQL that reads or mutates an organization-scoped table `MUST` bind both `tenant_id` and `organization_id` from typed trusted context. Inserts `MUST` bind both columns; reads, updates, and deletes `MUST` constrain both predicates in the database operation before rows are returned or changed.
+- Joins, CTEs, subqueries, aggregate replay, background workers, and batch paths do not weaken the scope rule. Every organization-scoped table reference that can expand the visible or mutable row set `MUST` remain tenant- and organization-bounded.
+- Cross-organization system operations `MUST` be exposed as explicitly typed operations rather than generic repository methods. Each operation `MUST` have an independently authorized service or worker identity, a fixed and bounded SQL shape, an audit record or security-grade operational event, and repository-local machine-contract ownership. It `MUST NOT` be reachable from ordinary user/API query paths.
+- Repository-local machine contracts `MUST` inventory organization-scoped tables and every approved cross-organization operation. An operation marker, SQL comment, method name, or static-check suppression is never authorization and `MUST NOT` create an open-ended allowlist.
+- Static repository isolation gates `MUST` fail on every unscoped executable statement, unknown operation marker, or SQL shape outside the exact repository-local contract. The release threshold is zero unresolved violations; known-debt allowances are forbidden for pre-launch and commercial releases.
 - Platform-level cross-tenant queries `MUST` require explicit admin/service authorization and audit evidence.
 - Permission, role, and ABAC condition fields used by policies `MUST` be first-class indexed columns when they affect online access.
 - Tests `MUST` cover cross-tenant and cross-user denial cases for security-sensitive repositories.
@@ -697,6 +701,9 @@ CI, schema linters, migration tools, or repository audits `SHOULD` implement the
 | DB083 | MUST | PostgreSQL serialization failures and deadlocks retry the complete idempotent transaction with a bounded budget. |
 | DB084 | MUST | Lossy or irreversible migrations use forward-fix/restore strategy rather than an unsafe generic down migration. |
 | DB085 | SHOULD | L2/L3 PostgreSQL recovery evidence includes a scheduled restore or point-in-time recovery exercise. |
+| DB086 | MUST | Organization-scoped tables include both `tenant_id` and `organization_id`. |
+| DB087 | MUST | Ordinary runtime SQL binds tenant and organization scope for every organization-scoped read or mutation. |
+| DB088 | MUST | Cross-organization operations are typed, independently authorized, bounded, audited, machine-inventoried, and rejected when their exact SQL shape is not approved. |
 
 ## 27. Design Review Checklist
 
@@ -706,6 +713,7 @@ New table review:
 - [ ] Database role is explicit: PostgreSQL `authoritative-server` or SQLite `client-local`.
 - [ ] Table profile and standard fields are selected.
 - [ ] Tenant, organization, user, owner, and data-scope semantics are correct.
+- [ ] Organization-scoped tables and ordinary runtime SQL bind both tenant and organization scope; approved cross-organization operations are typed, bounded, authorized, audited, and machine-inventoried.
 - [ ] ID generation, UUID/public id, and seed id behavior are documented.
 - [ ] Localized persisted values, when present, are modeled with stable base rows plus translation rows and deterministic locale seed history.
 - [ ] Query shapes, indexes, sort, pagination, and page-size limits are documented.
@@ -727,6 +735,8 @@ Forbidden or migration-only patterns:
 - Unbounded repository `find_all` followed by service/client pagination.
 - Direct pool construction in handlers, services, repositories, or background jobs.
 - Raw SQL string concatenation with user input.
+- Generic or globally callable cross-organization repository methods, including unbounded journal replay, export, search, or mutation.
+- SQL comments, markers, lint suppressions, or method names treated as authorization for an unscoped query.
 - Manual production schema edits without reconciliation into migrations and schema registry.
 - SQLite used by a service, server, container, cloud workload, shared gateway module, shared worker, or server-side system of record.
 - Server completion or compatibility claims based only on SQLite tests.
@@ -864,7 +874,7 @@ Rules:
 - Production PostgreSQL `sslmode=disable` is forbidden. `verify-full` is preferred; weaker modes require a documented network and certificate trust model.
 - PostgreSQL versions `MUST` be within upstream or approved managed-provider support. The minimum/maximum supported major versions, required extensions, collation/locale, encoding, timezone, and upgrade path `MUST` be declared and tested.
 - Database ownership and runtime access `MUST` be separated into least-privilege roles where supported: owner/bootstrap, migrator, application runtime, read-only/analytics, and backup/replication. Runtime credentials `MUST` not own schema objects.
-- Connections `MUST` set UTC timezone and a controlled `search_path`; application schemas and extension schemas `MUST` be explicit. Writable untrusted schemas such as a broad `public` path `MUST NOT` precede trusted application schemas.
+- Connections `MUST` set UTC timezone and a controlled, canonical-only `search_path`; application schemas and extension schemas `MUST` be explicit. Writable fallback schemas such as `public` `MUST NOT` appear anywhere in the normal application or lifecycle search path. A temporary fallback requires a dated governance exception, collision tests, and a removal milestone; extension objects outside the canonical schema are schema-qualified.
 - Poolers `MAY` be used only with a declared session/transaction pooling mode and compatibility evidence for prepared statements, session variables, advisory locks, RLS context, listen/notify, temp tables, and migration connections.
 - Every database-owning process follows `DATABASE_SPEC_PROCESS_SHARED_POOL.md`; its IM section owns the migration from dual sqlx/r2d2 pools.
 
@@ -904,6 +914,7 @@ Rules:
 - Repository interfaces `SHOULD` be named by aggregate/domain intent, not by generic table CRUD alone.
 - Repository methods `MUST` accept typed filters, typed sort options, pagination input, request scope, and transaction context where relevant.
 - Repository methods `MUST` enforce tenant, organization, user, owner, and data-scope predicates before returning business data.
+- Ordinary repository methods over organization-scoped data `MUST` require explicit tenant and organization inputs and bind both in the database statement. A cross-organization system operation belongs behind a separate typed port and `MUST NOT` reuse an unscoped ordinary repository method.
 - Repository methods `MUST NOT` load unbounded rows and rely on service-layer `skip`/`take`/`slice` pagination.
 - `find_all`, `list_all`, or equivalent helpers `MUST NOT` be used on P0/P1 interactive or public API paths unless the data set is statically bounded and documented.
 - Entity/record structs `MUST` remain persistence data shapes; business workflows, authorization decisions, and API response assembly belong in service or handler layers.
@@ -912,7 +923,7 @@ Rules:
 - PostgreSQL repositories `MUST` classify expected SQLSTATE outcomes such as unique violation, foreign-key violation, check violation, serialization failure, deadlock, lock timeout, statement timeout, and connection failure into stable domain/framework errors. Matching localized database message text is forbidden.
 - Queries `SHOULD` select explicit columns. `SELECT *` is forbidden in stable production mappings, migrations/backfills, public projections, and CDC contracts where column addition or order can change behavior.
 
-Repository tests `SHOULD` cover tenant and ownership isolation, sorting, pagination boundaries, optimistic concurrency conflicts, idempotency behavior, and L0 registered table compatibility.
+Repository tests `MUST` cover negative tenant and organization isolation for organization-scoped data. They `SHOULD` also cover sorting, pagination boundaries, optimistic concurrency conflicts, idempotency behavior, and L0 registered table compatibility.
 
 ## 35. Database Health, Migration, And Lifecycle
 

@@ -24,7 +24,7 @@ function fixture() {
   fs.writeFileSync(path.join(routeRoot, 'Cargo.toml'), '[package]\nname = "sdkwork-routes-demo-app-api"\nversion = "0.1.0"\nedition = "2021"\n');
   fs.writeFileSync(
     path.join(routeRoot, 'src', 'lib.rs'),
-    'pub fn gateway_mount() -> axum::Router { axum::Router::new().route("/demo", axum::routing::get(|| async {})) }\n',
+    'pub fn gateway_mount() -> axum::Router { axum::Router::new().route("/demo", axum::routing::get(|| async {})) }\npub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }\n',
   );
   fs.writeFileSync(
     path.join(routeRoot, 'specs', 'component.spec.json'),
@@ -186,6 +186,57 @@ test('does not require an application assembly from the platform cloud gateway r
   assert.match(result.message, /consumes application assemblies/u);
 });
 
+test('rejects a router-only default API assembly contribution', () => {
+  const root = fixture();
+  assert.equal(materializeApiAssembly(root).ok, true);
+  const bootstrapPath = path.join(
+    root,
+    'crates',
+    'sdkwork-api-demo-assembly',
+    'src',
+    'bootstrap.rs',
+  );
+  fs.writeFileSync(
+    bootstrapPath,
+    'pub struct ApiAssembly { pub router: axum::Router }\npub fn assemble_api_router() -> ApiAssembly { ApiAssembly { router: axum::Router::new() } }\n',
+  );
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('\n'), /router-only or incomplete|default ApiAssembly export is missing/u);
+  assert.match(result.errors.join('\n'), /route_manifest/u);
+});
+
+test('accepts a runtime bundle with an exact complete contribution field', () => {
+  const root = fixture();
+  assert.equal(materializeApiAssembly(root).ok, true);
+  const bootstrapPath = path.join(
+    root,
+    'crates',
+    'sdkwork-api-demo-assembly',
+    'src',
+    'bootstrap.rs',
+  );
+  fs.writeFileSync(
+    bootstrapPath,
+    [
+      'use sdkwork_web_bootstrap::ApiAssemblyContribution;',
+      'pub struct ApiAssemblyRuntime;',
+      'pub struct ApiAssembly {',
+      '  pub contribution: ApiAssemblyContribution,',
+      '  pub runtime: ApiAssemblyRuntime,',
+      '}',
+      'pub fn assemble_api_router() -> Result<ApiAssembly, String> { unimplemented!() }',
+      '',
+    ].join('\n'),
+  );
+
+  const result = validateApiAssembly(root);
+
+  assert.equal(result.ok, true, result.errors.join('\n'));
+});
+
 test('rejects complete manifest drift, including application identity', () => {
   const root = fixture();
   const materialized = materializeApiAssembly(root);
@@ -237,7 +288,7 @@ test('rejects served route crates whose gateway mount is descriptor-only', () =>
   const routeLib = path.join(root, 'crates', 'sdkwork-routes-demo-app-api', 'src', 'lib.rs');
   fs.writeFileSync(
     routeLib,
-    'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\n',
+    'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\npub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }\n',
   );
   assert.equal(materializeApiAssembly(root).ok, true);
 
@@ -257,6 +308,7 @@ test('rejects served route crates whose gateway mount delegates to an empty rout
       'mod routes;',
       'use axum::Router;',
       'pub async fn gateway_mount() -> Router { routes::build_router_with_framework().await }',
+      'pub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }',
       '',
     ].join('\n'),
   );
@@ -283,7 +335,7 @@ test('rejects served route crates whose gateway mount returns a route manifest',
   const routeLib = path.join(root, 'crates', 'sdkwork-routes-demo-app-api', 'src', 'lib.rs');
   fs.writeFileSync(
     routeLib,
-    'pub struct RouterApiRouteManifest;\npub fn gateway_mount() -> RouterApiRouteManifest { RouterApiRouteManifest }\n',
+    'pub struct RouterApiRouteManifest;\npub fn gateway_mount() -> RouterApiRouteManifest { RouterApiRouteManifest }\npub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }\n',
   );
   assert.equal(materializeApiAssembly(root).ok, true);
 
@@ -299,7 +351,7 @@ test('accepts executable gateway mounts returned through Result', () => {
   const routeLib = path.join(root, 'crates', 'sdkwork-routes-demo-app-api', 'src', 'lib.rs');
   fs.writeFileSync(
     routeLib,
-    'pub async fn gateway_mount() -> Result<axum::Router, String> { Ok(axum::Router::new().route("/demo", axum::routing::get(|| async {}))) }\n',
+    'pub async fn gateway_mount() -> Result<axum::Router, String> { Ok(axum::Router::new().route("/demo", axum::routing::get(|| async {}))) }\npub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }\n',
   );
   assert.equal(materializeApiAssembly(root).ok, true);
 
@@ -313,7 +365,7 @@ test('accepts executable gateway mounts with generic parameters and a where clau
   const routeLib = path.join(root, 'crates', 'sdkwork-routes-demo-app-api', 'src', 'lib.rs');
   fs.writeFileSync(
     routeLib,
-    'pub fn gateway_mount<R>(service: Service<R>) -> axum::Router\nwhere\n    R: Repository,\n{ axum::Router::new().route("/demo", axum::routing::get(|| async {})) }\n',
+    'pub fn gateway_mount<R>(service: Service<R>) -> axum::Router\nwhere\n    R: Repository,\n{ axum::Router::new().route("/demo", axum::routing::get(|| async {})) }\npub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }\n',
   );
   assert.equal(materializeApiAssembly(root).ok, true);
 

@@ -87,6 +87,48 @@ function compareManifests(expected, actual) {
   return errors;
 }
 
+const REQUIRED_ASSEMBLY_FIELDS = [
+  'router',
+  'route_manifest',
+  'openapi',
+  'permission_catalog',
+  'domain_context_injectors',
+  'readiness_check',
+];
+
+function validateAssemblyContributionContract(crateRoot, bootstrapSource) {
+  const errors = [];
+  const sharedAlias = /pub\s+type\s+ApiAssembly\s*=\s*(?:sdkwork_web_bootstrap::)?ApiAssemblyContribution\s*;/u
+    .test(bootstrapSource);
+  const structBody = /pub\s+struct\s+ApiAssembly\s*\{([^}]*)\}/u
+    .exec(bootstrapSource)?.[1];
+  if (!sharedAlias && !structBody) {
+    errors.push(
+      'default ApiAssembly export is missing; export the indivisible assembly contribution contract',
+    );
+    return errors;
+  }
+  const completeContributionField = structBody
+    && /\bpub\s+contribution\s*:\s*(?:sdkwork_web_bootstrap::)?ApiAssemblyContribution\b/u
+      .test(structBody);
+  if (!sharedAlias && !completeContributionField) {
+    const missing = REQUIRED_ASSEMBLY_FIELDS.filter(
+      (field) => !new RegExp(`\\bpub\\s+${field}\\s*:`, 'u').test(structBody),
+    );
+    if (missing.length > 0) {
+      errors.push(
+        `default ApiAssembly is router-only or incomplete; missing contribution fields: ${missing.join(', ')}`,
+      );
+    }
+  }
+
+  const libSource = readText(path.join(crateRoot, 'src', 'lib.rs'));
+  if (!/\bassemble_api_router\b/u.test(libSource)) {
+    errors.push('crate root must export assemble_api_router');
+  }
+  return errors;
+}
+
 export function validateApiAssembly(root, { strict = false } = {}) {
   const repositoryName = path.basename(path.resolve(root));
   if (repositoryName === 'sdkwork-api-cloud-gateway') {
@@ -185,6 +227,9 @@ export function validateApiAssembly(root, { strict = false } = {}) {
 
   const bootstrapPath = path.join(crateRoot, 'src', 'bootstrap.rs');
   const bootstrapSource = readText(bootstrapPath);
+  if (routeCrates.length > 0) {
+    errors.push(...validateAssemblyContributionContract(crateRoot, bootstrapSource));
+  }
   if (routeCrates.length === 0) {
     const staleRouteReferences = [
       ...new Set(bootstrapSource.match(/sdkwork_routes_[a-z0-9_]+/gu) ?? []),

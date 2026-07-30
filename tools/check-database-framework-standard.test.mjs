@@ -40,7 +40,7 @@ function scaffoldValidDatabaseRoot(rootDir, contractVersion = '5.0.0') {
       defaultEngine: 'postgres',
       tablePrefix: 'demo_',
       baselineStrategy: 'baseline-plus-migrations',
-      lifecycle: { activeSeedLocales: ['zh-CN'], autoMigrate: true },
+      lifecycle: { activeSeedLocales: ['zh-CN'], autoMigrate: false },
     },
     rootDir,
   );
@@ -114,6 +114,41 @@ const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'))
 scaffoldValidDatabaseRoot(tempRoot);
 const valid = validateDatabaseFramework(tempRoot);
 assert.equal(valid.ok, true, 'valid scaffold should pass');
+
+const emptyDatabaseRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+fs.mkdirSync(path.join(emptyDatabaseRoot, 'database/contract'), { recursive: true });
+const emptyDatabase = validateDatabaseFramework(emptyDatabaseRoot);
+assert.equal(emptyDatabase.skipped, true, 'empty untracked database directories are not database owners');
+
+const authoritativeAutoMigrateRoot = fs.mkdtempSync(
+  path.join(os.tmpdir(), 'sdkwork-db-framework-'),
+);
+scaffoldValidDatabaseRoot(authoritativeAutoMigrateRoot);
+const authoritativeAutoMigrateManifestPath = path.join(
+  authoritativeAutoMigrateRoot,
+  'database/database.manifest.json',
+);
+const authoritativeAutoMigrateManifest = JSON.parse(
+  fs.readFileSync(authoritativeAutoMigrateManifestPath, 'utf8'),
+);
+authoritativeAutoMigrateManifest.lifecycle.autoMigrate = true;
+fs.writeFileSync(
+  authoritativeAutoMigrateManifestPath,
+  `${JSON.stringify(authoritativeAutoMigrateManifest, null, 2)}\n`,
+  'utf8',
+);
+const authoritativeAutoMigrate = validateDatabaseModuleContract(
+  path.join(authoritativeAutoMigrateRoot, 'database'),
+);
+assert.equal(
+  authoritativeAutoMigrate.ok,
+  false,
+  'authoritative-server modules must not enable automatic migrations',
+);
+assert.ok(
+  authoritativeAutoMigrate.failures.some((item) => item.includes('must be false')),
+  'failure should identify authoritative-server automatic migration ownership',
+);
 
 const mismatchedPrefixRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
 scaffoldValidDatabaseRoot(mismatchedPrefixRoot);
@@ -262,6 +297,12 @@ assert.equal(templateResult.ok, true, 'templates/database should satisfy module 
 const clientTemplateRoot = path.resolve(toolsDir, '../templates/database-client-local');
 const clientTemplateResult = validateDatabaseModuleLayout(clientTemplateRoot, 'client-local');
 assert.equal(clientTemplateResult.ok, true, 'templates/database-client-local should satisfy client-local layout checks');
+const clientTemplateContractResult = validateDatabaseModuleContract(clientTemplateRoot);
+assert.equal(
+  clientTemplateContractResult.failures.some((item) => item.includes('table_prefix')),
+  false,
+  'client-local database contracts must not require a shared-schema table prefix',
+);
 
 const forwardOnlyRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
 scaffoldValidDatabaseRoot(forwardOnlyRoot);
@@ -272,6 +313,22 @@ writeText(
 );
 const forwardOnly = validateDatabaseModuleLayout(path.join(forwardOnlyRoot, 'database'));
 assert.equal(forwardOnly.ok, true, 'forward-only migration with explicit rollback metadata should pass');
+
+const timestampMigrationRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
+scaffoldValidDatabaseRoot(timestampMigrationRoot);
+writeText(
+  'database/migrations/postgres/202607300001_add_demo_timestamp.up.sql',
+  '-- sdkwork:migration\n-- engine: postgres\n-- reversible: false\n-- rollback: forward-fix\n-- transactional: true\n-- lock: lightweight\n-- lock_timeout: 2s\n-- statement_timeout: 30s\nSELECT 1;\n',
+  timestampMigrationRoot,
+);
+const timestampMigration = validateDatabaseModuleLayout(
+  path.join(timestampMigrationRoot, 'database'),
+);
+assert.equal(
+  timestampMigration.ok,
+  true,
+  'ISO-like numeric migration version tokens should pass',
+);
 
 const migrationsOnlyRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));
 scaffoldValidDatabaseRoot(migrationsOnlyRoot);
@@ -330,6 +387,31 @@ assert.equal(missingOperationalMetadata.ok, false, 'PostgreSQL migration without
 assert.ok(
   missingOperationalMetadata.failures.some((item) => item.includes('metadata lock_timeout')),
   'failure should identify missing PostgreSQL lock timeout metadata',
+);
+writeText(
+  'database/migrations/postgres/metadata.json',
+  `${JSON.stringify({
+    schemaVersion: 1,
+    kind: 'sdkwork.database.migration-metadata',
+    engine: 'postgres',
+    sourcePolicy: 'historical-immutable',
+    migrations: {
+      '0001_add_demo_status.up.sql': {
+        lock: 'access-exclusive',
+        lock_timeout: '2s',
+        statement_timeout: '30s',
+      },
+    },
+  }, null, 2)}\n`,
+  missingOperationalMetadataRoot,
+);
+const supplementedOperationalMetadata = validateDatabaseModuleLayout(
+  path.join(missingOperationalMetadataRoot, 'database'),
+);
+assert.equal(
+  supplementedOperationalMetadata.ok,
+  true,
+  'historical sidecar metadata should complete a migration without changing SQL bytes',
 );
 
 const missingRollbackMetadataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-framework-'));

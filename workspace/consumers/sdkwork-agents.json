@@ -3,6 +3,8 @@
     "packages": [
       "../sdkwork-app-topology",
       "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript",
+      "../sdkwork-community/sdks/sdkwork-community-app-sdk/sdkwork-community-app-sdk-typescript",
+      "../sdkwork-generations/sdks/sdkwork-generations-app-sdk/sdkwork-generations-app-sdk-typescript",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts",
       "../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript",
       "../sdkwork-memory/sdks/sdkwork-memory-app-sdk/sdkwork-memory-app-sdk-typescript",
@@ -18,6 +20,7 @@
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-application-bootstrap",
       "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-pc-react",
       "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-runtime-pc-react",
+      "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-user-center-core-pc-react",
       "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-iam-react",
       "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript",
       "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript",

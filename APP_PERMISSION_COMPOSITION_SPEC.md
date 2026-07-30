@@ -101,8 +101,9 @@ Field rules:
 | Field | Required | Meaning |
 | --- | --- | --- |
 | `inheritanceMode` | yes | Must be `module-catalog-with-overrides` |
-| `applicationModule.manifestRef` | when app owns permissions | Relative path to consumer IMF manifest |
+| `applicationModule.manifestRef` | when app owns permissions | Path relative to the owning component root, pointing to the consumer IMF manifest |
 | `moduleCatalogRefs[]` | yes | Dependency catalogs inherited by reference |
+| `moduleCatalogRefs[].manifestRef` | yes | Path relative to the owning component root, pointing to the dependency IMF manifest |
 | `moduleCatalogRefs[].inheritPermissions` | yes | When true, consumer treats catalog codes as available without local duplication |
 | `bootstrapAccessTokenScope.inheritFrom` | recommended | Pointer to app manifest bootstrap scope |
 | `bootstrapAccessTokenScope.supplement` | optional | Additional bootstrap-only codes; must use standard `{domain}.{resource}.{action}` format |
@@ -111,6 +112,7 @@ Field rules:
 
 Dependency binding rules:
 
+- All `manifestRef` values resolve exactly once from the directory that owns `specs/component.spec.json`; validators and aligners must not guess from the nested `specs/` directory, application root, or repository root.
 - Each HTTP `contracts.sdkDependencies[]` entry that participates in protected app-api, backend-api, or SDKWork-owned open-api routes `MUST` have a matching `moduleCatalogRefs[]` entry with `inheritPermissions = true`.
 - The dependency match is by explicit `moduleId`/`permissionModuleId` when present, otherwise by SDK family domain such as `sdkwork-shop-app-sdk` -> `shop`.
 - `applicationModule.manifestRef` is required when the consumer owns protected application routes or roles; it must not be used to copy dependency-owned permissions.

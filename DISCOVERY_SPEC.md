@@ -307,7 +307,7 @@ Rules:
 
 - `SDKWORK_DISCOVERY_CONFIG_FILE` selects the host-local config file only; it is not forwarded as business config.
 - Application-owned RPC services `MUST NOT` overload `SDKWORK_DISCOVERY_*` keys for non-discovery behavior.
-- When both `SDKWORK_DISCOVERY_STORAGE_PROVIDER` and `SDKWORK_DISCOVERY_DATABASE_ENGINE` are present, they `MUST` describe the same provider.
+- Discovery storage selection uses `SDKWORK_DISCOVERY_STORAGE_PROVIDER`; when it selects PostgreSQL, connection identity and lifecycle configuration come only from `SDKWORK_DATABASE_*`.
 
 ## 16. Verification
 

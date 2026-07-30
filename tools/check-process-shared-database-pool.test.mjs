@@ -96,6 +96,23 @@ write(
 );
 assert.equal(validateProcessSharedDatabasePool(testPoolRoot).ok, true);
 
+const productionAfterTestItemRoot = scaffold();
+write(
+  productionAfterTestItemRoot,
+  'crates/sdkwork-api-demo-standalone-gateway/src/extra.rs',
+  [
+    '#[cfg(test)]',
+    'fn open_test_pool() { let _pool = PgPoolOptions::new(); }',
+    'fn open_production_pool() { let _pool = PgPoolOptions::new(); }',
+    '',
+  ].join('\n'),
+);
+const productionAfterTestItem = validateProcessSharedDatabasePool(productionAfterTestItemRoot);
+assert.equal(productionAfterTestItem.ok, false);
+assert.ok(
+  productionAfterTestItem.failures.some((failure) => failure.includes('PgPoolOptions::new')),
+);
+
 const schemaMismatchRoot = scaffold();
 const contractPath = path.join(schemaMismatchRoot, 'specs/process-database-pool.spec.json');
 const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8'));

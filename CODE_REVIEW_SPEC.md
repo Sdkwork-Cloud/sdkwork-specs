@@ -109,6 +109,8 @@ Reviewers `MUST` request changes for database work that introduces or retains:
 - database message-text matching instead of PostgreSQL SQLSTATE handling, statement retry inside an aborted transaction, remote calls while holding locks, or unbounded deadlock/serialization retry.
 - client-local SQLite without profile/account/origin isolation, secure key policy, purge, corruption/disk-full recovery, or explicit offline sync/conflict semantics.
 - trusting client-local tenant, permission, price, quota, entitlement, ledger, or audit fields as server authority.
+- organization-scoped tables without both `tenant_id` and `organization_id`, or ordinary runtime SQL that does not bind both scopes.
+- generic cross-organization repository access, marker-only bypasses, unbounded privileged operations, or missing independent authorization, audit evidence, exact SQL-shape tests, and repository-local operation inventory.
 
 ## 4. Risk-Based Review
 

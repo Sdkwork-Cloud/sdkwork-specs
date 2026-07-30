@@ -168,6 +168,11 @@ Before a gateway installs the Web Framework layer, it `MUST` merge all selected 
 An assembly contribution is an indivisible runtime contract. A consumer `MUST NOT` project only
 its `router` field, call a deprecated router-only entrypoint, or otherwise discard its route
 manifest, OpenAPI contribution, permission catalog, domain context injectors, or readiness check.
+An owner assembly that must retain process-lifetime workers `MAY` return a host-neutral runtime
+bundle whose public `contribution` field has the exact `ApiAssemblyContribution` type. The bundle
+does not weaken contribution completeness: consumers `MUST` pass that field intact into profile
+composition, while runtime sidecars remain owner-defined lifecycle handles and `MUST NOT` own an
+HTTP listener or install Web Framework infrastructure.
 When a host selects a dependency assembly, tests `MUST` prove that a matched dependency error
 contains the dependency operation's `instance` and `operationId`; an HTTP status or successful
 handler dispatch alone is insufficient integration evidence.
@@ -213,6 +218,11 @@ Rules:
   route-manifest declarations are component-root-relative.
 - Materialization `MUST` preserve authored bootstrap code and regenerate only
   declared generated regions or files.
+- An authored assembly `src/lib.rs` that declares modules or public exports beyond the canonical
+  materializer template `MUST` contain the exact `SDKWORK-ASSEMBLY-LIB-CUSTOM` marker. The
+  materializer `MUST` preserve a marked file byte-for-byte while continuing to regenerate declared
+  companion artifacts such as `src/generated.rs`. Application-specific generated modules do not
+  make `src/lib.rs` generated ownership and `MUST NOT` be silently removed during materialization.
 
 ### 5.1 Runtime Parity Evidence
 

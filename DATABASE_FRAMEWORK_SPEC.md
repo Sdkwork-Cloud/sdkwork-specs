@@ -42,6 +42,7 @@ Rules:
 - Every physical table in a shared PostgreSQL schema `MUST` have exactly one application/module owner. Application roots `MUST` use an ownership-specific prefix declared consistently by `database.manifest.json#tablePrefix`, `contract/schema.yaml#table_prefix`, and `contract/prefix-registry.json`; broad domain prefixes such as `ai_` are forbidden when independent modules share the schema. A bootstrap `MUST` fail closed on an existing same-name table whose column/type contract does not match its owner contract. It `MUST NOT` mutate the foreign table into compatibility.
 - Workspace lifecycle `MUST` run in the shared PostgreSQL database and schema selected by the active environment in `ENVIRONMENT_SPEC.md` section 7.1. Development uses `sdkwork_ai_dev`; tests use `sdkwork_ai_test` or workspace-scoped ephemeral `sdkwork_ai_test_<run_id>`; staging uses `sdkwork_ai_staging`; production uses `sdkwork_ai_prod`. Application-specific or module-specific databases and schemas such as `sdkwork_<application-code>_dev`, `<application_code>_test_<run_id>`, or `<module_id>_schema` are forbidden.
 - Application baselines, migrations, seeds, bootstrap commands, test runners, and dev runners `MUST` manage only module-owned objects inside the already-provisioned shared schema for the active environment. They `MUST NOT` issue `CREATE DATABASE`, `DROP DATABASE`, `ALTER DATABASE`, `CREATE SCHEMA`, `DROP SCHEMA`, or `ALTER SCHEMA`, and they `MUST NOT` switch to a new database/schema after an ownership or drift failure.
+- Lifecycle orchestration `MUST` pin each PostgreSQL migration, seed, bootstrap, history, and drift transaction to the canonical schema only. Unqualified object discovery and DDL `MUST NOT` fall through to `public` or another writable schema; extension-owned objects outside the canonical schema are schema-qualified.
 - Table and column semantics `MUST` still follow `DATABASE_SPEC.md`. Lifecycle assets `MUST NOT` redefine naming or logical-type rules.
 - All connection pools `MUST` still be created through `sdkwork-database` as defined in `DATABASE_SPEC.md` section 32.
 - Every application ingress, internal service, or worker process `MUST` install one PostgreSQL process-local pool per normalized database identity before module lifecycle bootstrap. Embedded modules reuse that pool and do not own independent capacity. See `DATABASE_SPEC.md` section 33.5 and `DATABASE_SPEC_PROCESS_SHARED_POOL.md`.
@@ -454,6 +455,9 @@ Metadata rules:
 - `transactional`, `lock`, `lock_timeout`, `statement_timeout`, `reversible`, and `rollback` `MUST` be explicit for production PostgreSQL migrations.
 - Non-trivial migrations `MUST` also declare rewrite expectation, replication/WAL impact, backfill plan, observability, cancellation point, and recovery command in the migration plan or structured header.
 - `transactional: false` is required for operations such as `CREATE INDEX CONCURRENTLY`; the lifecycle runner `MUST` not wrap them in an implicit transaction.
+- The structured comment block is part of the checksum-covered migration content. Authors `MUST` complete it before the migration enters the Git index or can be consumed by another workspace.
+- A tracked historical migration `MUST NOT` be rewritten to add, repair, reorder, or reformat metadata. Missing historical metadata `MUST` be recorded in `migrations/{engine}/metadata.json` with `kind: sdkwork.database.migration-metadata` and `sourcePolicy: historical-immutable`; the next schema change uses a new forward migration.
+- Automated metadata alignment `MAY` add headers to newly authored, untracked migration files or maintain the historical metadata sidecar. It `MUST` leave tracked migration SQL byte-for-byte unchanged.
 
 ### 7.3 History Tables
 
@@ -468,7 +472,7 @@ The framework `MUST` maintain:
 Rules:
 
 - Applications `MUST NOT` invent competing history tables without an exception record.
-- Migration checksum `MUST` be recorded. Changed migration content after apply `MUST` fail validation in CI and drift ops.
+- Migration checksum `MUST` be recorded. Changed migration content after apply `MUST` fail validation in CI and drift ops. Comments, headers, whitespace, encoding, and line endings are checksum-covered content and are not exempt from immutability.
 
 ### 7.4 Migration Governance
 
@@ -481,6 +485,7 @@ Rules aligned with `MIGRATION_SPEC.md` and `DATABASE_SPEC.md` section 22:
 - PostgreSQL migrations `MUST` be tested on the minimum and maximum supported PostgreSQL major versions when version-specific DDL, planner, extension, or fast-path behavior is used.
 - A release rollback `MUST` prefer compatible application rollback or forward-fix. Automated execution of every available `.down.sql` in reverse order is forbidden.
 - Shared-schema drift or an existing incompatible object `MUST` be repaired with a reviewed forward migration owned by the affected module. Replaying a changed baseline over a non-empty shared schema, deleting lifecycle history, or creating an application-specific database/schema to obtain a clean bootstrap is forbidden.
+- Migration tests `MUST` include a fallback schema containing a same-named decoy object when a migration uses unqualified object discovery or DDL. The migration must operate only on the first canonical schema and leave the fallback object unchanged. Production lifecycle execution uses `SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false`; temporary compatibility requires a dated exception and removal milestone.
 
 ## 8. Seed And Locale Standard
 

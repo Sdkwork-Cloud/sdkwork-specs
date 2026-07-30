@@ -1,6 +1,6 @@
 # REQ-2026-0730 Repository Generated-State Boundary
 
-Status: in-progress
+Status: accepted
 Owner: SDKWork platform
 Date: 2026-07-30
 Source: platform, security, reliability, governance

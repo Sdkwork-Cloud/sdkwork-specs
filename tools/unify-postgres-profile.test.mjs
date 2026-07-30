@@ -7,6 +7,8 @@ import {
   workspaceIdentityForEnvironment,
 } from './unify-postgres-profile.mjs';
 
+const scopedDatabaseKey = (scope, field) => ['SDKWORK', scope, 'DATABASE', field].join('_');
+
 test('resolves every lifecycle environment without mapping staging to production', () => {
   assert.equal(lifecycleEnvironmentForPath('etc/topology/standalone.development.env'), 'development');
   assert.equal(lifecycleEnvironmentForPath('etc/topology/standalone.test.env'), 'test');
@@ -16,9 +18,9 @@ test('resolves every lifecycle environment without mapping staging to production
 });
 
 test('renames application and module database keys in source text', () => {
-  const source = `SDKWORK_CLAW_DATABASE_URL=postgresql://old:secret@db/sdkwork_claw_dev
-SDKWORK_CLAW_ROUTER_DATABASE_AUTO_MIGRATE=true
-SDKWORK_IAM_DATABASE_MAX_CONNECTIONS=4`;
+  const source = `${scopedDatabaseKey('CLAW', 'URL')}=postgresql://old:secret@db/sdkwork_claw_dev
+${scopedDatabaseKey('CLAW_ROUTER', 'AUTO_MIGRATE')}=true
+${scopedDatabaseKey('IAM', 'MAX_CONNECTIONS')}=4`;
   const result = migratePostgresProfileContent(source, 'src/config.rs');
   assert.equal(result.conflicts.length, 0);
   assert.match(result.content, /SDKWORK_DATABASE_URL/u);
@@ -28,10 +30,10 @@ SDKWORK_IAM_DATABASE_MAX_CONNECTIONS=4`;
 });
 
 test('normalizes config identity according to the profile path', () => {
-  const source = `SDKWORK_DRIVE_DATABASE_NAME=sdkwork_drive_staging
-SDKWORK_DRIVE_DATABASE_SCHEMA=public
-SDKWORK_DRIVE_DATABASE_USERNAME=sdkwork_drive
-SDKWORK_DRIVE_DATABASE_URL=postgresql://sdkwork_drive:secret@db/sdkwork_drive_staging?sslmode=require`;
+  const source = `${scopedDatabaseKey('DRIVE', 'NAME')}=sdkwork_drive_staging
+${scopedDatabaseKey('DRIVE', 'SCHEMA')}=public
+${scopedDatabaseKey('DRIVE', 'USERNAME')}=sdkwork_drive
+${scopedDatabaseKey('DRIVE', 'URL')}=postgresql://sdkwork_drive:secret@db/sdkwork_drive_staging?sslmode=require`;
   const result = migratePostgresProfileContent(
     source,
     'sdkwork-drive/etc/topology/cloud.staging.env',
@@ -46,11 +48,55 @@ SDKWORK_DRIVE_DATABASE_URL=postgresql://sdkwork_drive:secret@db/sdkwork_drive_st
   );
 });
 
+test('normalizes a legacy bare production database URL', () => {
+  const result = migratePostgresProfileContent(
+    'url = "postgres://prod-db:5432/sdkwork"',
+    'sdkwork-terminal/config/server/terminal.production.toml.example',
+  );
+
+  assert.equal(result.changed, true);
+  assert.equal(
+    result.content,
+    'url = "postgres://prod-db:5432/sdkwork_ai_prod"',
+  );
+});
+
 test('detects canonical key conflicts without exposing values', () => {
   const result = migratePostgresProfileContent(
-    `SDKWORK_CLAW_DATABASE_PASSWORD=first
+    `${scopedDatabaseKey('CLAW', 'PASSWORD')}=first
 SDKWORK_DATABASE_PASSWORD=second`,
     'sdkwork-demo/.env.release.example',
   );
   assert.deepEqual(result.conflicts, ['SDKWORK_DATABASE_PASSWORD']);
+});
+
+test('blocks multiple module keys that would become duplicate JavaScript object keys', () => {
+  const result = migratePostgresProfileContent(
+    `const env = {
+  ${scopedDatabaseKey('IM', 'URL')}: databaseUrl,
+  ${scopedDatabaseKey('RTC_STATE', 'URL')}: databaseUrl,
+};`,
+    'scripts/dev/embedded-database-env.mjs',
+  );
+
+  assert.deepEqual(result.conflicts, ['SDKWORK_DATABASE_URL']);
+  assert.match(result.content, /SDKWORK_DATABASE_URL: databaseUrl/u);
+});
+
+test('requires manual migration for business storage fields', () => {
+  const source = `${scopedDatabaseKey('AIOT_DEVICE', 'TABLE_PREFIX')}=iot_
+${scopedDatabaseKey('AIOT_DEVICE', 'MODE')}=pool`;
+  const result = migratePostgresProfileContent(
+    source,
+    'sdkwork-aiot/etc/topology/cloud.production.env',
+  );
+
+  assert.equal(result.changed, false);
+  assert.deepEqual(result.conflicts, []);
+  assert.deepEqual(result.manualMigrations, [
+    scopedDatabaseKey('AIOT_DEVICE', 'MODE'),
+    scopedDatabaseKey('AIOT_DEVICE', 'TABLE_PREFIX'),
+  ]);
+  assert.equal(result.content, source);
+  assert.doesNotMatch(result.content, /SDKWORK_DATABASE_(?:MODE|TABLE_PREFIX)/u);
 });

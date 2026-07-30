@@ -10,6 +10,55 @@ function writeText(filePath, value) {
   fs.writeFileSync(filePath, value, 'utf8');
 }
 
+test('API assembly materializer preserves custom library modules and exports byte-for-byte', () => {
+  const root = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-')),
+    'sdkwork-demo',
+  );
+  writeText(path.join(root, 'sdkwork.app.config.json'), '{}\n');
+  writeText(
+    path.join(root, 'Cargo.toml'),
+    '[workspace]\nmembers = []\nresolver = "2"\n\n[workspace.package]\nedition = "2021"\nversion = "0.1.0"\n',
+  );
+  const crateRoot = path.join(root, 'crates', 'sdkwork-api-demo-assembly');
+  const customLib = [
+    '//! API assembly for sdkwork-demo.',
+    '// SDKWORK-ASSEMBLY-LIB-CUSTOM',
+    '',
+    'mod bootstrap;',
+    'mod generated;',
+    'mod generated_open_http_route_manifest;',
+    '',
+    'pub use bootstrap::{assemble_api_router, ApiAssembly, ApiAssemblyContext};',
+    '',
+  ].join('\n');
+  writeText(path.join(crateRoot, 'src', 'lib.rs'), customLib);
+  writeText(
+    path.join(crateRoot, 'src', 'bootstrap.rs'),
+    [
+      'pub struct ApiAssembly;',
+      'pub struct ApiAssemblyContext;',
+      'pub async fn assemble_api_router(_: ApiAssemblyContext) -> Result<ApiAssembly, String> {',
+      '    Ok(ApiAssembly)',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  writeText(
+    path.join(crateRoot, 'src', 'generated_open_http_route_manifest.rs'),
+    'pub fn http_route_manifest() {}\n',
+  );
+
+  const result = materializeApiAssembly(root);
+
+  assert.equal(result.ok, true);
+  assert.equal(fs.readFileSync(path.join(crateRoot, 'src', 'lib.rs'), 'utf8'), customLib);
+  assert.match(
+    fs.readFileSync(path.join(crateRoot, 'src', 'generated.rs'), 'utf8'),
+    /ROUTE_CRATE_COUNT: usize = 0/u,
+  );
+});
+
 test('API assembly Cargo dependencies use workspace declarations when root owns route crates', () => {
   const root = path.join(
     fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-api-assembly-')),
@@ -45,6 +94,8 @@ test('API assembly Cargo dependencies use workspace declarations when root owns 
     [
       'pub const APP_API_PREFIX: &str = "/app/v3/api/agents";',
       'pub fn gateway_mount() -> axum::Router { axum::Router::new() }',
+      'pub fn gateway_mount_business() -> axum::Router { axum::Router::new() }',
+      'pub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }',
       '',
     ].join('\n'),
   );
@@ -68,6 +119,7 @@ test('API assembly Cargo dependencies use workspace declarations when root owns 
   assert.match(cargoToml, /^edition = "2021"$/mu);
   assert.match(cargoToml, /^version = "0\.1\.0"$/mu);
   assert.match(cargoToml, /^sdkwork-routes-agents-app-api\.workspace = true$/mu);
+  assert.match(cargoToml, /^sdkwork-web-core = \{ path = /mu);
   assert.doesNotMatch(cargoToml, /^sdkwork-routes-agents-http-shared(?:\.workspace)?\s*=/mu);
   assert.doesNotMatch(cargoToml, /sdkwork_routes_agents_app_api\s*=/u);
   assert.doesNotMatch(cargoToml, /sdkwork_routes_agents_http_shared\s*=/u);
@@ -112,7 +164,24 @@ test('API assembly Cargo dependencies use workspace declarations when root owns 
     'utf8',
   );
   assert.match(libRs, /^mod bootstrap;$/mu);
+  assert.match(libRs, /assemble_api_router/u);
+  assert.match(libRs, /assemble_app_api_contribution/u);
+  assert.match(libRs, /ApiAssemblyContext/u);
   assert.doesNotMatch(libRs, /router\.merge\(sdkwork_routes_/u);
+  const bootstrapRs = fs.readFileSync(
+    path.join(root, 'crates/sdkwork-api-agents-assembly/src/bootstrap.rs'),
+    'utf8',
+  );
+  assert.match(bootstrapRs, /use sdkwork_web_core::\{DomainContextInjector, HttpRouteManifest\};/u);
+  assert.match(bootstrapRs, /pub async fn assemble_app_api_contribution/u);
+  assert.match(
+    bootstrapRs,
+    /sdkwork_routes_agents_app_api::gateway_mount_business\(\)/u,
+  );
+  assert.doesNotMatch(
+    bootstrapRs,
+    /sdkwork_routes_agents_app_api::gateway_mount\(\)/u,
+  );
 });
 
 test('API assembly discovers aggregate subdomain routes when app-code routes are absent', () => {
@@ -158,7 +227,7 @@ test('API assembly discovers aggregate subdomain routes when app-code routes are
     );
     writeText(
       path.join(crateRoot, 'src/lib.rs'),
-      'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\n',
+      'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\npub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }\n',
     );
   }
 
@@ -224,7 +293,7 @@ test('API assembly dependency rendering deduplicates preserved Cargo keys', () =
   );
   writeText(
     path.join(root, 'crates/sdkwork-routes-agents-app-api/src/lib.rs'),
-    'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\n',
+    'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\npub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }\n',
   );
   writeText(
     path.join(root, 'crates/sdkwork-api-agents-assembly/Cargo.toml'),
@@ -294,7 +363,7 @@ test('replaces a legacy generated gateway bootstrap after route crates are retir
   assert.equal(result.ok, true);
   const bootstrap = fs.readFileSync(bootstrapPath, 'utf8');
   assert.doesNotMatch(bootstrap, /sdkwork_routes_agents_app_api/u);
-  assert.match(bootstrap, /router: Router::new\(\)/u);
+  assert.match(bootstrap, /Router::new\(\)/u);
   const generated = fs.readFileSync(
     path.join(root, 'crates', 'sdkwork-api-agents-assembly', 'src', 'generated.rs'),
     'utf8',
@@ -327,7 +396,7 @@ test('API assembly includes application-code and capability-named route members 
     );
     writeText(
       path.join(root, 'crates', packageName, 'src', 'lib.rs'),
-      'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\n',
+      'pub fn gateway_mount() -> axum::Router { axum::Router::new() }\npub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }\n',
     );
   }
 
@@ -367,7 +436,7 @@ test('API assembly discovers internal-api route crates for application ingress',
   );
   writeText(
     path.join(routeRoot, 'src', 'routes.rs'),
-    'pub async fn gateway_mount() -> axum::Router { axum::Router::new() }\n',
+    'pub async fn gateway_mount() -> axum::Router { axum::Router::new() }\npub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }\n',
   );
   writeText(
     path.join(routeRoot, 'specs', 'component.spec.json'),
@@ -414,7 +483,7 @@ test('refuses incompatible route mount parameters before writing an assembly', (
   );
   writeText(
     path.join(root, 'crates/sdkwork-routes-demo-app-api/src/lib.rs'),
-    'pub async fn gateway_mount(pool: sqlx::SqlitePool) -> axum::Router { axum::Router::new() }\n',
+    'pub async fn gateway_mount(pool: sqlx::SqlitePool) -> axum::Router { axum::Router::new() }\npub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }\n',
   );
   writeText(
     path.join(root, 'crates/sdkwork-routes-demo-backend-api/Cargo.toml'),
@@ -422,7 +491,7 @@ test('refuses incompatible route mount parameters before writing an assembly', (
   );
   writeText(
     path.join(root, 'crates/sdkwork-routes-demo-backend-api/src/lib.rs'),
-    'pub async fn gateway_mount(host: std::sync::Arc<DemoServiceHost>) -> axum::Router { axum::Router::new() }\n',
+    'pub async fn gateway_mount(host: std::sync::Arc<DemoServiceHost>) -> axum::Router { axum::Router::new() }\npub fn gateway_route_manifest() -> sdkwork_web_core::HttpRouteManifest { sdkwork_web_core::HttpRouteManifest::from_owned_routes(Vec::new()) }\n',
   );
 
   assert.throws(

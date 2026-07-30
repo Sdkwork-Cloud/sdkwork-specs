@@ -2,7 +2,13 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { inspectLine } from './check-unified-postgres-profile.mjs';
+import {
+  inspectLine,
+  inspectPostgresExampleFile,
+  inspectRuntimeSourceLine,
+} from './check-unified-postgres-profile.mjs';
+
+const scopedDatabaseKey = (scope, field) => ['SDKWORK', scope, 'DATABASE', field].join('_');
 
 test('accepts the canonical shared development identity', () => {
   const filePath = 'sdkwork-demo/.env.postgres.example';
@@ -11,14 +17,62 @@ test('accepts the canonical shared development identity', () => {
   assert.equal(inspectLine('SDKWORK_DATABASE_USERNAME=sdkwork_ai_dev', filePath), null);
 });
 
+test('accepts a password file as the checked-in PostgreSQL credential source', () => {
+  const content = `SDKWORK_DATABASE_ENGINE=postgresql
+SDKWORK_DATABASE_HOST=127.0.0.1
+SDKWORK_DATABASE_PORT=5432
+SDKWORK_DATABASE_NAME=sdkwork_ai_dev
+SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev
+SDKWORK_DATABASE_USERNAME=sdkwork_ai_dev
+SDKWORK_DATABASE_PASSWORD_FILE=/run/secrets/sdkwork/database-password
+SDKWORK_DATABASE_SSL_MODE=disable
+SDKWORK_DATABASE_MAX_CONNECTIONS=10
+SDKWORK_DATABASE_ADMIN_HOST=127.0.0.1
+SDKWORK_DATABASE_ADMIN_PORT=5432
+SDKWORK_DATABASE_ADMIN_USERNAME=postgres
+SDKWORK_DATABASE_ADMIN_PASSWORD=postgres_admin_pass
+SDKWORK_DATABASE_ADMIN_DATABASE=postgres
+SDKWORK_DATABASE_ADMIN_SSL_MODE=disable
+`;
+
+  assert.deepEqual(
+    inspectPostgresExampleFile('sdkwork-demo/.env.postgres.example', content),
+    [],
+  );
+});
+
+test('accepts a direct password as the development PostgreSQL credential source', () => {
+  const content = `SDKWORK_DATABASE_ENGINE=postgresql
+SDKWORK_DATABASE_HOST=127.0.0.1
+SDKWORK_DATABASE_PORT=5432
+SDKWORK_DATABASE_NAME=sdkwork_ai_dev
+SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev
+SDKWORK_DATABASE_USERNAME=sdkwork_ai_dev
+SDKWORK_DATABASE_PASSWORD=sdkworkdev123
+SDKWORK_DATABASE_SSL_MODE=disable
+SDKWORK_DATABASE_MAX_CONNECTIONS=10
+SDKWORK_DATABASE_ADMIN_HOST=127.0.0.1
+SDKWORK_DATABASE_ADMIN_PORT=5432
+SDKWORK_DATABASE_ADMIN_USERNAME=postgres
+SDKWORK_DATABASE_ADMIN_PASSWORD=postgres_admin_pass
+SDKWORK_DATABASE_ADMIN_DATABASE=postgres
+SDKWORK_DATABASE_ADMIN_SSL_MODE=disable
+`;
+
+  assert.deepEqual(
+    inspectPostgresExampleFile('sdkwork-demo/.env.postgres.example', content),
+    [],
+  );
+});
+
 test('rejects application-prefixed database identity keys', () => {
   const filePath = 'sdkwork-demo/.env.postgres.example';
   assert.match(
-    inspectLine('SDKWORK_DEMO_DATABASE_NAME=sdkwork_ai_dev', filePath),
+    inspectLine(`${scopedDatabaseKey('DEMO', 'NAME')}=sdkwork_ai_dev`, filePath),
     /retired application\/module-prefixed database key/u,
   );
   assert.match(
-    inspectLine('SDKWORK_DEMO_DATABASE_URL=postgresql://sdkwork_ai_dev:secret@db:5432/sdkwork_ai_dev', filePath),
+    inspectLine(`${scopedDatabaseKey('DEMO', 'URL')}=postgresql://sdkwork_ai_dev:secret@db:5432/sdkwork_ai_dev`, filePath),
     /retired application\/module-prefixed database key/u,
   );
 });
@@ -26,20 +80,20 @@ test('rejects application-prefixed database identity keys', () => {
 test('requires exact shared identities in every application development profile', () => {
   const filePath = 'sdkwork-demo/etc/topology/standalone.development.env';
   assert.match(
-    inspectLine('SDKWORK_DEMO_DATABASE_NAME=postgres', filePath),
+    inspectLine(`${scopedDatabaseKey('DEMO', 'NAME')}=postgres`, filePath),
     /retired application\/module-prefixed database key/u,
   );
   assert.match(
-    inspectLine('SDKWORK_DEMO_DATABASE_SCHEMA=sdkwork_ai_prod', filePath),
+    inspectLine(`${scopedDatabaseKey('DEMO', 'SCHEMA')}=sdkwork_ai_prod`, filePath),
     /retired application\/module-prefixed database key/u,
   );
   assert.match(
-    inspectLine('SDKWORK_DEMO_DATABASE_USERNAME=postgres', filePath),
+    inspectLine(`${scopedDatabaseKey('DEMO', 'USERNAME')}=postgres`, filePath),
     /retired application\/module-prefixed database key/u,
   );
   assert.match(
     inspectLine(
-      'SDKWORK_DEMO_DATABASE_URL=postgresql://sdkwork_ai_prod:secret@db:5432/sdkwork_ai_prod',
+      `${scopedDatabaseKey('DEMO', 'URL')}=postgresql://sdkwork_ai_prod:secret@db:5432/sdkwork_ai_prod`,
       filePath,
     ),
     /retired application\/module-prefixed database key/u,
@@ -57,7 +111,7 @@ test('rejects application-specific development databases and schemas', () => {
     /non-canonical/u,
   );
   assert.match(
-    inspectLine('SDKWORK_DEMO_DATABASE_SCHEMA=sdkwork_demo_dev', filePath),
+    inspectLine(`${scopedDatabaseKey('DEMO', 'SCHEMA')}=sdkwork_demo_dev`, filePath),
     /retired application\/module-prefixed database key/u,
   );
 });
@@ -104,19 +158,19 @@ test('ignores deployment-time connection placeholders', () => {
 
 test('rejects retired claw-scoped database keys', () => {
   assert.match(
-    inspectLine('SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_dev', 'sdkwork-demo/.env.postgres.example'),
+    inspectLine(`${scopedDatabaseKey('CLAW', 'NAME')}=sdkwork_ai_dev`, 'sdkwork-demo/.env.postgres.example'),
     /retired application\/module-prefixed database key/u,
   );
   assert.match(
     inspectLine(
-      'SDKWORK_CLAW_DATABASE_URL=${SDKWORK_DATABASE_URL}',
+      `${scopedDatabaseKey('CLAW', 'URL')}=\${SDKWORK_DATABASE_URL}`,
       'sdkwork-demo/etc/topology/standalone.development.env',
     ),
     /retired application\/module-prefixed database key/u,
   );
   assert.match(
     inspectLine(
-      '# SDKWORK_CLAW_DATABASE_URL=postgresql://db.example.com/sdkwork_ai_dev',
+      `# ${scopedDatabaseKey('CLAW', 'URL')}=postgresql://db.example.com/sdkwork_ai_dev`,
       'sdkwork-demo/.env.postgres.example',
     ),
     /retired application\/module-prefixed database key/u,
@@ -176,4 +230,105 @@ test('workspace temporary pool governance keys remain canonical database keys', 
     inspectLine('SDKWORK_DATABASE_TEMPORARY_DRIVER_POOL_COUNT=1', filePath),
     null,
   );
+});
+
+test('runtime source rejects concrete module-scoped database keys', () => {
+  assert.match(
+    inspectRuntimeSourceLine(`${scopedDatabaseKey('CLAW', 'URL')}=postgresql://localhost/db`),
+    /retired application\/module-prefixed database key/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine('const KEY: &str = "SDKWORK_AIOT_DEVICE_DATABASE_ENGINE";'),
+    /retired application\/module-prefixed database key/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine('std::env::var("TEST_DATABASE_URL")'),
+    /retired legacy database key/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine('std::env::var("SDKWORK_CLIENT_DATABASE_PATH")'),
+    /retired application\/module-prefixed database key/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine('const KEY: &str = "SDKWORK_DRIVE_DATABASE_SQLITE_URL";'),
+    /retired application\/module-prefixed database key/u,
+  );
+});
+
+test('runtime source rejects retired workspace SQLite and SSL aliases', () => {
+  assert.match(
+    inspectRuntimeSourceLine('std::env::var("SDKWORK_DATABASE_PATH")'),
+    /retired workspace database alias/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine('std::env::var("SDKWORK_DATABASE_SQLITE_URL")'),
+    /retired workspace database alias/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine('std::env::var("SDKWORK_DATABASE_SSLMODE")'),
+    /retired workspace database alias/u,
+  );
+});
+
+test('runtime source permits explicit fail-closed retired-key rejection definitions', () => {
+  assert.equal(
+    inspectRuntimeSourceLine(
+      '"SDKWORK_DATABASE_SSLMODE" // sdkwork-retired-database-key-rejection',
+    ),
+    null,
+  );
+});
+
+test('runtime source allows internal database-related identifier names', () => {
+  assert.equal(
+    inspectRuntimeSourceLine('const DEFAULT_SQLITE_DATABASE_URL: &str = "sqlite::memory:";'),
+    null,
+  );
+  assert.equal(
+    inspectRuntimeSourceLine('struct IamDatabaseHost;'),
+    null,
+  );
+});
+
+test('checked-in topology env rejects legacy database keys without SDKWORK prefix', () => {
+  assert.match(
+    inspectLine(
+      'GAMES_DATABASE_URL=postgresql://sdkwork_ai_dev:secret@db:5432/sdkwork_ai_dev',
+      'sdkwork-games/configs/topology/standalone.development.env',
+    ),
+    /retired legacy database key/u,
+  );
+});
+
+test('runtime source rejects invalid generic mode and table-prefix keys', () => {
+  assert.match(
+    inspectRuntimeSourceLine('SDKWORK_DATABASE_MODE=pool'),
+    /unsupported workspace database key/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine('const TABLE_PREFIX_KEY = "SDKWORK_DATABASE_TABLE_PREFIX";'),
+    /unsupported workspace database key/u,
+  );
+});
+
+test('runtime source rejects dynamic module-scoped database key construction', () => {
+  assert.match(
+    inspectRuntimeSourceLine('const key = `SDKWORK_${service}_DATABASE_URL`;'),
+    /dynamic application\/module-prefixed database key construction/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine('let key = format!("SDKWORK_{service}_DATABASE_URL");'),
+    /dynamic application\/module-prefixed database key construction/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine("const key = 'SDKWORK_' + service + '_DATABASE_URL';"),
+    /concatenated application\/module-prefixed database key construction/u,
+  );
+});
+
+test('runtime source accepts canonical database keys and module ownership metadata', () => {
+  assert.equal(inspectRuntimeSourceLine('SDKWORK_DATABASE_URL=postgresql://localhost/db'), null);
+  assert.equal(inspectRuntimeSourceLine('SDKWORK_DATABASE_MODULE_ID=iot'), null);
+  assert.equal(inspectRuntimeSourceLine('SDKWORK_DATABASE_MAX_CONNECTIONS=10'), null);
+  assert.equal(inspectRuntimeSourceLine('SDKWORK_DATABASE_FILE=.data/client.db'), null);
 });

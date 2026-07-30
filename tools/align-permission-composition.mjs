@@ -256,8 +256,8 @@ function resolveOrCreateManifestForDependency(repoRoot, dep, registry, options) 
   return { moduleId: manifest.moduleId ?? moduleId, manifestPath };
 }
 
-function relativeManifestRef(componentSpecPath, manifestPath) {
-  return toPosix(path.relative(path.dirname(componentSpecPath), manifestPath));
+function relativeManifestRef(componentRoot, manifestPath) {
+  return toPosix(path.relative(componentRoot, manifestPath));
 }
 
 function repositoryDomain(repoRoot) {
@@ -280,7 +280,7 @@ function buildPermissionComposition(repoRoot, core, deps, registry, options) {
     if (!resolved) continue;
     const manifest = readJsonIfExists(resolved.manifestPath);
     const moduleId = manifest?.moduleId ?? resolved.moduleId;
-    const manifestRef = relativeManifestRef(core.componentSpecPath, resolved.manifestPath);
+    const manifestRef = relativeManifestRef(core.packageDir, resolved.manifestPath);
     const depCandidates = new Set(moduleCandidatesForDependency(dep));
     const existingRef = refsByKey.get(moduleId) ?? refsByKey.get(manifestRef);
     refsByKey.set(moduleId, {

@@ -23,6 +23,8 @@ Logical contracts may share identity, serialization, and business semantics, but
 
 Production migrations are forward-first. Down migrations are optional and exist only for bounded, tested, data-preserving reversal; lossy changes use compatible application rollback, forward-fix, or restore/cutover.
 
+Organization scope is a physical repository boundary, not a service-layer filter. Organization-scoped tables carry both `tenant_id` and `organization_id`, and ordinary runtime SQL binds both from trusted typed context. Cross-organization behavior is not exposed through a generic repository method: each approved system operation has a typed port, independent authorization, a fixed bounded SQL shape, audit/security-event evidence, and a repository-local machine inventory. Comments or static-check markers identify candidates for validation but never grant authority.
+
 ## Alternatives
 
 - Keep PostgreSQL and SQLite as peer service engines: rejected because it weakens the authoritative design and produces misleading compatibility evidence.
@@ -30,6 +32,7 @@ Production migrations are forward-first. Down migrations are optional and exist 
 - Ban SQLite entirely: rejected because embedded local caches, drafts, offline projections, local search, and device-local data are legitimate client concerns.
 - Maintain one physical schema and mechanically translate SQL: rejected because PostgreSQL and SQLite differ in types, constraints, DDL locks, transactions, concurrency, indexes, JSON, collations, and operational behavior.
 - Require a down migration for every change: rejected because destructive reversal can be less safe than forward repair or restore/cutover and often gives false rollback confidence.
+- Treat a SQL marker or repository method name as sufficient cross-organization authorization: rejected because source annotation does not authenticate a caller, bound a query, emit audit evidence, or prevent a widened SQL shape.
 
 ## Consequences
 
@@ -39,6 +42,7 @@ Production migrations are forward-first. Down migrations are optional and exist 
 - Database manifest schema version 2 is a compatibility boundary and needs coordinated framework/consumer adoption.
 - CI cost increases because authoritative integration tests require real PostgreSQL and representative data for critical plans.
 - Managed PostgreSQL-compatible services need provider-specific qualification evidence.
+- Existing organization-scoped schemas and repositories must be inventoried and corrected before release; ordinary unscoped queries cannot remain as known debt.
 - Human review is required before accepting this root-standard and cross-repository migration direction.
 
 ## Verification
@@ -46,6 +50,7 @@ Production migrations are forward-first. Down migrations are optional and exist 
 - The database validator rejects mixed or role-inconsistent manifests and layouts.
 - Server tests use real PostgreSQL; client-local tests use SQLite only for their role.
 - Terminology scans find no active standard that authorizes server SQLite or mandatory PostgreSQL/SQLite parity.
+- Repository isolation scans and negative tests report zero unresolved tenant/organization violations and reject forged or widened cross-organization operation markers.
 - Consumer migration follows `MIG-2026-0724-postgresql-first-database-roles.md`.
 
 ## Supersedes / Superseded By

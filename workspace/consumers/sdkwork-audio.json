@@ -1,6 +1,11 @@
 {
   "pnpm": {
-    "packages": []
+    "packages": [
+      "../sdkwork-generations/apps/sdkwork-generations-pc/packages/sdkwork-generations-pc-asset-config",
+      "../sdkwork-generations/apps/sdkwork-generations-pc/packages/sdkwork-generations-pc-studio",
+      "../sdkwork-ui/sdkwork-ui-pc-react",
+      "../sdkwork-utils/packages/sdkwork-utils-typescript"
+    ]
   },
   "catalog": {
     "@types/react": "^19.2.14",

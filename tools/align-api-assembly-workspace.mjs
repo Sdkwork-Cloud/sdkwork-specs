@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Workspace driver: materialize assembly, align gateway_mount exports, validate.
+ * Workspace driver: align gateway exports, materialize assembly, validate.
  */
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -15,8 +15,8 @@ function usage() {
     'Usage: node tools/align-api-assembly-workspace.mjs --workspace <dir> [--prefix sdkwork-]',
     '',
     'For each application root or repository with route crates:',
-    '  1. materialize API assembly',
-    '  2. align gateway_mount exports',
+    '  1. align gateway_mount and gateway_route_manifest exports',
+    '  2. materialize API assembly',
     '  3. validate assembly parity',
   ].join('\n');
 }
@@ -46,12 +46,22 @@ const failures = [];
 
 for (const repoRoot of repositories) {
   const repoName = path.basename(repoRoot);
-  const materialize = materializeApiAssembly(repoRoot);
+  let align;
+  let materialize;
+  try {
+    align = alignGatewayMountExports(repoRoot);
+    materialize = materializeApiAssembly(repoRoot);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(`fail ${repoName}`);
+    console.log(`  - align/materialize: ${message}`);
+    failures.push(`${repoName}: align/materialize ${message}`);
+    continue;
+  }
   if (!materialize.ok) {
     continue;
   }
 
-  const align = alignGatewayMountExports(repoRoot);
   const alignFailed = align.results.filter((item) => item.status === 'failed');
   const validation = validateApiAssembly(repoRoot);
 

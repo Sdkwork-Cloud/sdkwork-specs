@@ -4,6 +4,7 @@
       "../sdkwork-promotion/apps/sdkwork-promotion-common/packages/*",
       "../sdkwork-promotion/apps/sdkwork-promotion-pc/packages/sdkwork-promotion-pc-core",
       "../sdkwork-promotion/apps/sdkwork-promotion-pc/packages/sdkwork-promotion-pc-coupon",
+      "../sdkwork-promotion/sdks/sdkwork-promotion-backend-sdk/sdkwork-promotion-backend-sdk-typescript",
       "../sdkwork-appbase/packages/common/foundation/sdkwork-runtime-bootstrap",
       "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-appbase-pc-react",
       "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-i18n-pc-react",

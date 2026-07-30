@@ -54,6 +54,15 @@ function existsAt(baseDir, relativePath) {
   return fs.existsSync(path.join(baseDir, relativePath));
 }
 
+function directoryContainsFiles(directory) {
+  if (!fs.existsSync(directory)) return false;
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.isFile()) return true;
+    if (entry.isDirectory() && directoryContainsFiles(path.join(directory, entry.name))) return true;
+  }
+  return false;
+}
+
 function readJsonAt(baseDir, relativePath) {
   const absolutePath = path.join(baseDir, relativePath);
   return parseJsonFile(absolutePath);
@@ -351,7 +360,10 @@ export function validateDatabaseModuleContract(moduleRootDir) {
     if (expectedEngine && !isExactArray(schemaEngines, [expectedEngine])) {
       fail(`contract/schema.yaml engines must be exactly ["${expectedEngine}"] for ${databaseRole}`);
     }
-    if (!isNonEmptyString(schemaTablePrefix) || schemaTablePrefix !== manifest.tablePrefix) {
+    if (
+      databaseRole === AUTHORITATIVE_ROLE
+      && (!isNonEmptyString(schemaTablePrefix) || schemaTablePrefix !== manifest.tablePrefix)
+    ) {
       fail(
         `contract/schema.yaml table_prefix must match database.manifest.json tablePrefix (manifest=${manifest.tablePrefix ?? 'missing'}, schema=${schemaTablePrefix ?? 'missing'})`,
       );
@@ -371,6 +383,11 @@ export function validateDatabaseModuleContract(moduleRootDir) {
   }
   if (typeof manifest.lifecycle?.autoMigrate !== 'boolean') {
     fail('database.manifest.json lifecycle.autoMigrate must be an explicit boolean');
+  }
+  if (databaseRole === AUTHORITATIVE_ROLE && manifest.lifecycle?.autoMigrate !== false) {
+    fail(
+      'database.manifest.json lifecycle.autoMigrate must be false for authoritative-server modules',
+    );
   }
 
   const baselineStrategy = manifest.baselineStrategy;
@@ -470,19 +487,70 @@ function migrationMetadata(sql) {
   return values;
 }
 
+function migrationMetadataSidecar(migrationDir, engine, fail) {
+  const relativePath = `migrations/${engine}/metadata.json`;
+  const sidecarPath = path.join(migrationDir, 'metadata.json');
+  if (!fs.existsSync(sidecarPath)) return {};
+
+  let sidecar;
+  try {
+    sidecar = parseJsonFile(sidecarPath);
+  } catch (error) {
+    fail(`${relativePath} must contain valid JSON: ${error.message}`);
+    return {};
+  }
+  if (sidecar.schemaVersion !== 1) {
+    fail(`${relativePath} schemaVersion must be 1`);
+  }
+  if (sidecar.kind !== 'sdkwork.database.migration-metadata') {
+    fail(`${relativePath} kind must be sdkwork.database.migration-metadata`);
+  }
+  if (sidecar.engine !== engine) {
+    fail(`${relativePath} engine must be ${engine}`);
+  }
+  if (sidecar.sourcePolicy !== 'historical-immutable') {
+    fail(`${relativePath} sourcePolicy must be historical-immutable`);
+  }
+  if (!sidecar.migrations || typeof sidecar.migrations !== 'object' || Array.isArray(sidecar.migrations)) {
+    fail(`${relativePath} migrations must be an object`);
+    return {};
+  }
+  return sidecar.migrations;
+}
+
 function validateMigrationDirectory(moduleRootDir, engine, fail) {
   const migrationDir = path.join(moduleRootDir, 'migrations', engine);
   if (!fs.existsSync(migrationDir)) return;
+  const supplementalMetadata = migrationMetadataSidecar(migrationDir, engine, fail);
+  const migrationNames = new Set(
+    fs.readdirSync(migrationDir).filter((entry) => entry.endsWith('.up.sql')),
+  );
+
+  for (const [entry, metadata] of Object.entries(supplementalMetadata)) {
+    if (!migrationNames.has(entry)) {
+      fail(`migrations/${engine}/metadata.json references missing migration ${entry}`);
+    }
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+      fail(`migrations/${engine}/metadata.json entry ${entry} must be an object`);
+    }
+  }
 
   for (const entry of fs.readdirSync(migrationDir)) {
     if (!entry.endsWith('.up.sql')) continue;
-    if (!/^\d{4}_[a-z0-9_]+\.up\.sql$/u.test(entry)) {
-      fail(`migrations/${engine}/${entry} must match ^\\d{4}_[a-z0-9_]+\\.up\\.sql$`);
+    if (!/^\d{4,}_[a-z0-9_]+\.up\.sql$/u.test(entry)) {
+      fail(`migrations/${engine}/${entry} must use a sortable numeric version prefix`);
     }
 
     const upPath = path.join(migrationDir, entry);
     const upSql = fs.readFileSync(upPath, 'utf8');
-    const metadata = migrationMetadata(upSql);
+    const headerMetadata = migrationMetadata(upSql);
+    const sidecarMetadata = supplementalMetadata[entry] ?? {};
+    for (const [key, value] of Object.entries(sidecarMetadata)) {
+      if (headerMetadata[key] !== undefined && headerMetadata[key] !== value) {
+        fail(`migrations/${engine}/metadata.json entry ${entry} conflicts with header metadata ${key}`);
+      }
+    }
+    const metadata = { ...sidecarMetadata, ...headerMetadata };
     const downName = entry.replace(/\.up\.sql$/u, '.down.sql');
     const downPath = path.join(migrationDir, downName);
     const hasDown = fs.existsSync(downPath);
@@ -620,7 +688,7 @@ export function validateDatabaseModuleLayout(moduleRootDir, requiredRole = null)
 }
 
 export function validateDatabaseFramework(rootDir) {
-  if (!existsAt(rootDir, 'database')) {
+  if (!directoryContainsFiles(path.join(rootDir, 'database'))) {
     return { ok: true, skipped: true, failures: [] };
   }
 

@@ -1,6 +1,6 @@
 # Test And Verification Standard
 
-- Version: 1.3
+- Version: 1.4
 - Scope: contract tests, SDK/RPC generation tests, backend tests, frontend tests, parity tests, security tests
 - Related: all specs
 
@@ -48,7 +48,7 @@ No standard is complete until it is executable.
 | Native mobile UI | Validate `APP_ANDROID_NATIVE_UI_SPEC.md`, `APP_IOS_NATIVE_UI_SPEC.md`, or `APP_HARMONY_NATIVE_UI_SPEC.md`: package-local screens/pages/components/services/state/i18n/routes, host adapter contracts, app/user-console SDK boundary, UI states, and lifecycle/security checks |
 | Internationalization | Validate `I18N_SPEC.md`: language/framework i18n directory layouts through `tools/check-i18n-standard.mjs`, package-local **message catalog** fragments, backend message bundles, framework `WebLocaleContext`, locale fallback, API `ProblemDetail` i18n metadata, SDK locale providers, database seed i18n versions, duplicate-key checks, missing-key checks, commerce `catalog` vs i18n catalog disambiguation, and no authored app/root/backend/admin/package locale monoliths |
 | Source/environment config | Validate `SOURCE_CONFIG_SPEC.md`, `CONFIG_SPEC.md`, and `ENVIRONMENT_SPEC.md`: deployable-root `etc/`, app manifest boundary, lifecycle environment, deployment profile, runtime target, dev/test/staging/prod profiles, browser/desktop/mobile/server/container separation, retired `configs/`, and public/private/secret boundaries |
-| Database | Schema lint, migration test, tenant/index checks, and `DATABASE_FRAMEWORK_SPEC.md` lifecycle asset checks when `database/` exists |
+| Database | Schema lint, migration test, tenant/organization isolation checks with zero unresolved violations, index checks, and `DATABASE_FRAMEWORK_SPEC.md` lifecycle asset checks when `database/` exists |
 | Drive | Drive API/SDK contract tests, Drive Uploader App SDK tests, Rust `DriveUploaderService` tests, upload-session idempotency, resumable part tests, attribution/statistic tests, retention cleanup tests, provider capability tests, business-module scans for forbidden app-local storage lifecycle |
 | IAM/security | Token validation, permission denial, tenant isolation, audit event, appbase login integration, logout clearing, Rust AppContext guard |
 | Frontend | Service tests with injected SDK client, UI integration tests |
@@ -447,11 +447,13 @@ Rules:
 - Application repositories that own a `database/` directory `MUST` provide `tests/contract/database-framework.contract.test.*` or call the canonical validator.
 - Database framework tests `MUST` verify `database/database.manifest.json`, `database/contract/schema.yaml`, `database/seeds/seed.manifest.json`, required locale directories, and drift policy presence.
 - Database framework tests `MUST` verify seed `i18nVersion`, fallback/default/supported/active locales, locale set versions, and checksums when locale-specific seed files exist.
+- Migration metadata alignment tests `MUST` prove that newly authored untracked migrations receive complete headers while tracked historical migrations receive checksum-external sidecar metadata and remain byte-for-byte unchanged.
 - Authoritative server database tests `MUST` verify manifest schema version 2, `databaseRole: "authoritative-server"`, exactly `engines: ["postgres"]`, `defaultEngine: "postgres"`, matching `contract/schema.yaml#database_role`, a valid semantic `contractVersion` that exactly matches `contract/schema.yaml#contract_version`, an explicit boolean `lifecycle.autoMigrate`, and non-empty prefix/table registries. The authoritative default `MUST` be `false`; any production enablement requires tests for single-migrator election, dedicated privileges, bounded timeouts, failure isolation, and concurrent instance startup. `migrations-only` requires at least one PostgreSQL `.up.sql` that initializes an empty database; baseline strategies require at least one PostgreSQL baseline `.sql` under `database/ddl/baseline/postgres/`.
 - Authoritative server layout tests `MUST` fail when `database/migrations/sqlite/` or `database/ddl/baseline/sqlite/` is introduced to claim engine parity.
 - Database framework tests `MUST` verify root `db:validate`, `db:migrate`, `db:status`, `db:materialize:contract`, and `db:bootstrap` scripts exist when database lifecycle is active.
 - Database framework tests `MUST` fail when crate-local `migrations/` remain the only migration source without an approved exception or adoption plan.
 - Workspace PostgreSQL profile tests `MUST` require environment-scoped workspace identities: `sdkwork_ai_dev`, `sdkwork_ai_test` or `sdkwork_ai_test_<run_id>`, `sdkwork_ai_staging`, and `sdkwork_ai_prod`. They `MUST` reject every application- or module-prefixed database key, including pool/lifecycle fields and assignments that contain `${...}` or deployment placeholders, plus application/module identities such as `sdkwork_<application-code>_dev`, `<application_code>_test_<run_id>`, or `<module_id>_schema` in split fields, URLs, topology profiles, runtime templates, test fixtures, service units, deployment mappings, or runtime source. Tests `MUST` prove that database, schema, and URL path match the lifecycle environment and that staging never normalizes to production. The canonical validator is `node tools/check-unified-postgres-profile.mjs` from the standards root or `node ../sdkwork-specs/tools/check-unified-postgres-profile.mjs` from an application root.
+- Workspace PostgreSQL profile tests `MUST` require `SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false` in `.env.postgres.example`, reject enabled fallback in checked-in application/lifecycle profiles, and prove canonical schema object discovery cannot resolve a same-named decoy from `public` or another fallback schema.
 - Authoritative application baseline and migration tests `MUST` reject `CREATE DATABASE`, `DROP DATABASE`, `ALTER DATABASE`, `CREATE SCHEMA`, `DROP SCHEMA`, and `ALTER SCHEMA`. Workspace provisioning tools may create the canonical shared database/schema, but application lifecycle assets and `pnpm dev`/`db:*` commands may manage only module-owned objects inside it.
 - Shared-schema upgrade tests `MUST` prove an existing incompatible object, unknown migration, checksum mismatch, or drift failure cannot trigger a fallback to a new database/schema. Repair evidence `MUST` use a reviewed forward, module-owned migration and preserve lifecycle history.
 - Application repositories may call the canonical validator with:
@@ -482,6 +484,19 @@ node ../sdkwork-specs/tools/bootstrap-database-module.mjs --repo <repo-name>
 - PostgreSQL repository integration tests `MUST` exercise database constraints, tenant/owner denial, idempotency conflicts, optimistic concurrency, SQLSTATE mapping, deadlock/serialization retry of the complete transaction, and read-after-write behavior when replicas are used.
 - P0/P1 or high-growth query tests `MUST` capture representative `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` evidence and assert declared budgets such as maximum scanned-to-returned ratio, execution time class, and spill prohibition. They `MUST NOT` pin an exact planner node tree.
 - PostgreSQL operational tests `MUST` verify runtime/migrator privilege separation, fixed safe `search_path`, required extensions, supported server versions, backup/restore procedure, readiness on pending migrations, and bounded pool/reconnect behavior.
+
+### Organization Isolation Tests
+
+Organization-isolation tests make `DATABASE_SPEC.md` section 16 and `SECURITY_SPEC.md` section 2 executable.
+
+Rules:
+
+- Repositories that own organization-scoped tables or authored SQL `MUST` publish a repository-local machine contract that inventories those tables and any approved cross-organization system operations.
+- Static tests `MUST` inspect executable authored SQL, including normal strings, raw strings, joins, subqueries, and CTE statements, and fail when an organization-scoped read or mutation does not bind both tenant and organization scope.
+- Parser tests `MUST` include positive scoped statements and negative cases for a missing tenant predicate, missing organization predicate, unknown marker, forged marker, widened SQL shape, and an unbounded cross-organization operation.
+- Cross-organization operation tests `MUST` prove exact contract matching, independent service/worker or administrative authorization, bounded selection or mutation, audit/security-event emission, and absence from ordinary user/API repository methods.
+- A comment, marker, suppression, method name, or test fixture `MUST NOT` be accepted as authorization by itself.
+- CI, merge, and pre-launch/commercial release gates `MUST` use a zero threshold. An unresolved isolation violation cannot be accepted as known debt or deferred by an allow-known-debt flag.
 
 ### Client-Local SQLite Tests
 
@@ -1425,7 +1440,7 @@ Rules:
 - [ ] RPC SDK workspace and `sdkgen --protocol rpc` verification passes when RPC SDK generation is touched.
 - [ ] HTTP SDK generation non-regression verification passes when RPC generator code changes.
 - [ ] Typecheck/build passes for touched packages.
-- [ ] Security and tenant isolation tests cover negative cases.
+- [ ] Security and tenant/organization isolation tests cover negative cases, exact cross-organization operation contracts, and zero unresolved static violations.
 - [ ] IAM login/session integration tests cover appbase route guard, logout clearing, SDK boundary, Rust AppContext validation, and forbidden local auth namespaces when relevant.
 - [ ] Frontend service uses injected SDK clients.
 - [ ] I18n verification covers language/framework directory layout, package-local fragments, generated platform resource boundaries, duplicate keys, missing active-locale keys, locale fallback, and safe localized errors when user-facing or operator-facing copy is touched.

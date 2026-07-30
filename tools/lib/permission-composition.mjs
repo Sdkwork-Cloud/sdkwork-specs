@@ -36,7 +36,7 @@ export function classifyPermissionComposition(repoRoot) {
         continue;
       }
 
-      const context = loadPermissionCompositionContext(repoRoot, clientRoot.appRoot, core, permissionComposition, relCore);
+      const context = loadPermissionCompositionContext(core, permissionComposition, relCore);
       issues.push(...context.issues);
       issues.push(...validateDependencyCatalogRefs(httpDeps, context, relCore, repoRoot));
       coreContexts.push(context);
@@ -49,7 +49,7 @@ export function classifyPermissionComposition(repoRoot) {
   return issues;
 }
 
-function loadPermissionCompositionContext(repoRoot, appRoot, core, permissionComposition, relCore) {
+function loadPermissionCompositionContext(core, permissionComposition, relCore) {
   const issues = [];
   const permissionCodes = new Set();
   const catalogs = [];
@@ -71,7 +71,7 @@ function loadPermissionCompositionContext(repoRoot, appRoot, core, permissionCom
   }
 
   for (const ref of permissionComposition.moduleCatalogRefs ?? []) {
-    const loaded = loadManifestRef(ref.manifestRef, repoRoot, appRoot, core.componentSpecPath);
+    const loaded = loadManifestRef(ref.manifestRef, core.packageDir);
     if (!loaded.manifest) {
       issues.push(`${relCore}: moduleCatalogRefs manifestRef does not resolve: ${ref.manifestRef ?? '<missing>'}`);
       continue;
@@ -94,7 +94,7 @@ function loadPermissionCompositionContext(repoRoot, appRoot, core, permissionCom
 
   const applicationRef = permissionComposition.applicationModule?.manifestRef;
   if (applicationRef) {
-    const loaded = loadManifestRef(applicationRef, repoRoot, appRoot, core.componentSpecPath);
+    const loaded = loadManifestRef(applicationRef, core.packageDir);
     if (!loaded.manifest) {
       issues.push(`${relCore}: applicationModule.manifestRef does not resolve: ${applicationRef}`);
     } else {
@@ -262,25 +262,19 @@ function dependencyModuleCandidatesFromWorkspace(workspaceValue) {
   return candidates.filter((candidate) => /^[a-z][a-z0-9-]*$/u.test(candidate));
 }
 
-function loadManifestRef(manifestRef, repoRoot, appRoot, componentSpecPath) {
+function loadManifestRef(manifestRef, componentRoot) {
   if (typeof manifestRef !== 'string' || manifestRef.trim().length === 0) {
     return { path: null, manifest: null };
   }
-  const bases = [
-    path.dirname(componentSpecPath),
-    appRoot,
-    repoRoot,
-  ];
-  for (const base of bases) {
-    const candidate = path.resolve(base, manifestRef);
-    if (!fs.existsSync(candidate)) continue;
-    try {
-      return { path: candidate, manifest: readJson(candidate) };
-    } catch {
-      return { path: candidate, manifest: null };
-    }
+  const candidate = path.resolve(componentRoot, manifestRef);
+  if (!fs.existsSync(candidate)) {
+    return { path: null, manifest: null };
   }
-  return { path: null, manifest: null };
+  try {
+    return { path: candidate, manifest: readJson(candidate) };
+  } catch {
+    return { path: candidate, manifest: null };
+  }
 }
 
 function permissionCodesFromManifest(manifest) {

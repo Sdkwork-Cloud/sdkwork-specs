@@ -15,6 +15,7 @@ SDKWork database standards describe portable logical contracts but historically 
 - Make SQLite an explicitly client-local embedded implementation with isolated security, lifecycle, recovery, and synchronization contracts.
 - Preserve logical contract portability without requiring physical DDL, migration, feature, or test parity.
 - Raise database design gates to professional PostgreSQL standards for types, constraints, transactions, indexes, query plans, migrations, roles, observability, backup, restore, and recovery.
+- Make tenant and organization isolation mandatory in schema and ordinary runtime SQL, with zero unresolved static violations and narrowly governed cross-organization operations.
 - Make the role boundary executable through manifests, templates, validators, and tests.
 
 ## Non-Goals
@@ -39,13 +40,16 @@ SDKWork database standards describe portable logical contracts but historically 
 - The authoritative database template contains PostgreSQL assets only; a separate client-local SQLite template is available.
 - The canonical validator rejects missing/ambiguous roles, mixed engines, server SQLite assets, client-local PostgreSQL assets, and unsafe migration pairing assumptions.
 - `TEST_SPEC.md` requires real PostgreSQL server evidence and separate SQLite client-local tests.
+- Organization-scoped tables include both `tenant_id` and `organization_id`; ordinary runtime SQL binds both scopes from trusted context.
+- Cross-organization system operations are typed, independently authorized, fixed and bounded, audited, machine-inventoried, and rejected outside their exact approved SQL shape.
+- Pre-launch and commercial gates reject every unresolved tenant/organization isolation violation without known-debt allowances.
 - Runtime/config/deployment/desktop standards do not authorize SQLite for a backend service, including a desktop-started service.
 - `MIGRATION_SPEC.md` and a migration record define how existing server SQLite and mixed roots reach the new boundary.
 - Targeted validator tests, terminology scans, Markdown checks, and `git diff --check` pass.
 
 ## Non-Functional Requirements
 
-Security: PostgreSQL roles and search paths are least-privilege; client-local files, keys, identity boundaries, and purge behavior are explicit; server APIs never trust local authority claims.
+Security: PostgreSQL roles and search paths are least-privilege; ordinary repositories fail closed on missing or mismatched tenant/organization scope; cross-organization operations are independently authorized and audited; client-local files, keys, identity boundaries, and purge behavior are explicit; server APIs never trust local authority claims.
 
 Privacy: client-local data declares minimization, encryption, backup/export, retention, logout/account-switch purge, and deletion behavior.
 

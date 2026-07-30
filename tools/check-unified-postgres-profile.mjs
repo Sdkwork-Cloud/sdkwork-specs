@@ -24,14 +24,89 @@ const CANONICAL_CONNECTION_USERS = new Set([
   'sdkwork_ai_prod',
 ]);
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'target', 'dist', 'artifacts', 'external', '.pnpm', '.runtime']);
+const SKIP_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'target',
+  'dist',
+  'artifacts',
+  'external',
+  '.pnpm',
+  '.runtime',
+  'generated',
+  'archive',
+  'archives',
+  'superpowers',
+]);
 const SKIP_FILES = new Set([
   path.normalize(path.join(DEFAULT_WORKSPACE_ROOT, 'sdkwork-specs/tools/unify-postgres-profile.mjs')),
   path.normalize(path.join(DEFAULT_WORKSPACE_ROOT, 'sdkwork-specs/tools/check-unified-postgres-profile.mjs')),
 ]);
 
-const SCAN_SUFFIXES = ['.env.postgres.example', '.toml.example', '.yaml.example', '.yml.example'];
-const SCAN_DIRS = ['etc/topology', 'deployments/templates', 'config/server', 'config/container', 'config/desktop'];
+const SCAN_SUFFIXES = [
+  '.env.example',
+  '.env.postgres.example',
+  '.toml.example',
+  '.yaml.example',
+  '.yml.example',
+];
+const SCAN_DIRS = [
+  'configs/topology',
+  'etc/topology',
+  'deployments/templates',
+  'config/server',
+  'config/container',
+  'config/desktop',
+];
+const RUNTIME_SCAN_DIRS = [
+  'apps',
+  'config',
+  'crates',
+  'deployments',
+  'docs',
+  'etc',
+  'packages',
+  'scripts',
+  'services',
+  'specs',
+  'src',
+  'tools',
+];
+const RUNTIME_SCAN_EXTENSIONS = new Set([
+  '.cjs',
+  '.env',
+  '.go',
+  '.java',
+  '.js',
+  '.json',
+  '.jsx',
+  '.kt',
+  '.kts',
+  '.md',
+  '.mjs',
+  '.ps1',
+  '.py',
+  '.rs',
+  '.sh',
+  '.toml',
+  '.ts',
+  '.tsx',
+  '.yaml',
+  '.yml',
+]);
+const RUNTIME_ROOT_FILES = new Set([
+  'package.json',
+  'sdkwork.app.config.json',
+  'sdkwork.workflow.json',
+]);
+const TEST_FILE_PATTERN = /(?:^|[.\-_])(?:spec|test|tests)(?:[.\-_]|$)/iu;
+const RETIRED_RUNTIME_DATABASE_KEY = /SDKWORK_(?!DATABASE_)(?:[A-Z0-9]+_)+DATABASE_(?:ACQUIRE_TIMEOUT|AUTO_MIGRATE|AUTO_SEED|ENGINE|FILE|HOST|IDLE_TIMEOUT|MAX_CONNECTIONS|MAX_LIFETIME|MIN_CONNECTIONS|MODE|NAME|PASSWORD|PASSWORD_FILE|PATH|PORT|SCHEMA|SEED_LOCALE|SEED_ON_BOOT|SEED_PROFILE|SQLITE_URL|SSL_MODE|SSLMODE|TABLE_PREFIX|URL|USERNAME)\b/gu;
+const RETIRED_LEGACY_DATABASE_KEY = /\b(?!SDKWORK_DATABASE_)(?:[A-Z0-9]+_)+DATABASE_(?:ACQUIRE_TIMEOUT|AUTO_MIGRATE|AUTO_SEED|ENGINE|FILE|HOST|IDLE_TIMEOUT|MAX_CONNECTIONS|MAX_LIFETIME|MIN_CONNECTIONS|MODE|NAME|PASSWORD|PASSWORD_FILE|PATH|PORT|SCHEMA|SEED_LOCALE|SEED_ON_BOOT|SEED_PROFILE|SQLITE_URL|SSL_MODE|SSLMODE|TABLE_PREFIX|URL|USERNAME)\b/gu;
+const INVALID_WORKSPACE_DATABASE_KEY = /SDKWORK_DATABASE_(?:MODE|TABLE_PREFIX)\b/gu;
+const RETIRED_WORKSPACE_DATABASE_ALIAS = /SDKWORK_DATABASE_(?:PATH|SQLITE_URL|SSLMODE)\b/gu;
+const DYNAMIC_RUNTIME_DATABASE_KEY = /SDKWORK_(?:\$\{[^}\r\n]+\}|\{[^}\r\n]*\})(?:_[A-Z0-9]+)*_DATABASE_/gu;
+const CONCATENATED_RUNTIME_DATABASE_KEY = /SDKWORK_["'`]\s*\+[^;\r\n]+["'`]_[A-Z0-9_]*DATABASE_/gu;
+const RETIRED_KEY_REJECTION_MARKER = 'sdkwork-retired-database-key-rejection';
 
 function isCheckedInConfigFile(filePath) {
   const normalized = path.normalize(filePath);
@@ -45,7 +120,13 @@ function isCheckedInConfigFile(filePath) {
   if (base === '.env.postgres.example') {
     return true;
   }
-  if (filePath.includes(`${path.sep}etc${path.sep}topology${path.sep}`) && base.endsWith('.env')) {
+  if (
+    (
+      filePath.includes(`${path.sep}etc${path.sep}topology${path.sep}`)
+      || filePath.includes(`${path.sep}configs${path.sep}topology${path.sep}`)
+    )
+    && base.endsWith('.env')
+  ) {
     return true;
   }
   if (filePath.includes(`${path.sep}deployments${path.sep}templates${path.sep}`)) {
@@ -62,12 +143,16 @@ function isCheckedInConfigFile(filePath) {
   return false;
 }
 
+function shouldSkipDirectory(name) {
+  return SKIP_DIRS.has(name) || name.startsWith('node_modules.');
+}
+
 function collectFiles(dir, files = []) {
   if (!fs.existsSync(dir)) {
     return files;
   }
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (SKIP_DIRS.has(entry.name)) {
+    if (shouldSkipDirectory(entry.name)) {
       continue;
     }
     const fullPath = path.join(dir, entry.name);
@@ -80,6 +165,105 @@ function collectFiles(dir, files = []) {
     }
   }
   return files;
+}
+
+function isTestSourceFile(filePath) {
+  const normalized = filePath.replace(/\\/gu, '/');
+  if (/(?:^|\/)tests?(?:\/|$)/iu.test(normalized)) {
+    return true;
+  }
+  return TEST_FILE_PATTERN.test(path.basename(filePath));
+}
+
+function isRuntimeSourceFile(filePath) {
+  if (isCheckedInConfigFile(filePath) || isTestSourceFile(filePath)) {
+    return false;
+  }
+  const base = path.basename(filePath);
+  if (RUNTIME_ROOT_FILES.has(base)) {
+    return true;
+  }
+  return RUNTIME_SCAN_EXTENSIONS.has(path.extname(base).toLowerCase());
+}
+
+function collectRuntimeSourceFiles(repoRoot) {
+  if (path.basename(repoRoot) === 'sdkwork-specs') {
+    return [];
+  }
+  const files = [];
+  const visit = (dir) => {
+    if (!fs.existsSync(dir)) {
+      return;
+    }
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (shouldSkipDirectory(entry.name)) {
+        continue;
+      }
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        visit(fullPath);
+      } else if (entry.isFile() && isRuntimeSourceFile(fullPath)) {
+        files.push(fullPath);
+      }
+    }
+  };
+
+  for (const relativeDir of RUNTIME_SCAN_DIRS) {
+    visit(path.join(repoRoot, relativeDir));
+  }
+  for (const fileName of RUNTIME_ROOT_FILES) {
+    const filePath = path.join(repoRoot, fileName);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      files.push(filePath);
+    }
+  }
+  return [...new Set(files.map((filePath) => path.normalize(filePath)))];
+}
+
+export function inspectRuntimeSourceLine(line) {
+  if (line.includes(RETIRED_KEY_REJECTION_MARKER)) {
+    return null;
+  }
+  for (const [pattern, message] of [
+    [RETIRED_RUNTIME_DATABASE_KEY, 'retired application/module-prefixed database key; use SDKWORK_DATABASE_*'],
+    [RETIRED_WORKSPACE_DATABASE_ALIAS, 'retired workspace database alias; use SDKWORK_DATABASE_FILE or SDKWORK_DATABASE_SSL_MODE'],
+    [INVALID_WORKSPACE_DATABASE_KEY, 'unsupported workspace database key; mode and table ownership are module contracts, not connection env'],
+    [DYNAMIC_RUNTIME_DATABASE_KEY, 'dynamic application/module-prefixed database key construction is forbidden'],
+    [CONCATENATED_RUNTIME_DATABASE_KEY, 'concatenated application/module-prefixed database key construction is forbidden'],
+  ]) {
+    pattern.lastIndex = 0;
+    const match = pattern.exec(line);
+    if (match) {
+      return `${message}: ${match[0]}`;
+    }
+  }
+
+  RETIRED_LEGACY_DATABASE_KEY.lastIndex = 0;
+  for (const match of line.matchAll(RETIRED_LEGACY_DATABASE_KEY)) {
+    const token = match[0];
+    const index = match.index ?? 0;
+    const before = line[index - 1];
+    const after = line[index + token.length];
+    const quoted = ['"', "'", '`'].includes(before) && after === before;
+    const assigned = line.slice(0, index).trim() === ''
+      && line.slice(index + token.length).trimStart().startsWith('=');
+    if (quoted || assigned) {
+      return `retired legacy database key; use SDKWORK_DATABASE_*: ${token}`;
+    }
+  }
+  return null;
+}
+
+function inspectRuntimeSourceFile(filePath) {
+  const content = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/u, '');
+  const issues = [];
+  for (const [index, line] of content.split(/\r?\n/u).entries()) {
+    const issue = inspectRuntimeSourceLine(line);
+    if (issue) {
+      issues.push(`${path.relative(scanRoot, filePath)}:${index + 1}: ${issue}`);
+    }
+  }
+  return issues;
 }
 
 function isWorkspaceTestIdentity(value) {
@@ -118,7 +302,7 @@ function expectedConnectionIdentity(filePath) {
   }
   if (
     normalized.includes('development')
-    || path.basename(filePath).toLowerCase() === '.env.postgres.example'
+    || ['.env.example', '.env.postgres.example'].includes(path.basename(filePath).toLowerCase())
   ) {
     return {
       database: 'sdkwork_ai_dev',
@@ -157,13 +341,18 @@ function unquoteValue(value) {
 
 function retiredDatabaseKey(line) {
   const candidate = line.trim().replace(/^#\s*/u, '');
-  const match = candidate.match(
+  const sdkworkMatch = candidate.match(
     /^(SDKWORK_(?!DATABASE_)([A-Z0-9_]+)_DATABASE_([A-Z0-9_]+))\s*=/u,
   );
-  if (!match) {
-    return null;
+  if (sdkworkMatch) {
+    return `retired application/module-prefixed database key ${sdkworkMatch[1]}; use SDKWORK_DATABASE_*`;
   }
-  return `retired application/module-prefixed database key ${match[1]}; use SDKWORK_DATABASE_*`;
+  RETIRED_LEGACY_DATABASE_KEY.lastIndex = 0;
+  const legacyMatch = RETIRED_LEGACY_DATABASE_KEY.exec(candidate);
+  if (legacyMatch && candidate.slice(legacyMatch.index + legacyMatch[0].length).trimStart().startsWith('=')) {
+    return `retired legacy database key ${legacyMatch[0]}; use SDKWORK_DATABASE_*`;
+  }
+  return null;
 }
 
 export function inspectLine(line, filePath, { section } = {}) {
@@ -202,6 +391,16 @@ export function inspectLine(line, filePath, { section } = {}) {
     const isAllowed = matchesExpectedConnection(value, expected, normalizedField);
     if (!isAllowed) {
       return `non-canonical SDKWORK_DATABASE_${field}=${value}; expected ${expected?.label ?? 'sdkwork_ai_dev, sdkwork_ai_test, sdkwork_ai_staging, or sdkwork_ai_prod'}`;
+    }
+  }
+
+  const schemaFallback = trimmed.match(
+    /^SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC\s*=\s*(.+)$/u,
+  );
+  if (schemaFallback) {
+    const value = unquoteValue(schemaFallback[1]).toLowerCase();
+    if (!['0', 'false', 'no'].includes(value)) {
+      return 'SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC must be false for canonical-only schema resolution';
     }
   }
 
@@ -302,8 +501,8 @@ const REQUIRED_WORKSPACE_ENV_KEYS = [
   'SDKWORK_DATABASE_PORT',
   'SDKWORK_DATABASE_NAME',
   'SDKWORK_DATABASE_SCHEMA',
+  'SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC',
   'SDKWORK_DATABASE_USERNAME',
-  'SDKWORK_DATABASE_PASSWORD',
   'SDKWORK_DATABASE_SSL_MODE',
   'SDKWORK_DATABASE_MAX_CONNECTIONS',
   'SDKWORK_DATABASE_ADMIN_HOST',
@@ -316,6 +515,7 @@ const REQUIRED_WORKSPACE_ENV_KEYS = [
 
 const ALLOWED_WORKSPACE_ENV_KEYS = new Set([
   ...REQUIRED_WORKSPACE_ENV_KEYS,
+  'SDKWORK_DATABASE_PASSWORD',
   'SDKWORK_DATABASE_URL',
   'SDKWORK_DATABASE_FILE',
   'SDKWORK_DATABASE_PASSWORD_FILE',
@@ -338,7 +538,7 @@ const ALLOWED_WORKSPACE_ENV_KEYS = new Set([
   'SDKWORK_DATABASE_ADMIN_PASSWORD_FILE',
 ]);
 
-function inspectPostgresExampleFile(filePath, content) {
+export function inspectPostgresExampleFile(filePath, content) {
   const issues = [];
   if (path.basename(filePath) !== '.env.postgres.example') {
     return issues;
@@ -374,6 +574,11 @@ function inspectPostgresExampleFile(filePath, content) {
         `${path.relative(scanRoot, filePath)}: missing required ${requiredKey}`,
       );
     }
+  }
+  if (!keys.has('SDKWORK_DATABASE_PASSWORD') && !keys.has('SDKWORK_DATABASE_PASSWORD_FILE')) {
+    issues.push(
+      `${path.relative(scanRoot, filePath)}: missing database credential; define SDKWORK_DATABASE_PASSWORD or SDKWORK_DATABASE_PASSWORD_FILE`,
+    );
   }
   for (const [key, count] of keyCounts) {
     if (count > 1) {
@@ -446,13 +651,17 @@ function resolveScanRoot(args) {
 
 function repositoryRoots(root) {
   const rootName = path.basename(root);
-  if (rootName.startsWith('sdkwork-') || rootName === 'sdkwork-specs') {
-    return [root];
-  }
-  return fs.readdirSync(root, { withFileTypes: true })
+  const childRepositories = fs.readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .filter((entry) => entry.name.startsWith('sdkwork-') || entry.name === 'sdkwork-specs')
     .map((entry) => path.join(root, entry.name));
+  if (childRepositories.length === 0) {
+    return [root];
+  }
+  if (rootName === 'sdkwork-specs') {
+    return [root];
+  }
+  return [root, ...childRepositories];
 }
 
 function main(args = process.argv.slice(2)) {
@@ -466,12 +675,17 @@ function main(args = process.argv.slice(2)) {
     for (const filePath of collectFiles(repoRoot)) {
       violations.push(...inspectConfigFile(filePath));
     }
+    for (const filePath of collectRuntimeSourceFiles(repoRoot)) {
+      violations.push(...inspectRuntimeSourceFile(filePath));
+    }
   }
   violations.push(...inspectPostgresInitScripts(repoRoots));
 
-  if (violations.length > 0) {
+  const uniqueViolations = [...new Set(violations)];
+
+  if (uniqueViolations.length > 0) {
     process.stderr.write('Unified PostgreSQL profile violations found:\n');
-    for (const violation of violations) {
+    for (const violation of uniqueViolations) {
       process.stderr.write(`- ${violation}\n`);
     }
     process.stderr.write('\nCanonical dev: sdkwork_ai_dev / SDKWORK_DATABASE_*\n');
