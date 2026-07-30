@@ -74,7 +74,9 @@ const RUNTIME_SCAN_DIRS = [
   'tools',
 ];
 const RUNTIME_SCAN_EXTENSIONS = new Set([
+  '.bat',
   '.cjs',
+  '.cmd',
   '.env',
   '.go',
   '.java',
@@ -100,6 +102,7 @@ const RUNTIME_ROOT_FILES = new Set([
   'sdkwork.app.config.json',
   'sdkwork.workflow.json',
 ]);
+const RUNTIME_ROOT_SCRIPT_EXTENSIONS = new Set(['.bat', '.cmd', '.ps1', '.sh']);
 const TEST_FILE_PATTERN = /(?:^|[.\-_])(?:spec|test|tests)(?:[.\-_]|$)/iu;
 const RETIRED_RUNTIME_DATABASE_KEY = /SDKWORK_(?!DATABASE_)(?:[A-Z0-9]+_)+DATABASE_(?:ACQUIRE_TIMEOUT|AUTO_MIGRATE|AUTO_SEED|ENGINE|FILE|HOST|IDLE_TIMEOUT|MAX_CONNECTIONS|MAX_LIFETIME|MIN_CONNECTIONS|MODE|NAME|PASSWORD|PASSWORD_FILE|PATH|PORT|SCHEMA|SEED_LOCALE|SEED_ON_BOOT|SEED_PROFILE|SQLITE_URL|SSL_MODE|SSLMODE|TABLE_PREFIX|URL|USERNAME)\b/gu;
 const RETIRED_LEGACY_DATABASE_KEY = /\b(?!SDKWORK_DATABASE_)(?:[A-Z0-9]+_)+DATABASE_(?:ACQUIRE_TIMEOUT|AUTO_MIGRATE|AUTO_SEED|ENGINE|FILE|HOST|IDLE_TIMEOUT|MAX_CONNECTIONS|MAX_LIFETIME|MIN_CONNECTIONS|MODE|NAME|PASSWORD|PASSWORD_FILE|PATH|PORT|SCHEMA|SEED_LOCALE|SEED_ON_BOOT|SEED_PROFILE|SQLITE_URL|SSL_MODE|SSLMODE|TABLE_PREFIX|URL|USERNAME)\b/gu;
@@ -181,7 +184,7 @@ function isTestSourceFile(filePath) {
   return TEST_FILE_PATTERN.test(path.basename(filePath));
 }
 
-function isRuntimeSourceFile(filePath) {
+export function isRuntimeSourceFile(filePath) {
   if (isCheckedInConfigFile(filePath) || isTestSourceFile(filePath)) {
     return false;
   }
@@ -189,7 +192,14 @@ function isRuntimeSourceFile(filePath) {
   if (RUNTIME_ROOT_FILES.has(base)) {
     return true;
   }
+  if (base.toLowerCase() === 'dockerfile' || base.toLowerCase().startsWith('dockerfile.')) {
+    return true;
+  }
   return RUNTIME_SCAN_EXTENSIONS.has(path.extname(base).toLowerCase());
+}
+
+export function isRuntimeRootScriptFile(filePath) {
+  return RUNTIME_ROOT_SCRIPT_EXTENSIONS.has(path.extname(filePath).toLowerCase());
 }
 
 function collectRuntimeSourceFiles(repoRoot) {
@@ -220,6 +230,12 @@ function collectRuntimeSourceFiles(repoRoot) {
   for (const fileName of RUNTIME_ROOT_FILES) {
     const filePath = path.join(repoRoot, fileName);
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      files.push(filePath);
+    }
+  }
+  for (const entry of fs.readdirSync(repoRoot, { withFileTypes: true })) {
+    const filePath = path.join(repoRoot, entry.name);
+    if (entry.isFile() && isRuntimeRootScriptFile(filePath)) {
       files.push(filePath);
     }
   }

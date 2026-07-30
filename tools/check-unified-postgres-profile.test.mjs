@@ -6,6 +6,8 @@ import {
   inspectLine,
   inspectPostgresExampleFile,
   inspectRuntimeSourceLine,
+  isRuntimeRootScriptFile,
+  isRuntimeSourceFile,
   shouldSkipDirectory,
 } from './check-unified-postgres-profile.mjs';
 
@@ -361,4 +363,10 @@ test('scanner excludes repository-generated runtime and test fixture directories
   assert.equal(shouldSkipDirectory('target-test-fixtures', 'sdkwork-demo'), true);
   assert.equal(shouldSkipDirectory('runtime', 'sdkwork-demo/.sdkwork'), true);
   assert.equal(shouldSkipDirectory('runtime', 'sdkwork-demo/src'), false);
+});
+
+test('scanner includes root scripts and Dockerfiles as runtime source', () => {
+  assert.equal(isRuntimeRootScriptFile('sdkwork-demo/start-server.bat'), true);
+  assert.equal(isRuntimeSourceFile('sdkwork-demo/deployments/Dockerfile.server'), true);
+  assert.equal(isRuntimeSourceFile('sdkwork-demo/deployments/Dockerfile'), true);
 });

@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   lifecycleEnvironmentForPath,
+  isTextFile,
   migratePostgresProfileContent,
   shouldSkipDirectory,
   workspaceIdentityForEnvironment,
@@ -87,6 +88,12 @@ test('migration excludes repository-generated runtime and test fixture directori
   assert.equal(shouldSkipDirectory('sdkwork-demo', 'target-test-fixtures'), true);
   assert.equal(shouldSkipDirectory('sdkwork-demo/.sdkwork', 'runtime'), true);
   assert.equal(shouldSkipDirectory('sdkwork-demo/src', 'runtime'), false);
+});
+
+test('migration includes root batch scripts and Dockerfiles', () => {
+  assert.equal(isTextFile('sdkwork-demo/start-server.bat'), true);
+  assert.equal(isTextFile('sdkwork-demo/deployments/Dockerfile.server'), true);
+  assert.equal(isTextFile('sdkwork-demo/deployments/Dockerfile'), true);
 });
 
 test('detects canonical key conflicts without exposing values', () => {

@@ -27,6 +27,7 @@ const SKIP_DIRS = new Set([
 
 const TEXT_EXTENSIONS = new Set([
   '.cmd',
+  '.bat',
   '.env',
   '.example',
   '.js',
@@ -46,9 +47,12 @@ const TEXT_EXTENSIONS = new Set([
 
 const MANUAL_STORAGE_FIELDS = new Set(['MODE', 'TABLE_PREFIX']);
 
-function isTextFile(filePath) {
+export function isTextFile(filePath) {
   const base = path.basename(filePath).toLowerCase();
-  return base.startsWith('.env') || TEXT_EXTENSIONS.has(path.extname(base));
+  return base.startsWith('.env')
+    || base === 'dockerfile'
+    || base.startsWith('dockerfile.')
+    || TEXT_EXTENSIONS.has(path.extname(base));
 }
 
 export function shouldSkipDirectory(parentDir, name) {
