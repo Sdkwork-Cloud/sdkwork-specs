@@ -50,6 +50,12 @@ SDKWORK_DATABASE_URL=postgres://localhost/runtime`,
     bare.content,
     'SDKWORK_DATABASE_TEST_POSTGRES_URL=postgres://localhost/test',
   );
+
+  const canonical = migratePostgresProfileContent(
+    'SDKWORK_DATABASE_TEST_POSTGRES_URL=postgres://localhost/test',
+    'scripts/postgres-test.mjs',
+  );
+  assert.equal(canonical.changed, false);
 });
 
 test('normalizes config identity according to the profile path', () => {

@@ -366,7 +366,45 @@ test('runtime source rejects legacy YAML database assignments', () => {
   );
 });
 
+test('workflow PostgreSQL services use the canonical test identity', () => {
+  const workflowPath = 'sdkwork-demo/.github/workflows/verify.yml';
+  assert.equal(
+    inspectRuntimeSourceLine('  POSTGRES_DB: sdkwork_ai_test', workflowPath),
+    null,
+  );
+  assert.equal(
+    inspectRuntimeSourceLine('  POSTGRES_USER: sdkwork_ai_test', workflowPath),
+    null,
+  );
+  assert.equal(
+    inspectRuntimeSourceLine(
+      '  SDKWORK_DATABASE_URL: postgres://sdkwork_ai_test:secret@localhost/sdkwork_ai_test',
+      workflowPath,
+    ),
+    null,
+  );
+  assert.match(
+    inspectRuntimeSourceLine('  POSTGRES_DB: demo_test', workflowPath),
+    /expected sdkwork_ai_test/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine('  POSTGRES_USER: postgres', workflowPath),
+    /expected sdkwork_ai_test/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine(
+      '  SDKWORK_DATABASE_URL: postgres://demo:secret@localhost/demo_test',
+      workflowPath,
+    ),
+    /non-canonical PostgreSQL URL database/u,
+  );
+});
+
 test('runtime source rejects custom PostgreSQL URL keys', () => {
+  assert.equal(
+    inspectRuntimeSourceLine('SDKWORK_DATABASE_TEST_POSTGRES_URL=postgres://localhost/test'),
+    null,
+  );
   assert.match(
     inspectRuntimeSourceLine('SDKWORK_MEMORY_POSTGRES_TEST_URL=postgres://localhost/test'),
     /SDKWORK_DATABASE_TEST_POSTGRES_URL/u,

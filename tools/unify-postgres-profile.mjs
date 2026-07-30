@@ -152,7 +152,7 @@ function renameDatabaseKeys(content) {
       'SDKWORK_DATABASE_TEST_POSTGRES_URL',
     )
     .replace(
-      /\b(?<!SDKWORK_)[A-Z0-9_]+_TEST_POSTGRES_URL\b/gu,
+      /\b(?!SDKWORK_DATABASE_TEST_POSTGRES_URL\b)[A-Z0-9_]+_TEST_POSTGRES_URL\b/gu,
       'SDKWORK_DATABASE_TEST_POSTGRES_URL',
     )
     .replace(
@@ -199,7 +199,7 @@ function inspectCanonicalKeyCollisions(content) {
     addSource('SDKWORK_DATABASE_TEST_POSTGRES_URL', match[0]);
   }
   for (const match of String(content).matchAll(
-    /\b(?<!SDKWORK_)[A-Z0-9_]+_TEST_POSTGRES_URL\b/gu,
+    /\b(?!SDKWORK_DATABASE_TEST_POSTGRES_URL\b)[A-Z0-9_]+_TEST_POSTGRES_URL\b/gu,
   )) {
     addSource('SDKWORK_DATABASE_TEST_POSTGRES_URL', match[0]);
   }

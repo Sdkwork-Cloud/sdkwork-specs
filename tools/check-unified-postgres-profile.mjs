@@ -111,7 +111,7 @@ const INVALID_WORKSPACE_DATABASE_KEY = /SDKWORK_DATABASE_(?:MODE|TABLE_PREFIX)\b
 const RETIRED_WORKSPACE_DATABASE_ALIAS = /SDKWORK_DATABASE_(?:PATH|SQLITE_URL|SSLMODE)\b/gu;
 const DYNAMIC_RUNTIME_DATABASE_KEY = /SDKWORK_(?:\$\{[^}\r\n]+\}|\{[^}\r\n]*\})(?:_[A-Z0-9]+)*_DATABASE_/gu;
 const CONCATENATED_RUNTIME_DATABASE_KEY = /SDKWORK_["'`]\s*\+[^;\r\n]+["'`]_[A-Z0-9_]*DATABASE_/gu;
-const RETIRED_TEST_POSTGRES_KEY = /\b(?:SDKWORK_(?!DATABASE_)[A-Z0-9_]+_(?:TEST_POSTGRES_URL|POSTGRES_TEST_URL)|(?<!SDKWORK_)[A-Z0-9_]+_TEST_POSTGRES_URL)\b/gu;
+const RETIRED_TEST_POSTGRES_KEY = /\b(?!SDKWORK_DATABASE_TEST_POSTGRES_URL\b)(?:SDKWORK_(?!DATABASE_)[A-Z0-9_]+_(?:TEST_POSTGRES_URL|POSTGRES_TEST_URL)|[A-Z0-9_]+_TEST_POSTGRES_URL)\b/gu;
 const RETIRED_RUNTIME_POSTGRES_KEY = /\bSDKWORK_(?!DATABASE_)[A-Z0-9_]+_RUNTIME_POSTGRES_(?:URL|URI)\b/gu;
 const RETIRED_KEY_REJECTION_MARKER = 'sdkwork-retired-database-key-rejection';
 
@@ -245,7 +245,7 @@ function collectRuntimeSourceFiles(repoRoot) {
   return [...new Set(files.map((filePath) => path.normalize(filePath)))];
 }
 
-export function inspectRuntimeSourceLine(line) {
+export function inspectRuntimeSourceLine(line, filePath = '') {
   if (line.includes(RETIRED_KEY_REJECTION_MARKER)) {
     return null;
   }
@@ -279,6 +279,23 @@ export function inspectRuntimeSourceLine(line) {
       return `retired legacy database key; use SDKWORK_DATABASE_*: ${token}`;
     }
   }
+
+  const trimmed = line.trim();
+  const postgresIdentityIssue = inspectPostgresIdentityAssignment(trimmed, filePath);
+  if (postgresIdentityIssue) {
+    return postgresIdentityIssue;
+  }
+
+  const isYaml = ['.yaml', '.yml'].includes(path.extname(filePath).toLowerCase());
+  const yamlDatabaseAssignment = isYaml
+    ? trimmed.match(/^(SDKWORK_DATABASE_[A-Z0-9_]+):\s*(.+)$/u)
+    : null;
+  if (isYaml && yamlDatabaseAssignment) {
+    return inspectLine(
+      `${yamlDatabaseAssignment[1]}=${yamlDatabaseAssignment[2]}`,
+      filePath,
+    );
+  }
   return null;
 }
 
@@ -286,7 +303,7 @@ function inspectRuntimeSourceFile(filePath) {
   const content = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/u, '');
   const issues = [];
   for (const [index, line] of content.split(/\r?\n/u).entries()) {
-    const issue = inspectRuntimeSourceLine(line);
+    const issue = inspectRuntimeSourceLine(line, filePath);
     if (issue) {
       issues.push(`${path.relative(scanRoot, filePath)}:${index + 1}: ${issue}`);
     }
@@ -305,6 +322,13 @@ function isCanonicalWorkspaceDatabase(value) {
 
 function expectedConnectionIdentity(filePath) {
   const normalized = filePath.replace(/\\/gu, '/').toLowerCase();
+  if (normalized.includes('/.github/workflows/')) {
+    return {
+      isTest: true,
+      label: 'sdkwork_ai_test or sdkwork_ai_test_<run_id>',
+      username: 'sdkwork_ai_test',
+    };
+  }
   if (normalized.includes('production')) {
     return {
       database: 'sdkwork_ai_prod',
@@ -367,6 +391,23 @@ function unquoteValue(value) {
   return trimmed;
 }
 
+function inspectPostgresIdentityAssignment(line, filePath) {
+  const match = line.match(/^POSTGRES_(DB|USER)\s*[:=]\s*["']?([^"'#\s]+)["']?/u);
+  if (!match || match[2].includes('${')) {
+    return null;
+  }
+  const [, field, value] = match;
+  const expected = expectedConnectionIdentity(filePath);
+  const normalizedField = field === 'DB' ? 'database' : 'username';
+  if (matchesExpectedConnection(value, expected, normalizedField)) {
+    return null;
+  }
+  const expectedValue = expected?.[normalizedField]
+    ?? expected?.label
+    ?? 'a canonical workspace PostgreSQL identity';
+  return `non-canonical POSTGRES_${field}=${value}; expected ${expectedValue}`;
+}
+
 function retiredDatabaseKey(line) {
   const candidate = line.trim().replace(/^#\s*/u, '');
   const sdkworkMatch = candidate.match(
@@ -406,6 +447,11 @@ export function inspectLine(line, filePath, { section } = {}) {
   }
   if (/^(?:DATABASE_PROVIDER|DATABASE_SSLMODE)\s*=/u.test(trimmed)) {
     return 'retired database key; use SDKWORK_DATABASE_ENGINE or SDKWORK_DATABASE_SSL_MODE';
+  }
+
+  const postgresIdentityIssue = inspectPostgresIdentityAssignment(trimmed, filePath);
+  if (postgresIdentityIssue) {
+    return postgresIdentityIssue;
   }
 
   const workspaceIdentity = trimmed.match(
@@ -470,7 +516,7 @@ export function inspectLine(line, filePath, { section } = {}) {
   }
 
   const databaseUrlMatch = !isDatabaseAdminSection && trimmed.match(
-    /^(?:SDKWORK_DATABASE_URL|SDKWORK_[A-Z0-9_]+_DATABASE_URL|url)\s*=\s*"?postgres(?:ql)?:\/\/[^/\s"]+\/([^?&\s"]+)/iu,
+    /^(?:SDKWORK_DATABASE_URL|SDKWORK_[A-Z0-9_]+_DATABASE_URL|url)\s*[:=]\s*"?postgres(?:ql)?:\/\/[^/\s"]+\/([^?&\s"]+)/iu,
   );
   if (databaseUrlMatch) {
     const value = decodeURIComponent(databaseUrlMatch[1]);
