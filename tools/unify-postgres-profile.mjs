@@ -22,6 +22,7 @@ const SKIP_DIRS = new Set([
   'generated',
   'node_modules',
   'target',
+  'target-test-fixtures',
 ]);
 
 const TEXT_EXTENSIONS = new Set([
@@ -50,12 +51,20 @@ function isTextFile(filePath) {
   return base.startsWith('.env') || TEXT_EXTENSIONS.has(path.extname(base));
 }
 
+export function shouldSkipDirectory(parentDir, name) {
+  return SKIP_DIRS.has(name)
+    || (
+      path.basename(parentDir).toLowerCase() === '.sdkwork'
+      && name.toLowerCase() === 'runtime'
+    );
+}
+
 function collectFiles(root, files = []) {
   if (!fs.existsSync(root)) {
     return files;
   }
   for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
-    if (entry.isDirectory() && SKIP_DIRS.has(entry.name)) {
+    if (entry.isDirectory() && shouldSkipDirectory(root, entry.name)) {
       continue;
     }
     const fullPath = path.join(root, entry.name);
@@ -278,7 +287,7 @@ function normalizeConfigIdentities(content, filePath) {
   ) {
     if (/^\s*SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC\s*=/mu.test(updated)) {
       updated = updated.replace(
-        /^(\s*SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC\s*=\s*)[^#\r\n]*(\s*(?:#.*)?)$/gmu,
+        /^(\s*SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC\s*=\s*)[^#\r\n]*?(\s*(?:#.*)?)$/gmu,
         '$1false$2',
       );
     } else {

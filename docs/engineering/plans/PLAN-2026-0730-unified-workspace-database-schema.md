@@ -22,7 +22,7 @@ All authoritative server modules in one environment share exactly one PostgreSQL
 | staging | `sdkwork_ai_staging` | `sdkwork_ai_staging` |
 | production | `sdkwork_ai_prod` | `sdkwork_ai_prod` |
 
-Runtime configuration uses only `SDKWORK_DATABASE_*`. Application-prefixed families such as `SDKWORK_CLAW_DATABASE_*` and module-specific database identity keys are retired and rejected rather than dual-read.
+Runtime configuration uses only `SDKWORK_DATABASE_*`. Application-prefixed families that insert an application scope before `DATABASE`, and module-specific database identity keys, are retired and rejected rather than dual-read.
 
 Shared database/schema identity does not merge table ownership. Each module retains its registered table prefixes, contract, migrations, seeds, and lifecycle history inside the shared schema.
 

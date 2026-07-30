@@ -6,6 +6,7 @@ import {
   inspectLine,
   inspectPostgresExampleFile,
   inspectRuntimeSourceLine,
+  shouldSkipDirectory,
 } from './check-unified-postgres-profile.mjs';
 
 const scopedDatabaseKey = (scope, field) => ['SDKWORK', scope, 'DATABASE', field].join('_');
@@ -354,4 +355,10 @@ test('runtime source accepts canonical database keys and module ownership metada
   assert.equal(inspectRuntimeSourceLine('SDKWORK_DATABASE_MODULE_ID=iot'), null);
   assert.equal(inspectRuntimeSourceLine('SDKWORK_DATABASE_MAX_CONNECTIONS=10'), null);
   assert.equal(inspectRuntimeSourceLine('SDKWORK_DATABASE_FILE=.data/client.db'), null);
+});
+
+test('scanner excludes repository-generated runtime and test fixture directories', () => {
+  assert.equal(shouldSkipDirectory('target-test-fixtures', 'sdkwork-demo'), true);
+  assert.equal(shouldSkipDirectory('runtime', 'sdkwork-demo/.sdkwork'), true);
+  assert.equal(shouldSkipDirectory('runtime', 'sdkwork-demo/src'), false);
 });

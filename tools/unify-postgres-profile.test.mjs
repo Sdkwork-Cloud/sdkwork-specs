@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   lifecycleEnvironmentForPath,
   migratePostgresProfileContent,
+  shouldSkipDirectory,
   workspaceIdentityForEnvironment,
 } from './unify-postgres-profile.mjs';
 
@@ -72,11 +73,20 @@ test('inserts and normalizes the canonical schema fallback switch', () => {
   );
 
   const enabled = migratePostgresProfileContent(
-    'SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev\nSDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=true\n',
+    'SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev\nSDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=true # migration residue\n',
     'sdkwork-demo/.env.postgres.example',
   );
-  assert.match(enabled.content, /SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false/u);
+  assert.match(
+    enabled.content,
+    /SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false # migration residue/u,
+  );
   assert.doesNotMatch(enabled.content, /SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=true/u);
+});
+
+test('migration excludes repository-generated runtime and test fixture directories', () => {
+  assert.equal(shouldSkipDirectory('sdkwork-demo', 'target-test-fixtures'), true);
+  assert.equal(shouldSkipDirectory('sdkwork-demo/.sdkwork', 'runtime'), true);
+  assert.equal(shouldSkipDirectory('sdkwork-demo/src', 'runtime'), false);
 });
 
 test('detects canonical key conflicts without exposing values', () => {

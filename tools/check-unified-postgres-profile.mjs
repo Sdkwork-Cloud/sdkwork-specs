@@ -37,6 +37,7 @@ const SKIP_DIRS = new Set([
   'archive',
   'archives',
   'superpowers',
+  'target-test-fixtures',
 ]);
 const SKIP_FILES = new Set([
   path.normalize(path.join(DEFAULT_WORKSPACE_ROOT, 'sdkwork-specs/tools/unify-postgres-profile.mjs')),
@@ -143,8 +144,13 @@ function isCheckedInConfigFile(filePath) {
   return false;
 }
 
-function shouldSkipDirectory(name) {
-  return SKIP_DIRS.has(name) || name.startsWith('node_modules.');
+export function shouldSkipDirectory(name, parentDir = '') {
+  return SKIP_DIRS.has(name)
+    || name.startsWith('node_modules.')
+    || (
+      path.basename(parentDir).toLowerCase() === '.sdkwork'
+      && name.toLowerCase() === 'runtime'
+    );
 }
 
 function collectFiles(dir, files = []) {
@@ -152,7 +158,7 @@ function collectFiles(dir, files = []) {
     return files;
   }
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (shouldSkipDirectory(entry.name)) {
+    if (shouldSkipDirectory(entry.name, dir)) {
       continue;
     }
     const fullPath = path.join(dir, entry.name);
@@ -196,7 +202,7 @@ function collectRuntimeSourceFiles(repoRoot) {
       return;
     }
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (shouldSkipDirectory(entry.name)) {
+      if (shouldSkipDirectory(entry.name, dir)) {
         continue;
       }
       const fullPath = path.join(dir, entry.name);
