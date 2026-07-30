@@ -16,10 +16,10 @@ PGDATABASE="${PGDATABASE:-postgres}"
 if [[ -f "${ENV_FILE}" ]]; then
   # shellcheck disable=SC1090
   set -a
-  source <(grep -E '^SDKWORK_CLAW_DATABASE_(NAME|ADMIN_PASSWORD)=' "${ENV_FILE}" | sed 's/\r$//')
+  source <(grep -E '^SDKWORK_DATABASE_(NAME|ADMIN_PASSWORD)=' "${ENV_FILE}" | sed 's/\r$//')
   set +a
-  PGDATABASE_NAME="${SDKWORK_CLAW_DATABASE_NAME:-sdkwork_ai_dev}"
-  export PGPASSWORD="${PGPASSWORD:-${SDKWORK_CLAW_DATABASE_ADMIN_PASSWORD:-postgres_admin_pass}}"
+  PGDATABASE_NAME="${SDKWORK_DATABASE_NAME:-sdkwork_ai_dev}"
+  export PGPASSWORD="${PGPASSWORD:-${SDKWORK_DATABASE_ADMIN_PASSWORD:-postgres_admin_pass}}"
 else
   PGDATABASE_NAME="${PGDATABASE_NAME:-sdkwork_ai_dev}"
   export PGPASSWORD="${PGPASSWORD:-postgres_admin_pass}"

@@ -48,7 +48,9 @@ Runtime layout and infrastructure configuration must satisfy these goals:
 | Secret-bearing file | A file containing passwords, API keys, signing keys, private URLs, or encrypted secret payloads. |
 | Data directory | Durable mutable application state owned by the process. |
 | Cache directory | Rebuildable local cache. Cache loss must not destroy authoritative data. |
-| Runtime directory | Ephemeral PID files, sockets, locks, and generated state that should disappear after reboot. |
+| Runtime directory | Ephemeral PID files, sockets, locks, and process coordination state that should disappear after reboot. |
+| Repository-generated state | Reproducible build output, tool cache, generated test input, or disposable development data created while operating on a source checkout. |
+| Tool-native directory | A generated directory already owned by the active build tool, such as Cargo `target/`, Vite `node_modules/.vite/`, Flutter `.dart_tool/`, or Gradle `build/`. |
 | Repository workspace `.sdkwork/` | Source-controlled development metadata at a git repository root or application root. It is not runtime state and is governed by `SDKWORK_WORKSPACE_SPEC.md`. |
 
 ## 3. Naming Rules
@@ -273,9 +275,14 @@ Repository-local conventions:
 | PostgreSQL developer override | `.env.postgres` or typed dev config file excluded from source control |
 | SQLite dev example | `.env.sqlite.example` when an app needs one |
 | SQLite developer override | `.env.sqlite` or typed dev config file excluded from source control |
-| Dev generated data | `target/dev/<application-code>` or `~/.sdkwork/<application-code>/dev` |
-| Dev SQLite database | `target/dev/<application-code>/<application-code>.sqlite` or `~/.sdkwork/<application-code>/dev/data/<application-code>.sqlite` |
-| Dev logs | `target/dev/<application-code>/logs` or `~/.sdkwork/<application-code>/dev/logs` |
+| Cargo build output | Repository Cargo `target/`; an isolated build uses `target/sdkwork/<purpose>/` only when executable locking, toolchain separation, or concurrent-build evidence requires it |
+| JavaScript tool cache | The tool-native directory, such as `node_modules/.vite/<surface-id>/` or `node_modules/.cache/<tool>/` |
+| Other framework output | The framework-native ignored directory, such as Flutter `.dart_tool/` or Gradle `build/` |
+| Development process registry | OS user runtime/temp root under `sdkwork/<owner>/<repository-hash>/` |
+| Disposable test or generated config | A unique directory created below the OS/CI temporary root |
+| Long-lived developer-private data | `~/.sdkwork/<application-code>/dev` or the canonical Windows user-private equivalent |
+| Dev SQLite database | `~/.sdkwork/<application-code>/dev/data/<application-code>.sqlite`, only for a declared client-local database owner |
+| Dev logs | stdout/stderr by default, otherwise `~/.sdkwork/<application-code>/dev/logs` |
 
 Rules:
 
@@ -290,12 +297,27 @@ Rules:
 - Checked-in examples must never contain real passwords, tenant tokens, API
   keys, or production hostnames.
 - Dev PostgreSQL and Redis credentials must be documented as local-only.
-- PostgreSQL dev profiles must use `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE=postgresql`
-  and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE`; they must not use legacy aliases such
+- PostgreSQL dev profiles must use `SDKWORK_DATABASE_ENGINE=postgresql`
+  and `SDKWORK_DATABASE_SSL_MODE`; they must not use legacy aliases such
   as `DATABASE_PROVIDER` or `DATABASE_SSLMODE`.
 - Test databases must be isolated from dev and production databases.
-- A local command may write to `target/dev/<application-code>` for disposable workspace data.
-  Long-lived private user data should use `~/.sdkwork/<application-code>`.
+- Repository roots, application roots, and nested source modules `MUST NOT` create `.runtime/`.
+  A hidden catch-all directory is not a lifecycle or ownership boundary.
+- Build and dependency caches `MUST` use their tool-native directory. Multiple surfaces sharing one
+  native cache root `MUST` use stable surface-qualified children rather than creating a parallel cache root.
+- Development PID, heartbeat, socket, lock, and process-ownership files `MUST` live outside the
+  source tree. The canonical base is `${XDG_RUNTIME_DIR}` when available on Linux and the current
+  user/runner temporary directory on macOS and Windows, followed by
+  `sdkwork/<owner>/<repository-hash>/`.
+- `<repository-hash>` `MUST` be derived from the canonical real path of the repository root.
+  Runtime directories and files `MUST` be user-private, written atomically, validated before acting
+  on recorded process identities, and removed when their owning lifecycle ends.
+- Tests and generated one-process config files `MUST` use a unique OS/CI temporary directory and
+  clean it in `finally` or the framework-equivalent teardown. Persistent verification evidence is
+  an artifact, not temporary runtime state, and follows its owning test or release contract.
+- Decoded signing keys, keystores, credentials, and other secret material `MUST NOT` be written
+  anywhere inside a source checkout, including ignored directories.
+- Long-lived private user data should use `~/.sdkwork/<application-code>`.
 
 ## 6. Release And Production Configuration Standard
 
@@ -443,7 +465,7 @@ Canonical `[database]` fields:
 | `host` | PostgreSQL | Hostname or IP for PostgreSQL. |
 | `port` | PostgreSQL | Default `5432`. |
 | `database` | PostgreSQL | Database name or catalog. |
-| `schema` | optional | PostgreSQL schema, default `public` unless the app standard says otherwise. |
+| `schema` | PostgreSQL | Workspace schema selected by `ENVIRONMENT_SPEC.md` section 7.1. Authoritative server config must not default to `public` or a module-owned schema. |
 | `username` | PostgreSQL | Database role/user. |
 | `password_file` | recommended | Path to secret-bearing file. |
 | `password` | allowed with restrictions | Only in protected secret-bearing config. |
@@ -460,7 +482,7 @@ Rules:
 
 - Standalone server/container and cloud release config must not depend on only
   `url`. Structured fields are the primary production contract.
-- `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` may override the structured config only when an
+- `SDKWORK_DATABASE_URL` may override the structured config only when an
   operator explicitly sets it.
 - PostgreSQL password material should use `password_file` or a platform secret.
 - Direct `password` is allowed only when the entire config file is protected as
@@ -483,44 +505,44 @@ Recommended env override mapping:
 
 | Env var | Config field |
 | --- | --- |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` | `[database].engine` |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` | `[database].url` |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_HOST` | `[database].host` |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_PORT` | `[database].port` |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_NAME` | `[database].database` |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_SCHEMA` | `[database].schema` |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_USERNAME` | `[database].username` |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD_FILE` | `[database].password_file` |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD` | `[database].password` |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` | `[database].ssl_mode` |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_MAX_CONNECTIONS` | `[database].max_connections` |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_FILE` | `[database].file` |
+| `SDKWORK_DATABASE_ENGINE` | `[database].engine` |
+| `SDKWORK_DATABASE_URL` | `[database].url` |
+| `SDKWORK_DATABASE_HOST` | `[database].host` |
+| `SDKWORK_DATABASE_PORT` | `[database].port` |
+| `SDKWORK_DATABASE_NAME` | `[database].database` |
+| `SDKWORK_DATABASE_SCHEMA` | `[database].schema` |
+| `SDKWORK_DATABASE_USERNAME` | `[database].username` |
+| `SDKWORK_DATABASE_PASSWORD_FILE` | `[database].password_file` |
+| `SDKWORK_DATABASE_PASSWORD` | `[database].password` |
+| `SDKWORK_DATABASE_SSL_MODE` | `[database].ssl_mode` |
+| `SDKWORK_DATABASE_MAX_CONNECTIONS` | `[database].max_connections` |
+| `SDKWORK_DATABASE_FILE` | `[database].file` |
 
 Standard PostgreSQL development example shape:
 
 ```env
 # Unified workspace profile. See ENVIRONMENT_SPEC.md §7.1 and sdkwork-specs/templates/env.postgres.example
-SDKWORK_CLAW_DATABASE_ENGINE=postgresql
-SDKWORK_CLAW_DATABASE_HOST=127.0.0.1
-SDKWORK_CLAW_DATABASE_PORT=5432
-SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_dev
-SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_dev
-SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_dev
-SDKWORK_CLAW_DATABASE_PASSWORD=sdkworkdev123
-SDKWORK_CLAW_DATABASE_SSL_MODE=disable
-SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=10
+SDKWORK_DATABASE_ENGINE=postgresql
+SDKWORK_DATABASE_HOST=127.0.0.1
+SDKWORK_DATABASE_PORT=5432
+SDKWORK_DATABASE_NAME=sdkwork_ai_dev
+SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev
+SDKWORK_DATABASE_USERNAME=sdkwork_ai_dev
+SDKWORK_DATABASE_PASSWORD=sdkworkdev123
+SDKWORK_DATABASE_SSL_MODE=disable
+SDKWORK_DATABASE_MAX_CONNECTIONS=10
 
-SDKWORK_CLAW_DATABASE_ADMIN_HOST=127.0.0.1
-SDKWORK_CLAW_DATABASE_ADMIN_PORT=5432
-SDKWORK_CLAW_DATABASE_ADMIN_USERNAME=postgres
-SDKWORK_CLAW_DATABASE_ADMIN_PASSWORD=postgres_admin_pass
-SDKWORK_CLAW_DATABASE_ADMIN_DATABASE=postgres
-SDKWORK_CLAW_DATABASE_ADMIN_SSL_MODE=disable
+SDKWORK_DATABASE_ADMIN_HOST=127.0.0.1
+SDKWORK_DATABASE_ADMIN_PORT=5432
+SDKWORK_DATABASE_ADMIN_USERNAME=postgres
+SDKWORK_DATABASE_ADMIN_PASSWORD=postgres_admin_pass
+SDKWORK_DATABASE_ADMIN_DATABASE=postgres
+SDKWORK_DATABASE_ADMIN_SSL_MODE=disable
 ```
 
 Rules:
 
-- `.env.postgres.example` is checked in and contains local-only placeholders using `SDKWORK_CLAW_DATABASE_*` only.
+- `.env.postgres.example` is checked in and contains local-only placeholders using `SDKWORK_DATABASE_*` only.
 - `.env.postgres` is a developer override and must be ignored by source
   control.
 - `DATABASE_PROVIDER` and `DATABASE_SSLMODE` are not standard names. New apps
@@ -625,6 +647,8 @@ Rules:
 - Temporary files use `/run/sdkwork/<application-code>` for process runtime state and
   `~/.sdkwork/<application-code>/tmp` for user-private temp files. General `/tmp` use is
   allowed only for disposable scratch files with safe cleanup.
+- Source-checkout development state follows section 5: tool output remains in tool-native
+  directories, while process coordination and disposable scratch state remain outside the source tree.
 - Rebuildable cache must not be treated as authoritative data.
 - Durable queue state, catalogs, migration state, or generated data required for
   restart belongs under the data directory, not the cache directory.
@@ -692,11 +716,15 @@ Rules:
 - [ ] Linux logs are under `/var/log/sdkwork/<application-code>`.
 - [ ] User private files are under `~/.sdkwork/<application-code>` or the documented Windows equivalent `%USERPROFILE%\.sdkwork\<application-code>`.
 - [ ] Development config is separated from release config.
-- [ ] PostgreSQL development config uses checked-in `.env.postgres.example`, ignored `.env.postgres`, `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE=postgresql`, and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE`.
+- [ ] PostgreSQL development config uses checked-in `.env.postgres.example`, ignored `.env.postgres`, `SDKWORK_DATABASE_ENGINE=postgresql`, and `SDKWORK_DATABASE_SSL_MODE`.
 - [ ] Standalone server/container and cloud production config defaults to PostgreSQL through structured `[database]` fields.
 - [ ] Desktop user-data config defaults to SQLite under the user private data directory.
 - [ ] Redis config uses structured `[redis]` fields by default.
 - [ ] `DATABASE_URL` and `REDIS_URL` are private explicit overrides only.
 - [ ] Secrets use secret files or platform secrets and are never committed.
 - [ ] Compatibility fallbacks are read-only unless a migration command is explicitly running.
+- [ ] No repository root, application root, or nested source module contains `.runtime/`.
+- [ ] Build caches use tool-native directories and shared caches use stable surface-qualified children.
+- [ ] Development process registries and disposable generated config use private OS user/runner runtime or temporary paths outside source.
+- [ ] Signing material is never decoded or staged inside a source checkout.
 - [ ] Tests or preflight checks validate config discovery, path resolution, permissions, and database/Redis config rules.

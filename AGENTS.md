@@ -104,6 +104,7 @@ Choose only the narrowest commands selected by the changed standard; this is not
 | --- | --- |
 | `SOUL.md`, `AGENTS.md`, compatibility shim, or documentation entrypoint | `node tools/check-agent-workflow-standard.mjs --root .`, `node tools/check-repository-docs-standard.mjs --root .`, `node --test tools/check-agent-workflow-standard.test.mjs`, `node --test tools/check-repository-docs-standard.test.mjs` |
 | Documentation debt or Canon layout | `node tools/audit-repository-docs-debt.mjs --root .` and the affected documentation checker or its test |
+| Repository/generated-state layout | `node tools/check-workspace-layout.mjs --root .` and `node --test tools/check-workspace-layout.test.mjs` |
 | Validator or tool implementation | The matching `node --test tools/<tool>.test.mjs` and the tool's narrow `--root .` check |
 | API, SDK, composition, workspace, runtime, or other domain standard | The validator and test command required by the affected authority and `TEST_SPEC.md`; use `--workspace ..` only when the change actually crosses repository roots |
 | Broad cross-contract change | `node tools/verify-repo.mjs --root .` after the narrow checks pass |

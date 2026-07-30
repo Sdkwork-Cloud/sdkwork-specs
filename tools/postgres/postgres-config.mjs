@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const CLAW_PREFIX = 'SDKWORK_CLAW_DATABASE_';
-const CLAW_ADMIN_PREFIX = 'SDKWORK_CLAW_DATABASE_ADMIN_';
+const WORKSPACE_PREFIX = 'SDKWORK_DATABASE_';
+const WORKSPACE_ADMIN_PREFIX = 'SDKWORK_DATABASE_ADMIN_';
 
 function normalizeField(value) {
   const normalized = String(value ?? '').trim();
@@ -98,52 +98,51 @@ function readEnvValue(env, keys) {
   return undefined;
 }
 
-function buildConnectionFromEnv(env, {
-  urlKeys = [`${CLAW_PREFIX}URL`],
-  hostKeys = [`${CLAW_PREFIX}HOST`],
-  portKeys = [`${CLAW_PREFIX}PORT`],
-  databaseKeys = [`${CLAW_PREFIX}NAME`],
-  schemaKeys = [`${CLAW_PREFIX}SCHEMA`, `${CLAW_PREFIX}NAME`],
-  usernameKeys = [`${CLAW_PREFIX}USERNAME`],
-  passwordKeys = [`${CLAW_PREFIX}PASSWORD`],
-  sslModeKeys = [`${CLAW_PREFIX}SSL_MODE`, `${CLAW_PREFIX}SSLMODE`],
-  legacyPrefixes = [],
-} = {}) {
-  const legacyHostKeys = legacyPrefixes.flatMap((prefix) => [`${prefix}HOST`]);
-  const legacyPortKeys = legacyPrefixes.flatMap((prefix) => [`${prefix}PORT`]);
-  const legacyDatabaseKeys = legacyPrefixes.flatMap((prefix) => [`${prefix}NAME`]);
-  const legacySchemaKeys = legacyPrefixes.flatMap((prefix) => [`${prefix}SCHEMA`, `${prefix}NAME`]);
-  const legacyUsernameKeys = legacyPrefixes.flatMap((prefix) => [`${prefix}USERNAME`]);
-  const legacyPasswordKeys = legacyPrefixes.flatMap((prefix) => [`${prefix}PASSWORD`]);
-  const legacySslModeKeys = legacyPrefixes.flatMap((prefix) => [`${prefix}SSL_MODE`, `${prefix}SSLMODE`]);
-  const legacyUrlKeys = legacyPrefixes.flatMap((prefix) => [`${prefix}URL`]);
+function rejectRetiredDatabaseKeys(env) {
+  const retiredKeys = Object.keys(env).filter((key) => (
+    /^SDKWORK_(?!DATABASE_)[A-Z0-9_]+_DATABASE_[A-Z0-9_]+$/u.test(key)
+    || /^(?:DOCUMENTS|DATABASE)_DATABASE_[A-Z0-9_]+$/u.test(key)
+    || /^SDKWORK_DATABASE_(?:ADMIN_)?SSLMODE$/u.test(key)
+  ));
+  if (retiredKeys.length > 0) {
+    throw new Error(
+      `retired database configuration ${retiredKeys.sort().join(', ')}; use SDKWORK_DATABASE_*`,
+    );
+  }
+}
 
+function buildConnectionFromEnv(env, {
+  urlKeys = [`${WORKSPACE_PREFIX}URL`],
+  hostKeys = [`${WORKSPACE_PREFIX}HOST`],
+  portKeys = [`${WORKSPACE_PREFIX}PORT`],
+  databaseKeys = [`${WORKSPACE_PREFIX}NAME`],
+  schemaKeys = [`${WORKSPACE_PREFIX}SCHEMA`, `${WORKSPACE_PREFIX}NAME`],
+  usernameKeys = [`${WORKSPACE_PREFIX}USERNAME`],
+  passwordKeys = [`${WORKSPACE_PREFIX}PASSWORD`],
+  sslModeKeys = [`${WORKSPACE_PREFIX}SSL_MODE`],
+} = {}) {
   const fromUrl = parsePostgresDatabaseUrl(
-    readEnvValue(env, [...urlKeys, ...legacyUrlKeys]),
-    readEnvValue(env, [...schemaKeys, ...legacySchemaKeys]),
+    readEnvValue(env, urlKeys),
+    readEnvValue(env, schemaKeys),
   );
   if (fromUrl) {
     return fromUrl;
   }
 
   return {
-    database: readEnvValue(env, [...databaseKeys, ...legacyDatabaseKeys]),
-    host: readEnvValue(env, [...hostKeys, ...legacyHostKeys]),
-    password: readEnvValue(env, [...passwordKeys, ...legacyPasswordKeys]),
-    port: readEnvValue(env, [...portKeys, ...legacyPortKeys]) ?? '5432',
-    schema: readEnvValue(env, [...schemaKeys, ...legacySchemaKeys]),
-    sslmode: readEnvValue(env, [...sslModeKeys, ...legacySslModeKeys]),
-    username: readEnvValue(env, [...usernameKeys, ...legacyUsernameKeys]),
+    database: readEnvValue(env, databaseKeys),
+    host: readEnvValue(env, hostKeys),
+    password: readEnvValue(env, passwordKeys),
+    port: readEnvValue(env, portKeys) ?? '5432',
+    schema: readEnvValue(env, schemaKeys),
+    sslmode: readEnvValue(env, sslModeKeys),
+    username: readEnvValue(env, usernameKeys),
   };
 }
 
-function buildAdminFromEnv(env, database, legacyPrefixes = []) {
-  const legacyAdminPrefixes = legacyPrefixes.map((prefix) => prefix.replace(/_DATABASE_$/, '_DATABASE_ADMIN_'));
+function buildAdminFromEnv(env, database) {
   const adminFromUrl = parsePostgresDatabaseUrl(
-    readEnvValue(env, [
-      `${CLAW_ADMIN_PREFIX}URL`,
-      ...legacyAdminPrefixes.map((prefix) => `${prefix}URL`),
-    ]),
+    readEnvValue(env, [`${WORKSPACE_ADMIN_PREFIX}URL`]),
     undefined,
   );
   if (adminFromUrl) {
@@ -151,39 +150,26 @@ function buildAdminFromEnv(env, database, legacyPrefixes = []) {
   }
 
   return {
-    database: readEnvValue(env, [
-      `${CLAW_ADMIN_PREFIX}DATABASE`,
-      ...legacyAdminPrefixes.map((prefix) => `${prefix}DATABASE`),
-    ]) ?? 'postgres',
-    host: readEnvValue(env, [
-      `${CLAW_ADMIN_PREFIX}HOST`,
-      ...legacyAdminPrefixes.map((prefix) => `${prefix}HOST`),
-    ]) ?? database.host,
-    password: readEnvValue(env, [
-      `${CLAW_ADMIN_PREFIX}PASSWORD`,
-      ...legacyAdminPrefixes.map((prefix) => `${prefix}PASSWORD`),
-    ]),
-    port: readEnvValue(env, [
-      `${CLAW_ADMIN_PREFIX}PORT`,
-      ...legacyAdminPrefixes.map((prefix) => `${prefix}PORT`),
-    ]) ?? database.port,
-    sslmode: readEnvValue(env, [
-      `${CLAW_ADMIN_PREFIX}SSL_MODE`,
-      `${CLAW_ADMIN_PREFIX}SSLMODE`,
-      ...legacyAdminPrefixes.flatMap((prefix) => [`${prefix}SSL_MODE`, `${prefix}SSLMODE`]),
-    ]) ?? database.sslmode,
-    username: readEnvValue(env, [
-      `${CLAW_ADMIN_PREFIX}USERNAME`,
-      ...legacyAdminPrefixes.map((prefix) => `${prefix}USERNAME`),
-    ]) ?? 'postgres',
+    database: readEnvValue(env, [`${WORKSPACE_ADMIN_PREFIX}DATABASE`]) ?? 'postgres',
+    host: readEnvValue(env, [`${WORKSPACE_ADMIN_PREFIX}HOST`]) ?? database.host,
+    password: readEnvValue(env, [`${WORKSPACE_ADMIN_PREFIX}PASSWORD`]),
+    port: readEnvValue(env, [`${WORKSPACE_ADMIN_PREFIX}PORT`]) ?? database.port,
+    sslmode: readEnvValue(env, [`${WORKSPACE_ADMIN_PREFIX}SSL_MODE`]) ?? database.sslmode,
+    username: readEnvValue(env, [`${WORKSPACE_ADMIN_PREFIX}USERNAME`]) ?? 'postgres',
   };
 }
 
 function validateDatabaseConfig(database) {
   const missing = [];
+  const fieldKeys = {
+    database: 'NAME',
+    host: 'HOST',
+    password: 'PASSWORD',
+    username: 'USERNAME',
+  };
   for (const field of ['host', 'database', 'username', 'password']) {
     if (!normalizeField(database[field])) {
-      missing.push(`SDKWORK_CLAW_DATABASE_${field.toUpperCase()}`);
+      missing.push(`SDKWORK_DATABASE_${fieldKeys[field]}`);
     }
   }
   if (missing.length > 0) {
@@ -195,7 +181,7 @@ function validateAdminConfig(admin) {
   const missing = [];
   for (const field of ['host', 'database', 'username']) {
     if (!normalizeField(admin[field])) {
-      missing.push(`SDKWORK_CLAW_DATABASE_ADMIN_${field.toUpperCase()}`);
+      missing.push(`SDKWORK_DATABASE_ADMIN_${field.toUpperCase()}`);
     }
   }
   if (missing.length > 0) {
@@ -207,22 +193,22 @@ export function validateAdminExecutionConfig(admin) {
   validateAdminConfig(admin);
   if (!normalizeField(admin.password)) {
     throw new Error(
-      'PostgreSQL initialization requires SDKWORK_CLAW_DATABASE_ADMIN_PASSWORD or SDKWORK_CLAW_DATABASE_ADMIN_URL',
+      'PostgreSQL initialization requires SDKWORK_DATABASE_ADMIN_PASSWORD or SDKWORK_DATABASE_ADMIN_URL',
     );
   }
 }
 
-export function parseClawPostgresConfig({
+export function parseWorkspacePostgresConfig({
   configPath = '.env.postgres',
   configText,
   repoRoot = process.cwd(),
-  legacyDatabasePrefixes = [],
 } = {}) {
   const resolvedConfigPath = resolveConfigPath(configPath, repoRoot);
   const sourceText = configText ?? fs.readFileSync(resolvedConfigPath, 'utf8');
   const env = parseDotEnv(sourceText);
-  const database = buildConnectionFromEnv(env, { legacyPrefixes: legacyDatabasePrefixes });
-  const admin = buildAdminFromEnv(env, database, legacyDatabasePrefixes);
+  rejectRetiredDatabaseKeys(env);
+  const database = buildConnectionFromEnv(env);
+  const admin = buildAdminFromEnv(env, database);
   const config = {
     admin,
     database,
@@ -268,19 +254,18 @@ export function sanitizePostgresDatabaseUrl(value) {
   }
 }
 
-export function clawDatabaseEnvFromConfig(config) {
+export function workspaceDatabaseEnvFromConfig(config) {
   const database = config.database;
   const url = buildPostgresDatabaseUrl(database);
   return {
-    SDKWORK_CLAW_DATABASE_ENGINE: 'postgresql',
-    SDKWORK_CLAW_DATABASE_HOST: database.host,
-    SDKWORK_CLAW_DATABASE_PORT: database.port,
-    SDKWORK_CLAW_DATABASE_NAME: database.database,
-    SDKWORK_CLAW_DATABASE_SCHEMA: database.schema ?? database.database,
-    SDKWORK_CLAW_DATABASE_USERNAME: database.username,
-    SDKWORK_CLAW_DATABASE_PASSWORD: database.password,
-    SDKWORK_CLAW_DATABASE_SSL_MODE: database.sslmode ?? 'disable',
-    SDKWORK_CLAW_DATABASE_URL: url,
+    SDKWORK_DATABASE_ENGINE: 'postgresql',
+    SDKWORK_DATABASE_HOST: database.host,
+    SDKWORK_DATABASE_PORT: database.port,
+    SDKWORK_DATABASE_NAME: database.database,
+    SDKWORK_DATABASE_SCHEMA: database.schema ?? database.database,
+    SDKWORK_DATABASE_USERNAME: database.username,
+    SDKWORK_DATABASE_PASSWORD: database.password,
+    SDKWORK_DATABASE_SSL_MODE: database.sslmode ?? 'disable',
     SDKWORK_DATABASE_URL: url,
   };
 }

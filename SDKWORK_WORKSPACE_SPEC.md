@@ -23,6 +23,8 @@ In addition, SDKWork source dependency paths declared in `pnpm-workspace.yaml`, 
 Rules:
 
 - Root/application `.sdkwork/` is source workspace metadata. It is not runtime state.
+- Repository roots, application roots, and nested source modules `MUST NOT` contain `.runtime/`.
+  Process coordination and disposable scratch state follow `RUNTIME_DIRECTORY_SPEC.md` section 5.
 - Generated SDK output `.sdkwork/` directories are generator-owned. Do not add repository skills, plugins, or hand-authored workspace manifests there.
 - Runtime `~/.sdkwork/<application-code>` directories are user-private. Do not commit them, mirror them into source, or use them as source standards.
 - Local/private source workspace state may exist only under ignored paths such as `.sdkwork/local/`, `.sdkwork/tmp/`, `.sdkwork/cache/`, or `.sdkwork/secrets/`.
@@ -101,6 +103,8 @@ Inference rules when `repository-kind` is omitted:
 Verification:
 
 ```bash
+node ../sdkwork-specs/tools/check-workspace-layout.mjs --root .
+node ../sdkwork-specs/tools/check-workspace-layout.mjs --workspace ..
 node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --root . --mode enforce
 node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --workspace .. --mode enforce
 node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --workspace .. --mode audit
@@ -142,6 +146,14 @@ use the following reserved top-level directory names when the corresponding capa
   docs/
   tests/
 ```
+
+The dictionary governs authored capabilities. Native ignored output such as `node_modules/`, Cargo
+`target/`, Vite `node_modules/.vite/`, Flutter `.dart_tool/`, Gradle `build/`, package-local `dist/`,
+and coverage output remains owned by the corresponding tool and is not an authored capability.
+Generated state `MUST NOT` introduce a parallel generic namespace. Repository-root,
+application-root, and nested source-module `.runtime/` directories are forbidden. Generic `.tmp/`
+or `.cache/` directories are allowed only inside an explicitly governed workspace-metadata or
+tool-native boundary such as `.sdkwork/tmp/` or `node_modules/.cache/`.
 
 New independent repository and application templates `MUST` create the full directory dictionary
 with `README.md` placeholders or tracked content. Narrow-purpose roots `MAY` omit inactive
@@ -774,6 +786,9 @@ Repository/application workspace verification `MUST` check:
 - Real skills have `.sdkwork/skills/<skill-name>/SKILL.md`.
 - Installable plugins have `.sdkwork/plugins/<plugin-name>/.codex-plugin/plugin.json`.
 - `.sdkwork/` does not contain obvious secret-bearing files, runtime database files, generated SDK transport outputs, or `sdkgen` generated control-plane reports outside generated SDK output.
+- Repository/application `.gitignore` files `MUST` ignore root and nested `.runtime/` as defense
+  against accidental commits. The workspace layout validator inspects the filesystem directly and
+  `MUST` still report any physical `.runtime/` directory.
 - Generated SDK output `.sdkwork/sdkwork-generator-*.json` remains under generated SDK output and is not treated as a repository/application workspace.
 - Runtime `~/.sdkwork/<application-code>` directories are not copied into source.
 - Multi-repository SDKWork source dependency paths are declared only in `pnpm-workspace.yaml packages:`, root `Cargo.toml [workspace.dependencies]`, or root `pubspec.yaml dependency_overrides`; member packages do not redeclare sibling source paths.
@@ -789,6 +804,7 @@ Repository/application workspace verification `MUST` check:
 - `etc/`, `deployments/`, and any architecture-local `config/` contain no live secrets, local overrides, user-private runtime config, or runtime state.
 - Root `tests/` contains cross-package/contract/integration/e2e/static verification and safe fixtures, while package-local unit tests remain package-local.
 - Application git repositories `MUST` pass `node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --root .` or the workspace sweep equivalent.
+- Every maintained repository/application root `MUST` pass `node ../sdkwork-specs/tools/check-workspace-layout.mjs --root .` or the workspace sweep equivalent.
 - Repository/application README files link to specs and contracts; README prose is not treated as normative standards authority.
 - `docs/adr/` is a retired layout. New ADRs `MUST` use `docs/architecture/decisions/`.
 
@@ -806,6 +822,8 @@ Repository/application workspace verification `MUST` check:
 - [ ] Repository/application skills have `SKILL.md` and cite the relevant root specs.
 - [ ] Repository/application plugins have `.codex-plugin/plugin.json` when installable.
 - [ ] `.sdkwork/` contains no secrets, runtime data, generated SDK transport output, or user-private files.
+- [ ] Repository roots, application roots, and nested source modules contain no `.runtime/` or other generic generated-state namespace.
+- [ ] Reproducible outputs use tool-native ignored directories; process and test temporary state follows `RUNTIME_DIRECTORY_SPEC.md` section 5.
 - [ ] Generated SDK `.sdkwork/sdkwork-generator-*.json` files remain generator-owned and are not modified by repository workspace tooling.
 - [ ] Runtime private paths still follow `RUNTIME_DIRECTORY_SPEC.md`.
 - [ ] New repository/application templates contain the complete standard project root dictionary with tracked placeholders or content.

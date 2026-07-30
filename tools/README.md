@@ -6,6 +6,9 @@ Rules:
 
 - Tools in this directory are standards-owned and application-neutral.
 - Application repositories may call these tools through thin `package.json` scripts.
+- `check-workspace-layout.mjs` validates authored top-level directory names and rejects
+  repository/app/module `.runtime/` directories even when defensively ignored. Tool-native generated
+  directories remain outside authored capability validation.
 - `check-pnpm-script-standard.mjs` validates root scripts, package-local
   script names and command values, deterministic `dev` -> `dev:standalone`
   delegation, remote-only `dev:cloud`, default `dev:browser`/`dev:desktop`

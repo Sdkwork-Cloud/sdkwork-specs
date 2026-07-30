@@ -349,16 +349,16 @@ Private process variables:
 SDKWORK_CLAW_DEPLOYMENT_PROFILE=standalone
 SDKWORK_CLAW_RUNTIME_TARGET=server
 SDKWORK_CLAW_CONFIG_FILE=/etc/sdkwork/router/clawrouter.toml
-SDKWORK_CLAW_DATABASE_ENGINE=postgresql
-SDKWORK_CLAW_DATABASE_HOST=db.example.com
-SDKWORK_CLAW_DATABASE_PORT=5432
-SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_prod
-SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_prod
-SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_prod
-SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/etc/sdkwork/router/database.secret
-SDKWORK_CLAW_DATABASE_SSL_MODE=require
-SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=16
-# SDKWORK_CLAW_DATABASE_URL=postgresql://sdkwork_ai_prod:<password>@db.example.com:5432/sdkwork_ai_prod
+SDKWORK_DATABASE_ENGINE=postgresql
+SDKWORK_DATABASE_HOST=db.example.com
+SDKWORK_DATABASE_PORT=5432
+SDKWORK_DATABASE_NAME=sdkwork_ai_prod
+SDKWORK_DATABASE_SCHEMA=sdkwork_ai_prod
+SDKWORK_DATABASE_USERNAME=sdkwork_ai_prod
+SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/router/database.secret
+SDKWORK_DATABASE_SSL_MODE=require
+SDKWORK_DATABASE_MAX_CONNECTIONS=16
+# SDKWORK_DATABASE_URL=postgresql://sdkwork_ai_prod:<password>@db.example.com:5432/sdkwork_ai_prod
 SDKWORK_CLAW_REDIS_ENABLED=true
 SDKWORK_CLAW_REDIS_HOST=redis.example.com
 SDKWORK_CLAW_REDIS_PORT=6379
@@ -397,19 +397,18 @@ Rules:
   application startup and must normalize it into `SDKWORK_CLAW_DEPLOYMENT_PROFILE`
   plus `SDKWORK_CLAW_RUNTIME_TARGET` before application code sees the config.
 - Server runtime TOML and private process env must declare PostgreSQL through
-  structured fields: `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE`,
-  `SDKWORK_<APPLICATION_CODE>_DATABASE_HOST`, `SDKWORK_<APPLICATION_CODE>_DATABASE_PORT`,
-  `SDKWORK_<APPLICATION_CODE>_DATABASE_NAME`, `SDKWORK_<APPLICATION_CODE>_DATABASE_SCHEMA`,
-  `SDKWORK_<APPLICATION_CODE>_DATABASE_USERNAME`, `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD_FILE`,
-  and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE`.
-- Claw Router release docs and install tooling may also reference the legacy shorthand
-  aliases `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE`
-  when describing cross-product database standards. New standards and application
-  env `MUST` use the canonical `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` and
-  `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` keys.
+  structured fields: `SDKWORK_DATABASE_ENGINE`, `SDKWORK_DATABASE_HOST`,
+  `SDKWORK_DATABASE_PORT`, `SDKWORK_DATABASE_NAME`, `SDKWORK_DATABASE_SCHEMA`,
+  `SDKWORK_DATABASE_USERNAME`, `SDKWORK_DATABASE_PASSWORD_FILE`, and
+  `SDKWORK_DATABASE_SSL_MODE`.
+- Application-prefixed database identity keys such as
+  `SDKWORK_<APP>_DATABASE_NAME`, `SDKWORK_<APP>_DATABASE_SCHEMA`, and
+  `SDKWORK_<APP>_DATABASE_URL` are retired migration inputs. Checked-in release
+  env, installers, deployment mappings, and application startup `MUST` use only
+  the canonical `SDKWORK_DATABASE_*` keys and `MUST NOT` dual-read old names.
 - `DATABASE_PROVIDER` and `DATABASE_SSLMODE` are not standard names and must
   not be accepted by new SDKWork applications.
-- `SDKWORK_CLAW_DATABASE_URL` remains an explicit private override and must not be exposed through `PORTAL_PUBLIC_*` or any browser runtime script.
+- `SDKWORK_DATABASE_URL` remains an explicit private override and must not be exposed through `PORTAL_PUBLIC_*` or any browser runtime script.
 - `SDKWORK_CLAW_REDIS_HOST`, `SDKWORK_CLAW_REDIS_PORT`, `SDKWORK_CLAW_REDIS_DATABASE`, `SDKWORK_CLAW_REDIS_USERNAME`, `SDKWORK_CLAW_REDIS_URL`, `SDKWORK_CLAW_REDIS_PASSWORD_FILE`, `SDKWORK_CLAW_REDIS_PASSWORD`, `SDKWORK_CLAW_REDIS_KEY_PREFIX`, `SDKWORK_CLAW_REDIS_TLS`, `SDKWORK_CLAW_REDIS_MAX_CONNECTIONS`, `SDKWORK_CLAW_REDIS_CONNECT_TIMEOUT_MILLIS`, `SDKWORK_CLAW_REDIS_COMMAND_TIMEOUT_MILLIS`, and `SDKWORK_CLAW_REDIS_POOL_IDLE_TIMEOUT_SECONDS` are private Redis overrides and must not be exposed through browser runtime script.
 - `[redis].enabled` defaults to `true` for cloud releases and standalone
   server/container releases that declare shared runtime state; it defaults to

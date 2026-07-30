@@ -40,8 +40,8 @@ Rules:
 - Every database module `MUST` declare `databaseRole`. Server/application-root lifecycle modules use `authoritative-server` and PostgreSQL. Client/native modules use `client-local` and SQLite. One module `MUST NOT` claim both roles.
 - Every baseline and migration tree `MUST` be engine-pure. Files under `ddl/baseline/postgres` or `migrations/postgres` may contain only PostgreSQL DDL and may be materialized only from PostgreSQL sources; SQLite trees follow the equivalent SQLite rule. Bootstrap and consolidation tools `MUST` fail closed when a source glob, include, or provenance marker crosses engine boundaries. Copying both dialects into one baseline is forbidden even when individual statements appear portable.
 - Every physical table in a shared PostgreSQL schema `MUST` have exactly one application/module owner. Application roots `MUST` use an ownership-specific prefix declared consistently by `database.manifest.json#tablePrefix`, `contract/schema.yaml#table_prefix`, and `contract/prefix-registry.json`; broad domain prefixes such as `ai_` are forbidden when independent modules share the schema. A bootstrap `MUST` fail closed on an existing same-name table whose column/type contract does not match its owner contract. It `MUST NOT` mutate the foreign table into compatibility.
-- Workspace development lifecycle `MUST` run in the shared PostgreSQL database and schema named `sdkwork_ai_dev`. Application-specific databases or schemas such as `sdkwork_<application-code>_dev` are forbidden; database and schema provisioning belongs to the workspace PostgreSQL administration tooling defined by `ENVIRONMENT_SPEC.md` section 7.1.
-- Application baselines, migrations, seeds, bootstrap commands, and dev runners `MUST` manage only module-owned objects inside the already-provisioned shared schema. They `MUST NOT` issue `CREATE DATABASE`, `DROP DATABASE`, `ALTER DATABASE`, `CREATE SCHEMA`, `DROP SCHEMA`, or `ALTER SCHEMA`, and they `MUST NOT` switch to a new database/schema after an ownership or drift failure.
+- Workspace lifecycle `MUST` run in the shared PostgreSQL database and schema selected by the active environment in `ENVIRONMENT_SPEC.md` section 7.1. Development uses `sdkwork_ai_dev`; tests use `sdkwork_ai_test` or workspace-scoped ephemeral `sdkwork_ai_test_<run_id>`; staging uses `sdkwork_ai_staging`; production uses `sdkwork_ai_prod`. Application-specific or module-specific databases and schemas such as `sdkwork_<application-code>_dev`, `<application_code>_test_<run_id>`, or `<module_id>_schema` are forbidden.
+- Application baselines, migrations, seeds, bootstrap commands, test runners, and dev runners `MUST` manage only module-owned objects inside the already-provisioned shared schema for the active environment. They `MUST NOT` issue `CREATE DATABASE`, `DROP DATABASE`, `ALTER DATABASE`, `CREATE SCHEMA`, `DROP SCHEMA`, or `ALTER SCHEMA`, and they `MUST NOT` switch to a new database/schema after an ownership or drift failure.
 - Table and column semantics `MUST` still follow `DATABASE_SPEC.md`. Lifecycle assets `MUST NOT` redefine naming or logical-type rules.
 - All connection pools `MUST` still be created through `sdkwork-database` as defined in `DATABASE_SPEC.md` section 32.
 - Every application ingress, internal service, or worker process `MUST` install one PostgreSQL process-local pool per normalized database identity before module lifecycle bootstrap. Embedded modules reuse that pool and do not own independent capacity. See `DATABASE_SPEC.md` section 33.5 and `DATABASE_SPEC_PROCESS_SHARED_POOL.md`.
@@ -291,7 +291,7 @@ Rules:
 - An `authoritative-server` manifest `MUST` declare exactly `engines: ["postgres"]` and `defaultEngine: "postgres"`.
 - A `client-local` manifest `MUST` declare exactly `engines: ["sqlite"]` and `defaultEngine: "sqlite"`; it `MUST` also declare `clientLocal.mode`, `clientLocal.scope`, and `clientLocal.authoritativeSource`, plus `clientLocal.syncContract` for `offline-projection`.
 - `moduleId` `MUST` be stable, lowercase, kebab-case or snake_case, and unique within the application root.
-- `serviceCode` `MUST` map to `SDKWORK_{SERVICE}_DATABASE_*` env prefix per `DATABASE_SPEC.md` section 33.2.
+- `serviceCode` identifies module ownership, lifecycle history, logs, and diagnostics. It `MUST NOT` create an environment-variable prefix or redefine database connection, schema, pool, migration, seed, or drift settings; those settings use only `SDKWORK_DATABASE_*` per `ENVIRONMENT_SPEC.md` section 7.1.
 - `contractVersion` `MUST` be a valid semantic version aligned with `DATABASE_SPEC.md` section 22 and `MUST` exactly match `contract/schema.yaml#contract_version`.
 - `lifecycle.autoMigrate` `MUST` be an explicit boolean. Authoritative PostgreSQL modules `MUST` default it to `false`; a production override to `true` requires a single elected migrator, advisory/lease coordination, a dedicated migrator role, bounded lock and statement timeouts, failure isolation, and accepted release evidence. Client-local SQLite modules `MAY` use `true` when migrations are atomic and interruption recovery is tested.
 - `activeSeedLocales` controls which locale directories are eligible for execution. Directories for inactive locales `MUST` still exist once declared in `supportedSeedLocales`.
@@ -527,13 +527,12 @@ Every seed script `MUST` be safe to re-run:
 Environment variables `MUST` follow:
 
 ```bash
-SDKWORK_{SERVICE}_DATABASE_SEED_LOCALE=zh-CN
-SDKWORK_{SERVICE}_DATABASE_SEED_PROFILE=standard
-SDKWORK_{SERVICE}_DATABASE_SEED_I18N_VERSION=1.0.0
-SDKWORK_{SERVICE}_DATABASE_SEED_ON_BOOT=false
-SDKWORK_{SERVICE}_DATABASE_AUTO_MIGRATE=false
-SDKWORK_{SERVICE}_DATABASE_DRIFT_INTERVAL_SEC=60
-SDKWORK_{SERVICE}_DATABASE_MODULE_ID=forum
+SDKWORK_DATABASE_SEED_LOCALE=zh-CN
+SDKWORK_DATABASE_SEED_PROFILE=standard
+SDKWORK_DATABASE_SEED_I18N_VERSION=1.0.0
+SDKWORK_DATABASE_SEED_ON_BOOT=false
+SDKWORK_DATABASE_AUTO_MIGRATE=false
+SDKWORK_DATABASE_DRIFT_INTERVAL_SEC=60
 ```
 
 Rules:
@@ -856,7 +855,7 @@ Application roots `MUST` expose standard commands per `PNPM_SCRIPT_SPEC.md`:
 | `db:materialize:contract` | Materialize L2 contract registries and manifest fields from baseline DDL |
 | `db:bootstrap` | `db:migrate` then `db:seed` for development/bootstrap flows |
 
-Desktop or Tauri hosts with a declared `client-local` module `MAY` package that module's SQLite baseline and migrations into the native runtime. They `MUST NOT` mirror or mechanically convert the PostgreSQL authoritative baseline. Server CI and shared environments `MUST` use `sdkwork-database-cli` against the PostgreSQL `SDKWORK_{SERVICE}_DATABASE_URL`; client-local CI validates its own SQLite contract separately.
+Desktop or Tauri hosts with a declared `client-local` module `MAY` package that module's SQLite baseline and migrations into the native runtime. They `MUST NOT` mirror or mechanically convert the PostgreSQL authoritative baseline. Server CI and shared environments `MUST` use `sdkwork-database-cli` against the PostgreSQL `SDKWORK_DATABASE_*` profile; client-local CI validates its own SQLite contract separately.
 
 CLI backing implementation `MUST` live in `sdkwork-database-cli` or repository `tools/database/` thin wrappers.
 

@@ -109,6 +109,11 @@ function validateProfile(root, profile, fail) {
     return;
   }
   const env = parseEnvFile(examplePath);
+  for (const key of Object.keys(env)) {
+    if (/^SDKWORK_(?!DATABASE_)[A-Z0-9_]+_DATABASE_(?:ENGINE|HOST|PORT|NAME|SCHEMA|USERNAME|PASSWORD|PASSWORD_FILE|SSL_MODE|SSLMODE|URL)$/u.test(key)) {
+      fail(`profile example uses retired application-prefixed database key: ${key}`);
+    }
+  }
   const databaseValues = Object.entries(env)
     .filter(([key]) => key.endsWith('_DATABASE_NAME') && !key.includes('_ADMIN_'))
     .map(([, value]) => value);

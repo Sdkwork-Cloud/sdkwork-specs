@@ -5,7 +5,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import {
-  parseClawPostgresConfig,
+  parseWorkspacePostgresConfig,
   sanitizePostgresDatabaseUrl,
   validateAdminExecutionConfig,
 } from './postgres-config.mjs';
@@ -78,10 +78,9 @@ async function main() {
   }
 
   ensurePostgresDevEnvFile(args.repoRoot);
-  const config = parseClawPostgresConfig({
+  const config = parseWorkspacePostgresConfig({
     configPath: args.configPath,
     repoRoot: args.repoRoot,
-    legacyDatabasePrefixes: ['SDKWORK_IM_DATABASE_'],
   });
   validateAdminExecutionConfig(config.admin);
 

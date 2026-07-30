@@ -385,8 +385,9 @@ Rules:
   This development service config is separate from the desktop-local SQLite
   config and must not change the installed desktop package default.
 - Environment parsing for `database` must map
-  `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` to `engine` and
-  `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` to `sslMode`. New applications must reject
+  `SDKWORK_DATABASE_ENGINE` to `engine` and
+  `SDKWORK_DATABASE_SSL_MODE` to `sslMode`. New applications must reject
+  application- or module-prefixed database fields without dual-reading them, and must reject
   `DATABASE_PROVIDER` and `DATABASE_SSLMODE` instead of treating them as
   aliases.
 - Redis config is optional infrastructure config. The default is
@@ -689,13 +690,13 @@ Rules:
 - A private `SDKWORK_ACCESS_TOKEN` may be read by Node-side development/test orchestration, but it must not be renamed to `VITE_*`, emitted into public runtime config, or frozen into staging/production output. Development/test browser handoff follows `IAM_CREDENTIAL_ENTRY_SPEC.md` only.
 - Browser deploy-time SDK URLs should be served through `/runtime-env.js` or an equivalent public runtime config document instead of being frozen into a hashed bundle when the same build artifact is promoted across environments.
 - Server production config must come from process env, an administrator-managed runtime config file, deployment infrastructure, or a secret manager, not from a committed `.env.production`.
-- Test config must isolate database names or schemas, Redis key prefixes, log directories, cache directories, and temp directories from development and production.
+- Test config must isolate database names or schemas, Redis key prefixes, log directories, cache directories, and temp directories from development and production. Server test database/schema names remain workspace-scoped, such as `sdkwork_ai_test` or `sdkwork_ai_test_<run_id>`; they must not be derived from an application code or module id.
 - Desktop installed runtime config must live in the SDKWork user private config directory and default declared client-local data to SQLite. Desktop/Tauri development service config is a separate server config profile and uses PostgreSQL.
 - `.env.postgres.example` is the checked-in local PostgreSQL template for apps
-  that support PostgreSQL development. It must use structured fields such as
-  `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE=postgresql` and
-  `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE=disable`, plus structured `DATABASE_ADMIN_*`
-  fields when database initialization needs an admin connection.
+  that support PostgreSQL development. It must use the unified structured
+  `SDKWORK_DATABASE_*` fields from `ENVIRONMENT_SPEC.md` section 7.1,
+  plus structured `SDKWORK_DATABASE_ADMIN_*` fields when database
+  initialization needs an admin connection.
 - `.env.postgres` is a host-local developer override and must be excluded from
   source control.
 - Production config must come from deployment infrastructure or secret manager.
@@ -730,7 +731,7 @@ Rules:
       separately.
 - [ ] Dev/test/staging/prod example files are checked in only as safe templates, and local overrides are ignored.
 - [ ] Browser public runtime config, desktop user config, H5/Capacitor config, Flutter config, mini program config, native Android config, native iOS config, native Harmony config, server config, container config, and Tauri platform config are separated.
-- [ ] Database env parsing maps `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` to typed config and rejects `DATABASE_PROVIDER`/`DATABASE_SSLMODE`.
+- [ ] Database env parsing maps `SDKWORK_DATABASE_ENGINE` and `SDKWORK_DATABASE_SSL_MODE` to typed config and rejects application-prefixed PostgreSQL identity fields, `DATABASE_PROVIDER`, and `DATABASE_SSLMODE`.
 - [ ] Apps with PostgreSQL development support provide `.env.postgres.example` and ignore `.env.postgres`.
 - [ ] SDK clients are constructed in bootstrap from one common SDK base URL plus per-surface/per-SDK overrides, with separate effective open-api, app-api, and `backend-admin` backend-api URLs where those surfaces are consumed.
 - [ ] Browser-visible SDK base URLs and public runtime config preserve canonical
@@ -756,6 +757,6 @@ Rules:
   declared platform API surface; direct dependency module URLs are explicit overrides.
 - [ ] Deployment profile and environment are explicit.
 - [ ] Desktop installed config defaults declared client-local persistence to user-private SQLite, while every desktop-started backend service uses the server PostgreSQL profile.
-- [ ] Test config isolates database/schema, Redis key prefix, logs, cache, and temp directories from development and production.
+- [ ] Test config isolates database/schema, Redis key prefix, logs, cache, and temp directories from development and production without deriving PostgreSQL identities from application codes or module ids.
 - [ ] Secrets are isolated from manifests and committed files.
 - [ ] Feature flags are scoped and documented.

@@ -4,23 +4,28 @@ import process from 'node:process';
 
 import {
   buildPostgresDatabaseUrl,
-  clawDatabaseEnvFromConfig,
-  parseClawPostgresConfig,
   parseDotEnv,
+  parseWorkspacePostgresConfig,
+  workspaceDatabaseEnvFromConfig,
 } from './postgres-config.mjs';
 
 export const POSTGRES_DEV_ENV_FILENAME = '.env.postgres';
 export const POSTGRES_DEV_ENV_EXAMPLE_FILENAME = '.env.postgres.example';
 
-const DATABASE_ENV_PREFIXES = [
-  'SDKWORK_CLAW_DATABASE_',
-  'SDKWORK_IAM_DATABASE_',
-  'SDKWORK_DATABASE_',
-];
+const DATABASE_ENV_PREFIXES = ['SDKWORK_DATABASE_'];
 
 function isDatabaseEnvKey(key) {
   return DATABASE_ENV_PREFIXES.some((prefix) => key.startsWith(prefix))
     || /^SDKWORK_[A-Z0-9_]+_DATABASE_/u.test(key);
+}
+
+function rejectRetiredRuntimeDatabaseKeys(env) {
+  const keys = Object.keys(env).filter((key) => (
+    /^SDKWORK_(?!DATABASE_)[A-Z0-9_]+_DATABASE_[A-Z0-9_]+$/u.test(key)
+  ));
+  if (keys.length > 0) {
+    throw new Error(`retired database configuration ${keys.sort().join(', ')}; use SDKWORK_DATABASE_*`);
+  }
 }
 
 export function resolvePostgresDevEnvFilePath(repoRoot) {
@@ -73,6 +78,8 @@ export function mergePostgresDevRuntimeEnv({
   fileEnv,
   extraEnv = {},
 }) {
+  rejectRetiredRuntimeDatabaseKeys(env);
+  rejectRetiredRuntimeDatabaseKeys(extraEnv);
   const runtimeWithoutDatabase = { ...env };
   for (const key of Object.keys(runtimeWithoutDatabase)) {
     if (isDatabaseEnvKey(key)) {
@@ -90,7 +97,6 @@ export function resolvePostgresDevProfile({
   env = process.env,
   extraEnv = {},
   repoRoot,
-  legacyDatabasePrefixes = [],
   ensureFile = true,
   stdout = process.stdout,
 } = {}) {
@@ -99,10 +105,9 @@ export function resolvePostgresDevProfile({
   }
   const { configPath, fileEnv } = readPostgresDevFileEnv(repoRoot, { ensureFile, stdout });
   const mergedEnv = mergePostgresDevRuntimeEnv({ env, fileEnv, extraEnv });
-  const config = parseClawPostgresConfig({
+  const config = parseWorkspacePostgresConfig({
     configPath,
     repoRoot,
-    legacyDatabasePrefixes,
   });
   const databaseUrl = buildPostgresDatabaseUrl(config.database);
   return {
@@ -111,7 +116,7 @@ export function resolvePostgresDevProfile({
     databaseUrl,
     env: {
       ...mergedEnv,
-      ...clawDatabaseEnvFromConfig(config),
+      ...workspaceDatabaseEnvFromConfig(config),
     },
     fileEnv,
   };
@@ -119,8 +124,7 @@ export function resolvePostgresDevProfile({
 
 export function isPostgresDevProfile(env = process.env) {
   const engine = String(
-    env.SDKWORK_CLAW_DATABASE_ENGINE
-    ?? env.SDKWORK_CLAW_DATABASE_PROVIDER
+    env.SDKWORK_DATABASE_ENGINE
     ?? '',
   ).trim();
   if (!engine) {

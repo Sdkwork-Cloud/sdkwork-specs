@@ -189,6 +189,68 @@ Rules:
   production `source-tree` with immutable packages unless excepted, and
   removes apply/rollback reliance on `defaultProfile`.
 
+### 6.1 Unified Workspace Database Configuration Migration
+
+Migration from application- or module-prefixed database keys to the workspace
+database authority follows `ENVIRONMENT_SPEC.md` section 7.1 and
+`NAMING_SPEC.md` section 0.1.
+
+Rules:
+
+- The migration inventory `MUST` cover checked-in examples, ignored developer
+  overrides, topology profiles, CI/test fixtures, installers, runtime parsers,
+  service units, containers, deployment secret mappings, operator docs, and
+  generated config inputs. A source scan limited to `.env` files is incomplete.
+- Producers and consumers move atomically from
+  `SDKWORK_<APPLICATION_CODE>_DATABASE_*` or module-prefixed equivalents to
+  `SDKWORK_DATABASE_*`. Runtime dual-read aliases are forbidden because they
+  allow two conflicting database identities to reach one process.
+- Migration tooling `MAY` read retired keys only in an explicit dry-run or
+  `--write` migration command. It `MUST` preserve secret values, redact them
+  from output, detect duplicate canonical keys, and stop on conflicting values
+  instead of choosing one.
+- Database and schema values normalize by lifecycle environment to
+  `sdkwork_ai_dev`, `sdkwork_ai_test[_<run_id>]`, `sdkwork_ai_staging`, or
+  `sdkwork_ai_prod`. A migration `MUST NOT` map staging to production or embed
+  an application code, module id, package name, or service name in the target.
+- Application startup, installers, and tests switch to strict rejection only
+  after their owned config, code, fixtures, and deployment mappings have been
+  migrated in the same review unit. An actionable retired-key error replaces
+  silent fallback.
+- Database/schema unification does not transfer table ownership. Every module
+  retains its table registry, forward migrations, migration history identity,
+  seeds, and drift evidence inside the shared schema.
+- Rollback restores a compatible application/config artifact while keeping one
+  database identity. It `MUST NOT` reactivate an application-specific database
+  or schema after writes have reached the shared authority.
+
+### 6.2 Repository Generated-State Migration
+
+Migration from repository/application `.runtime/` follows `RUNTIME_DIRECTORY_SPEC.md` section 5
+and `SDKWORK_WORKSPACE_SPEC.md` section 1.1.
+
+Rules:
+
+- Inventory every `.runtime/` producer before deleting state. Classify each child as process
+  coordination, native build/cache output, test scratch, generated config, release input, log,
+  secret material, durable user data, or an invalid mixed owner.
+- Process registries move to the private OS user/runner runtime root keyed by the canonical
+  repository real-path hash. A consumer may reconstruct process ownership from declared topology
+  when old state is absent; it `MUST NOT` continue writing the retired repository path.
+- Build and dependency caches move directly to the owning tool-native directory. Isolation needed
+  for executable locking or concurrent builds remains inside that tool's namespace and requires a
+  test that proves the reason for isolation.
+- Tests, generated one-process config, and fallback development assets move to unique OS/CI
+  temporary directories and clean up through structured teardown.
+- Decoded signing material moves to a protected runner/OS temporary directory before any
+  repository `.runtime/` deletion. Residual secret scans and failure-path cleanup tests are blocking.
+- Pre-launch repositories perform an atomic cutover with no compatibility write or permanent alias.
+  A bounded read-only compatibility reader is allowed only for a released consumer with an approved
+  migration record, removal date, and validator warning.
+- After producers are migrated and owning processes stopped, remove physical `.runtime/` directories
+  but retain root/nested `.gitignore` protection. Enable `check-workspace-layout.mjs` in the same
+  review unit so recreation fails immediately without risking accidental commits.
+
 ## 7. Acceptance Checklist
 
 - [ ] Producers, consumers, strategy, compatibility window, and owner are named.
@@ -199,6 +261,7 @@ Rules:
 - [ ] Database engine roles are explicit; authoritative server data ends on PostgreSQL and SQLite remains client-local only.
 - [ ] Mixed or SQLite server roots have a dated PostgreSQL cutover plan, and rollback cannot return authority to stale SQLite state.
 - [ ] Release notes and documentation explain user/operator impact.
+- [ ] Repository-generated-state migrations remove all `.runtime/` producers, physical directories, and stale documentation while retaining defensive ignore rules.
 
 ## 8. Identity And Naming Terminology Migration
 

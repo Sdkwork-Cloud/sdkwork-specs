@@ -172,6 +172,8 @@ Rules:
 - Error messages from failed self-healing `MUST` name the missing files and provide the exact recovery command.
 - `pnpm clean` scripts `MUST NOT` delete git-tracked `build/` directories, config helper modules, or any file that is imported by `vite.config.ts`, `tsconfig.json`, or build scripts at load time.
 - Dev-server startup scripts `MUST NOT` assume that sibling workspace `dist/` directories are the only missing artifact; they `MUST` also verify sibling workspace build-critical source files when they invoke cross-repository builds.
+- Node runners `MUST` place PID/heartbeat state and disposable generated config outside the source tree by using the shared SDKWork runtime-state resolver or `os.tmpdir()` plus a unique `mkdtemp` directory. Repository/application `.runtime/` is forbidden.
+- Temporary files and decoded signing material `MUST` use restrictive permissions where supported and `finally`/signal-safe cleanup. A fixed shared temp filename is forbidden when concurrent runs can collide.
 
 ## 6. Verification
 

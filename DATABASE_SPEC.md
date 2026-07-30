@@ -840,17 +840,19 @@ Database bootstrap, migration, seed data, drift observation, lifecycle SPI, and 
 
 ### 33.2 Configuration
 
-Database-owning applications `SHOULD` provide service-scoped pool and lifecycle keys such as:
+Database-owning processes `MUST` use the workspace-scoped pool and lifecycle keys:
 
 ```text
-SDKWORK_<SERVICE>_DATABASE_MAX_CONNECTIONS
-SDKWORK_<SERVICE>_DATABASE_MIN_CONNECTIONS
-SDKWORK_<SERVICE>_DATABASE_ACQUIRE_TIMEOUT
-SDKWORK_<SERVICE>_DATABASE_IDLE_TIMEOUT
-SDKWORK_<SERVICE>_DATABASE_MAX_LIFETIME
+SDKWORK_DATABASE_MAX_CONNECTIONS
+SDKWORK_DATABASE_MIN_CONNECTIONS
+SDKWORK_DATABASE_ACQUIRE_TIMEOUT
+SDKWORK_DATABASE_IDLE_TIMEOUT
+SDKWORK_DATABASE_MAX_LIFETIME
+SDKWORK_DATABASE_AUTO_MIGRATE
+SDKWORK_DATABASE_AUTO_SEED
 ```
 
-Workspace PostgreSQL connection identity comes from `SDKWORK_CLAW_DATABASE_*` according to `ENVIRONMENT_SPEC.md` section 7.1. Service-scoped keys `MUST NOT` redefine the development database, schema, URL, username, password, host, or port. In particular, SDKWork workspace development uses database `sdkwork_ai_dev` and schema `sdkwork_ai_dev`, not `sdkwork_<application-code>_dev`.
+Workspace PostgreSQL connection identity and process pool/lifecycle policy come from `SDKWORK_DATABASE_*` according to `ENVIRONMENT_SPEC.md` section 7.1. Service-scoped keys `MUST NOT` redefine or alias these fields. In particular, SDKWork workspace development uses database `sdkwork_ai_dev` and schema `sdkwork_ai_dev`, tests use `sdkwork_ai_test` or workspace-scoped ephemeral `sdkwork_ai_test_<run_id>`, staging uses `sdkwork_ai_staging`, and production uses `sdkwork_ai_prod`. Application-specific identities such as `sdkwork_<application-code>_dev`, `<application_code>_test_<run_id>`, or per-module schemas are forbidden.
 
 The concrete manifest shape, directory layout, and lifecycle hooks are owned by `DATABASE_FRAMEWORK_SPEC.md`.
 
@@ -883,12 +885,14 @@ Rules:
 
 Rules:
 
-- `standalone` workspace development: all application services use the shared `sdkwork_ai_dev` database and `sdkwork_ai_dev` schema. Each service or module owns only its declared tables, indexes, constraints, seeds, and migrations; it `MUST NOT` provision a per-application database or schema.
+- `standalone` workspace development: all application services use the shared `sdkwork_ai_dev` database and `sdkwork_ai_dev` schema. Each service or module owns only its declared tables, indexes, constraints, seeds, and migrations; it `MUST NOT` provision a per-application or per-module database or schema.
+- `test` server profile: all server modules in one test run use one workspace-scoped PostgreSQL database and schema: `sdkwork_ai_test` or ephemeral `sdkwork_ai_test_<run_id>`. Test isolation `MUST NOT` be expressed as `<application_code>_test`, `<module_id>_test`, or a private schema per dependency module.
+- `staging` and `production` profiles: all modules in the same deployed workspace use the deployment-managed workspace PostgreSQL identity (`sdkwork_ai_staging` or `sdkwork_ai_prod` by default) unless a governed multi-tenant or regional database split is approved in deployment architecture. Module boundaries remain table/registry/migration boundaries, not schema/database boundaries.
 - `cloud` profile: database configuration comes from managed deployment configuration and must expose lifecycle/drift health.
 - Embedded modules in the same OS process `MUST` share the approved process-level pool for the same normalized database identity and `MUST NOT` open independent pools against the same DSN/schema/driver.
 - External upstream services and worker processes own their lifecycle bootstrap and must not assume local process sharing.
 - `standalone` server/container, cloud server/container, worker, CLI host, and desktop-started backend service profiles `MUST` use PostgreSQL.
-- `test` server profile `MUST` use an isolated PostgreSQL database or schema for contract/integration evidence. SQLite test databases are allowed only for client-local contracts.
+- `test` server profile `MUST` use an isolated PostgreSQL workspace database or schema for contract/integration evidence. SQLite test databases are allowed only for client-local contracts.
 - Desktop/tablet/mobile client profiles `MAY` use SQLite only for their client-local database role; selecting a desktop runtime target does not authorize a colocated backend service to use SQLite.
 
 ## 34. Repository Standard

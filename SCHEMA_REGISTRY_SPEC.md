@@ -81,6 +81,7 @@ Rules:
 - Owner modules `MUST` keep all owned tables under their own registry root.
 - Assembly applications `MAY` use `table_fragments` for local owned tables only.
 - Assembly applications `MAY` use `registry_dependencies` or derive dependencies from `database/database.manifest.json`.
+- Schema registry ownership is not PostgreSQL schema ownership. Imported or embedded modules keep their table ownership, prefixes, migrations, and registry metadata, but they run in the workspace PostgreSQL database/schema selected by `ENVIRONMENT_SPEC.md` section 7.1. A dependency registry `MUST NOT` cause the application to create a private PostgreSQL schema or database for that module.
 - Generated effective snapshots `MUST NOT` be hand-edited.
 
 ## 4. Composition Inputs

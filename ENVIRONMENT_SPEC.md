@@ -164,26 +164,26 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_<APPLICATION_CODE>_I18N_CATALOG_MANIFEST_URL` | private/public | MAY | URL or path to a generated **message-catalog** manifest. The manifest points to package-local fragments or generated bundles and must not be an authored monolithic locale file. |
 | `SDKWORK_<APPLICATION_CODE>_I18N_CATALOG_VERSION` | private/public | MAY | Version or content hash for the active frontend message catalog manifest. It must not contain translated message content. |
 | `SDKWORK_<APPLICATION_CODE>_BACKEND_MESSAGE_BUNDLE_VERSION` | private | MAY | Version or content hash for backend message bundles used by framework problem/message resolution. It must not contain translated message content. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` | private | MAY | `postgresql` for authoritative server/container/cloud targets; `sqlite` only for declared client-local desktop/native data. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_HOST` | private | MAY | PostgreSQL host. Prefer this structured field over a URL for release deployments. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_PORT` | private | MAY | PostgreSQL port, normally `5432`. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_NAME` | private | MAY | PostgreSQL database name. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_SCHEMA` | private | MAY | PostgreSQL schema, normally `public` unless the app standard says otherwise. |
+| `SDKWORK_DATABASE_ENGINE` | private | MAY | `postgresql` for authoritative server/container/cloud targets; `sqlite` only for declared client-local desktop/native data. |
+| `SDKWORK_DATABASE_HOST` | private | MAY | PostgreSQL host. Prefer this structured field over a URL for release deployments. |
+| `SDKWORK_DATABASE_PORT` | private | MAY | PostgreSQL port, normally `5432`. |
+| `SDKWORK_DATABASE_NAME` | private | MAY | Workspace PostgreSQL database name selected by environment, such as `sdkwork_ai_dev`, `sdkwork_ai_test`, `sdkwork_ai_staging`, or `sdkwork_ai_prod`. |
+| `SDKWORK_DATABASE_SCHEMA` | private | MAY | Workspace PostgreSQL schema selected by environment. It must not be derived from application code or module id. |
 | `SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC` | private | MAY | PostgreSQL schema search-path compatibility switch. Defaults to `true`; isolated application roots set `false` so unqualified DDL and queries cannot resolve same-named objects from `public`. Extension-owned objects outside the application schema must then be schema-qualified. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_USERNAME` | private | MAY | PostgreSQL username. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD_FILE` | secret | MAY | PostgreSQL password file path. Prefer this over direct password values. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_PASSWORD` | secret | MAY | Direct PostgreSQL password override, allowed only for protected process environments or secret-bearing config files. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` | private | MAY | PostgreSQL SSL mode. Production deployments should use `require`, `verify-ca`, or `verify-full` where supported. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` | private | MAY | Explicit database URL override. Server release packages should prefer structured runtime config fields for PostgreSQL; client-local desktop/native profiles may use SQLite. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_FILE` | private | MAY | SQLite database file path for declared client-local desktop/native targets. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_MAX_CONNECTIONS` | private | MAY | Database pool limit. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_MODULE_ID` | private | MAY | Database lifecycle module id resolved from `database/database.manifest.json`. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_AUTO_MIGRATE` | private | MAY | When `true`, service bootstrap applies pending migrations. Production SHOULD default to `false`. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_SEED_ON_BOOT` | private | MAY | When `true`, service bootstrap applies required seed sets if not yet recorded. Production SHOULD default to `false`. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_SEED_LOCALE` | private | MAY | Seed locale directory name. Default `zh-CN`. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_SEED_PROFILE` | private | MAY | Seed profile name from `seeds/seed.manifest.json`. Default `standard`. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_SEED_I18N_VERSION` | private | MAY | Database seed localization data version from `seeds/seed.manifest.json`. This configures database initialization only, not runtime locale. |
-| `SDKWORK_<APPLICATION_CODE>_DATABASE_DRIFT_INTERVAL_SEC` | private | MAY | Background drift refresh interval in seconds. Default `60`. |
+| `SDKWORK_DATABASE_USERNAME` | private | MAY | Workspace PostgreSQL username selected by environment. |
+| `SDKWORK_DATABASE_PASSWORD_FILE` | secret | MAY | PostgreSQL password file path. Prefer this over direct password values. |
+| `SDKWORK_DATABASE_PASSWORD` | secret | MAY | Direct PostgreSQL password override, allowed only for protected process environments or secret-bearing config files. |
+| `SDKWORK_DATABASE_SSL_MODE` | private | MAY | PostgreSQL SSL mode. Production deployments should use `require`, `verify-ca`, or `verify-full` where supported. |
+| `SDKWORK_DATABASE_URL` | private | MAY | Explicit database URL override. Server release packages should prefer structured runtime config fields for PostgreSQL; client-local desktop/native profiles may use SQLite. |
+| `SDKWORK_DATABASE_FILE` | private | MAY | SQLite database file path for declared client-local desktop/native targets. |
+| `SDKWORK_DATABASE_MAX_CONNECTIONS` | private | MAY | Database pool limit. |
+| `SDKWORK_DATABASE_MODULE_ID` | private | MAY | Database lifecycle module id resolved from `database/database.manifest.json`. |
+| `SDKWORK_DATABASE_AUTO_MIGRATE` | private | MAY | When `true`, service bootstrap applies pending migrations. Production SHOULD default to `false`. |
+| `SDKWORK_DATABASE_SEED_ON_BOOT` | private | MAY | When `true`, service bootstrap applies required seed sets if not yet recorded. Production SHOULD default to `false`. |
+| `SDKWORK_DATABASE_SEED_LOCALE` | private | MAY | Seed locale directory name. Default `zh-CN`. |
+| `SDKWORK_DATABASE_SEED_PROFILE` | private | MAY | Seed profile name from `seeds/seed.manifest.json`. Default `standard`. |
+| `SDKWORK_DATABASE_SEED_I18N_VERSION` | private | MAY | Database seed localization data version from `seeds/seed.manifest.json`. This configures database initialization only, not runtime locale. |
+| `SDKWORK_DATABASE_DRIFT_INTERVAL_SEC` | private | MAY | Background drift refresh interval in seconds. Default `60`. |
 | `SDKWORK_<APPLICATION_CODE>_REDIS_ENABLED` | private | MAY | Enables the Redis adapter. Cloud deployments and standalone server/container targets that require shared state default to `true`; desktop user-data targets default to `false` unless shared infrastructure is explicitly enabled. |
 | `SDKWORK_<APPLICATION_CODE>_REDIS_HOST` | private | MAY | Redis host used when Redis is enabled. Prefer this structured field over a URL. |
 | `SDKWORK_<APPLICATION_CODE>_REDIS_PORT` | private | MAY | Redis port used when Redis is enabled. Defaults should normally use `6379`. |
@@ -695,7 +695,7 @@ Standalone server/container targets and cloud targets default to PostgreSQL
 through runtime TOML, environment, or orchestration config. Desktop user data
 remains SQLite by default. Desktop/Tauri development commands that start a
 backend service use PostgreSQL to exercise server behavior, but that does not
-change the desktop package database default. `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` is an
+change the desktop package database default. `SDKWORK_DATABASE_URL` is an
 explicit operator override, not the primary production configuration path.
 Application root `pnpm dev:browser` and `pnpm dev:desktop` are development
 orchestration defaults, not installer defaults: both must select the
@@ -714,40 +714,44 @@ it `MUST NOT` select SQLite for a backend service.
 
 ### 7.1 Unified Workspace PostgreSQL Profile
 
-All SDKWork applications in one workspace share one PostgreSQL connection identity for development and production. The canonical profile is owned by `sdkwork-clawrouter` and uses `SDKWORK_CLAW_DATABASE_*` keys. In workspace development, the database name and schema are both exactly `sdkwork_ai_dev`; application-specific alternatives such as `sdkwork_clawrouter_dev`, `sdkwork_drive_dev`, or `sdkwork_<application-code>_dev` are forbidden.
+All SDKWork applications in one workspace share one PostgreSQL connection identity per lifecycle environment and deployment profile. The canonical contract is owned by `sdkwork-specs/templates/env.postgres.example` and uses `SDKWORK_DATABASE_*` keys; workspace or deployment infrastructure materializes its values. In a workspace environment, every application service, embedded dependency module, gateway-owned route module, worker, bootstrap command, and migration command resolves the same endpoint, database name, schema, and credential identity for that environment. Application-specific alternatives such as `sdkwork_clawrouter_dev`, `sdkwork_drive_dev`, `<application_code>_test_<run_id>`, `sdkwork_<application-code>_prod`, or per-module schemas are forbidden.
 
-Applications MUST NOT define per-app PostgreSQL database names, usernames, passwords, schemas, or URLs that differ from this profile in checked-in `.env.postgres.example`, topology profile env files, release templates, or operator documentation.
+Applications MUST NOT define per-app PostgreSQL database names, usernames, passwords, schemas, or URLs that differ from this profile in checked-in `.env.postgres.example`, topology profile env files, runtime TOML examples, release templates, CI templates, or operator documentation.
 
 | Environment | Canonical keys | Database | Schema | Username | Password |
 | --- | --- | --- | --- | --- | --- |
-| Development | `SDKWORK_CLAW_DATABASE_*` | `sdkwork_ai_dev` | `sdkwork_ai_dev` | `sdkwork_ai_dev` | `sdkworkdev123` |
-| Production | `SDKWORK_CLAW_DATABASE_*` | `sdkwork_ai_prod` | `sdkwork_ai_prod` | `sdkwork_ai_prod` | secret file or protected env |
+| Development | `SDKWORK_DATABASE_*` | `sdkwork_ai_dev` | `sdkwork_ai_dev` | `sdkwork_ai_dev` | `sdkworkdev123` |
+| Test | `SDKWORK_DATABASE_*` | `sdkwork_ai_test` or ephemeral `sdkwork_ai_test_<run_id>` | same as database | `sdkwork_ai_test` | test-only secret |
+| Staging | `SDKWORK_DATABASE_*` | `sdkwork_ai_staging` | `sdkwork_ai_staging` | `sdkwork_ai_staging` | secret file or protected env |
+| Production | `SDKWORK_DATABASE_*` | `sdkwork_ai_prod` | `sdkwork_ai_prod` | `sdkwork_ai_prod` | secret file or protected env |
 
 Rules:
 
-- `SDKWORK_CLAW_DATABASE_*` is the single source of truth for PostgreSQL connection identity across IAM, gateway-embedded routers, and application services.
-- Per-app `SDKWORK_<APPLICATION_CODE>_DATABASE_*` keys MAY remain for pool sizing, deployment mode, table prefix, SQLite desktop paths, and service-specific bootstrap, but MUST NOT redefine host, port, database, schema, username, password, or URL in checked-in files.
-- Every application repository MUST ship `.env.postgres.example` that contains only `SDKWORK_CLAW_DATABASE_*` fields copied from `sdkwork-specs/templates/env.postgres.example` or `sdkwork-clawrouter/.env.postgres.example`.
-- Developer overrides belong in ignored `.env.postgres` at the application root or in `sdkwork-clawrouter/.env.postgres`; do not fork per-app connection identity in source control.
-- Dev orchestration, topology loaders, and IAM env helpers MUST resolve PostgreSQL through `SDKWORK_CLAW_DATABASE_*` before any per-app database fields.
-- Rust services using `sdkwork-database-config` already fall back to `SDKWORK_CLAW_DATABASE_*`; applications must not reintroduce separate default URLs.
-- Application `dev`, bootstrap, init, and migration commands `MUST` use the shared workspace database and schema. They `MUST NOT` create, drop, rename, or switch to an application-specific PostgreSQL database or schema.
-- Provisioning the shared database, shared schema, login role, and required extensions is a workspace administration responsibility. Application lifecycle commands initialize and migrate only their declared module-owned tables, indexes, constraints, seeds, and lifecycle history.
-- Table ownership and migrations remain per module. Isolation comes from the module contract, an ownership-specific table prefix, table registry, migration history, and least-privilege roles; it `MUST NOT` come from per-application development databases or schemas.
+- `SDKWORK_DATABASE_*` is the single source of truth for PostgreSQL connection identity across IAM, gateway-embedded routers, reusable dependency modules, application services, workers, CLI bootstrap, and test runners.
+- Per-app or per-module `SDKWORK_<APPLICATION_CODE>_DATABASE_*` keys are retired migration inputs, not runtime compatibility inputs. Checked-in config, runtime templates, dev runners, installers, application startup, and test harnesses `MUST` use only `SDKWORK_DATABASE_*` for database connection identity, pool sizing, lifecycle, seed, drift, and client-local SQLite database file settings. Runtime code `MUST` reject an old key with an actionable diagnostic instead of dual-reading it.
+- Every application repository MUST ship `.env.postgres.example` that contains only `SDKWORK_DATABASE_*` fields derived from `sdkwork-specs/templates/env.postgres.example`.
+- Developer overrides belong in ignored `.env.postgres` at the selected application root. A workspace-level launcher `MAY` materialize the same values into child process environments, but no application repository owns the global profile and no child may fork its identity.
+- Dev orchestration, topology loaders, IAM env helpers, and installers `MUST` resolve PostgreSQL exclusively through `SDKWORK_DATABASE_*`.
+- Rust services using `sdkwork-database-config` already fall back to `SDKWORK_DATABASE_*`; applications must not reintroduce separate default URLs.
+- Application `dev`, `test`, bootstrap, init, seed, drift, and migration commands `MUST` use the shared workspace database and schema selected for the active environment. They `MUST NOT` create, drop, rename, or switch to an application-specific or module-specific PostgreSQL database or schema.
+- Test isolation is allowed only at the workspace identity boundary. A test run MAY use an ephemeral `sdkwork_ai_test_<run_id>` database and schema when parallel destructive tests require it, but the identity remains workspace-scoped and MUST NOT include an application code, module id, table prefix, package name, or service name.
+- Provisioning the shared database, shared schema, login role, and required extensions is a workspace administration responsibility. Application lifecycle commands initialize and migrate only their declared module-owned tables, indexes, constraints, seeds, lifecycle history, and drift evidence inside the selected shared schema.
+- Table ownership and migrations remain per module. Isolation comes from the module contract, an ownership-specific table prefix, table registry, migration history, lifecycle owner metadata, and least-privilege roles; it `MUST NOT` come from per-application or per-module databases or schemas.
 - An existing-table conflict, checksum mismatch, unknown migration, or schema drift `MUST` fail closed and be repaired through a reviewed forward, module-owned migration. Tooling `MUST NOT` bypass the conflict by selecting or creating another database or schema.
+- Startup bootstrap `MUST` report the resolved database identity, schema, active environment, and module lifecycle plan before applying migrations or seeds. If a module expects a column or table missing from the shared schema, the failure is a schema drift/migration failure, not permission to bootstrap a private compatibility schema.
 
 Canonical development template:
 
 ```env
-SDKWORK_CLAW_DATABASE_ENGINE=postgresql
-SDKWORK_CLAW_DATABASE_HOST=127.0.0.1
-SDKWORK_CLAW_DATABASE_PORT=5432
-SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_dev
-SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_dev
-SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_dev
-SDKWORK_CLAW_DATABASE_PASSWORD=sdkworkdev123
-SDKWORK_CLAW_DATABASE_SSL_MODE=disable
-SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=10
+SDKWORK_DATABASE_ENGINE=postgresql
+SDKWORK_DATABASE_HOST=127.0.0.1
+SDKWORK_DATABASE_PORT=5432
+SDKWORK_DATABASE_NAME=sdkwork_ai_dev
+SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev
+SDKWORK_DATABASE_USERNAME=sdkwork_ai_dev
+SDKWORK_DATABASE_PASSWORD=sdkworkdev123
+SDKWORK_DATABASE_SSL_MODE=disable
+SDKWORK_DATABASE_MAX_CONNECTIONS=10
 ```
 
 Embedded IAM stores per-tenant JWT signing material in `iam_tenant_signing_key.secret_ref` when tenants are provisioned. Applications that share one PostgreSQL database read the same tenant signing keys from the database; no deployment env var is required for session or access-token issuance.
@@ -755,15 +759,15 @@ Embedded IAM stores per-tenant JWT signing material in `iam_tenant_signing_key.s
 Canonical production server/container fields:
 
 ```env
-SDKWORK_CLAW_DATABASE_ENGINE=postgresql
-SDKWORK_CLAW_DATABASE_HOST=db.example.com
-SDKWORK_CLAW_DATABASE_PORT=5432
-SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_prod
-SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_prod
-SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_prod
-SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/etc/sdkwork/router/database.secret
-SDKWORK_CLAW_DATABASE_SSL_MODE=require
-SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=20
+SDKWORK_DATABASE_ENGINE=postgresql
+SDKWORK_DATABASE_HOST=db.example.com
+SDKWORK_DATABASE_PORT=5432
+SDKWORK_DATABASE_NAME=sdkwork_ai_prod
+SDKWORK_DATABASE_SCHEMA=sdkwork_ai_prod
+SDKWORK_DATABASE_USERNAME=sdkwork_ai_prod
+SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/<application-code>/database.secret
+SDKWORK_DATABASE_SSL_MODE=require
+SDKWORK_DATABASE_MAX_CONNECTIONS=20
 ```
 
 Rules:
@@ -790,15 +794,15 @@ Rules:
 - Development PostgreSQL profiles must use a checked-in `.env.postgres.example`
   file with local-only placeholder values and an ignored `.env.postgres`
   developer override.
-- `.env.postgres.example` must use the unified `SDKWORK_CLAW_DATABASE_*` split
+- `.env.postgres.example` must use the unified `SDKWORK_DATABASE_*` split
   fields from `§7.1 Unified Workspace PostgreSQL Profile` and
   `sdkwork-specs/templates/env.postgres.example`. Per-app
   `SDKWORK_<APPLICATION_CODE>_DATABASE_*` connection identity fields are not allowed in
   checked-in PostgreSQL templates.
 - If database initialization needs an admin connection, use
-  `SDKWORK_CLAW_DATABASE_ADMIN_HOST`, `SDKWORK_CLAW_DATABASE_ADMIN_PORT`,
-  `SDKWORK_CLAW_DATABASE_ADMIN_USERNAME`, `SDKWORK_CLAW_DATABASE_ADMIN_PASSWORD`,
-  `SDKWORK_CLAW_DATABASE_ADMIN_DATABASE`, and `SDKWORK_CLAW_DATABASE_ADMIN_SSL_MODE`.
+  `SDKWORK_DATABASE_ADMIN_HOST`, `SDKWORK_DATABASE_ADMIN_PORT`,
+  `SDKWORK_DATABASE_ADMIN_USERNAME`, `SDKWORK_DATABASE_ADMIN_PASSWORD`,
+  `SDKWORK_DATABASE_ADMIN_DATABASE`, and `SDKWORK_DATABASE_ADMIN_SSL_MODE`.
 - `DATABASE_PROVIDER` and `DATABASE_SSLMODE` are not standard names. New apps
   must reject them rather than accepting aliases.
 
@@ -806,28 +810,28 @@ Standard `.env.postgres.example` shape:
 
 ```env
 # Copy from sdkwork-specs/templates/env.postgres.example
-SDKWORK_CLAW_DATABASE_ENGINE=postgresql
-SDKWORK_CLAW_DATABASE_HOST=127.0.0.1
-SDKWORK_CLAW_DATABASE_PORT=5432
-SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_dev
-SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_dev
-SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_dev
-SDKWORK_CLAW_DATABASE_PASSWORD=sdkworkdev123
-SDKWORK_CLAW_DATABASE_SSL_MODE=disable
-SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=10
+SDKWORK_DATABASE_ENGINE=postgresql
+SDKWORK_DATABASE_HOST=127.0.0.1
+SDKWORK_DATABASE_PORT=5432
+SDKWORK_DATABASE_NAME=sdkwork_ai_dev
+SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev
+SDKWORK_DATABASE_USERNAME=sdkwork_ai_dev
+SDKWORK_DATABASE_PASSWORD=sdkworkdev123
+SDKWORK_DATABASE_SSL_MODE=disable
+SDKWORK_DATABASE_MAX_CONNECTIONS=10
 
-SDKWORK_CLAW_DATABASE_ADMIN_HOST=127.0.0.1
-SDKWORK_CLAW_DATABASE_ADMIN_PORT=5432
-SDKWORK_CLAW_DATABASE_ADMIN_USERNAME=postgres
-SDKWORK_CLAW_DATABASE_ADMIN_PASSWORD=postgres_admin_pass
-SDKWORK_CLAW_DATABASE_ADMIN_DATABASE=postgres
-SDKWORK_CLAW_DATABASE_ADMIN_SSL_MODE=disable
+SDKWORK_DATABASE_ADMIN_HOST=127.0.0.1
+SDKWORK_DATABASE_ADMIN_PORT=5432
+SDKWORK_DATABASE_ADMIN_USERNAME=postgres
+SDKWORK_DATABASE_ADMIN_PASSWORD=postgres_admin_pass
+SDKWORK_DATABASE_ADMIN_DATABASE=postgres
+SDKWORK_DATABASE_ADMIN_SSL_MODE=disable
 ```
 
 PostgreSQL development bootstrap workflow:
 
 1. Copy or auto-materialize `.env.postgres` from `.env.postgres.example` at the application root (dev orchestration and `resolveIamDevEnv` do this automatically when the file is missing).
-2. Run `pnpm db:postgres:init` to create the shared PostgreSQL role, database, and schema using `SDKWORK_CLAW_DATABASE_ADMIN_*` (implemented by `sdkwork-specs/tools/postgres/postgres-db-cli.mjs`; no `psql` required).
+2. Run `pnpm db:postgres:init` to create the shared PostgreSQL role, database, and schema using `SDKWORK_DATABASE_ADMIN_*` (implemented by `sdkwork-specs/tools/postgres/postgres-db-cli.mjs`; no `psql` required).
 3. Run `pnpm db:init` or `pnpm db:migrate` to apply service-specific schema migrations through `sdkwork-database-cli`.
 4. Start `pnpm dev`; dev orchestration must load the same `.env.postgres` profile used by database commands. File values win over shell database env overrides.
 
@@ -998,9 +1002,9 @@ temp_directory = "<test-temp>/<application-code>/tmp"
 engine = "postgresql"
 host = "127.0.0.1"
 port = 5432
-database = "<application_code>_test_<run_id>"
-schema = "<application_code>_test_<run_id>"
-username = "<application_code>test"
+database = "sdkwork_ai_test_<run_id>"
+schema = "sdkwork_ai_test_<run_id>"
+username = "sdkwork_ai_test"
 password = "test-only-change-me"
 ssl_mode = "disable"
 max_connections = 4
@@ -1168,7 +1172,7 @@ Required behavior:
   only the client-local persistence module.
 - Support a config file in the SDKWork user private config directory.
 - Keep secrets in OS secure storage when possible.
-- Allow `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` to override the local database for diagnostics and managed operator deployments.
+- Allow `SDKWORK_DATABASE_URL` to override the local database for diagnostics and managed operator deployments.
 
 Example desktop config:
 
@@ -1205,16 +1209,16 @@ SDKWORK_<APPLICATION_CODE>_ENVIRONMENT=production
 SDKWORK_<APPLICATION_CODE>_CONFIG_PROFILE=prod
 SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE=standalone
 SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET=server
-SDKWORK_CLAW_DATABASE_ENGINE=postgresql
-SDKWORK_CLAW_DATABASE_HOST=db.example.com
-SDKWORK_CLAW_DATABASE_PORT=5432
-SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_prod
-SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_prod
-SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_prod
-SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/etc/sdkwork/router/database.secret
-SDKWORK_CLAW_DATABASE_SSL_MODE=require
-SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=20
-# SDKWORK_CLAW_DATABASE_URL=postgresql://sdkwork_ai_prod:change-me@db.example.com:5432/sdkwork_ai_prod
+SDKWORK_DATABASE_ENGINE=postgresql
+SDKWORK_DATABASE_HOST=db.example.com
+SDKWORK_DATABASE_PORT=5432
+SDKWORK_DATABASE_NAME=sdkwork_ai_prod
+SDKWORK_DATABASE_SCHEMA=sdkwork_ai_prod
+SDKWORK_DATABASE_USERNAME=sdkwork_ai_prod
+SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/router/database.secret
+SDKWORK_DATABASE_SSL_MODE=require
+SDKWORK_DATABASE_MAX_CONNECTIONS=20
+# SDKWORK_DATABASE_URL=postgresql://sdkwork_ai_prod:change-me@db.example.com:5432/sdkwork_ai_prod
 SDKWORK_<APPLICATION_CODE>_SERVER_BIND=0.0.0.0:3900
 SDKWORK_<APPLICATION_CODE>_TRUST_FORWARDED_HEADERS=1
 ```
@@ -1239,15 +1243,15 @@ SDKWORK_<APPLICATION_CODE>_ENVIRONMENT=production
 SDKWORK_<APPLICATION_CODE>_CONFIG_PROFILE=prod
 SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE=cloud
 SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET=container
-SDKWORK_CLAW_DATABASE_ENGINE=postgresql
-SDKWORK_CLAW_DATABASE_HOST=postgres
-SDKWORK_CLAW_DATABASE_PORT=5432
-SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_prod
-SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_prod
-SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_prod
-SDKWORK_CLAW_DATABASE_PASSWORD_FILE=/run/secrets/sdkwork/database-password
-SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=20
-# SDKWORK_CLAW_DATABASE_URL=postgresql://sdkwork_ai_prod:change-me@postgres:5432/sdkwork_ai_prod
+SDKWORK_DATABASE_ENGINE=postgresql
+SDKWORK_DATABASE_HOST=postgres
+SDKWORK_DATABASE_PORT=5432
+SDKWORK_DATABASE_NAME=sdkwork_ai_prod
+SDKWORK_DATABASE_SCHEMA=sdkwork_ai_prod
+SDKWORK_DATABASE_USERNAME=sdkwork_ai_prod
+SDKWORK_DATABASE_PASSWORD_FILE=/run/secrets/sdkwork/database-password
+SDKWORK_DATABASE_MAX_CONNECTIONS=20
+# SDKWORK_DATABASE_URL=postgresql://sdkwork_ai_prod:change-me@postgres:5432/sdkwork_ai_prod
 SDKWORK_<APPLICATION_CODE>_SERVER_BIND=0.0.0.0:3900
 ```
 
@@ -1255,7 +1259,7 @@ SDKWORK_<APPLICATION_CODE>_SERVER_BIND=0.0.0.0:3900
 
 The SdkWork Claw Router product uses the `SDKWORK_CLAW_` prefix for private process values and `PORTAL_PUBLIC_` for browser-visible portal values.
 
-Claw Router release and operations docs also reference the legacy cross-product shorthand aliases `SDKWORK_<APP>_DATABASE_ENGINE` and `SDKWORK_<APP>_DATABASE_SSL_MODE`; these map to the canonical `SDKWORK_<APPLICATION_CODE>_DATABASE_ENGINE` and `SDKWORK_<APPLICATION_CODE>_DATABASE_SSL_MODE` keys defined in section 4. New standards and application env `MUST` use the canonical `SDKWORK_<APPLICATION_CODE>_*` form.
+Database config is not application product config. Release and operations docs `MUST` use `SDKWORK_DATABASE_*` for PostgreSQL and declared client-local SQLite settings. Legacy application/module aliases such as `SDKWORK_<APP>_DATABASE_ENGINE`, `SDKWORK_<APP>_DATABASE_SSL_MODE`, and `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` are retired migration inputs and must not appear in checked-in env, runtime TOML, installer templates, deployment mappings, or application startup defaults.
 
 Standalone server/single-container and cloud deployments default to PostgreSQL.
 Desktop runtime targets default to SQLite.
@@ -1267,7 +1271,7 @@ Claw Router startup must resolve runtime configuration in this order:
 1. Built-in deployment-profile and runtime-target defaults.
 2. Canonical runtime TOML path defined by `RUNTIME_DIRECTORY_SPEC.md`.
 3. `SDKWORK_CLAW_CONFIG_FILE`.
-4. Private process env overrides such as `SDKWORK_CLAW_DATABASE_URL`.
+4. Private process env overrides such as `SDKWORK_DATABASE_URL`.
 5. CLI flags for development, smoke tests, or explicit one-shot operations.
 
 Rules:
@@ -1278,8 +1282,8 @@ Rules:
   `SDKWORK_CLAW_DEPLOYMENT_PROFILE`, and `SDKWORK_CLAW_RUNTIME_TARGET` must be
   resolved before database, Redis, or SDK base URL defaults are selected.
 - `SDKWORK_CLAW_CONFIG_FILE` may point to any administrator-managed TOML file.
-- `SDKWORK_CLAW_DATABASE_URL` overrides TOML database fields only as an explicit operator override.
-- `SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS` overrides `[database].max_connections` in TOML.
+- `SDKWORK_DATABASE_URL` overrides TOML database fields only as an explicit operator override.
+- `SDKWORK_DATABASE_MAX_CONNECTIONS` overrides `[database].max_connections` in TOML.
 - If a config file is missing, startup tooling should initialize the default TOML file before validation.
 - Server startup must create an explicit structured PostgreSQL runtime config when no database is configured.
 - Server startup must fail closed when PostgreSQL configuration still uses the generated placeholder host or password.
@@ -1312,22 +1316,22 @@ SDKWORK_CLAW_DEPLOYMENT_PROFILE=standalone
 SDKWORK_CLAW_ENVIRONMENT=development
 SDKWORK_CLAW_CONFIG_PROFILE=dev
 SDKWORK_CLAW_RUNTIME_TARGET=server
-SDKWORK_CLAW_DATABASE_ENGINE=postgresql
-SDKWORK_CLAW_DATABASE_HOST=127.0.0.1
-SDKWORK_CLAW_DATABASE_PORT=5432
-SDKWORK_CLAW_DATABASE_NAME=sdkwork_ai_dev
-SDKWORK_CLAW_DATABASE_SCHEMA=sdkwork_ai_dev
-SDKWORK_CLAW_DATABASE_USERNAME=sdkwork_ai_dev
-SDKWORK_CLAW_DATABASE_PASSWORD=sdkworkdev123
-SDKWORK_CLAW_DATABASE_SSL_MODE=disable
-SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=10
-SDKWORK_CLAW_DATABASE_ADMIN_HOST=127.0.0.1
-SDKWORK_CLAW_DATABASE_ADMIN_PORT=5432
-SDKWORK_CLAW_DATABASE_ADMIN_USERNAME=postgres
-SDKWORK_CLAW_DATABASE_ADMIN_PASSWORD=postgres_admin_pass
-SDKWORK_CLAW_DATABASE_ADMIN_DATABASE=postgres
-SDKWORK_CLAW_DATABASE_ADMIN_SSL_MODE=disable
-# SDKWORK_CLAW_DATABASE_URL=postgresql://sdkwork_ai_dev:sdkworkdev123@127.0.0.1:5432/sdkwork_ai_dev?sslmode=disable
+SDKWORK_DATABASE_ENGINE=postgresql
+SDKWORK_DATABASE_HOST=127.0.0.1
+SDKWORK_DATABASE_PORT=5432
+SDKWORK_DATABASE_NAME=sdkwork_ai_dev
+SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev
+SDKWORK_DATABASE_USERNAME=sdkwork_ai_dev
+SDKWORK_DATABASE_PASSWORD=sdkworkdev123
+SDKWORK_DATABASE_SSL_MODE=disable
+SDKWORK_DATABASE_MAX_CONNECTIONS=10
+SDKWORK_DATABASE_ADMIN_HOST=127.0.0.1
+SDKWORK_DATABASE_ADMIN_PORT=5432
+SDKWORK_DATABASE_ADMIN_USERNAME=postgres
+SDKWORK_DATABASE_ADMIN_PASSWORD=postgres_admin_pass
+SDKWORK_DATABASE_ADMIN_DATABASE=postgres
+SDKWORK_DATABASE_ADMIN_SSL_MODE=disable
+# SDKWORK_DATABASE_URL=postgresql://sdkwork_ai_dev:sdkworkdev123@127.0.0.1:5432/sdkwork_ai_dev?sslmode=disable
 SDKWORK_CLAW_REDIS_ENABLED=true
 SDKWORK_CLAW_REDIS_HOST=redis.example.com
 SDKWORK_CLAW_REDIS_PORT=6379
@@ -1358,7 +1362,7 @@ PORTAL_PUBLIC_TOOL_API_ENABLED=false
 Claw Router checks in `.env.postgres.example` with these local PostgreSQL
 fields. Developers may copy it to `.env.postgres`; that override is host-local
 and excluded from source control. Startup scripts assemble the structured fields into
-`SDKWORK_CLAW_DATABASE_URL` for Rust services only after validation.
+`SDKWORK_DATABASE_URL` for Rust services only after validation.
 
 This development PostgreSQL profile is for the workspace server/runtime
 integration path. It does not change the desktop runtime profile. Desktop
@@ -1374,7 +1378,7 @@ SDKWORK_CLAW_ENVIRONMENT=production
 SDKWORK_CLAW_CONFIG_PROFILE=prod
 SDKWORK_CLAW_RUNTIME_TARGET=desktop
 SDKWORK_CLAW_CONFIG_FILE=~/.sdkwork/router/config/clawrouter.toml
-SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=1
+SDKWORK_DATABASE_MAX_CONNECTIONS=1
 SDKWORK_CLAW_REDIS_ENABLED=false
 SDKWORK_CLAW_REDIS_HOST=redis.example.com
 SDKWORK_CLAW_REDIS_PORT=6379
@@ -1437,7 +1441,7 @@ SDKWORK_CLAW_ENVIRONMENT=production
 SDKWORK_CLAW_CONFIG_PROFILE=prod
 SDKWORK_CLAW_RUNTIME_TARGET=server
 SDKWORK_CLAW_CONFIG_FILE=/etc/sdkwork/router/clawrouter.toml
-SDKWORK_CLAW_DATABASE_MAX_CONNECTIONS=16
+SDKWORK_DATABASE_MAX_CONNECTIONS=16
 SDKWORK_CLAW_REDIS_ENABLED=true
 SDKWORK_CLAW_REDIS_HOST=redis.example.com
 SDKWORK_CLAW_REDIS_PORT=6379
@@ -1632,14 +1636,14 @@ Acceptance checklist:
 - [ ] Locale env/public runtime values contain only default/supported/active/fallback locale strategy, message-catalog manifest references, and version identifiers; translated messages remain in `I18N_SPEC.md` message-catalog fragments.
 - [ ] Database seed locale/version env values are private lifecycle settings and are not reused as frontend runtime locale or API request locale.
 - [ ] Server release defaults require PostgreSQL.
-- [ ] PostgreSQL development templates use `.env.postgres.example` with unified `SDKWORK_CLAW_DATABASE_*` fields from `ENVIRONMENT_SPEC.md` §7.1 and `sdkwork-specs/templates/env.postgres.example`.
+- [ ] PostgreSQL development templates use `.env.postgres.example` with unified `SDKWORK_DATABASE_*` fields from `ENVIRONMENT_SPEC.md` §7.1 and `sdkwork-specs/templates/env.postgres.example`.
 - [ ] Checked-in topology profiles and release env files do not define per-app PostgreSQL database names, usernames, passwords, or schemas that differ from the unified claw-router profile.
 - [ ] Workspace verification passes: `node ../sdkwork-specs/tools/check-unified-postgres-profile.mjs` from each application root (or once from workspace root).
 - [ ] Legacy database env aliases such as `DATABASE_PROVIDER` and `DATABASE_SSLMODE` are rejected for new apps.
 - [ ] Database lifecycle env keys follow `DATABASE_FRAMEWORK_SPEC.md` when the repository owns a `database/` module.
 - [ ] Desktop install defaults to SQLite in the SDKWork user private data directory.
 - [ ] Desktop installed config, desktop-started server dev config, browser public runtime config, H5/Capacitor config, Flutter config, mini program config, container config, and Tauri platform config are separate files or clearly separate sections.
-- [ ] Test config isolates database/schema, Redis key prefix, logs, cache, runtime, and temp directories.
+- [ ] Test config isolates database/schema, Redis key prefix, logs, cache, runtime, and temp directories without introducing per-application or per-module PostgreSQL identities.
 - [ ] Runtime config file path can be specified explicitly.
 - [ ] Canonical runtime directory paths are documented for Linux, macOS, Windows, and containers.
 - [ ] Release env files are generated locally and excluded from source control.

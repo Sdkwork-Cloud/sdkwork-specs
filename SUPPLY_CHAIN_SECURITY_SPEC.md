@@ -74,6 +74,10 @@ Rules:
 - Release artifacts should have immutable checksums.
 - Signing keys must not be committed to source.
 - Signing references may be stored in manifest or workflow config; private material belongs in secret managers or protected CI environments.
+- When a build tool requires decoded signing material, it `MUST` be written only to a private
+  runner/OS temporary directory outside every source checkout, use the narrowest supported file
+  permissions, and be removed in `finally` and registered signal handlers. Repository/application
+  ignored directories, including `.runtime/`, are forbidden signing-material locations.
 - When signing is required globally, target-level config must not disable signing without governance approval.
 - Signature verification instructions should be documented for externally distributed artifacts.
 

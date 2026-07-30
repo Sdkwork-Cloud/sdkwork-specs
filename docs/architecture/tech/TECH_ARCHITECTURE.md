@@ -2,7 +2,7 @@
 
 Status: active
 Owner: SDKWork standards maintainers
-Updated: 2026-07-24
+Updated: 2026-07-30
 Specs: ARCHITECTURE_DECISION_SPEC.md, DOCUMENTATION_SPEC.md, SDKWORK_WORKSPACE_SPEC.md, GOVERNANCE_SPEC.md
 
 ## 1. Architecture Overview
@@ -25,6 +25,7 @@ sdkwork-specs/
 | Standards format | Markdown with RFC-style MUST/SHOULD/MAY | Reviewable in git, agent-friendly | `DOCUMENTATION_SPEC.md` |
 | Validation | Node `.mjs` tools under `tools/` | Cross-platform, no app runtime dependency | `TEST_SPEC.md` |
 | Repository layout authority | `SDKWORK_WORKSPACE_SPEC.md` | One project-root dictionary | `SDKWORK_WORKSPACE_SPEC.md` |
+| Generated-state boundary | Native tool directories plus private OS/CI runtime paths | Keeps source trees minimal and separates build, process, test, and secret lifecycles | `RUNTIME_DIRECTORY_SPEC.md` |
 | Documentation layout authority | `DOCUMENTATION_SPEC.md` section 2 | Canon PRD and technical architecture | `DOCUMENTATION_SPEC.md` |
 | Governance | `GOVERNANCE_SPEC.md` | Controlled standards evolution | `GOVERNANCE_SPEC.md` |
 
@@ -61,6 +62,8 @@ Inactive reserved directories may remain absent because this repository is a nar
 
 - Distribution happens through git checkout in the parent SDKWork workspace.
 - Validators run locally or in CI from consumer repositories via `node ../sdkwork-specs/tools/<checker>.mjs`.
+- Repository/application `.runtime/` is forbidden. Lifecycle state is resolved outside source by
+  canonical repository identity; native build caches remain with their owning tools.
 
 ## 8. Architecture Decision Index
 
@@ -68,6 +71,7 @@ Inactive reserved directories may remain absent because this repository is a nar
 - [ADR-20260719 Unified Development, Release, And Deployment Profiles](../decisions/ADR-20260719-unified-development-release-profiles.md)
 - [ADR-20260720 API Assembly And Gateway Hosting](../decisions/ADR-20260720-api-assembly-gateway-hosting.md)
 - [ADR-20260724 PostgreSQL Authority And SQLite Client-Local Storage](../decisions/ADR-20260724-postgresql-authority-sqlite-client-local.md)
+- [ADR-20260730 Repository Generated-State Boundary](../decisions/ADR-20260730-repository-generated-state-boundary.md)
 - Record future standards architecture changes under [../decisions/](../decisions/) as `ADR-*` documents.
 
 ## 9. Verification

@@ -17,7 +17,7 @@ function scaffold() {
   write(
     root,
     '.env.postgres.example',
-    'SDKWORK_DEMO_DATABASE_NAME=sdkwork_ai_dev\nSDKWORK_DEMO_DATABASE_SCHEMA=sdkwork_ai_dev\n',
+    'SDKWORK_DATABASE_NAME=sdkwork_ai_dev\nSDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev\n',
   );
   write(
     root,
@@ -46,9 +46,9 @@ function scaffold() {
         poolOwner: 'crates/sdkwork-api-demo-standalone-gateway/src/main.rs',
         driver: 'sdkwork-database-sqlx-pg',
         poolCount: 1,
-        databaseUrlEnv: 'SDKWORK_DEMO_DATABASE_URL',
-        schemaEnv: 'SDKWORK_DEMO_DATABASE_SCHEMA',
-        maxConnectionsEnv: 'SDKWORK_DEMO_DATABASE_MAX_CONNECTIONS',
+        databaseUrlEnv: 'SDKWORK_DATABASE_URL',
+        schemaEnv: 'SDKWORK_DATABASE_SCHEMA',
+        maxConnectionsEnv: 'SDKWORK_DATABASE_MAX_CONNECTIONS',
         productionSourceRoots: ['crates/sdkwork-api-demo-standalone-gateway/src'],
         consumers: [{
           module: 'demo',

@@ -52,8 +52,19 @@ Environment variables:
 
 ```text
 SDKWORK_<APPLICATION_CODE>_<SETTING>           # private runtime; APPLICATION_CODE is uppercase L2
+SDKWORK_DATABASE_<SETTING>                     # workspace PostgreSQL/client-local database config
+SDKWORK_DATABASE_ADMIN_<SETTING>               # workspace PostgreSQL provisioning connection
 VITE_<APP_CODE>_<SURFACE>_<SETTING>            # browser-internal; APP_CODE is uppercase L2
 ```
+
+Database configuration is a deliberate exception to the application-code formula. One
+SDKWork workspace environment has one database configuration authority, so PostgreSQL
+connection, schema, pool, lifecycle, drift, migration, seed, and test-isolation keys use
+`SDKWORK_DATABASE_*`. Application- or module-prefixed forms such as
+`SDKWORK_CLAW_DATABASE_*`, `SDKWORK_IM_DATABASE_*`, and
+`SDKWORK_<APPLICATION_CODE>_DATABASE_*` are retired. Runtime startup and checked-in
+configuration `MUST NOT` accept them as aliases; a migration tool may read them only to
+rewrite the configuration before startup.
 
 ### 0.2 Second-Order Ambiguity Registry
 

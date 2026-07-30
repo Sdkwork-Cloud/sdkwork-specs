@@ -11,7 +11,7 @@ No standard is complete until it is executable.
 | Area | Required verification |
 | --- | --- |
 | Agent entrypoints | Repository/application `AGENTS.md` presence, tool compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md` where required, required sections, relative `sdkwork-specs` path checks, `SOUL.md`/`AGENTS_SPEC.md` references, and no duplicated root spec bodies |
-| Repository workspace | Git repository root and application root standard top-level directory dictionary checks, `.sdkwork/` presence checks, tracked `skills/` and `plugins/` placeholders, skill/plugin manifest checks, static scans for forbidden secrets/runtime/generated SDK files, repository `README.md` `repository-kind:` declaration, and package-family path layout via `tools/check-workspace-packages-layout.mjs` (`enforce`, `migration`, or `audit` mode) |
+| Repository workspace | Git repository root and application root standard top-level directory dictionary checks through `tools/check-workspace-layout.mjs`, `.runtime/` rejection, `.sdkwork/` presence checks, tracked `skills/` and `plugins/` placeholders, skill/plugin manifest checks, static scans for forbidden secrets/runtime/generated SDK files, repository `README.md` `repository-kind:` declaration, and package-family path layout via `tools/check-workspace-packages-layout.mjs` (`enforce`, `migration`, or `audit` mode) |
 | pnpm scripts | Validate `PNPM_SCRIPT_SPEC.md`: required root scripts, application-code-prefix retirement, allowed public namespaces, action-first runtime target command names, canonical gateway command order, retired deployment word rejection, private `_sdkwork:*` hook grammar, package-local script scans, documentation/config command examples, and active runner-script `pnpm` invocation scans |
 | Code style and naming | `CODE_STYLE_SPEC.md` and `NAMING_SPEC.md` checks for focused entrypoints, public exports, generated-code boundaries, canonical names, identity lattice terminology (`tools/check-identity-naming.mjs`), provider Session identity terminology (`tools/check-provider-session-identity.mjs`), and no catch-all implementation files |
 | Language-specific code | On-demand Rust, Java, TypeScript, and frontend checks only when those languages/frameworks are touched |
@@ -189,6 +189,17 @@ Rules:
   `deployments/`, `scripts/`, `docs/`, or `tests/`.
 - Tests `MUST` fail on generic competing top-level names such as `api/`, `sdk/`, `package/`,
   `deploy/`, `deployment/`, or `tooling/`.
+- Tests `MUST` fail when `.runtime/` exists at a repository root, application root, or nested
+  source module. The check inspects directory existence directly instead of relying on git-tracked files.
+- Tests `MUST` accept tool-native generated directories such as Cargo `target/`, Vite
+  `node_modules/.vite/<surface-id>/`, Flutter `.dart_tool/`, Gradle `build/`, package-local `dist/`,
+  and coverage output without treating them as authored capabilities.
+- Development-runtime tests `MUST` prove process registries resolve outside the source tree,
+  canonical real paths produce stable repository hashes, files are user-private where supported,
+  writes are atomic, stale registries are removed, and concurrent repositories cannot collide.
+- Node test fixtures and generated one-process config tests `MUST` use unique OS/CI temporary
+  directories and verify cleanup. Release tests that decode signing material `MUST` prove the
+  material never enters a source checkout and is removed on success and failure.
 - Tests `MUST` allow top-level `config/` only when the selected architecture-specific app surface root under `apps/sdkwork-<application-code>-<client-arch>/` requires `config/` per the governing architecture standard; otherwise independently deployable project-root config content uses `etc/`.
 - Tests `MUST` fail when root `README.md` omits `repository-kind:` for SDKWork git repository roots.
 - Tests `MUST` allow top-level `packages/` only for `shared-package-family` or `foundation-dependency` repositories with the matching README declaration; `application` repositories `MUST` place package families under `apps/sdkwork-<application-code>-common/packages/` or `apps/sdkwork-<application-code>-<client-arch>/packages/`.
@@ -280,6 +291,8 @@ node ../sdkwork-specs/tools/migrate-legacy-canon-paths.mjs --root .
 node ../sdkwork-specs/tools/align-repository-docs.mjs --root .
 node ../sdkwork-specs/tools/check-repository-docs-standard.mjs --root .
 node ../sdkwork-specs/tools/check-apps-directory-index.mjs --root .
+node ../sdkwork-specs/tools/check-workspace-layout.mjs --root .
+node ../sdkwork-specs/tools/check-workspace-layout.mjs --workspace <workspace-root>
 node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --root . --mode enforce
 node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --workspace <workspace-root> --mode enforce
 node ../sdkwork-specs/tools/check-workspace-packages-layout.mjs --workspace <workspace-root> --mode audit
@@ -438,7 +451,7 @@ Rules:
 - Authoritative server layout tests `MUST` fail when `database/migrations/sqlite/` or `database/ddl/baseline/sqlite/` is introduced to claim engine parity.
 - Database framework tests `MUST` verify root `db:validate`, `db:migrate`, `db:status`, `db:materialize:contract`, and `db:bootstrap` scripts exist when database lifecycle is active.
 - Database framework tests `MUST` fail when crate-local `migrations/` remain the only migration source without an approved exception or adoption plan.
-- Workspace PostgreSQL profile tests `MUST` require development database `sdkwork_ai_dev` and schema `sdkwork_ai_dev`, and `MUST` reject application-specific development identities such as `sdkwork_<application-code>_dev` in split fields, URLs, topology profiles, runtime templates, or service aliases. The canonical validator is `node tools/check-unified-postgres-profile.mjs` from the standards root or `node ../sdkwork-specs/tools/check-unified-postgres-profile.mjs` from an application root.
+- Workspace PostgreSQL profile tests `MUST` require environment-scoped workspace identities: `sdkwork_ai_dev`, `sdkwork_ai_test` or `sdkwork_ai_test_<run_id>`, `sdkwork_ai_staging`, and `sdkwork_ai_prod`. They `MUST` reject every application- or module-prefixed database key, including pool/lifecycle fields and assignments that contain `${...}` or deployment placeholders, plus application/module identities such as `sdkwork_<application-code>_dev`, `<application_code>_test_<run_id>`, or `<module_id>_schema` in split fields, URLs, topology profiles, runtime templates, test fixtures, service units, deployment mappings, or runtime source. Tests `MUST` prove that database, schema, and URL path match the lifecycle environment and that staging never normalizes to production. The canonical validator is `node tools/check-unified-postgres-profile.mjs` from the standards root or `node ../sdkwork-specs/tools/check-unified-postgres-profile.mjs` from an application root.
 - Authoritative application baseline and migration tests `MUST` reject `CREATE DATABASE`, `DROP DATABASE`, `ALTER DATABASE`, `CREATE SCHEMA`, `DROP SCHEMA`, and `ALTER SCHEMA`. Workspace provisioning tools may create the canonical shared database/schema, but application lifecycle assets and `pnpm dev`/`db:*` commands may manage only module-owned objects inside it.
 - Shared-schema upgrade tests `MUST` prove an existing incompatible object, unknown migration, checksum mismatch, or drift failure cannot trigger a fallback to a new database/schema. Repair evidence `MUST` use a reviewed forward, module-owned migration and preserve lifecycle history.
 - Application repositories may call the canonical validator with:
@@ -1392,6 +1405,7 @@ Rules:
 - [ ] Code style, naming, identity lattice terminology (`tools/check-identity-naming.mjs`), and only relevant language-specific checks pass when authored code is touched.
 - [ ] Repository/application `.sdkwork/skills/` and `.sdkwork/plugins/` checks pass when a repository root or application root is created or maintained.
 - [ ] Standard top-level directory checks pass when a repository root or application root is created or maintained.
+- [ ] Generated-state layout checks prove `.runtime/` is absent and tool/OS-native state placement is used.
 - [ ] `apps/README.md` directory index checks pass for independent application repositories.
 - [ ] `apis/` and `sdks/` boundary checks pass when API contracts or SDK generation are touched.
 - [ ] OpenAPI/SDK generation verification passes under `SDK_SPEC.md`.

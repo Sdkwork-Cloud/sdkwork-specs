@@ -265,15 +265,19 @@ remain private `_sdkwork:*` hooks. The facade consumes this topology contract
 and the resolved runtime-plan schema rather than introducing another runtime
 manifest. Package/release planning belongs to `sdkwork-github-workflow`, and
 deployment apply/rollback belongs to `sdkwork-specs/tools/deployctl.mjs`.
-Generic development orchestration records a repository-scoped heartbeat under
-`.runtime/sdkwork-app/` so a separate `sdkwork-app stop` invocation can
-terminate only that development process tree. The registry also records directly
+Generic development orchestration records a repository-scoped heartbeat outside the source tree
+under the OS user/runner runtime root defined by `RUNTIME_DIRECTORY_SPEC.md` section 5. The path is
+`sdkwork/sdkwork-app/<repository-hash>/development-session.json`, where the hash is derived from the
+canonical repository real path, so a separate `sdkwork-app stop` invocation can terminate only that
+development process tree without adding a repository directory. The registry also records directly
 spawned child PIDs and topology-resolved owned bindings. If registry state is
 missing or stale, the facade reconstructs ownership from development profiles:
 surface/process `bindEnv` declarations provide TCP listener ownership and
 `managedResources` select framework-owned lifecycle drivers. Windows process
 tree termination may be used as an optimization, but correctness must not depend
-on WMI/CIM enumeration. Applications must not provide private `_sdkwork:stop`
+on WMI/CIM enumeration. The registry directory and file are user-private, writes
+are atomic, stale files are removed, and repository/process identity is validated
+before termination. Applications must not provide private `_sdkwork:stop`
 process-selection logic.
 
 Client app surfaces that share an enclosing application deployment unit delegate

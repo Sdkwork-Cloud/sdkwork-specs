@@ -26,7 +26,6 @@ export async function ensurePostgresDevDatabaseReady({
   repoRoot,
   stdout = process.stdout,
   stderr = process.stderr,
-  legacyDatabasePrefixes = [],
   runMigrations,
 } = {}) {
   if (!isPostgresDevProfile(env)) {
@@ -38,7 +37,6 @@ export async function ensurePostgresDevDatabaseReady({
 
   const profile = resolvePostgresDevProfile({
     env,
-    legacyDatabasePrefixes,
     repoRoot,
     stdout,
   });

@@ -135,7 +135,7 @@ Meanings:
 | `test` | Run the default stable test subset for the repository |
 | `check` | Run static standards, generated-artifact, dependency, config, or policy checks without packaging a release |
 | `verify` | Run the merge-ready verification aggregate for the repository |
-| `clean` | Remove reproducible local build/test artifacts (`dist/`, `.runtime/dev-sites/`, cache directories) without deleting git-tracked source files, build-critical source contracts (see `CODE_STYLE_SPEC.md` §7), checked-in config, secrets, databases, or user-private runtime files |
+| `clean` | Remove reproducible local build/test artifacts (`dist/`, tool-native cache directories, and framework-owned temporary state) without deleting git-tracked source files, build-critical source contracts (see `CODE_STYLE_SPEC.md` §7), checked-in config, secrets, databases, or user-private runtime files |
 
 When a repository root exposes `dev`, it `MUST` also expose `stop`. A `stop` command
 MUST scope process selection to the owning repository or its explicitly configured
@@ -627,13 +627,14 @@ The `pnpm clean` command removes reproducible local artifacts. It `MUST NOT` del
 Allowed deletion targets:
 
 - `dist/` directories (build output).
-- `.runtime/dev-sites/` and similar transient dev-server state.
 - `node_modules/.cache/`, `node_modules/.vite/`, and similar tool caches.
-- `.runtime/cargo-target/` and similar build caches when explicitly scoped.
+- Cargo `target/` or an explicitly isolated `target/sdkwork/<purpose>/` build directory.
+- Framework-owned OS/CI temporary state resolved through the shared runtime-state helper.
 
 Rules:
 
 - `clean` scripts `MUST` enumerate the exact paths they delete. Glob-based deletion `MUST NOT` match git-tracked paths.
+- `clean` scripts `MUST NOT` create or depend on repository/application `.runtime/` directories.
 - When `clean` deletes a directory, it `MUST NOT` use patterns that could match a `build/` directory containing git-tracked source files.
 - Build runners invoked after `clean` `MUST` be able to recover without manual intervention through the self-healing pattern in `CODE_STYLE_SPEC.md` §7.3.
 

@@ -14,6 +14,7 @@ import { validateI18nStandard } from './check-i18n-standard.mjs';
 import { validateApplicationLayering } from './check-application-layering.mjs';
 import { specsRoot } from './lib/workspace-registry.mjs';
 import { validateWorkspaceMemberProtocol } from './lib/workspace-member-protocol.mjs';
+import { validateWorkspaceLayout } from './lib/workspace-layout.mjs';
 
 const SPECS_ROOT = specsRoot();
 
@@ -128,6 +129,7 @@ function main() {
   }
 
   if (!args.specsOnly) {
+    issues.push(...validateWorkspaceLayout(args.root).map((issue) => `${issue.kind}: ${issue.path} - ${issue.detail}`));
     issues.push(...validateAppComposition(args.root, {
       strictImportClosure: args.strictImportClosure,
     }));

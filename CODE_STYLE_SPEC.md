@@ -132,6 +132,7 @@ Build resilience follows the same architecture principles as authored code:
 - **Low coupling**: Verification uses dependency-injected `fileExists` and `runProcess` hooks, not direct `fs` or `child_process` calls, so it remains testable in isolation.
 - **Robustness**: The build pipeline degrades gracefully — missing source files trigger self-healing, not an immediate crash with an opaque import error.
 - **Open-closed principle**: New build-critical source files are added to the verification list without modifying existing build logic. The verification check is extended, not the build command itself.
+- **Native generated-state ownership**: Build output and caches stay in the active tool's native ignored directory. Process state and one-process scratch files stay in private OS/CI temporary locations; repository/application `.runtime/` is forbidden.
 
 ## 8. Acceptance Checklist
 
@@ -145,4 +146,3 @@ Build resilience follows the same architecture principles as authored code:
 - [ ] Build scripts verify build-critical source files before invoking build commands.
 - [ ] Build runners self-heal missing git-tracked source files from `git checkout HEAD`.
 - [ ] `pnpm clean` does not delete git-tracked build-critical source files.
-

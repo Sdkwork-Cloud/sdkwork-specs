@@ -81,8 +81,8 @@ Rules:
 
 Rules:
 
-- An integrated process declares one owner key such as `SDKWORK_<APPLICATION_CODE>_DATABASE_MAX_CONNECTIONS`.
-- Embedded module `SDKWORK_<MODULE>_DATABASE_MAX_CONNECTIONS` values `MUST NOT` create independent capacity when the module uses the process pool.
+- An integrated process declares one process-level budget key such as `SDKWORK_DATABASE_MAX_CONNECTIONS`.
+- Embedded module `SDKWORK_<MODULE>_DATABASE_MAX_CONNECTIONS` values are retired migration inputs and `MUST NOT` be read by runtime startup. Modules receive the shared process budget through typed bootstrap config, not module-prefixed database env.
 - `min_connections`, acquire timeout, idle timeout, max lifetime, statement timeout, and application name are owned by the process pool config.
 - A temporary multi-driver exception `MUST NOT` multiply the process budget. Framework-owned budget allocation or an equivalent contract-tested allocator must ensure the sum of all temporary driver pool maxima is no greater than the declared process maximum.
 - Alternate-driver adapters outside SQLx (for example IM r2d2) `MUST` consume the framework-reserved per-driver maximum rather than splitting or re-reading the process maximum independently.
@@ -99,11 +99,11 @@ sum(process pool maxima) + migration/admin reserve + operator reserve <= Postgre
 
 Rules:
 
-- Modules integrated into one process `MUST` resolve the same database name and schema unless an approved data-ownership contract requires isolation.
+- Modules integrated into one process `MUST` resolve the same database name and schema. An embedded application or module cannot use a data-ownership claim to create a second workspace database or schema; a genuinely separate data authority requires a separately deployed process, an accepted ADR, and a workspace topology that does not present it as an integrated database consumer.
 - PostgreSQL `search_path` `MUST` be materialized once in the canonical URL or connection options and reused by every consumer.
-- Service-specific URL aliases may remain for compatibility only when they normalize to the canonical identity. A mismatch fails startup.
+- Service-specific URL aliases are migration inputs only. Runtime startup accepts `SDKWORK_DATABASE_*`, validates one normalized identity, and fails on any application- or module-prefixed database key.
 - Source-controlled profiles contain non-secret database/schema/tuning values; passwords and complete secret-bearing URLs remain in protected overlays or secret managers.
-- Development workspace profiles that intentionally share one PostgreSQL database and schema `SHOULD` use the unified `SDKWORK_CLAW_DATABASE_*` fields until a successor workspace profile is approved.
+- Development, test, staging, and production workspace profiles `MUST` use the unified `SDKWORK_DATABASE_*` fields and environment identities from `ENVIRONMENT_SPEC.md` section 7.1.
 
 ## 7. IM Migration
 
