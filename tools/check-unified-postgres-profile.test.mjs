@@ -23,6 +23,7 @@ SDKWORK_DATABASE_HOST=127.0.0.1
 SDKWORK_DATABASE_PORT=5432
 SDKWORK_DATABASE_NAME=sdkwork_ai_dev
 SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev
+SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false
 SDKWORK_DATABASE_USERNAME=sdkwork_ai_dev
 SDKWORK_DATABASE_PASSWORD_FILE=/run/secrets/sdkwork/database-password
 SDKWORK_DATABASE_SSL_MODE=disable
@@ -47,6 +48,7 @@ SDKWORK_DATABASE_HOST=127.0.0.1
 SDKWORK_DATABASE_PORT=5432
 SDKWORK_DATABASE_NAME=sdkwork_ai_dev
 SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev
+SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false
 SDKWORK_DATABASE_USERNAME=sdkwork_ai_dev
 SDKWORK_DATABASE_PASSWORD=sdkworkdev123
 SDKWORK_DATABASE_SSL_MODE=disable
@@ -124,6 +126,27 @@ test('rejects application-specific PostgreSQL URL targets', () => {
       filePath,
     ),
     /non-canonical/u,
+  );
+});
+
+test('requires canonical-only schema fallback configuration', () => {
+  const examplePath = 'sdkwork-demo/.env.postgres.example';
+  const topologyPath = 'sdkwork-demo/etc/topology/standalone.development.env';
+  assert.equal(
+    inspectLine('SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false', examplePath),
+    null,
+  );
+  assert.match(
+    inspectLine('SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=true', examplePath),
+    /must be false/u,
+  );
+  assert.match(
+    inspectLine('SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=0', examplePath),
+    /must be false/u,
+  );
+  assert.equal(
+    inspectLine('SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=no', topologyPath),
+    null,
   );
 });
 

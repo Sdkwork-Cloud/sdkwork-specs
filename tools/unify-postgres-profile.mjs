@@ -275,12 +275,18 @@ function normalizeConfigIdentities(content, filePath) {
   if (
     path.basename(filePath).toLowerCase() === '.env.postgres.example'
     && /^\s*SDKWORK_DATABASE_SCHEMA\s*=/mu.test(updated)
-    && !/^\s*SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC\s*=/mu.test(updated)
   ) {
-    updated = updated.replace(
-      /^(\s*SDKWORK_DATABASE_SCHEMA\s*=\s*[^\r\n]+)$/mu,
-      `$1${eol}SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false`,
-    );
+    if (/^\s*SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC\s*=/mu.test(updated)) {
+      updated = updated.replace(
+        /^(\s*SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC\s*=\s*)[^#\r\n]*(\s*(?:#.*)?)$/gmu,
+        '$1false$2',
+      );
+    } else {
+      updated = updated.replace(
+        /^(\s*SDKWORK_DATABASE_SCHEMA\s*=\s*[^\r\n]+)$/mu,
+        `$1${eol}SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false`,
+      );
+    }
   }
   return updated;
 }

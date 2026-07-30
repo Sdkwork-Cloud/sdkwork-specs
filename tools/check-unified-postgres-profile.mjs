@@ -399,7 +399,12 @@ export function inspectLine(line, filePath, { section } = {}) {
   );
   if (schemaFallback) {
     const value = unquoteValue(schemaFallback[1]).toLowerCase();
-    if (!['0', 'false', 'no'].includes(value)) {
+    const requiresCanonicalLiteral = path.basename(filePath).toLowerCase()
+      === '.env.postgres.example';
+    if (
+      (requiresCanonicalLiteral && value !== 'false')
+      || (!requiresCanonicalLiteral && !['0', 'false', 'no'].includes(value))
+    ) {
       return 'SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC must be false for canonical-only schema resolution';
     }
   }
@@ -519,7 +524,6 @@ const ALLOWED_WORKSPACE_ENV_KEYS = new Set([
   'SDKWORK_DATABASE_URL',
   'SDKWORK_DATABASE_FILE',
   'SDKWORK_DATABASE_PASSWORD_FILE',
-  'SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC',
   'SDKWORK_DATABASE_MIN_CONNECTIONS',
   'SDKWORK_DATABASE_ACQUIRE_TIMEOUT',
   'SDKWORK_DATABASE_IDLE_TIMEOUT',

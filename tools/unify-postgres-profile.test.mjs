@@ -61,6 +61,24 @@ test('normalizes a legacy bare production database URL', () => {
   );
 });
 
+test('inserts and normalizes the canonical schema fallback switch', () => {
+  const missing = migratePostgresProfileContent(
+    'SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev\nSDKWORK_DATABASE_USERNAME=sdkwork_ai_dev\n',
+    'sdkwork-demo/.env.postgres.example',
+  );
+  assert.match(
+    missing.content,
+    /SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev\nSDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false\n/u,
+  );
+
+  const enabled = migratePostgresProfileContent(
+    'SDKWORK_DATABASE_SCHEMA=sdkwork_ai_dev\nSDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=true\n',
+    'sdkwork-demo/.env.postgres.example',
+  );
+  assert.match(enabled.content, /SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false/u);
+  assert.doesNotMatch(enabled.content, /SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=true/u);
+});
+
 test('detects canonical key conflicts without exposing values', () => {
   const result = migratePostgresProfileContent(
     `${scopedDatabaseKey('CLAW', 'PASSWORD')}=first
