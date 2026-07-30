@@ -148,6 +148,18 @@ function isProfileConfigFile(filePath) {
 function renameDatabaseKeys(content) {
   return content
     .replace(
+      /\bSDKWORK_(?!DATABASE_)[A-Z0-9_]+_(?:TEST_POSTGRES_URL|POSTGRES_TEST_URL)\b/gu,
+      'SDKWORK_DATABASE_TEST_POSTGRES_URL',
+    )
+    .replace(
+      /\b(?<!SDKWORK_)[A-Z0-9_]+_TEST_POSTGRES_URL\b/gu,
+      'SDKWORK_DATABASE_TEST_POSTGRES_URL',
+    )
+    .replace(
+      /\bSDKWORK_(?!DATABASE_)[A-Z0-9_]+_RUNTIME_POSTGRES_(?:URL|URI)\b/gu,
+      'SDKWORK_DATABASE_URL',
+    )
+    .replace(
       /SDKWORK_(?!DATABASE_)([A-Z0-9_]+)_DATABASE_([A-Z0-9_]+)/gu,
       (match, _scope, field) => (
         MANUAL_STORAGE_FIELDS.has(field) ? match : `SDKWORK_DATABASE_${field}`
@@ -180,6 +192,21 @@ function inspectCanonicalKeyCollisions(content) {
     if (!MANUAL_STORAGE_FIELDS.has(field)) {
       addSource(`SDKWORK_DATABASE_${field}`, match[0]);
     }
+  }
+  for (const match of String(content).matchAll(
+    /\bSDKWORK_(?!DATABASE_)[A-Z0-9_]+_(?:TEST_POSTGRES_URL|POSTGRES_TEST_URL)\b/gu,
+  )) {
+    addSource('SDKWORK_DATABASE_TEST_POSTGRES_URL', match[0]);
+  }
+  for (const match of String(content).matchAll(
+    /\b(?<!SDKWORK_)[A-Z0-9_]+_TEST_POSTGRES_URL\b/gu,
+  )) {
+    addSource('SDKWORK_DATABASE_TEST_POSTGRES_URL', match[0]);
+  }
+  for (const match of String(content).matchAll(
+    /\bSDKWORK_(?!DATABASE_)[A-Z0-9_]+_RUNTIME_POSTGRES_(?:URL|URI)\b/gu,
+  )) {
+    addSource('SDKWORK_DATABASE_URL', match[0]);
   }
   for (const match of String(content).matchAll(/\bSDKWORK_DATABASE_[A-Z0-9_]+\b/gu)) {
     addSource(match[0], match[0]);

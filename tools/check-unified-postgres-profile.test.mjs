@@ -264,7 +264,7 @@ test('runtime source rejects concrete module-scoped database keys', () => {
     /retired application\/module-prefixed database key/u,
   );
   assert.match(
-    inspectRuntimeSourceLine('const KEY: &str = "SDKWORK_AIOT_DEVICE_DATABASE_ENGINE";'),
+    inspectRuntimeSourceLine(`const KEY: &str = "${scopedDatabaseKey('AIOT_DEVICE', 'ENGINE')}";`),
     /retired application\/module-prefixed database key/u,
   );
   assert.match(
@@ -272,11 +272,11 @@ test('runtime source rejects concrete module-scoped database keys', () => {
     /retired legacy database key/u,
   );
   assert.match(
-    inspectRuntimeSourceLine('std::env::var("SDKWORK_CLIENT_DATABASE_PATH")'),
+    inspectRuntimeSourceLine(`std::env::var("${scopedDatabaseKey('CLIENT', 'PATH')}")`),
     /retired application\/module-prefixed database key/u,
   );
   assert.match(
-    inspectRuntimeSourceLine('const KEY: &str = "SDKWORK_DRIVE_DATABASE_SQLITE_URL";'),
+    inspectRuntimeSourceLine(`const KEY: &str = "${scopedDatabaseKey('DRIVE', 'SQLITE_URL')}";`),
     /retired application\/module-prefixed database key/u,
   );
 });
@@ -357,6 +357,28 @@ test('runtime source accepts canonical database keys and module ownership metada
   assert.equal(inspectRuntimeSourceLine('SDKWORK_DATABASE_MODULE_ID=iot'), null);
   assert.equal(inspectRuntimeSourceLine('SDKWORK_DATABASE_MAX_CONNECTIONS=10'), null);
   assert.equal(inspectRuntimeSourceLine('SDKWORK_DATABASE_FILE=.data/client.db'), null);
+});
+
+test('runtime source rejects legacy YAML database assignments', () => {
+  assert.match(
+    inspectRuntimeSourceLine('  CUSTOMER_SERVICE_DATABASE_URL: postgres://localhost/database'),
+    /retired legacy database key/u,
+  );
+});
+
+test('runtime source rejects custom PostgreSQL URL keys', () => {
+  assert.match(
+    inspectRuntimeSourceLine('SDKWORK_MEMORY_POSTGRES_TEST_URL=postgres://localhost/test'),
+    /SDKWORK_DATABASE_TEST_POSTGRES_URL/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine('ORDER_TEST_POSTGRES_URL=postgres://localhost/test'),
+    /SDKWORK_DATABASE_TEST_POSTGRES_URL/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine('SDKWORK_AGENT_RUNTIME_POSTGRES_URI=postgres://localhost/runtime'),
+    /SDKWORK_DATABASE_URL/u,
+  );
 });
 
 test('scanner excludes repository-generated runtime and test fixture directories', () => {

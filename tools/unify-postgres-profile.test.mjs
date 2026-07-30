@@ -31,6 +31,27 @@ ${scopedDatabaseKey('IAM', 'MAX_CONNECTIONS')}=4`;
   assert.doesNotMatch(result.content, /SDKWORK_(?:CLAW|CLAW_ROUTER|IAM)_DATABASE_/u);
 });
 
+test('renames custom PostgreSQL URL keys to canonical database keys', () => {
+  const source = `SDKWORK_MEMORY_POSTGRES_TEST_URL=postgres://localhost/test
+SDKWORK_AGENT_RUNTIME_POSTGRES_URI=postgres://localhost/runtime`;
+  const result = migratePostgresProfileContent(source, 'scripts/postgres-test.mjs');
+  assert.equal(result.conflicts.length, 0);
+  assert.equal(
+    result.content,
+    `SDKWORK_DATABASE_TEST_POSTGRES_URL=postgres://localhost/test
+SDKWORK_DATABASE_URL=postgres://localhost/runtime`,
+  );
+
+  const bare = migratePostgresProfileContent(
+    'ORDER_TEST_POSTGRES_URL=postgres://localhost/test',
+    'scripts/postgres-test.mjs',
+  );
+  assert.equal(
+    bare.content,
+    'SDKWORK_DATABASE_TEST_POSTGRES_URL=postgres://localhost/test',
+  );
+});
+
 test('normalizes config identity according to the profile path', () => {
   const source = `${scopedDatabaseKey('DRIVE', 'NAME')}=sdkwork_drive_staging
 ${scopedDatabaseKey('DRIVE', 'SCHEMA')}=public

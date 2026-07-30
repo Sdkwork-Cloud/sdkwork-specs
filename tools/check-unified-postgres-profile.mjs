@@ -60,6 +60,7 @@ const SCAN_DIRS = [
   'config/desktop',
 ];
 const RUNTIME_SCAN_DIRS = [
+  '.github',
   'apps',
   'config',
   'crates',
@@ -110,6 +111,8 @@ const INVALID_WORKSPACE_DATABASE_KEY = /SDKWORK_DATABASE_(?:MODE|TABLE_PREFIX)\b
 const RETIRED_WORKSPACE_DATABASE_ALIAS = /SDKWORK_DATABASE_(?:PATH|SQLITE_URL|SSLMODE)\b/gu;
 const DYNAMIC_RUNTIME_DATABASE_KEY = /SDKWORK_(?:\$\{[^}\r\n]+\}|\{[^}\r\n]*\})(?:_[A-Z0-9]+)*_DATABASE_/gu;
 const CONCATENATED_RUNTIME_DATABASE_KEY = /SDKWORK_["'`]\s*\+[^;\r\n]+["'`]_[A-Z0-9_]*DATABASE_/gu;
+const RETIRED_TEST_POSTGRES_KEY = /\b(?:SDKWORK_(?!DATABASE_)[A-Z0-9_]+_(?:TEST_POSTGRES_URL|POSTGRES_TEST_URL)|(?<!SDKWORK_)[A-Z0-9_]+_TEST_POSTGRES_URL)\b/gu;
+const RETIRED_RUNTIME_POSTGRES_KEY = /\bSDKWORK_(?!DATABASE_)[A-Z0-9_]+_RUNTIME_POSTGRES_(?:URL|URI)\b/gu;
 const RETIRED_KEY_REJECTION_MARKER = 'sdkwork-retired-database-key-rejection';
 
 function isCheckedInConfigFile(filePath) {
@@ -252,6 +255,8 @@ export function inspectRuntimeSourceLine(line) {
     [INVALID_WORKSPACE_DATABASE_KEY, 'unsupported workspace database key; mode and table ownership are module contracts, not connection env'],
     [DYNAMIC_RUNTIME_DATABASE_KEY, 'dynamic application/module-prefixed database key construction is forbidden'],
     [CONCATENATED_RUNTIME_DATABASE_KEY, 'concatenated application/module-prefixed database key construction is forbidden'],
+    [RETIRED_TEST_POSTGRES_KEY, 'retired test PostgreSQL key; use SDKWORK_DATABASE_TEST_POSTGRES_URL'],
+    [RETIRED_RUNTIME_POSTGRES_KEY, 'retired runtime PostgreSQL key; use SDKWORK_DATABASE_URL'],
   ]) {
     pattern.lastIndex = 0;
     const match = pattern.exec(line);
@@ -267,8 +272,9 @@ export function inspectRuntimeSourceLine(line) {
     const before = line[index - 1];
     const after = line[index + token.length];
     const quoted = ['"', "'", '`'].includes(before) && after === before;
+    const assignmentSuffix = line.slice(index + token.length).trimStart();
     const assigned = line.slice(0, index).trim() === ''
-      && line.slice(index + token.length).trimStart().startsWith('=');
+      && (assignmentSuffix.startsWith('=') || assignmentSuffix.startsWith(':'));
     if (quoted || assigned) {
       return `retired legacy database key; use SDKWORK_DATABASE_*: ${token}`;
     }
