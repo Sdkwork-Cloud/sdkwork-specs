@@ -10,6 +10,7 @@ import { assertSideEffectSelection, validateSideEffectSelection } from './deploy
 import { resolveProfileBlock } from './deploy/load-manifest.mjs';
 import { parseYaml } from './deploy/yaml-resolver.mjs';
 import { loadArtifactEvidence } from './deploy/artifact-evidence.mjs';
+import { resolveRuntimeCode } from './deploy/identity.mjs';
 import { requireExecutableDriver } from './deployctl.mjs';
 import {
   formatPlan,
@@ -81,6 +82,21 @@ test('deployment plan output omits empty optional network sections', () => {
   assert.match(output, /^deployment:\s+cloud\.production$/mu);
 });
 
+test('runtime directory identity comes only from topology applicationCode', () => {
+  assert.deepEqual(resolveRuntimeCode({ applicationCode: 'customer_service' }), {
+    runtimeCode: 'customer_service',
+    errors: [],
+  });
+  assert.deepEqual(resolveRuntimeCode({ database: { appPrefix: 'SDKWORK_DEMO' } }), {
+    runtimeCode: null,
+    errors: ['topology.applicationCode must be a lowercase kebab-free runtime directory code'],
+  });
+  assert.deepEqual(resolveRuntimeCode({ applicationCode: 'customer-service' }), {
+    runtimeCode: null,
+    errors: ['topology.applicationCode must be a lowercase kebab-free runtime directory code'],
+  });
+});
+
 test('top-level deploy dispatch executes only registered deployment drivers', () => {
   assert.equal(requireExecutableDriver({ deployment: { deploymentDriver: 'nginx' } }, 'apply'), 'nginx');
   assert.throws(
@@ -123,7 +139,7 @@ function makeDeployRepo() {
     schemaVersion: 5,
     kind: 'sdkwork.app.topology',
     appId: 'sdkwork-demo',
-    database: { appPrefix: 'SDKWORK_DEMO' },
+    applicationCode: 'demo',
     profileFiles: { 'cloud.production': 'etc/topology/cloud.production.env' },
     surfaces: {
       'application.public-ingress': { bindEnv: 'SDKWORK_DEMO_BIND' },

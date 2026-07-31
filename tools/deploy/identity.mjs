@@ -16,18 +16,15 @@ export function resolveAppId(repoRoot, topology) {
 }
 
 export function resolveRuntimeCode(topology) {
-  const prefix = topology?.database?.appPrefix;
-  if (!prefix || typeof prefix !== 'string') {
-    return { runtimeCode: null, errors: ['topology.database.appPrefix is required for runtimeCode'] };
-  }
-  const match = /^SDKWORK_(.+)$/i.exec(prefix.trim());
-  if (!match) {
+  const applicationCode = topology?.applicationCode;
+  if (typeof applicationCode !== 'string'
+    || !/^[a-z0-9]+(?:_[a-z0-9]+)*$/u.test(applicationCode)) {
     return {
       runtimeCode: null,
-      errors: [`topology.database.appPrefix "${prefix}" must match SDKWORK_<CODE>`],
+      errors: ['topology.applicationCode must be a lowercase kebab-free runtime directory code'],
     };
   }
-  return { runtimeCode: match[1].toLowerCase(), errors: [] };
+  return { runtimeCode: applicationCode, errors: [] };
 }
 
 export function surfaceRoot(appId, surface) {

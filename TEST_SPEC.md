@@ -1362,6 +1362,11 @@ Rules:
 - Credential-entry client tests `MUST` prove absence fails before network dispatch, bootstrap dispatch contains only `Access-Token`, login/session commit replaces bootstrap state, and `ProblemDetail` preserves `operationId`, `authProfile`, `failedStage`, `reason`, numeric `code`, and `traceId`.
 - Production browser tests `MUST` prove bootstrap tokens are absent from HTML, JavaScript, public runtime env, logs, caches, and screenshots; an approved short-lived exchange or trusted host channel is required before credential-entry UI becomes actionable.
 - Vite credential-entry tests `MUST` prove the canonical global is injected only by `@sdkwork/iam-credential-entry/vite` during development serve or explicitly opted-in test serve, inline values escape `<`, `>`, and `&`, and staging/production produce no plugin or token-bearing output.
+- Vite development tests `MUST` prove each renderer uses a stable surface-qualified tool-native cache,
+  source-linked or lazy third-party dependencies that escape the initial crawl are explicitly
+  prebundled, and a fresh browser page receives dependency modules as JavaScript without
+  `Outdated Optimize Dep`. Shared development ingresses `MUST` reject stale, unqualified, and
+  cross-surface cache URLs without returning SPA HTML or switching renderers.
 - Cross-repository scans `MUST` reject application-local fixture JWT, manifest lookup, bootstrap env merge, private bootstrap env-file parser, or inline token serializer forks; reject `process.env.SDKWORK_ACCESS_TOKEN` Vite defines; and require the IAM-owned Node and Vite entrypoints for every credential-entry consumer.
 - Credential-entry config scans `MUST` require a blank `SDKWORK_ACCESS_TOKEN=` placeholder in private base/development templates for protected application roots, reject resolved values in tracked templates, and reject the key entirely in production browser templates.
 - Runtime bridges that must materialize dual-token headers `MUST` call the SDK-common `buildAuthHeaders` helper or a language-equivalent common credential provider; static scans `MUST` reject repeated object-literal `Access-Token` and Bearer `Authorization` assembly.

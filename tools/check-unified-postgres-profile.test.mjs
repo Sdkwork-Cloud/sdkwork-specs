@@ -339,6 +339,10 @@ test('runtime source rejects invalid generic mode and table-prefix keys', () => 
 
 test('runtime source rejects dynamic module-scoped database key construction', () => {
   assert.match(
+    inspectRuntimeSourceLine('SDKWORK_<PROCESS>_DATABASE_MAX_CONNECTIONS'),
+    /symbolic application\/module-prefixed database key/u,
+  );
+  assert.match(
     inspectRuntimeSourceLine('const key = `SDKWORK_${service}_DATABASE_URL`;'),
     /dynamic application\/module-prefixed database key construction/u,
   );

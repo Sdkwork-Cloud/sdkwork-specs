@@ -48,6 +48,10 @@ node ../sdkwork-specs/tools/check-topology-deployment-profiles.mjs --workspace .
 node ../sdkwork-specs/tools/resolve-app-runtime-plan.mjs --root . --deployment-profile cloud --environment development --runtime-target browser --json
 ```
 
+The topology root declares `applicationCode` for runtime directories, while
+`envKeys` declares complete private application env names. Neither declares a
+database namespace.
+
 ## 3. Pick An Archetype
 
 | Application | Archetype | Default dev profile | Default production profile |
@@ -109,7 +113,9 @@ Rules:
 
 1. Parse `--deployment-profile` and `--environment`, or use a fixed default profile id.
 2. Load `etc/topology/<profile-id>.env` from the adapter.
-3. Merge `process.env`, profile env, and optional database env.
+3. Merge `process.env`, profile env, and the active workspace database profile;
+   database values use only `SDKWORK_DATABASE_*` and are not derived from the
+   application code.
 4. Set `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE` to `standalone` or `cloud`.
 5. Set `SDKWORK_<APPLICATION_CODE>_RUNTIME_TARGET` to `server`, `container`, `desktop`, `browser`, or `test-runner`.
 6. Health-check required surfaces before starting Vite, Tauri, backend, workers, or clients.
@@ -169,6 +175,13 @@ node scripts/print-package-matrix.mjs --deployment-profile cloud
 ## 10. Retirement Checklist
 
 When migrating an application, delete and do not alias:
+
+- topology root `database` and `database.appPrefix`; application environment
+  keys remain explicit under `envKeys`, while database identity comes from the
+  shared `SDKWORK_DATABASE_*` environment profile.
+- missing `applicationCode`; migrate the former application-code intent to this
+  root field before deleting `database.appPrefix`. Do not derive it from
+  `app.key` or assume it equals the repository stem.
 
 - old topology env files whose profile id is not `<deploymentProfile>.<environment>`.
 - `SDKWORK_*_TOPOLOGY`, `VITE_*_TOPOLOGY`, and `SDKWORK_*_HOSTING`.

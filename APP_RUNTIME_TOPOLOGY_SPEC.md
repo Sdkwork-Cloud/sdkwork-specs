@@ -258,6 +258,35 @@ scripts/lib/<application-code>-topology.mjs
 
 Implementation: `@sdkwork/app-topology` (`../sdkwork-app-topology`).
 
+### 6.1 Application Environment Keys And Database Boundary
+
+`topology.spec.json#applicationCode` declares the canonical lowercase L2
+application code from `RUNTIME_DIRECTORY_SPEC.md`. It owns runtime directory
+and install path segments such as `/etc/sdkwork/<application-code>`. It may
+differ from `appId`, repository name, process name, `app.key`, and the
+application lifecycle environment prefix.
+
+`topology.spec.json#envKeys` declares complete application lifecycle and
+connectivity environment key names and is authoritative after initialization.
+New topology initialization may propose conventional env names from the new
+application code, while established products may preserve a different explicit
+prefix such as `SDKWORK_CLAW_ROUTER_*`. Migration tooling derives an existing
+application prefix from `envKeys.deploymentProfile`, not from `applicationCode`.
+The prefix is not a database namespace.
+
+Topology schema v5 `MUST NOT` declare `database`, `database.appPrefix`, an
+application-scoped database prefix, database name, or schema name. PostgreSQL
+selection belongs to the active workspace environment profile and uses only the
+canonical `SDKWORK_DATABASE_*` contract from `ENVIRONMENT_SPEC.md` section 7.1.
+The orchestration process role `database` describes process ownership only; it
+does not grant an application or module a separate PostgreSQL identity.
+
+Application lifecycle keys such as
+`SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_PROFILE` remain application-scoped.
+Database keys such as `SDKWORK_DATABASE_NAME` and
+`SDKWORK_DATABASE_SCHEMA` remain workspace-scoped. Implementations and
+migration tools `MUST NOT` derive one family from the other.
+
 The repository-level `sdkwork-app` facade in `sdkwork-app-topology` is the
 standard local lifecycle adapter. Public `pnpm dev`, `build`, `test`, `check`,
 `verify`, `clean`, and `stop` scripts delegate to it; application-specific commands

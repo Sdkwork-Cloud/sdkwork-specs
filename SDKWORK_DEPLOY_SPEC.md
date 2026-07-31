@@ -44,13 +44,16 @@ Deploy resolves three identifiers:
 | Field | Example (IM) | Authority | Use |
 | --- | --- | --- | --- |
 | `appId` | `sdkwork-im` | repository directory name and `topology.spec.json` `appId` | source-tree paths, surface directory names |
-| `runtimeCode` | `im` | `topology.database.appPrefix` (`SDKWORK_IM` → `im`) | `/etc/sdkwork/`, `/usr/lib/sdkwork/`, `/usr/share/sdkwork/` |
+| `runtimeCode` | `im` | `topology.applicationCode` | `/etc/sdkwork/`, `/usr/lib/sdkwork/`, `/usr/share/sdkwork/` |
 | `app.key` | `chat` | `sdkwork.app.config.json` | app.key / IAM only; MUST NOT be used for deploy paths |
 
 Rules:
 
 - `appId` MUST NOT be truncated.
 - `appId`, repository directory name, and `topology.appId` MUST match.
+- `runtimeCode` MUST equal the canonical lowercase
+  `topology.applicationCode` from `RUNTIME_DIRECTORY_SPEC.md`; it MUST NOT be
+  inferred from a database field or database env key.
 - Deploy MUST NOT derive `runtimeCode` from `app.key`.
 
 ## 4. Install Layouts
@@ -495,7 +498,7 @@ plan → render → nginx -t → deploy → reload → health-check → rollback
 | Id | Rule |
 | --- | --- |
 | V1 | `appId` equals repository directory and topology `appId` |
-| V2 | `runtimeCode` derivable from topology |
+| V2 | `runtimeCode` equals valid `topology.applicationCode` |
 | V3 | `profiles` and root-level expose/packages are mutually exclusive |
 | V4 | `mode: api` forbids `web` |
 | V5 | adaptive requires pc or h5 surface root |

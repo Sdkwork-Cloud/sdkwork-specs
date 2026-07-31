@@ -50,10 +50,10 @@ function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function runAligner(workspace, repo = 'sdkwork-demo') {
+function runAligner(workspace, repo = 'sdkwork-demo', extraArgs = []) {
   return spawnSync(
     process.execPath,
-    [ALIGNER, '--workspace', workspace, '--repo', repo],
+    [ALIGNER, '--workspace', workspace, '--repo', repo, ...extraArgs],
     { cwd: path.resolve('.'), encoding: 'utf8' },
   );
 }
@@ -79,6 +79,7 @@ test('migrates topology specs from retired serviceLayout profiles to two-segment
     schemaVersion: 2,
     kind: 'sdkwork.app.topology',
     appId: 'sdkwork-demo',
+    applicationCode: 'demo',
     profileRoot: 'etc/topology',
     profilePattern: '{deploymentProfile}.{serviceLayout}.{environment}.env',
     vocabulary: {
@@ -284,6 +285,87 @@ test('migrates topology specs from retired serviceLayout profiles to two-segment
     topologyAfterFirstRun,
   );
   assert.match(secondResult.stdout, /Total actions: 0/u);
+});
+
+test('retires topology database config without mutating unrelated topology contracts', () => {
+  const { workspace, repoRoot } = makeWorkspace();
+  const topologyPath = path.join(repoRoot, 'specs', 'topology.spec.json');
+  const original = {
+    schemaVersion: 5,
+    kind: 'sdkwork.app.topology',
+    appId: 'sdkwork-demo',
+    applicationCode: 'router',
+    database: { appPrefix: 'SDKWORK_DEMO' },
+    envKeys: {
+      deploymentProfile: 'SDKWORK_ROUTER_DEPLOYMENT_PROFILE',
+    },
+    customContract: {
+      preserve: true,
+    },
+  };
+  const originalText = JSON.stringify(original, null, 2)
+    .replace(
+      /  "database": \{\n    "appPrefix": "SDKWORK_DEMO"\n  \},/u,
+      '  "database": { "appPrefix": "SDKWORK_DEMO" },',
+    )
+    .replace(
+      /  "customContract": \{\n    "preserve": true\n  \}/u,
+      '  "customContract": { "preserve": true }',
+    );
+  fs.writeFileSync(topologyPath, `\uFEFF${originalText}\n`);
+
+  const args = ['--retire-database-config-only', '--no-bootstrap-missing'];
+  const result = runAligner(workspace, 'sdkwork-demo', args);
+
+  assert.equal(result.status, 0, result.stderr);
+  const topologyText = fs.readFileSync(topologyPath, 'utf8');
+  const topology = JSON.parse(topologyText);
+  assert.equal(topology.applicationCode, 'router');
+  assert.equal(topology.database, undefined);
+  assert.deepEqual(topology.customContract, { preserve: true });
+  assert.equal(topologyText.startsWith('\uFEFF'), false);
+  assert.match(topologyText, /"customContract": \{ "preserve": true \}/u);
+  assert.ok(topologyText.indexOf('"applicationCode"') > topologyText.indexOf('"appId"'));
+  assert.ok(topologyText.indexOf('"applicationCode"') < topologyText.indexOf('"envKeys"'));
+
+  const secondResult = runAligner(workspace, 'sdkwork-demo', args);
+  assert.equal(secondResult.status, 0, secondResult.stderr);
+  assert.match(secondResult.stdout, /Total actions: 0/u);
+  assert.equal(fs.readFileSync(topologyPath, 'utf8'), topologyText);
+});
+
+test('database-only migration does not bootstrap a missing topology', () => {
+  const { workspace, repoRoot } = makeWorkspace();
+  installStandaloneGateway(repoRoot);
+
+  const result = runAligner(workspace, 'sdkwork-demo', [
+    '--retire-database-config-only',
+    '--no-bootstrap-missing',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Total actions: 0/u);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'specs', 'topology.spec.json')), false);
+});
+
+test('database-only migration refuses to guess applicationCode from appId', () => {
+  const { workspace, repoRoot } = makeWorkspace();
+  const topologyPath = path.join(repoRoot, 'specs', 'topology.spec.json');
+  writeJson(topologyPath, {
+    schemaVersion: 5,
+    kind: 'sdkwork.app.topology',
+    appId: 'sdkwork-demo',
+  });
+  const before = fs.readFileSync(topologyPath, 'utf8');
+
+  const result = runAligner(workspace, 'sdkwork-demo', [
+    '--retire-database-config-only',
+    '--no-bootstrap-missing',
+  ]);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must declare a valid applicationCode explicitly/u);
+  assert.equal(fs.readFileSync(topologyPath, 'utf8'), before);
 });
 
 test('does not invent a v5 executable gateway for an explicitly declared domain library', () => {

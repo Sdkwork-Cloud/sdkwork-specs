@@ -305,6 +305,14 @@ Rules:
   A hidden catch-all directory is not a lifecycle or ownership boundary.
 - Build and dependency caches `MUST` use their tool-native directory. Multiple surfaces sharing one
   native cache root `MUST` use stable surface-qualified children rather than creating a parallel cache root.
+- Vite surfaces that import third-party packages through source-linked workspaces or lazy modules
+  `MUST` prebundle dependencies that the initial optimizer crawl cannot discover, using
+  `optimizeDeps.include` or the tool-version equivalent. The dependency graph for a freshly served
+  page `MUST NOT` change only because the user first opens a lazy capability.
+- A shared browser development ingress `MUST` preserve the selected surface's qualified Vite cache
+  namespace. Missing, stale, unqualified, or cross-surface dependency-cache URLs `MUST NOT` fall
+  through to SPA HTML, another renderer, or a general `5xx` retry; reject them as no-store asset
+  responses so a fresh page load obtains one coherent optimizer graph.
 - Development PID, heartbeat, socket, lock, and process-ownership files `MUST` live outside the
   source tree. The canonical base is `${XDG_RUNTIME_DIR}` when available on Linux and the current
   user/runner temporary directory on macOS and Windows, followed by

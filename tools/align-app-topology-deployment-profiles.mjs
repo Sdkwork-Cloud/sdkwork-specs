@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseArgs } from 'node:util';
+import { isDeepStrictEqual, parseArgs } from 'node:util';
 
 const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_WORKSPACE = path.resolve(SPECS_ROOT, '..');
@@ -57,7 +57,7 @@ function declaredDeploymentProfiles(repoRoot, spec) {
 
 function usage() {
   return [
-    'Usage: node tools/align-app-topology-deployment-profiles.mjs [--workspace <path>] [--dry-run] [--repo <name>] [--bootstrap-missing]',
+    'Usage: node tools/align-app-topology-deployment-profiles.mjs [--workspace <path>] [--dry-run] [--repo <name>] [--bootstrap-missing|--no-bootstrap-missing] [--retire-database-config-only]',
     '',
     'Migrates hosting vocabulary to deploymentProfile, renames profile env files,',
     'aligns declared standalone/cloud profile files and orchestration, and updates app manifests.',
@@ -72,7 +72,7 @@ function walkRepos(workspace) {
 }
 
 function readJson(file) {
-  return JSON.parse(fs.readFileSync(file, 'utf8'));
+  return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/u, ''));
 }
 
 function writeJson(file, value, dryRun) {
@@ -80,6 +80,103 @@ function writeJson(file, value, dryRun) {
   if (dryRun) return;
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, text, 'utf8');
+}
+
+function jsonStringEnd(source, start) {
+  for (let index = start + 1; index < source.length; index += 1) {
+    if (source[index] === '\\') {
+      index += 1;
+    } else if (source[index] === '"') {
+      return index + 1;
+    }
+  }
+  throw new Error('unterminated JSON string');
+}
+
+function jsonValueEnd(source, start) {
+  if (source[start] === '"') return jsonStringEnd(source, start);
+  if (source[start] !== '{' && source[start] !== '[') {
+    let index = start;
+    while (index < source.length && source[index] !== ',' && source[index] !== '}') index += 1;
+    return index;
+  }
+
+  let depth = 0;
+  for (let index = start; index < source.length; index += 1) {
+    if (source[index] === '"') {
+      index = jsonStringEnd(source, index) - 1;
+    } else if (source[index] === '{' || source[index] === '[') {
+      depth += 1;
+    } else if (source[index] === '}' || source[index] === ']') {
+      depth -= 1;
+      if (depth === 0) return index + 1;
+    }
+  }
+  throw new Error('unterminated JSON value');
+}
+
+function topLevelJsonProperties(source) {
+  const objectStart = source.indexOf('{');
+  if (objectStart < 0) throw new Error('topology JSON must be an object');
+  const properties = [];
+  let cursor = objectStart + 1;
+  while (cursor < source.length) {
+    while (/\s|,/u.test(source[cursor] ?? '')) cursor += 1;
+    if (source[cursor] === '}') break;
+    if (source[cursor] !== '"') throw new Error('topology JSON contains an invalid root property');
+
+    const keyStart = cursor;
+    const keyEnd = jsonStringEnd(source, keyStart);
+    const key = JSON.parse(source.slice(keyStart, keyEnd));
+    cursor = keyEnd;
+    while (/\s/u.test(source[cursor] ?? '')) cursor += 1;
+    if (source[cursor] !== ':') throw new Error(`topology JSON property ${key} is missing a colon`);
+    cursor += 1;
+    while (/\s/u.test(source[cursor] ?? '')) cursor += 1;
+    const valueStart = cursor;
+    const valueEnd = jsonValueEnd(source, valueStart);
+    cursor = valueEnd;
+    while (/[ \t]/u.test(source[cursor] ?? '')) cursor += 1;
+    const comma = source[cursor] === ',' ? cursor : -1;
+    if (comma >= 0) cursor += 1;
+    properties.push({ key, keyStart, valueStart, valueEnd, comma });
+  }
+  return properties;
+}
+
+function removeTopLevelJsonProperty(source, key) {
+  const properties = topLevelJsonProperties(source);
+  const property = properties.find((candidate) => candidate.key === key);
+  if (!property) return source;
+
+  const lineStart = source.lastIndexOf('\n', property.keyStart - 1) + 1;
+  const ownsLine = /^[ \t]*$/u.test(source.slice(lineStart, property.keyStart));
+  if (property.comma >= 0) {
+    let end = property.comma + 1;
+    if (ownsLine) {
+      while (source[end] === ' ' || source[end] === '\t') end += 1;
+      if (source[end] === '\r') end += 1;
+      if (source[end] === '\n') end += 1;
+    }
+    return source.slice(0, ownsLine ? lineStart : property.keyStart) + source.slice(end);
+  }
+
+  let start = ownsLine ? lineStart : property.keyStart;
+  let previous = start - 1;
+  while (previous >= 0 && /\s/u.test(source[previous])) previous -= 1;
+  if (source[previous] === ',') start = previous;
+  return source.slice(0, start) + source.slice(property.valueEnd);
+}
+
+function formatDatabaseRetirementSpec(originalText, originalSpec, nextSpec) {
+  let source = originalText.replace(/^\uFEFF/u, '');
+  if (originalSpec.database !== undefined && nextSpec.database === undefined) {
+    source = removeTopLevelJsonProperty(source, 'database');
+  }
+  if (!isDeepStrictEqual(JSON.parse(source), nextSpec)) {
+    return `${JSON.stringify(nextSpec, null, 2)}\n`;
+  }
+  return source;
 }
 
 function isDeclaredLibraryOnlyLegacyTopology(spec) {
@@ -221,25 +318,36 @@ function migrateProfilePath(value, oldProfileId, newProfileId) {
     .replace(/cloud-hosted/g, 'cloud');
 }
 
-function appPrefixFromSpec(spec) {
-  if (spec.database?.appPrefix) return spec.database.appPrefix;
+function applicationEnvPrefixFromSpec(spec) {
+  const deploymentProfileKey = spec.envKeys?.deploymentProfile;
+  const suffix = '_DEPLOYMENT_PROFILE';
+  if (deploymentProfileKey?.endsWith(suffix)) {
+    return deploymentProfileKey.slice(0, -suffix.length);
+  }
   const appId = spec.appId ?? 'sdkwork-app';
   const slug = appId.replace(/^sdkwork-/, '').replace(/-/g, '_').toUpperCase();
   return `SDKWORK_${slug}`;
 }
 
-function clientPrefixFromSpec(spec, appPrefix) {
+function ensureApplicationCode(spec) {
+  if (/^[a-z0-9]+(?:_[a-z0-9]+)*$/u.test(spec.applicationCode ?? '')) return spec;
+  throw new Error(
+    `${spec.appId ?? 'topology'} must declare a valid applicationCode explicitly; it cannot be inferred from appId, envKeys, or database config`,
+  );
+}
+
+function clientPrefixFromSpec(spec, applicationEnvPrefix) {
   const existing = spec.envKeys?.clientDeploymentProfile;
   if (existing) {
     const match = /^([A-Z0-9_]+)_DEPLOYMENT_PROFILE$/.exec(existing);
     if (match) return match[1];
   }
-  return `VITE_${appPrefix.replace(/^SDKWORK_/, 'SDKWORK_')}`;
+  return `VITE_${applicationEnvPrefix}`;
 }
 
 function migrateEnvFileContent(content, spec, oldProfileId, newProfileId) {
-  const appPrefix = appPrefixFromSpec(spec);
-  const clientPrefix = clientPrefixFromSpec(spec, appPrefix);
+  const applicationEnvPrefix = applicationEnvPrefixFromSpec(spec);
+  const clientPrefix = clientPrefixFromSpec(spec, applicationEnvPrefix);
   let out = content.replace(/\r\n?/gu, '\n');
   out = out.replaceAll(oldProfileId, newProfileId);
   out = out.replaceAll('self-hosted', 'standalone');
@@ -249,8 +357,8 @@ function migrateEnvFileContent(content, spec, oldProfileId, newProfileId) {
   out = out.replace(/^\s*[A-Z0-9_]+_PLATFORM_API_GATEWAY_AUTOSTART=.*(?:\r?\n)?/gmu, '');
   out = out.replace(/^#.*(?:serviceLayout|service layout|unified-process|split-services).*(?:\r?\n)?/gimu, '');
   out = out.replace(
-    new RegExp(`${appPrefix}_HOSTING=`, 'g'),
-    `${appPrefix}_DEPLOYMENT_PROFILE=`,
+    new RegExp(`${applicationEnvPrefix}_HOSTING=`, 'g'),
+    `${applicationEnvPrefix}_DEPLOYMENT_PROFILE=`,
   );
   out = out.replace(
     new RegExp(`${clientPrefix}_HOSTING=`, 'g'),
@@ -398,8 +506,8 @@ function migrateDefaults(spec, deploymentProfiles) {
 function ensurePlatformSurface(spec, deploymentProfiles) {
   const archetype = spec.archetype ?? 'application-http-gateway';
   spec.surfaces ??= {};
-  const appPrefix = appPrefixFromSpec(spec);
-  const clientPrefix = clientPrefixFromSpec(spec, appPrefix);
+  const applicationEnvPrefix = applicationEnvPrefixFromSpec(spec);
+  const clientPrefix = clientPrefixFromSpec(spec, applicationEnvPrefix);
   if (!deploymentProfiles.includes('cloud')) {
     delete spec.surfaces['platform.api-gateway'];
     delete spec.cloudPublicHosts?.['platform.api-gateway'];
@@ -412,7 +520,7 @@ function ensurePlatformSurface(spec, deploymentProfiles) {
     spec.surfaces['platform.api-gateway'] = {
       connectivityPlane: 'platform',
       protocols: ['http'],
-      httpUrlEnv: `${appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
+      httpUrlEnv: `${applicationEnvPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
       clientHttpEnv: `${clientPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
     };
   }
@@ -630,7 +738,7 @@ function ensureProfileFiles(spec, repoRoot) {
 }
 
 function createMissingEnvFiles(spec, repoRoot, dryRun, actions) {
-  const appPrefix = appPrefixFromSpec(spec);
+  const applicationEnvPrefix = applicationEnvPrefixFromSpec(spec);
   const templatePath = spec.profileFiles['standalone.development'];
   const templateAbs = templatePath ? path.join(repoRoot, templatePath) : null;
   const template = templateAbs && fs.existsSync(templateAbs) ? fs.readFileSync(templateAbs, 'utf8') : null;
@@ -643,9 +751,9 @@ function createMissingEnvFiles(spec, repoRoot, dryRun, actions) {
     if (profileId === 'cloud.development') {
       const lines = [
         '# cloud.development - configure deployed development API URLs before use',
-        `${appPrefix}_DEPLOYMENT_PROFILE=cloud`,
-        `${appPrefix}_ENVIRONMENT=development`,
-        `${appPrefix}_PROFILE_ID=cloud.development`,
+        `${applicationEnvPrefix}_DEPLOYMENT_PROFILE=cloud`,
+        `${applicationEnvPrefix}_ENVIRONMENT=development`,
+        `${applicationEnvPrefix}_PROFILE_ID=cloud.development`,
         '',
       ];
       for (const surfaceId of ['application.public-ingress', 'platform.api-gateway']) {
@@ -663,9 +771,9 @@ function createMissingEnvFiles(spec, repoRoot, dryRun, actions) {
       const [deploymentProfile, environment] = profileId.split('.');
       const lines = [
         `# ${profileId}`,
-        `${appPrefix}_DEPLOYMENT_PROFILE=${deploymentProfile}`,
-        `${appPrefix}_ENVIRONMENT=${environment}`,
-        `${appPrefix}_PROFILE_ID=${profileId}`,
+        `${applicationEnvPrefix}_DEPLOYMENT_PROFILE=${deploymentProfile}`,
+        `${applicationEnvPrefix}_ENVIRONMENT=${environment}`,
+        `${applicationEnvPrefix}_PROFILE_ID=${profileId}`,
         '',
       ];
       if (deploymentProfile === 'standalone') {
@@ -740,6 +848,13 @@ function migrateProfileFilesKeys(spec) {
   for (const [profileId, relativePath] of Object.entries(spec.profileFiles)) {
     spec.profileFiles[profileId] = migrateProfilePath(relativePath, profileId, profileId);
   }
+  return spec;
+}
+
+function retireDatabaseTopologyConfig(spec, actions) {
+  if (spec.database === undefined) return spec;
+  actions.push('remove retired topology database config; use SDKWORK_DATABASE_*');
+  delete spec.database;
   return spec;
 }
 
@@ -849,8 +964,8 @@ function deriveAppMeta(repoRoot) {
   }
 
   const appId = repoAppId;
-  const appPrefix = `SDKWORK_${appId.replace(/^sdkwork-/, '').replace(/-/g, '_').toUpperCase()}`;
-  return { appId, appPrefix, manifest };
+  const applicationEnvPrefix = `SDKWORK_${appId.replace(/^sdkwork-/, '').replace(/-/g, '_').toUpperCase()}`;
+  return { appId, applicationEnvPrefix, manifest };
 }
 
 function findApiServer(repoRoot) {
@@ -889,6 +1004,7 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
     schemaVersion: 5,
     kind: 'sdkwork.app.topology',
     appId: meta.appId,
+    applicationCode: appSlug.replace(/-/g, '_'),
     archetype: 'application-http-gateway',
     profileRoot: 'etc/topology',
     profilePattern: '{deploymentProfile}.{environment}.env',
@@ -906,30 +1022,30 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
     },
     profileFiles: {},
     envKeys: {
-      deploymentProfile: `${meta.appPrefix}_DEPLOYMENT_PROFILE`,
-      environment: `${meta.appPrefix}_ENVIRONMENT`,
-      profileId: `${meta.appPrefix}_PROFILE_ID`,
-      clientDeploymentProfile: `VITE_${meta.appPrefix}_DEPLOYMENT_PROFILE`,
-      standaloneGatewayBind: `${meta.appPrefix}_APPLICATION_PUBLIC_INGRESS_BIND`,
+      deploymentProfile: `${meta.applicationEnvPrefix}_DEPLOYMENT_PROFILE`,
+      environment: `${meta.applicationEnvPrefix}_ENVIRONMENT`,
+      profileId: `${meta.applicationEnvPrefix}_PROFILE_ID`,
+      clientDeploymentProfile: `VITE_${meta.applicationEnvPrefix}_DEPLOYMENT_PROFILE`,
+      standaloneGatewayBind: `${meta.applicationEnvPrefix}_APPLICATION_PUBLIC_INGRESS_BIND`,
       ...(supportsCloud ? {
-        clientApiGatewayBaseUrl: `VITE_${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
-        apiGatewayBaseUrl: `${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
+        clientApiGatewayBaseUrl: `VITE_${meta.applicationEnvPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
+        apiGatewayBaseUrl: `${meta.applicationEnvPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
       } : {}),
     },
     surfaces: {
       'application.public-ingress': {
         connectivityPlane: 'application',
         protocols: ['http'],
-        bindEnv: `${meta.appPrefix}_APPLICATION_PUBLIC_INGRESS_BIND`,
-        httpUrlEnv: `${meta.appPrefix}_APPLICATION_PUBLIC_HTTP_URL`,
-        clientHttpEnv: `VITE_${meta.appPrefix}_APPLICATION_PUBLIC_HTTP_URL`,
+        bindEnv: `${meta.applicationEnvPrefix}_APPLICATION_PUBLIC_INGRESS_BIND`,
+        httpUrlEnv: `${meta.applicationEnvPrefix}_APPLICATION_PUBLIC_HTTP_URL`,
+        clientHttpEnv: `VITE_${meta.applicationEnvPrefix}_APPLICATION_PUBLIC_HTTP_URL`,
       },
       ...(supportsCloud ? {
         'platform.api-gateway': {
           connectivityPlane: 'platform',
           protocols: ['http'],
-          httpUrlEnv: `${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
-          clientHttpEnv: `VITE_${meta.appPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
+          httpUrlEnv: `${meta.applicationEnvPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
+          clientHttpEnv: `VITE_${meta.applicationEnvPrefix}_PLATFORM_API_GATEWAY_HTTP_URL`,
         },
       } : {}),
     },
@@ -939,7 +1055,6 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
         'platform.api-gateway': { httpHost: 'api.sdkwork.com' },
       } : {}),
     },
-    database: { appPrefix: meta.appPrefix },
     components: {
       applicationServer: { crate: api.crate, binary: api.binary },
     },
@@ -953,15 +1068,31 @@ function bootstrapTopology(repoRoot, dryRun, actions) {
   return spec;
 }
 
-function alignRepo(repoRoot, dryRun) {
+function alignRepo(repoRoot, dryRun, { retireDatabaseConfigOnly = false } = {}) {
   const actions = [];
   const specPath = path.join(repoRoot, 'specs/topology.spec.json');
   const originalSpecText = fs.existsSync(specPath) ? fs.readFileSync(specPath, 'utf8') : null;
-  let spec = fs.existsSync(specPath) ? readJson(specPath) : bootstrapTopology(repoRoot, dryRun, actions);
+  const originalSpec = fs.existsSync(specPath) ? readJson(specPath) : null;
+  let spec = originalSpec ? structuredClone(originalSpec) : bootstrapTopology(repoRoot, dryRun, actions);
   if (!spec) return actions;
+  if (retireDatabaseConfigOnly) {
+    spec = ensureApplicationCode(spec);
+    spec = retireDatabaseTopologyConfig(spec, actions);
+    if (actions.length === 0) return actions;
+    const nextSpecText = originalSpecText && originalSpec
+      ? formatDatabaseRetirementSpec(originalSpecText, originalSpec, spec)
+      : `${JSON.stringify(spec, null, 2)}\n`;
+    if (originalSpecText !== nextSpecText) {
+      actions.push('write specs/topology.spec.json');
+      if (!dryRun) fs.writeFileSync(specPath, nextSpecText, 'utf8');
+    }
+    return actions;
+  }
   if (isDeclaredLibraryOnlyLegacyTopology(spec)) return actions;
   const deploymentProfiles = declaredDeploymentProfiles(repoRoot, spec);
 
+  spec = ensureApplicationCode(spec);
+  spec = retireDatabaseTopologyConfig(spec, actions);
   spec = ensureDeploymentVocabulary(spec, deploymentProfiles);
   spec = migrateEnvKeys(spec);
   spec = migrateDefaults(spec, deploymentProfiles);
@@ -998,6 +1129,8 @@ function main() {
       'dry-run': { type: 'boolean', default: false },
       repo: { type: 'string' },
       'bootstrap-missing': { type: 'boolean', default: true },
+      'no-bootstrap-missing': { type: 'boolean', default: false },
+      'retire-database-config-only': { type: 'boolean', default: false },
       help: { type: 'boolean', default: false },
     },
   });
@@ -1008,26 +1141,30 @@ function main() {
 
   const workspace = path.resolve(values.workspace);
   const dryRun = values['dry-run'];
-  const repos = values.repo
+  const bootstrapMissing = values['bootstrap-missing'] && !values['no-bootstrap-missing'];
+  const retireDatabaseConfigOnly = values['retire-database-config-only'];
+  const repoCandidates = values.repo
     ? [path.join(workspace, values.repo)]
-    : walkRepos(workspace).filter((repo) => {
-        const name = path.basename(repo);
-        if (name === 'sdkwork-api-cloud-gateway' || name === 'sdkwork-app-topology' || name === 'sdkwork-specs') {
-          return false;
-        }
-        const hasTopology = fs.existsSync(path.join(repo, 'specs/topology.spec.json'));
-        if (hasTopology) return true;
-        if (!values['bootstrap-missing']) return false;
-        return (
-          fs.existsSync(path.join(repo, 'sdkwork.app.config.json')) &&
-          fs.existsSync(path.join(repo, 'Cargo.toml'))
-        );
-      });
+    : walkRepos(workspace);
+  const repos = repoCandidates.filter((repo) => {
+    const name = path.basename(repo);
+    if (!values.repo
+      && (name === 'sdkwork-api-cloud-gateway' || name === 'sdkwork-app-topology' || name === 'sdkwork-specs')) {
+      return false;
+    }
+    const hasTopology = fs.existsSync(path.join(repo, 'specs/topology.spec.json'));
+    if (hasTopology) return true;
+    if (!bootstrapMissing) return false;
+    return (
+      fs.existsSync(path.join(repo, 'sdkwork.app.config.json'))
+      && fs.existsSync(path.join(repo, 'Cargo.toml'))
+    );
+  });
 
   let totalActions = 0;
   for (const repoRoot of repos) {
     const name = path.basename(repoRoot);
-    const actions = alignRepo(repoRoot, dryRun);
+    const actions = alignRepo(repoRoot, dryRun, { retireDatabaseConfigOnly });
     if (actions.length === 0) continue;
     console.log(`\n${name}${dryRun ? ' (dry-run)' : ''}:`);
     for (const action of actions) console.log(`  - ${action}`);
