@@ -12,6 +12,7 @@
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-application-bootstrap",
       "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-pc-react",
       "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-runtime-pc-react",
+      "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-user-center-core-pc-react",
       "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-iam-react",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-credential-entry",
       "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript",
@@ -20,6 +21,7 @@
       "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-appbase-pc-react",
       "../sdkwork-appbase/packages/pc-react/foundation/sdkwork-i18n-pc-react",
       "../sdkwork-core/sdkwork-core-pc-react",
+      "../sdkwork-ui/sdkwork-ui-mobile-react",
       "../sdkwork-utils/packages/sdkwork-utils-typescript",
       "../sdkwork-iam/sdks/sdkwork-iam-open-sdk/sdkwork-iam-open-sdk-typescript"
     ]
