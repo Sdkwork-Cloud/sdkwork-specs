@@ -68,3 +68,44 @@ test('workspace consumers resolve sibling internal SDK family ownership', () => 
     fs.rmSync(workspace, { force: true, recursive: true });
   }
 });
+
+test('workspace consumers resolve an SDK family whose directory stem omits the sdkwork prefix', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-sdk-manifest-family-stem-'));
+  try {
+    const consumer = path.join(workspace, 'sdkwork-web');
+    const owner = path.join(workspace, 'sdkwork-clawrouter');
+    fs.mkdirSync(path.join(consumer, 'specs'), { recursive: true });
+    fs.mkdirSync(path.join(owner, 'specs'), { recursive: true });
+    fs.mkdirSync(path.join(owner, 'sdks', 'clawrouter-app-sdk'), { recursive: true });
+    fs.writeFileSync(path.join(consumer, 'specs', 'component.spec.json'), '{}\n', 'utf8');
+    fs.writeFileSync(path.join(owner, 'specs', 'component.spec.json'), '{}\n', 'utf8');
+    fs.writeFileSync(
+      path.join(owner, 'sdks', 'clawrouter-app-sdk', 'sdk-manifest.json'),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        sdkFamily: 'clawrouter-app-sdk',
+        packageName: '@sdkwork/clawrouter-app-sdk',
+        sdkOwner: 'sdkwork-clawrouter',
+        apiAuthority: 'sdkwork-clawrouter.app',
+      }, null, 2)}\n`,
+      'utf8',
+    );
+
+    assert.deepEqual(
+      loadSdkFamilyManifestForWorkspaceConsumer(consumer, 'sdkwork-clawrouter-app-sdk'),
+      {
+        schemaVersion: 1,
+        sdkFamily: 'clawrouter-app-sdk',
+        packageName: '@sdkwork/clawrouter-app-sdk',
+        sdkOwner: 'sdkwork-clawrouter',
+        apiAuthority: 'sdkwork-clawrouter.app',
+      },
+    );
+    assert.deepEqual(
+      loadSdkFamilyManifestForWorkspaceConsumer(owner, 'sdkwork-clawrouter-app-sdk'),
+      loadSdkFamilyManifestForWorkspaceConsumer(consumer, 'sdkwork-clawrouter-app-sdk'),
+    );
+  } finally {
+    fs.rmSync(workspace, { force: true, recursive: true });
+  }
+});

@@ -168,6 +168,7 @@ function scanModuleManifestRegistry(workspaceRoot) {
     '.git',
     '.pnpm-store',
     '.runtime',
+    '.sdkwork',
     '.tmp',
     'artifacts',
     'build',
@@ -266,11 +267,12 @@ function repositoryDomain(repoRoot) {
 
 function buildPermissionComposition(repoRoot, core, deps, registry, options) {
   const existing = core.componentSpec?.contracts?.permissionComposition ?? {};
-  const refsByKey = new Map();
+  const existingRefsByKey = new Map();
   for (const ref of existing.moduleCatalogRefs ?? []) {
     const key = ref.moduleId ?? ref.manifestRef;
-    if (key) refsByKey.set(key, ref);
+    if (key) existingRefsByKey.set(key, ref);
   }
+  const refsByKey = new Map();
 
   let appManifestRef = existing.applicationModule?.manifestRef;
   const repoDomain = repositoryDomain(repoRoot);
@@ -282,7 +284,7 @@ function buildPermissionComposition(repoRoot, core, deps, registry, options) {
     const moduleId = manifest?.moduleId ?? resolved.moduleId;
     const manifestRef = relativeManifestRef(core.packageDir, resolved.manifestPath);
     const depCandidates = new Set(moduleCandidatesForDependency(dep));
-    const existingRef = refsByKey.get(moduleId) ?? refsByKey.get(manifestRef);
+    const existingRef = existingRefsByKey.get(moduleId) ?? existingRefsByKey.get(manifestRef);
     refsByKey.set(moduleId, {
       ...(existingRef ?? {}),
       moduleId,
@@ -291,7 +293,7 @@ function buildPermissionComposition(repoRoot, core, deps, registry, options) {
       inheritRoles: existingRef?.inheritRoles ?? moduleId !== 'iam-kernel',
     });
 
-    if (!appManifestRef && (depCandidates.has(repoDomain) || moduleId === repoDomain || manifest?.domain === repoDomain)) {
+    if (depCandidates.has(repoDomain) || moduleId === repoDomain || manifest?.domain === repoDomain) {
       appManifestRef = manifestRef;
     }
   }

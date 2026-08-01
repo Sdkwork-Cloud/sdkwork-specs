@@ -49,6 +49,19 @@ function createCoreSpec(root) {
           credentialMode: 'authenticated-app-api',
         },
       ],
+      permissionComposition: {
+        applicationModule: {
+          manifestRef: '../../../specs/iam.module.manifest.json',
+        },
+        moduleCatalogRefs: [
+          {
+            moduleId: 'retired-module',
+            manifestRef: '../../../../../../sdkwork-retired/specs/iam.module.manifest.json',
+            inheritPermissions: true,
+            inheritRoles: true,
+          },
+        ],
+      },
     },
   });
 }
@@ -102,6 +115,16 @@ test('aligner materializes permissionComposition from HTTP sdkDependencies', () 
   assert.deepEqual(
     spec.contracts.permissionComposition.moduleCatalogRefs.map((entry) => entry.moduleId).sort(),
     ['drive', 'shop'],
+  );
+  assert.equal(
+    spec.contracts.permissionComposition.applicationModule.manifestRef,
+    '../../../../specs/iam.module.manifest.json',
+  );
+  assert.equal(
+    spec.contracts.permissionComposition.moduleCatalogRefs.some(
+      (entry) => entry.moduleId === 'retired-module',
+    ),
+    false,
   );
 });
 
@@ -164,4 +187,48 @@ test('aligner resolves SDK dependency to sibling IMF module identity', () => {
       inheritRoles: true,
     },
   ]);
+});
+
+test('aligner ignores temporary .sdkwork permission manifests', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-permission-align-metadata-'));
+  const root = path.join(workspace, 'sdkwork-shop');
+  createCoreSpec(root);
+  writeJson(path.join(root, 'specs/iam.module.manifest.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.iam.module',
+    moduleId: 'shop',
+    domain: 'shop',
+    permissions: { catalog: [] },
+  });
+  writeJson(path.join(workspace, 'sdkwork-drive/specs/iam.module.manifest.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.iam.module',
+    moduleId: 'drive',
+    domain: 'drive',
+    permissions: { catalog: [] },
+  });
+  writeJson(path.join(workspace, '.sdkwork/tmp/sdkwork-drive-rebuild/specs/iam.module.manifest.json'), {
+    schemaVersion: 1,
+    kind: 'sdkwork.iam.module',
+    moduleId: 'drive',
+    domain: 'drive',
+    permissions: { catalog: [] },
+  });
+
+  const align = spawnSync(process.execPath, [ALIGNER, '--root', root, '--write'], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(align.status, 0, align.stderr);
+  const spec = JSON.parse(
+    fs.readFileSync(
+      path.join(root, 'apps/sdkwork-shop-h5/packages/sdkwork-shop-h5-core/specs/component.spec.json'),
+      'utf8',
+    ),
+  );
+  const driveRef = spec.contracts.permissionComposition.moduleCatalogRefs.find(
+    (entry) => entry.moduleId === 'drive',
+  );
+  assert.equal(driveRef?.manifestRef, '../../../../../sdkwork-drive/specs/iam.module.manifest.json');
+  assert.equal(driveRef?.manifestRef.includes('.sdkwork'), false);
 });

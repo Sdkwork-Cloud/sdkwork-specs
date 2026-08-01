@@ -112,17 +112,40 @@ export function collectParallelSdkRegistryViolations(workspaceRoot) {
 }
 
 export function loadSdkFamilyManifestFromFamilyMetadata(repoRoot, workspace) {
-  const candidates = [path.join(repoRoot, 'sdks', workspace, 'sdk-manifest.json')];
+  const sdkRoots = [path.join(repoRoot, 'sdks')];
   const appsDir = path.join(repoRoot, 'apps');
   for (const app of fs.existsSync(appsDir)
     ? fs.readdirSync(appsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory())
     : []) {
-    candidates.push(path.join(appsDir, app.name, 'sdks', workspace, 'sdk-manifest.json'));
+    sdkRoots.push(path.join(appsDir, app.name, 'sdks'));
   }
 
+  const candidates = sdkRoots.map((sdkRoot) => path.join(sdkRoot, workspace, 'sdk-manifest.json'));
   for (const candidate of candidates) {
     if (!fs.existsSync(candidate)) continue;
     return readJson(candidate);
+  }
+
+  const consumerPackageName = `@sdkwork/${workspace.replace(/^sdkwork-/u, '')}`;
+  for (const sdkRoot of sdkRoots) {
+    if (!fs.existsSync(sdkRoot)) continue;
+    for (const family of fs.readdirSync(sdkRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .sort((left, right) => left.name.localeCompare(right.name))) {
+      const candidate = path.join(sdkRoot, family.name, 'sdk-manifest.json');
+      if (!fs.existsSync(candidate)) continue;
+      const manifest = readJson(candidate);
+      const manifestNames = [
+        manifest.workspace,
+        manifest.sdkFamily,
+        manifest.sdkName,
+        manifest.packageName,
+        manifest.consumerPackageName,
+      ];
+      if (manifestNames.includes(workspace) || manifestNames.includes(consumerPackageName)) {
+        return manifest;
+      }
+    }
   }
   return null;
 }
