@@ -1,6 +1,6 @@
 # Supply Chain Security Standard
 
-- Version: 1.0
+- Version: 1.1
 - Scope: dependency integrity, build integrity, artifact signing, SBOM, provenance, attestations, release supply-chain evidence
 - Related: `SECURITY_SPEC.md`, `PRIVACY_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `APP_MANIFEST_SPEC.md`, `RELEASE_SPEC.md`, `QUALITY_GATE_SPEC.md`, `CODE_REVIEW_SPEC.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `SDK_PACKAGE_NAMING_SPEC.md`, `SDK_MANIFEST_SPEC.md`, `DOCUMENTATION_SPEC.md`, `TEST_SPEC.md`, `GOVERNANCE_SPEC.md`
 
@@ -36,6 +36,10 @@ Rules:
 - Native build-tool dependency declarations, source/build dependency paths, release checkout refs, stale dependency cleanup, and dependency-owned SDK/API boundaries must follow `DEPENDENCY_MANAGEMENT_SPEC.md`.
 - Dependencies with known critical vulnerabilities require remediation, mitigation, or an approved exception.
 - New third-party runtime dependencies should have license, maintenance, security, and package-source review.
+- Source dependencies under `external/`, `third_party/`, or `vendor/` `MUST` record an immutable upstream revision or release identity, canonical source location, license review, and the native lockfile or dependency-graph impact.
+- Verification `MUST` prove a packaged upstream source tree is unchanged from its recorded revision. Local patches, untracked SDKWork-authored files, generated output, and runtime state invalidate that evidence.
+- Packaged applications that embed upstream source dependencies `MUST` include those dependencies in SBOM/provenance and record the exact upstream revision used by the build.
+- Upstream upgrades `MUST` be reviewed as dedicated dependency changes so source diff, license, vulnerability, lockfile, feature, and native-link impact remain attributable.
 
 ## 3. Build Integrity
 
@@ -136,6 +140,7 @@ Rules:
 ## 8. Acceptance Checklist
 
 - [ ] Dependency refs and lockfiles are traceable.
+- [ ] Read-only upstream source revisions, canonical sources, licenses, clean-tree evidence, and packaged SBOM/provenance entries are traceable.
 - [ ] Build environment and toolchains are declared.
 - [ ] Generated artifacts trace to source contracts and generator inputs.
 - [ ] Artifacts have checksums.

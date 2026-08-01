@@ -1,6 +1,6 @@
 # AGENTS.md Standard
 
-- Version: 1.0
+- Version: 1.1
 - Scope: repository, application, and component-level `AGENTS.md` files used by SDKWork agents and AI-assisted development tools, plus tool compatibility shims such as `CLAUDE.md`, `GEMINI.md`, and `CODEX.md`
 - Related: `SOUL.md`, `SDKWORK_WORKSPACE_SPEC.md`, `APP_MANIFEST_SPEC.md`, `COMPONENT_SPEC.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, `CODE_STYLE_SPEC.md`, `NAMING_SPEC.md`, `TEST_SPEC.md`
 
@@ -128,6 +128,7 @@ Rules:
 | Rust HTTP route crates / gateways / migration-only API servers | `COMPOSABLE_ARCHITECTURE_SPEC.md`, `API_SPEC.md`, `SUBJECT_ID_SPEC.md` when SQL subject scope is involved, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `RUST_CODE_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md` |
 | Database changes | `DATABASE_SPEC.md`, `SUBJECT_ID_SPEC.md` when tenant/user subject columns are involved, `PRIVACY_SPEC.md`, `TEST_SPEC.md` |
 | SDK generation/consumption | `COMPOSABLE_ARCHITECTURE_SPEC.md` when dependency SDKs, runtime surfaces, or component ports are touched, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md` when RPC SDKs are touched, `API_SPEC.md`, `TEST_SPEC.md` |
+| Read-only upstream source under `external/`, `third_party/`, or `vendor/` | `DEPENDENCY_MANAGEMENT_SPEC.md`, `INTEGRATION_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `TEST_SPEC.md`, plus only the touched language/framework spec |
 | Composable module or dependency integration | `COMPOSABLE_ARCHITECTURE_SPEC.md`, `COMPONENT_SPEC.md`, `MODULE_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `TEST_SPEC.md`, plus the touched frontend/Rust/API specs |
 | RPC contracts / gRPC services | `RPC_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `DISCOVERY_SPEC.md`, `RPC_RESILIENCE_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md` |
 | Service discovery / dynamic RPC resolution | `DISCOVERY_SPEC.md`, `RPC_FRAMEWORK_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `TEST_SPEC.md` |
@@ -148,6 +149,7 @@ Language specs are on-demand. Do not require agents to load Rust, Java, TypeScri
 - `specs/`: module-local spec systems (`README.md`, `component.spec.json`, optional narrowing extensions) for authored apps, packages, crates, services, and SDK families; repository/application root `specs/` for cross-module machine contracts such as topology manifests.
 - `docs/`: repository/application documentation layout; Canon entrypoints are `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 - `sdks/`: SDK families, family manifests, OpenAPI authorities, derived generator inputs, route manifests, and generated outputs.
+- `external/`, `third_party/`, `vendor/`: optional read-only upstream source dependencies; native build tools may consume them, but agents and SDKWork tooling must never modify them.
 - language manifests such as `package.json`, `Cargo.toml`, `pom.xml`, `pyproject.toml`, or `pubspec.yaml`.
 
 ## 7. Template
@@ -176,6 +178,7 @@ Read `sdkwork.app.config.json` for application identity, registration, SDK/API i
 - `specs/`: module-local spec systems for authored packages, crates, services, and SDK families; repository/application root `specs/` for cross-module machine contracts.
 - `docs/`: Canon documentation at `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 - `sdks/`: OpenAPI authorities and SDK generation artifacts.
+- `external/`, `third_party/`, `vendor/`: optional read-only upstream source dependencies; consume through native build tools and never modify their contents.
 - `etc/`: deployable-root source configuration; required only for independently deployable applications and process hosts.
 
 ## Spec Resolution Order

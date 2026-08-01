@@ -21,6 +21,14 @@ test('accepts tool-native generated directories', () => {
   assert.deepEqual(validateWorkspaceLayout(root), []);
 });
 
+test('excludes read-only upstream source roots from authored-source layout scanning', () => {
+  const root = temporaryDirectory();
+  for (const directory of ['external', 'third_party', 'vendor']) {
+    fs.mkdirSync(path.join(root, directory, 'upstream-project', '.runtime'), { recursive: true });
+  }
+  assert.deepEqual(validateWorkspaceLayout(root), []);
+});
+
 test('rejects root and nested runtime directories without inspecting their contents', () => {
   const root = temporaryDirectory();
   fs.mkdirSync(path.join(root, '.runtime', 'large-cache'), { recursive: true });

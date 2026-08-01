@@ -15,6 +15,7 @@ const RECURSION_SKIP_DIRECTORIES = new Set([
   'external',
   'node_modules',
   'target',
+  'third_party',
   'vendor',
 ]);
 const COMPETING_ROOT_DIRECTORIES = new Map([

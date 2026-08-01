@@ -1,6 +1,6 @@
 # Test And Verification Standard
 
-- Version: 1.4
+- Version: 1.5
 - Scope: contract tests, SDK/RPC generation tests, backend tests, frontend tests, parity tests, security tests
 - Related: all specs
 
@@ -171,6 +171,21 @@ Rules:
 - New SDKWork v3 open-api, app-api, and backend-api generation tests `MUST` run the SDK generator with `--standard-profile sdkwork-v3`.
 - New standard RPC contracts `SHOULD` run proto lint and breaking-change checks.
 - Breaking changes `MUST` fail compatibility tests unless explicitly approved in `GOVERNANCE_SPEC.md`.
+- Repositories that consume source under `external/`, `third_party/`, or `vendor/` `MUST` include a
+  read-only source check that compares the consumed tree with its pinned upstream revision and fails
+  on local patches, SDKWork-authored files, generated output, or runtime state.
+- Upstream runtime integration tests `MUST` prove the production adapter uses the upstream public
+  facade, client, protocol, or service API. When such a surface exists, static checks `MUST` reject
+  production code that queries provider-owned databases, probes private schemas, parses rollout/log
+  files, or imports private implementation modules for the same capability.
+- Rust direct-source integration tests `MUST` inspect `cargo metadata`, lockfile changes, feature
+  resolution, and native `links` providers. The build `MUST` fail or select the official upstream
+  process/protocol boundary when native link compatibility cannot be achieved without modifying the
+  upstream source.
+- Codex provider tests `MUST` prove session/message and command behavior passes through
+  `codex-app-server-client` plus `codex-app-server-protocol`, or through the official Codex app-server
+  process protocol when isolation is required. Production access to `~/.codex/state_*.sqlite`, private
+  Codex tables, or rollout JSONL is forbidden.
 
 ## 2.0 Repository Workspace Tests
 
@@ -1426,6 +1441,7 @@ Rules:
 - [ ] Repository/application `.sdkwork/skills/` and `.sdkwork/plugins/` checks pass when a repository root or application root is created or maintained.
 - [ ] Standard top-level directory checks pass when a repository root or application root is created or maintained.
 - [ ] Generated-state layout checks prove `.runtime/` is absent and tool/OS-native state placement is used.
+- [ ] Read-only upstream source checks, public-facade integration tests, dependency-graph/native-link checks, and packaged provenance evidence pass when `external/`, `third_party/`, or `vendor/` is consumed.
 - [ ] `apps/README.md` directory index checks pass for independent application repositories.
 - [ ] `apis/` and `sdks/` boundary checks pass when API contracts or SDK generation are touched.
 - [ ] OpenAPI/SDK generation verification passes under `SDK_SPEC.md`.

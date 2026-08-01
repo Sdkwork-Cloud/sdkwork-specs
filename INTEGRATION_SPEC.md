@@ -1,8 +1,8 @@
 # External Integration Standard
 
-- Version: 1.0
-- Scope: third-party providers, connectors, webhooks, OAuth links, external IDs, retries, integration SDKs
-- Related: `DOMAIN_SPEC.md`, `API_SPEC.md`, `DATABASE_SPEC.md`, `EVENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
+- Version: 1.1
+- Scope: third-party providers, embedded upstream runtimes, connectors, webhooks, OAuth links, external IDs, retries, integration SDKs
+- Related: `DOMAIN_SPEC.md`, `API_SPEC.md`, `DATABASE_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `MIGRATION_SPEC.md`, `PRIVACY_SPEC.md`, `EVENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines how SDKWork connects to external systems without leaking provider-specific behavior into shared foundation modules.
 
@@ -55,6 +55,26 @@ Rules:
 - Provider capability gaps `MUST` return standard unavailable/unsupported errors, not silently degrade.
 - Provider adapters `SHOULD` be replaceable without changing shared domain contracts.
 
+## 2.1 Upstream Runtime Facades And Provider-Owned State
+
+An embedded or locally installed upstream runtime may own databases, rollout files, logs, caches, indexes, and other state. Those artifacts are implementation details unless the upstream project explicitly publishes them as a supported, versioned integration contract.
+
+Rules:
+
+- When an upstream runtime publishes a facade, client, protocol, SDK, or service API for a capability, production consumers `MUST` use that public surface.
+- Provider-owned runtime state, including SQLite databases, JSONL rollouts, caches, logs, and schema details, `MUST NOT` be treated as a live integration API for listing sessions, reading messages, sending commands, or observing lifecycle state.
+- Production adapters `MUST NOT` issue raw queries against provider-owned tables, probe provider schemas with statements such as `PRAGMA table_info`, derive records from private rollout paths, or manually reconstruct provider events when the public facade provides the capability.
+- A thin SDKWork adapter `MAY` map SDKWork canonical contracts, configuration, credentials, security boundaries, lifecycle, errors, and observability onto the upstream facade. It `MUST NOT` duplicate the upstream command processor, session model, event projection, or persistence implementation.
+- Direct provider-state access is permitted only in an explicitly named offline migration, recovery, or forensic tool when no supported export API can satisfy the task. Such access `MUST` be read-only by default, pinned to a documented provider version, isolated from the production runtime path, tested against fixtures, and governed by `MIGRATION_SPEC.md`, `PRIVACY_SPEC.md`, and `SECURITY_SPEC.md`.
+- If native embedding cannot produce a compatible dependency graph or native link set, the fallback `MUST` use the upstream project's official executable and typed process protocol. A private database or log format is not a valid compatibility fallback.
+
+Codex integration:
+
+- SDKWork Codex providers `MUST` use `codex-app-server-client` with `codex-app-server-protocol` for direct Rust embedding when the dependency graph is compatible.
+- `codex-app-server-client` is the upstream in-process app-server facade; SDKWork code should depend on it instead of constructing `codex-core` or `codex-state` internals directly.
+- If process isolation is required, the provider `MUST` use the official Codex app-server process and protocol.
+- `~/.codex/state_*.sqlite`, rollout JSONL, and private Codex state schemas `MUST NOT` be the production session or message integration surface.
+
 ## 3. External Identity And Linking
 
 Standard fields:
@@ -106,6 +126,9 @@ Rules:
 ## 7. Acceptance Checklist
 
 - [ ] Provider-specific behavior is isolated behind adapter/connector boundary.
+- [ ] Embedded upstream runtimes are integrated through their public facade/client/protocol.
+- [ ] Production code does not read provider-owned databases, rollouts, logs, caches, or private schemas as an integration API.
+- [ ] Codex integration uses the app-server client/protocol and does not depend on `~/.codex/state_*.sqlite`.
 - [ ] External IDs include provider boundary.
 - [ ] Credentials are secret-managed and never logged.
 - [ ] Webhooks verify signatures and process idempotently.

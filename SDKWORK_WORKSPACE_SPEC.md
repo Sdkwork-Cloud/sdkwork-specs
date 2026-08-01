@@ -1,8 +1,8 @@
 # SDKWork Repository Workspace Standard
 
-- Version: 1.0
-- Scope: standard project root directory dictionary and source-controlled `.sdkwork/` workspace metadata at every git repository root and every SDKWork application root
-- Related: `README.md`, `SOUL.md`, `AGENTS_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Version: 1.1
+- Scope: standard project root directory dictionary, read-only upstream source boundaries, and source-controlled `.sdkwork/` workspace metadata at every git repository root and every SDKWork application root
+- Related: `README.md`, `SOUL.md`, `AGENTS_SPEC.md`, `DEPENDENCY_MANAGEMENT_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `APPLICATION_SPEC.md`, `COMPONENT_SPEC.md`, `DOCUMENTATION_SPEC.md`, `GOVERNANCE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 This standard defines the repository/application root directory dictionary and the `.sdkwork/` directory. `.sdkwork/` is the local knowledge and extension workspace for SDKWork development. It stores reusable skills, repository-local plugins, and optional machine-readable workspace manifests that help agents, developers, and CI use the same standards.
 
@@ -10,13 +10,14 @@ Every SDKWork git repository root and every SDKWork application root `MUST` cont
 
 ## 1. Directory Meanings
 
-There are three different SDKWork path families that must not be mixed:
+There are four different SDKWork path families that must not be mixed:
 
 | Path family | Owner | Purpose | Governing spec |
 | --- | --- | --- | --- |
 | `<repo-or-application-root>/.sdkwork/` | repository/application maintainers | Source-controlled workspace metadata, common skills, local plugins, optional manifests | this file |
 | `<generated-sdk-output>/.sdkwork/sdkwork-generator-*.json` | `sdkgen` | Generated SDK control-plane reports and manifests; required for HTTP/OpenAPI output and optional for RPC release, CI, audit, or migration evidence | `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `RPC_SDK_WORKSPACE_SPEC.md` |
 | `~/.sdkwork/<application-code>` or `%USERPROFILE%\.sdkwork\<application-code>` | runtime user/process | User-private runtime config, data, cache, logs, secrets, temp files | `RUNTIME_DIRECTORY_SPEC.md` |
+| `<repo-or-application-root>/{external,third_party,vendor}/` | upstream project or vendor | Optional pinned source consumed read-only through native build tools | `DEPENDENCY_MANAGEMENT_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md` |
 
 In addition, SDKWork source dependency paths declared in `pnpm-workspace.yaml`, root `Cargo.toml`, and root `pubspec.yaml` are workspace-root owned. Sibling SDKWork repositories are consumed through these native build-tool mechanisms; the workspace root is the single source of truth for those paths, and member packages consume them by protocol (`workspace:*`, `{ workspace = true }`, package name).
 
@@ -31,6 +32,8 @@ Rules:
 - Multi-repository SDKWork workspaces `MUST` declare sibling SDKWork source paths in native build-tool workspace roots (`pnpm-workspace.yaml packages:`, `Cargo.toml [workspace.dependencies]`, or root `pubspec.yaml dependency_overrides`), not in `.sdkwork/`.
 - A member package `MUST NOT` redeclare a sibling SDKWork source path; it consumes the workspace root entry by native protocol.
 - A SDKWork workspace root `SHOULD` be co-located with the SDKWork application root or git repository root. A workspace root that is not a git repository root is allowed only when explicitly documented.
+- `external/`, `third_party/`, and `vendor/` are not SDKWork-authored source roots. They `MUST` remain read-only, `MUST NOT` contain SDKWork runtime state or generated output, and `MUST NOT` be assigned SDKWork component-spec ownership.
+- Native build tools `MAY` depend directly on public packages, crates, or modules under these upstream roots according to `DEPENDENCY_MANAGEMENT_SPEC.md` section 3.2.
 
 ## 1.1 Standard Project Root Directories
 
@@ -177,6 +180,18 @@ Directory meanings:
 | `scripts/` | Thin command entrypoints for build, verification, generation, migration, packaging, and release workflows | Shell/Node/Python/PowerShell command wrappers are needed |
 | `docs/` | Repository/application documentation layout, Canon product PRD, technical architecture, requirements, architecture decisions, guides, runbooks, changelogs, and user/developer docs | Documentation is authored beyond root README files |
 | `tests/` | Cross-package tests, contract tests, integration tests, end-to-end tests, fixtures, and static verification inputs | Verification exists outside package-local test directories |
+
+### 1.1.3 Read-Only Upstream Source Roots
+
+`external/`, `third_party/`, and `vendor/` are optional upstream-source exceptions to the authored-capability dictionary above. They are not alternative names for SDKWork-owned `packages/`, `crates/`, `sdks/`, or `tools/`.
+
+Rules:
+
+- These roots `MAY` contain a pinned upstream checkout, submodule, subtree, or release source snapshot when direct source consumption is required.
+- Their contents `MUST` remain unchanged from the recorded upstream revision. SDKWork-authored adapters, patches, tests, manifests, generated files, and runtime state belong outside the upstream tree.
+- SDKWork component specs are not required inside an unmodified upstream tree. The consuming SDKWork adapter or owning integration module `MUST` carry the local contract and verification evidence.
+- Repository layout, code-style, naming, and authored-source validators `MUST` exclude these trees from SDKWork-authored source enforcement. Dependency, license, provenance, immutability, and packaging validators `MUST` still inspect the evidence required by `DEPENDENCY_MANAGEMENT_SPEC.md` and `SUPPLY_CHAIN_SECURITY_SPEC.md`.
+- An upstream source root `MUST NOT` be used for user-private data, provider runtime databases, caches, logs, temporary files, or SDKWork build output.
 
 Recommended initial skeleton:
 
@@ -792,6 +807,7 @@ Repository/application workspace verification `MUST` check:
 - Generated SDK output `.sdkwork/sdkwork-generator-*.json` remains under generated SDK output and is not treated as a repository/application workspace.
 - Runtime `~/.sdkwork/<application-code>` directories are not copied into source.
 - Multi-repository SDKWork source dependency paths are declared only in `pnpm-workspace.yaml packages:`, root `Cargo.toml [workspace.dependencies]`, or root `pubspec.yaml dependency_overrides`; member packages do not redeclare sibling source paths.
+- Optional `external/`, `third_party/`, and `vendor/` roots are treated as read-only upstream source, remain unchanged from their pinned revisions, and receive no SDKWork-authored files or runtime state.
 - `.sdkwork/manifests/*.json` does not contain SDKWork source dependency paths when native build-tool workspace roots are the declared source of truth.
 - Active top-level capabilities use the reserved project root directory names from section 1.1. Competing top-level names such as `api/`, `sdk/`, `package/`, `deploy/`, `deployment/`, or `tooling/` are rejected. Repository-root `packages/` is rejected for application repositories per section 1.1; architecture-local `config/` remains allowed only under `apps/sdkwork-<application-code>-<client-arch>/` or documented shared package-family exceptions.
 - Full new repository/application templates contain the complete standard directory dictionary with tracked placeholders or content; narrow roots that omit inactive directories document the active layout in the root README.
@@ -826,10 +842,11 @@ Repository/application workspace verification `MUST` check:
 - [ ] Reproducible outputs use tool-native ignored directories; process and test temporary state follows `RUNTIME_DIRECTORY_SPEC.md` section 5.
 - [ ] Generated SDK `.sdkwork/sdkwork-generator-*.json` files remain generator-owned and are not modified by repository workspace tooling.
 - [ ] Runtime private paths still follow `RUNTIME_DIRECTORY_SPEC.md`.
+- [ ] Optional `external/`, `third_party/`, and `vendor/` roots are read-only, pinned, free of SDKWork-authored files and runtime state, and consumed only through native build-tool declarations.
 - [ ] New repository/application templates contain the complete standard project root dictionary with tracked placeholders or content.
 - [ ] Narrow roots that omit inactive standard directories document the active layout in the root README.
 - [ ] Independent application repositories have `apps/README.md` that indexes every direct child application root and states whether the repository root is the primary runnable app surface.
-- [ ] Active repository/application capabilities use only the standard top-level directory names: `apis/`, `apps/`, `crates/`, `sdks/`, `jobs/`, `tools/`, `plugins/`, `examples/`, `etc/`, `deployments/`, `scripts/`, `docs/`, and `tests/`; `config/` and `packages/` are used only as architecture-local directories for the selected app surface root.
+- [ ] Active SDKWork-authored repository/application capabilities use only the standard top-level directory names: `apis/`, `apps/`, `crates/`, `sdks/`, `jobs/`, `tools/`, `plugins/`, `examples/`, `etc/`, `deployments/`, `scripts/`, `docs/`, and `tests/`; optional `external/`, `third_party/`, and `vendor/` roots contain read-only upstream source only, while `config/` and `packages/` are used only as architecture-local directories for the selected app surface root.
 - [ ] API contract sources, generated SDK workspaces, application/runtime plugins, agent plugins, source config templates, deployment descriptors, job definitions, worker implementations, and runtime private config are placed in their distinct standard directories.
 - [ ] Active `docs/` layouts provide Canon `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`, and new ADRs use `docs/architecture/decisions/`.
 - [ ] New repositories bootstrap `docs/` with `tools/bootstrap-repository-docs.mjs` or an equivalent tracked skeleton.

@@ -1,8 +1,8 @@
 # SDKWork Dependency Management Standard
 
-- Version: 1.2
-- Scope: native build-tool dependency management, cross-repository source paths, release dependency refs, supply-chain evidence, and dependency-owned SDK/API boundaries
-- Related: `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `API_ASSEMBLY_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
+- Version: 1.3
+- Scope: native build-tool dependency management, cross-repository source paths, read-only upstream source dependencies, release dependency refs, supply-chain evidence, and dependency-owned SDK/API boundaries
+- Related: `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `API_ASSEMBLY_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `INTEGRATION_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `SDK_SPEC.md`, `SDK_WORKSPACE_GENERATION_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `TEST_SPEC.md`, `DOCUMENTATION_SPEC.md`
 
 This standard defines how SDKWork repositories depend on other SDKWork repositories without creating a second SDKWork-specific dependency system. SDKWork dependency management is build-tool-first: pnpm, Cargo, Flutter/Dart, Gradle, Maven, Python, and other package managers remain the dependency authorities for their language and runtime. SDKWork standards add cross-repository consistency, SDK/API ownership, release refs, and supply-chain evidence only where native tools do not cover SDKWork semantics.
 
@@ -232,6 +232,38 @@ sdkwork_platform_id_service.workspace = true
 sdkwork_drive_storage_contract.workspace = true
 sdkwork_knowledgebase_contract.workspace = true
 ```
+
+## 3.2 Read-Only Upstream Source Dependencies
+
+Repository-local `external/`, `third_party/`, and `vendor/` trees are upstream source boundaries. They may be consumed directly through the language's native build tool, but they are not SDKWork-authored modules and must remain faithful to their recorded upstream revision.
+
+Rules:
+
+- A repository `MAY` consume a package, crate, or module directly from `external/`, `third_party/`, or `vendor/` when the upstream source is pinned, reviewable, license-compatible, and required by the product build.
+- The consuming workspace `MUST` declare the dependency through its native build-tool authority. Rust path dependencies `MUST` be declared exactly once in the consuming root `Cargo.toml` `[workspace.dependencies]`; member crates `MUST` use `{ workspace = true }` and must not repeat the path.
+- Consumers `MUST` prefer the upstream project's supported public facade, client, protocol, or package export. They `MUST NOT` bypass that surface through upstream internal modules, persistence schemas, cache files, logs, or private implementation details merely because the source is locally available.
+- Upstream source trees `MUST` remain unmodified relative to the recorded upstream revision. Agents, developers, formatters, generators, build repair steps, and SDKWork automation `MUST NOT` write patches, local fixes, generated files, configuration, or SDKWork-authored code into these trees.
+- Required upstream behavior changes `MUST` be contributed to and resolved by the upstream authority, or isolated in a thin SDKWork adapter outside the upstream tree. The adapter may map canonical contracts, configuration, security, lifecycle, error, and observability concerns; it `MUST NOT` copy or reimplement behavior already exposed by the upstream public facade.
+- Upstream source `MUST NOT` be copied into `crates/`, `packages/`, `apps/`, or another SDKWork-authored tree to make modification or dependency resolution easier.
+- An upstream revision change `MUST` be a dedicated, reviewable sync or upgrade change. Its revision, source, license, lockfile impact, and packaged supply-chain evidence `MUST` be traceable under `SUPPLY_CHAIN_SECURITY_SPEC.md`.
+- Native dependency or `links` conflicts `MUST` be resolved by compatible version alignment, upstream-supported features, or an official process/protocol boundary. Consumers `MUST NOT` fork or patch the upstream source tree to conceal an unresolved native-link conflict.
+- Build output and runtime state `MUST` resolve to tool-native output or runtime directories outside the upstream source tree. An upstream build script may write only to the build tool's designated generated-output directory, such as Cargo `OUT_DIR`.
+
+Rust example:
+
+```toml
+# Consuming workspace root Cargo.toml
+[workspace.dependencies]
+codex-app-server-client = { path = "external/codex/codex-rs/app-server-client" }
+codex-app-server-protocol = { path = "external/codex/codex-rs/app-server-protocol" }
+
+# SDKWork member crate Cargo.toml
+[dependencies]
+codex-app-server-client.workspace = true
+codex-app-server-protocol.workspace = true
+```
+
+The example makes the upstream Codex app-server facade and typed protocol direct build dependencies. It does not make `external/codex` SDKWork-authored source and does not authorize edits under that tree.
 
 ## 4. Release And CI Dependencies
 
@@ -475,6 +507,15 @@ Rules:
   are aligned; default `verify-repo` always enforces cross-package relative import boundaries.
 - Cross-repository consumption verification `MUST` fail on feature-package imports that bypass package
   `exports` through relative `src/` paths or non-bootstrap Vite aliases.
+- Read-only upstream source dependency tests `MUST` verify that `external/`, `third_party/`, and
+  `vendor/` remain unchanged from the pinned upstream revision and contain no SDKWork-authored
+  patches, generated files, or runtime state.
+- Dependency boundary tests `MUST` verify production consumers use the upstream public facade or
+  protocol rather than provider-owned persistence schemas, caches, logs, or private internal modules.
+- Rust upstream-source integration `MUST` inspect `cargo metadata` and the target build for duplicate
+  native `links` providers, feature incompatibilities, and lockfile drift before direct embedding is
+  accepted. An official process/protocol boundary is required when compatible native linkage cannot
+  be achieved without modifying upstream source.
 
 ## 9. Acceptance Checklist
 
@@ -489,6 +530,9 @@ Rules:
 - [ ] pnpm, Cargo, Flutter/Dart, Gradle, Maven, Python, and other toolchains use their native workspace, dependency management, and lockfile mechanisms where applicable.
 - [ ] Source/build config contains no machine-specific absolute paths.
 - [ ] External SDKWork source paths in native build-tool files resolve to known SDKWork repositories, packages, crates, modules, SDK families, or approved generated SDK outputs.
+- [ ] Upstream source under `external/`, `third_party/`, or `vendor/` is consumed through native build-tool declarations and remains unchanged from its pinned revision.
+- [ ] Consumers use the upstream public facade/protocol; thin SDKWork adapters do not copy upstream behavior or access provider-private persistence as an integration API.
+- [ ] Upstream revision, license, lockfile, SBOM/provenance, and native-link compatibility evidence are reviewable.
 - [ ] Repeated path and version declarations are centralized through native workspace mechanisms where practical.
 - [ ] Release dependencies needed for packaged artifacts are declared in `sdkwork.workflow.json`.
 - [ ] Stale release dependencies have been removed.
