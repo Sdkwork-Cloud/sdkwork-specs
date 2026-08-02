@@ -108,7 +108,11 @@ const TEST_FILE_PATTERN = /(?:^|[.\-_])(?:spec|test|tests)(?:[.\-_]|$)/iu;
 const RETIRED_RUNTIME_DATABASE_KEY = /SDKWORK_(?!DATABASE_)(?:[A-Z0-9]+_)+DATABASE_(?:ACQUIRE_TIMEOUT|AUTO_MIGRATE|AUTO_SEED|ENGINE|FILE|HOST|IDLE_TIMEOUT|MAX_CONNECTIONS|MAX_LIFETIME|MIN_CONNECTIONS|MODE|NAME|PASSWORD|PASSWORD_FILE|PATH|PORT|SCHEMA|SEED_LOCALE|SEED_ON_BOOT|SEED_PROFILE|SQLITE_URL|SSL_MODE|SSLMODE|TABLE_PREFIX|URL|USERNAME)\b/gu;
 const RETIRED_LEGACY_DATABASE_KEY = /\b(?!SDKWORK_DATABASE_)(?:[A-Z0-9]+_)+DATABASE_(?:ACQUIRE_TIMEOUT|AUTO_MIGRATE|AUTO_SEED|ENGINE|FILE|HOST|IDLE_TIMEOUT|MAX_CONNECTIONS|MAX_LIFETIME|MIN_CONNECTIONS|MODE|NAME|PASSWORD|PASSWORD_FILE|PATH|PORT|SCHEMA|SEED_LOCALE|SEED_ON_BOOT|SEED_PROFILE|SQLITE_URL|SSL_MODE|SSLMODE|TABLE_PREFIX|URL|USERNAME)\b/gu;
 const INVALID_WORKSPACE_DATABASE_KEY = /SDKWORK_DATABASE_(?:MODE|TABLE_PREFIX)\b/gu;
-const RETIRED_WORKSPACE_DATABASE_ALIAS = /SDKWORK_DATABASE_(?:PATH|SQLITE_URL|SSLMODE)\b/gu;
+const RETIRED_WORKSPACE_DATABASE_PATH_ALIAS = /SDKWORK_DATABASE_PATH\b/gu;
+const RETIRED_WORKSPACE_DATABASE_SSLMODE_ALIAS = /SDKWORK_DATABASE_SSLMODE\b/gu;
+// SDKWORK_DATABASE_SQLITE_URL is the live client-local connection key
+// (ENVIRONMENT_SPEC §7.2), not a retired alias: runtime desktop/native client
+// code reads and sets it, and PostgreSQL profile files must not carry it.
 const SYMBOLIC_RUNTIME_DATABASE_KEY = /SDKWORK_<[A-Z0-9_-]+>(?:_[A-Z0-9]+)*_DATABASE_/gu;
 const DYNAMIC_RUNTIME_DATABASE_KEY = /SDKWORK_(?:\$\{[^}\r\n]+\}|\{[^}\r\n]*\})(?:_[A-Z0-9]+)*_DATABASE_/gu;
 const CONCATENATED_RUNTIME_DATABASE_KEY = /SDKWORK_["'`]\s*\+[^;\r\n]+["'`]_[A-Z0-9_]*DATABASE_/gu;
@@ -252,7 +256,8 @@ export function inspectRuntimeSourceLine(line, filePath = '') {
   }
   for (const [pattern, message] of [
     [RETIRED_RUNTIME_DATABASE_KEY, 'retired application/module-prefixed database key; use SDKWORK_DATABASE_*'],
-    [RETIRED_WORKSPACE_DATABASE_ALIAS, 'retired workspace database alias; use SDKWORK_DATABASE_FILE or SDKWORK_DATABASE_SSL_MODE'],
+    [RETIRED_WORKSPACE_DATABASE_PATH_ALIAS, 'retired workspace database alias; use SDKWORK_DATABASE_FILE or SDKWORK_DATABASE_SQLITE_URL'],
+    [RETIRED_WORKSPACE_DATABASE_SSLMODE_ALIAS, 'retired workspace database alias; use SDKWORK_DATABASE_SSL_MODE'],
     [INVALID_WORKSPACE_DATABASE_KEY, 'unsupported workspace database key; mode and table ownership are module contracts, not connection env'],
     [SYMBOLIC_RUNTIME_DATABASE_KEY, 'symbolic application/module-prefixed database key is forbidden'],
     [DYNAMIC_RUNTIME_DATABASE_KEY, 'dynamic application/module-prefixed database key construction is forbidden'],

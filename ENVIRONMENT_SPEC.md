@@ -845,6 +845,35 @@ Applications with `.env.postgres.example` `MUST` expose `db:postgres:init` and `
 - Database URLs are private process/config values. They must never be exposed through `PORTAL_PUBLIC_*` or `VITE_*`.
 - Pool settings must be explicit for server/container deployments.
 - Migration and seed behavior must be controlled by typed install/init settings, not implicit environment guesses.
+### 7.2 Client-Local SQLite Connection Profile
+
+Client-local SQLite (desktop, tablet, mobile, and other native clients) uses one dedicated connection key that is independent of the server PostgreSQL profile:
+
+```env
+SDKWORK_DATABASE_SQLITE_URL=sqlite:///<user-private-data-dir>/<application-code>.sqlite3
+```
+
+Rules:
+
+- `SDKWORK_DATABASE_SQLITE_URL` is the single source of truth for the client-local SQLite database file. It `MUST` be a `sqlite:` URL: the POSIX form is `sqlite:///<absolute-path>`, and Windows clients `MAY` use `sqlite:<absolute-path>`. Runtime code `MUST NOT` reconstruct the file path from `SDKWORK_DATABASE_URL`, `SDKWORK_DATABASE_FILE`, or any PostgreSQL identity field.
+- `SDKWORK_DATABASE_SQLITE_URL` and the PostgreSQL `SDKWORK_DATABASE_*` profile `MAY` coexist in one process: PostgreSQL remains the authoritative-server identity and the SQLite URL addresses only the declared client-local database. When `SDKWORK_DATABASE_SQLITE_URL` is present, client-local engines resolve to SQLite; server engines keep resolving the PostgreSQL profile.
+
+**Module resolution roles.** Every database module selects one of two roles when it resolves its connection:
+
+- *Client-local role* — modules holding only declared client-local data resolve `SDKWORK_DATABASE_SQLITE_URL` (SQLite). The URL is the single source of truth for the file; PostgreSQL profile fields `MUST NOT` redirect this resolution.
+- *Server role* — authoritative-server modules resolve the workspace PostgreSQL profile (§7.1). `SDKWORK_DATABASE_SQLITE_URL` `MUST NOT` redirect this resolution; a process that also declares client-local data resolves both roles side by side.
+
+Operational rules:
+
+- `SDKWORK_DATABASE_ENGINE` describes the server profile only. When `SDKWORK_DATABASE_SQLITE_URL` is present it `MUST NOT` veto client-local resolution; malformed engine values still fail closed.
+- `SDKWORK_DATABASE_SQLITE_URL` alone does not constitute a configured PostgreSQL profile. Profile loaders and `.env.postgres` materialization `MUST` still apply when only the SQLite URL is present, so server engines keep the workspace identity.
+- A module that is server-authoritative by architecture `MUST NOT` silently accept SQLite when the SQLite URL is present; its host resolves the server role and rejects a non-PostgreSQL pool with an actionable diagnostic.
+- Server/container deployments `MUST NOT` set `SDKWORK_DATABASE_SQLITE_URL` unless the package is a desktop/native client with an explicit local data boundary.
+- The SQLite file `MUST` live under the SDKWork user private data directory (`RUNTIME_DIRECTORY_SPEC.md`, e.g. `~/.sdkwork/<application-code>/data`), not beside the executable and not under server data directories.
+- Per-service SQLite aliases (`SDKWORK_<APPLICATION_CODE>_DATABASE_URL`, `SDKWORK_<APPLICATION_CODE>_DATABASE_FILE`) are retired and `MUST` be rejected like the PostgreSQL aliases in §7.1.
+- Desktop first-run initialization `MAY` create the client-local SQLite database automatically; pool and lifecycle policy continues to use the `SDKWORK_DATABASE_*` pool keys.
+
+
 
 ## 8. Runtime Directory Paths
 

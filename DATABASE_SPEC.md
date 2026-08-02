@@ -853,6 +853,7 @@ Database bootstrap, migration, seed data, drift observation, lifecycle SPI, and 
 Database-owning processes `MUST` use the workspace-scoped pool and lifecycle keys:
 
 ```text
+SDKWORK_DATABASE_SQLITE_URL
 SDKWORK_DATABASE_MAX_CONNECTIONS
 SDKWORK_DATABASE_MIN_CONNECTIONS
 SDKWORK_DATABASE_ACQUIRE_TIMEOUT
@@ -861,6 +862,8 @@ SDKWORK_DATABASE_MAX_LIFETIME
 SDKWORK_DATABASE_AUTO_MIGRATE
 SDKWORK_DATABASE_AUTO_SEED
 ```
+
+Client-local SQLite connection identity is owned by `SDKWORK_DATABASE_SQLITE_URL` alone (see `ENVIRONMENT_SPEC.md` §7.2). It is a `sqlite:` URL scoped to one installation plus its declared profile, environment, origin, and account boundary; it is not a PostgreSQL alias and `MUST NOT` be derived from or merged with the `SDKWORK_DATABASE_URL`/structured PostgreSQL fields. Desktop and native client processes resolve SQLite through this key; server/container processes resolve the authoritative PostgreSQL profile and `MUST NOT` set it.
 
 Workspace PostgreSQL connection identity and process pool/lifecycle policy come from `SDKWORK_DATABASE_*` according to `ENVIRONMENT_SPEC.md` section 7.1. Service-scoped keys `MUST NOT` redefine or alias these fields. In particular, SDKWork workspace development uses database `sdkwork_ai_dev` and schema `sdkwork_ai_dev`, tests use `sdkwork_ai_test` or workspace-scoped ephemeral `sdkwork_ai_test_<run_id>`, staging uses `sdkwork_ai_staging`, and production uses `sdkwork_ai_prod`. Application-specific identities such as `sdkwork_<application-code>_dev`, `<application_code>_test_<run_id>`, or per-module schemas are forbidden.
 

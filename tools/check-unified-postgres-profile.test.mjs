@@ -281,18 +281,27 @@ test('runtime source rejects concrete module-scoped database keys', () => {
   );
 });
 
-test('runtime source rejects retired workspace SQLite and SSL aliases', () => {
+test('runtime source rejects retired workspace path and SSL aliases', () => {
   assert.match(
     inspectRuntimeSourceLine('std::env::var("SDKWORK_DATABASE_PATH")'),
     /retired workspace database alias/u,
   );
   assert.match(
-    inspectRuntimeSourceLine('std::env::var("SDKWORK_DATABASE_SQLITE_URL")'),
-    /retired workspace database alias/u,
-  );
-  assert.match(
     inspectRuntimeSourceLine('std::env::var("SDKWORK_DATABASE_SSLMODE")'),
     /retired workspace database alias/u,
+  );
+});
+
+test('runtime source permits the live client-local SQLite key', () => {
+  // SDKWORK_DATABASE_SQLITE_URL is the client-local connection key
+  // (ENVIRONMENT_SPEC §7.2); desktop/native client code reads and sets it.
+  assert.equal(
+    inspectRuntimeSourceLine('std::env::var("SDKWORK_DATABASE_SQLITE_URL")'),
+    null,
+  );
+  assert.equal(
+    inspectRuntimeSourceLine('std::env::set_var("SDKWORK_DATABASE_SQLITE_URL", &url);'),
+    null,
   );
 });
 
