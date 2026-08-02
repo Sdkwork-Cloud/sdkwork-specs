@@ -95,6 +95,35 @@ Rules:
 - Quota/rate-limit responses `MUST` use standard problem details and safe retry metadata.
 - Capacity assumptions for L3 domains `SHOULD` be recorded with expected tenant count, users per tenant, rows per tenant, and growth rate.
 
+### 6.1 Large-Scale Concurrency Baseline
+
+Production applications MUST declare a concurrency baseline (in the
+application topology spec or an explicit performance annex) with the following
+metrics:
+
+| Metric | Baseline target | Notes |
+| --- | --- | --- |
+| Steady-state throughput (p95, one replica) | >= 50 req/s | Mixed list/CRUD workload |
+| Sustained peak throughput (30 min) | >= 3x steady-state | Autoscaling headroom |
+| Interactive list/inbox concurrency | >= 10,000 tenants or a documented per-tier bound | Backed by indexed access paths, never full scans |
+| Concurrent streaming AI turns per gateway | >= 100 | Bounded provider worker pool with rejection metrics |
+| p95 latency at peak | P0 <= 300 ms, P1 <= 800 ms | Unchanged from section 2 |
+| Request timeout under load | P0 <= 10 s, P1 <= 30 s | Unchanged from section 2 |
+| Offset list page number | <= 10,000 | Beyond this, cursor pagination is required (PAGINATION_SPEC section 3) |
+
+Rules:
+
+- The declared baseline MUST be demonstrated with load tests and production
+  query plans before launch (bounded indexed projections plus query-plan
+  evidence; in-memory indexes or source-level assertions are not sufficient).
+- Capacity documentation MUST record expected tenant count, users per tenant,
+  rows per tenant, and growth rate (section 6).
+- A service that cannot meet the baseline MUST declare a lower documented
+  tier instead of claiming large-scale readiness.
+- Streaming AI execution MUST NOT hold interactive HTTP requests open beyond
+  the declared timeout; durable turn persistence and async completion are
+  required (section 1 P2/P3 rules).
+
 ## 7. Acceptance Checklist
 
 - [ ] API has pagination/bounded response design.
