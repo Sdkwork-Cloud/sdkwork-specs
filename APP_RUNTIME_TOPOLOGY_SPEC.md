@@ -393,6 +393,69 @@ declared by `accessEndpoints`.
 Adding `accessEndpoints` is backward-compatible. Profiles without the field
 retain their existing process plan and do not receive inferred access URLs.
 
+### 8.2 Adaptive Browser Delivery
+
+A `dev-server-proxy` browser delivery `MAY` declare `renderers` to become
+**adaptive**: one same-origin dev ingress selects the browser renderer by
+device class, and falls back to another renderer when the preferred one is
+unavailable. Desktop browsers receive `pc-web`; mobile browsers receive `h5`.
+This mirrors production `SDKWORK_DEPLOY_SPEC.md` §8 Adaptive Web on the dev
+side; the device detection contract below is shared with it.
+
+`browserDeliveries[].renderers`:
+
+- `MUST` be an object keyed by canonical client architectures declared by the
+  delivery; every key `MUST` belong to
+  `browserDeliveries[].clientArchitectures`.
+- Each renderer `MUST` declare `applicationRoot` (safe relative path) and one
+  invocation: `command` + `args` (args may use `{host}` and `{port}` tokens),
+  a workspace `script` resolved in `applicationRoot`, or `crate`/`package`.
+- Each renderer `MUST` resolve a TCP port from `portEnv` (profile env) or
+  `defaultPort`; it `MAY` declare `hostEnv`, `userAgent` (readiness probe),
+  and an `env` string map merged into the renderer environment. Renderer
+  `env` values and invocation `args` may use the `{host}`, `{port}`,
+  `{httpOrigin}`, and `{wsOrigin}` tokens resolved from the delivery bind and
+  `browserVisibleOrigin`.
+- A delivery with both `pc-web` and `h5` renderers is `adaptive`; with a
+  single renderer it collapses (`collapse-pc` / `collapse-h5`) like the
+  production plan folding in `SDKWORK_DEPLOY_SPEC.md` §8.
+- Renderers are `dev-server-proxy` only; `gateway-static` deliveries `MUST NOT`
+  declare them.
+
+The framework-owned adaptive ingress (implemented by `@sdkwork/app-topology`
+`startAdaptiveWebDelivery`) `MUST`:
+
+1. Start every declared renderer through the lifecycle spawner with the
+   resolved profile env; inject `surface.clientHttpEnv` and
+   `surface.clientWebsocketEnv` of `apiSurfaceId` with the delivery's
+   `browserVisibleOrigin` so renderers call the same origin.
+2. Wait for renderer readiness with device-appropriate probes (bounded;
+   default 120s).
+3. Serve the `browserVisibleOrigin` bind: route non-API requests by device
+   class to the preferred renderer, add `Vary: user-agent`, keep canonical
+   API paths (`/api`, `/app|backend|im|open/v\d+/api`, health and metrics
+   paths) and WebSocket upgrades on `application.public-ingress`, and fall
+   back to the next available renderer (GET/HEAD) when the preferred renderer
+   is not ready or fails.
+4. Mark a renderer unavailable on exit; the ingress keeps serving with the
+   remaining renderers until the development session ends.
+
+Device detection order (shared with `SDKWORK_DEPLOY_SPEC.md` §8):
+
+1. `browserDeliveries[].deviceOverrides` rules (regex `pattern` →
+   `deviceClass`).
+2. `Sec-CH-UA-Mobile: ?1`.
+3. iPad defaults to the delivery `tabletArchitecture` (`pc-web` unless
+   declared `h5`).
+4. Default mobile User-Agent regex.
+5. Default desktop → `pc-web`.
+
+The adaptive client process keeps its `bindEnv` and `applicationRoot` (the
+delivery's `clientProcessId`); the orchestrator does not launch it as a
+separate process. `accessEndpoints` keep referencing it and resolve to the
+same `browserVisibleOrigin`. Non-adaptive `dev-server-proxy` deliveries retain
+their private hook behavior and are unaffected.
+
 Root `dev:browser` and `dev:desktop` are default dev orchestration commands.
 They `MUST` resolve to `standalone.development` and the PostgreSQL dev database
 profile unless the command name explicitly selects another database or `cloud`.

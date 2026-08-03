@@ -269,6 +269,12 @@ There is NO `routes` section.
 
 `web: adaptive` or `web: [pc, h5]` selects PC/H5 by request headers on path `/`.
 
+The development-side mirror of this contract is `APP_RUNTIME_TOPOLOGY_SPEC.md`
+§8.2 (Adaptive Browser Delivery): `@sdkwork/app-topology` serves the same
+detection order below for `dev-server-proxy` browser deliveries declared in
+`topology.spec.json`. The detection contract is shared; production and dev
+must not diverge.
+
 Detection order:
 
 1. `overrides.web.rules`
