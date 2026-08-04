@@ -1,0 +1,35 @@
+# SDKWork workspace database configuration directory — production profile.
+# Canonical source: sdkwork-specs/ENVIRONMENT_SPEC.md section 7.3.
+#
+# This file is the shape of /etc/sdkwork/database/database.toml on Linux
+# (macOS: /Library/Application Support/sdkwork/database/database.toml,
+# Windows: %ProgramData%\sdkwork\database\database.toml). It is the active
+# production/staging structured database config for the whole workspace; all
+# applications share the single connection identity per environment.
+#
+# Installers copy this template to the host directory; operators replace
+# host/schema values and place the password in database.secret (0600).
+# Development and test must NOT use this directory (development resolves
+# .env.postgres at the application root; test uses ephemeral isolated state).
+
+[database]
+engine = "postgresql"
+host = "db.example.com"
+port = 5432
+database = "sdkwork_ai_prod"
+schema = "sdkwork_ai_prod"
+schema_fallback_public = false
+username = "sdkwork_ai_prod"
+password_file = "/etc/sdkwork/database/database.secret"
+ssl_mode = "require"
+max_connections = 20
+
+# Optional pool tuning:
+# connect_timeout_ms = 5000
+# idle_timeout_seconds = 300
+
+# Staging variant — identical shape, unified staging identity:
+#   database = "sdkwork_ai_staging"
+#   schema = "sdkwork_ai_staging"
+#   username = "sdkwork_ai_staging"
+#   ssl_mode = "require"

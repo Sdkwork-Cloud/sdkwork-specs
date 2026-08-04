@@ -18,6 +18,10 @@ Files:
   `config/mini-program/runtime-env.<profile-id>.json` shape.
 - `native-mobile.runtime-env.example.json` - Android, iOS, and HarmonyOS
   `config/app/runtime-env.<profile-id>.json` shape.
+- `database.toml.production.example` - `/etc/sdkwork/database/database.toml`
+  shape for the workspace database configuration directory
+  (`ENVIRONMENT_SPEC.md` section 7.3); `database.env` in the same directory is
+  the env-form equivalent.
 
 All tracked examples are public/non-secret. Local bootstrap credentials belong
 only in ignored `.local` overlays or secure runtime inputs.

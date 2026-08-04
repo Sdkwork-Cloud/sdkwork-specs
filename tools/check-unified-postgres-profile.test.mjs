@@ -443,3 +443,89 @@ test('scanner includes root scripts and Dockerfiles as runtime source', () => {
   assert.equal(isRuntimeSourceFile('sdkwork-demo/deployments/Dockerfile.server'), true);
   assert.equal(isRuntimeSourceFile('sdkwork-demo/deployments/Dockerfile'), true);
 });
+
+test('rejects cross-application database secret paths', () => {
+  const filePath = 'sdkwork-documents/etc/topology/cloud.production.env';
+  assert.match(
+    inspectLine('SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/router/database.secret', filePath),
+    /cross-application database secret path/u,
+  );
+  assert.match(
+    inspectRuntimeSourceLine(
+      'password_file = "/etc/sdkwork/router/database.secret"',
+      filePath,
+    ),
+    /cross-application database secret path/u,
+  );
+});
+
+test('rejects per-application database secret migration fallbacks', () => {
+  const filePath = 'sdkwork-membership/etc/topology/cloud.production.env';
+  assert.match(
+    inspectLine('SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/membership/database.secret', filePath),
+    /dated migration fallback/u,
+  );
+  assert.match(
+    inspectLine(
+      'password_file = "/etc/sdkwork/chat/database.secret"',
+      'sdkwork-im/deployments/templates/server.env.example',
+    ),
+    /cross-application database secret path/u,
+  );
+});
+
+test('accepts the workspace database configuration directory', () => {
+  const topologyPath = 'sdkwork-demo/etc/topology/cloud.production.env';
+  const tomlPath = 'sdkwork-demo/etc/server/demo.production.toml.example';
+  assert.equal(
+    inspectLine('SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/database/database.secret', topologyPath),
+    null,
+  );
+  assert.equal(
+    inspectLine('password_file = "/etc/sdkwork/database/database.secret"', tomlPath),
+    null,
+  );
+  assert.equal(
+    inspectRuntimeSourceLine('password_file = "/etc/sdkwork/database/database.secret"', tomlPath),
+    null,
+  );
+  assert.equal(
+    inspectLine(
+      'SDKWORK_DATABASE_PASSWORD_FILE=/run/secrets/sdkwork/database-password',
+      topologyPath,
+    ),
+    null,
+  );
+});
+
+test('rejects inline DEPLOY_INJECT database passwords', () => {
+  const topologyPath = 'sdkwork-demo/etc/topology/cloud.production.env';
+  const tomlPath = 'sdkwork-demo/etc/server/demo.production.toml.example';
+  assert.match(
+    inspectLine(
+      'SDKWORK_DATABASE_PASSWORD=DEPLOY_INJECT:database-password-min-32-characters',
+      topologyPath,
+    ),
+    /DEPLOY_INJECT/u,
+  );
+  assert.match(
+    inspectLine('password = "DEPLOY_INJECT:database-password"', tomlPath),
+    /DEPLOY_INJECT/u,
+  );
+});
+
+test('rejects inline production database passwords outside placeholders', () => {
+  const tomlPath = 'sdkwork-demo/etc/server/demo.production.toml.example';
+  assert.match(
+    inspectLine('password = "real-password"', tomlPath),
+    /inline database password/u,
+  );
+  assert.equal(inspectLine('password = "change-me"', tomlPath), null);
+  assert.equal(
+    inspectLine(
+      'password = "sdkworkdev123"',
+      'sdkwork-demo/etc/server/demo.development.toml.example',
+    ),
+    null,
+  );
+});

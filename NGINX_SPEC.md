@@ -119,7 +119,7 @@ Install and start on Ubuntu:
 ```sh
 sudo apt install ./cloudrouter-linux-x64-server-0.3.0.deb
 sudo editor /etc/sdkwork/router/cloudrouter.toml
-sudo editor /etc/sdkwork/router/database.secret
+sudo editor /etc/sdkwork/database/database.secret
 sudo systemctl start cloudrouter
 curl http://127.0.0.1:3900/healthz
 curl http://127.0.0.1:3900/readyz

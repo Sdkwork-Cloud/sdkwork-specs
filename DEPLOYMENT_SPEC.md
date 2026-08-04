@@ -355,7 +355,7 @@ SDKWORK_DATABASE_PORT=5432
 SDKWORK_DATABASE_NAME=sdkwork_ai_prod
 SDKWORK_DATABASE_SCHEMA=sdkwork_ai_prod
 SDKWORK_DATABASE_USERNAME=sdkwork_ai_prod
-SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/router/database.secret
+SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/database/database.secret
 SDKWORK_DATABASE_SSL_MODE=require
 SDKWORK_DATABASE_MAX_CONNECTIONS=16
 # SDKWORK_DATABASE_URL=postgresql://sdkwork_ai_prod:<password>@db.example.com:5432/sdkwork_ai_prod
@@ -492,7 +492,8 @@ curl http://127.0.0.1:3900/readyz
 ```
 
 The Linux service package creates `/etc/sdkwork/router/cloudrouter.toml`,
-`/etc/sdkwork/router/cloudrouter.env`, and `/etc/sdkwork/router/database.secret`, then
+`/etc/sdkwork/router/cloudrouter.env`, and the workspace database password file
+`/etc/sdkwork/database/database.secret`, then
 enables `cloudrouter.service` on systemd hosts. Operators configure PostgreSQL
 in the TOML or protected secret file before starting the service.
 

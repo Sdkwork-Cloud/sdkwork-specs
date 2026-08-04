@@ -184,6 +184,7 @@ These variables form the baseline for SDKWork applications.
 | `SDKWORK_DATABASE_SEED_PROFILE` | private | MAY | Seed profile name from `seeds/seed.manifest.json`. Default `standard`. |
 | `SDKWORK_DATABASE_SEED_I18N_VERSION` | private | MAY | Database seed localization data version from `seeds/seed.manifest.json`. This configures database initialization only, not runtime locale. |
 | `SDKWORK_DATABASE_DRIFT_INTERVAL_SEC` | private | MAY | Background drift refresh interval in seconds. Default `60`. |
+| `SDKWORK_DATABASE_CONFIG_DIR` | private | MAY | Explicit workspace database configuration directory override. Defaults to the canonical OS system-scope directory from `ENVIRONMENT_SPEC.md` section 7.3: Linux/container `/etc/sdkwork/database`, macOS `/Library/Application Support/sdkwork/database`, Windows `%ProgramData%\sdkwork\database`. Production and staging database config resolves from this directory; development and test `MUST NOT` use it. |
 | `SDKWORK_<APPLICATION_CODE>_REDIS_ENABLED` | private | MAY | Enables the Redis adapter. Cloud deployments and standalone server/container targets that require shared state default to `true`; desktop user-data targets default to `false` unless shared infrastructure is explicitly enabled. |
 | `SDKWORK_<APPLICATION_CODE>_REDIS_HOST` | private | MAY | Redis host used when Redis is enabled. Prefer this structured field over a URL. |
 | `SDKWORK_<APPLICATION_CODE>_REDIS_PORT` | private | MAY | Redis port used when Redis is enabled. Defaults should normally use `6379`. |
@@ -769,7 +770,7 @@ SDKWORK_DATABASE_NAME=sdkwork_ai_prod
 SDKWORK_DATABASE_SCHEMA=sdkwork_ai_prod
 SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false
 SDKWORK_DATABASE_USERNAME=sdkwork_ai_prod
-SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/<application-code>/database.secret
+SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/database/database.secret
 SDKWORK_DATABASE_SSL_MODE=require
 SDKWORK_DATABASE_MAX_CONNECTIONS=20
 ```
@@ -777,6 +778,7 @@ SDKWORK_DATABASE_MAX_CONNECTIONS=20
 Rules:
 
 - Server release packages must generate an explicit structured PostgreSQL config with host, database, username, and secret handling fields.
+- Production and staging database configuration `MUST` resolve from the workspace database configuration directory defined in section 7.3 (`/etc/sdkwork/database/` on Linux). Per-application paths such as `/etc/sdkwork/<application-code>/database.secret` are dated migration fallbacks only and `MUST NOT` appear in new checked-in production templates; cross-application references such as `/etc/sdkwork/router/database.secret` inside a non-router repository are violations.
 - Desktop packages and desktop runtime profiles must keep local user data on
   SQLite by default. They must create the SQLite file under the SDKWork user
   private data directory, not under server data directories and not in
@@ -873,6 +875,80 @@ Operational rules:
 - Per-service SQLite aliases (`SDKWORK_<APPLICATION_CODE>_DATABASE_URL`, `SDKWORK_<APPLICATION_CODE>_DATABASE_FILE`) are retired and `MUST` be rejected like the PostgreSQL aliases in §7.1.
 - Desktop first-run initialization `MAY` create the client-local SQLite database automatically; pool and lifecycle policy continues to use the `SDKWORK_DATABASE_*` pool keys.
 
+### 7.3 Workspace Database Configuration Directory
+
+Production and staging server/container deployments resolve the unified workspace PostgreSQL profile from one shared, operator-managed system directory. Development and test environments `MUST NOT` use this directory: development resolves `.env.postgres` at the selected application root (section 7.1), and test runners use ephemeral isolated state. This section is the canonical standard for that directory; `RUNTIME_DIRECTORY_SPEC.md` owns the host filesystem layout rows.
+
+**Canonical OS directories** (selection follows the host operating system):
+
+| OS / target | Workspace database config directory | Notes |
+| --- | --- | --- |
+| Linux service | `/etc/sdkwork/database/` | Operator-managed config, `root:sdkwork`, `0750`; files `0640`; secret files `0600` or `0640`. |
+| Linux user/desktop | `~/.sdkwork/database/` | User-private fallback for desktop-launched services in development only; not a production path. |
+| macOS service | `/Library/Application Support/sdkwork/database/` | System-scope equivalent. |
+| macOS user/desktop | `~/.sdkwork/database/` | User-private fallback, development only. |
+| Windows service | `%ProgramData%\sdkwork\database\` | System-scope equivalent. |
+| Windows user/desktop | `%USERPROFILE%\.sdkwork\database\` | User-private fallback, development only. |
+| Container | Mounted `/etc/sdkwork/database/` | Read-only config mount; secrets via `/run/secrets/` or the mounted `*.secret` files. |
+| Test runner | None | Test config is ephemeral, generated under the test temp directory; never the system directory. |
+
+**File shapes** in the selected directory:
+
+| File | Role | Notes |
+| --- | --- | --- |
+| `database.toml` | Active production/staging structured database config | TOML preferred for SDKWork Rust services; `[database]` fields per `RUNTIME_DIRECTORY_SPEC.md` section 9. |
+| `database.env` | Env-form equivalent of `database.toml` | `SDKWORK_DATABASE_*` keys only; consumed by services and bootstrap commands that read process env. |
+| `<profile-id>.env` | Optional per-profile override | Exact profile id such as `cloud.production.env` or `standalone.production.env`; content must declare matching `profileId`. |
+| `database.secret` / `*.secret` | Secret-bearing files | Password material; `0600`; referenced by `password_file` fields. |
+
+**Discovery precedence** for production/staging database configuration:
+
+1. `SDKWORK_DATABASE_CONFIG_DIR` explicit override.
+2. Canonical OS directory from the table above.
+3. Dated migration fallback: per-application `/etc/sdkwork/<application-code>/` database files and `database.secret` (read-only compatibility during a bounded migration window; new templates must not use it).
+4. Process environment variables (`SDKWORK_DATABASE_*`) as late operator overrides.
+5. Secret manager or OS secure storage for password material.
+
+**Rules:**
+
+- Production and staging startup `MUST` fail closed when the workspace database configuration directory is missing, when `database.toml`/`database.env` contains placeholder values, or when the resolved `database`/`schema`/`username` do not match the unified environment identity (`sdkwork_ai_prod`, `sdkwork_ai_staging`).
+- All applications in one workspace share this directory and the single connection identity per environment from section 7.1. Applications `MUST NOT` create per-application or per-module database configuration subdirectories, database names, schemas, or connection identities inside it.
+- Checked-in production templates, topology env files, release templates, installers, and operator documentation `MUST` reference `/etc/sdkwork/database/database.secret` (or the OS equivalent) and `MUST NOT` introduce per-application `database.secret` paths. A cross-application reference such as `/etc/sdkwork/router/database.secret` inside a non-router repository is a violation.
+- Production config files `MUST NOT` contain inline passwords or `DEPLOY_INJECT:<name>` password placeholders; they reference `password_file` or platform secrets only.
+- Container images contain examples only; the running container receives the directory as a mounted config volume and secrets through `/run/secrets/`.
+- Directory and file permissions follow `RUNTIME_DIRECTORY_SPEC.md` section 11: config directory `0750` (`root:sdkwork`), config files `0640`, secret files `0600` or `0640`, never world-readable.
+- The shared directory is operator-managed configuration, not generated application data. Application lifecycle commands never write database identity or migration state into it.
+
+Canonical `database.toml` shape (Linux production):
+
+```toml
+[database]
+engine = "postgresql"
+host = "db.example.com"
+port = 5432
+database = "sdkwork_ai_prod"
+schema = "sdkwork_ai_prod"
+schema_fallback_public = false
+username = "sdkwork_ai_prod"
+password_file = "/etc/sdkwork/database/database.secret"
+ssl_mode = "require"
+max_connections = 20
+```
+
+Canonical `database.env` shape (Linux production):
+
+```env
+SDKWORK_DATABASE_ENGINE=postgresql
+SDKWORK_DATABASE_HOST=db.example.com
+SDKWORK_DATABASE_PORT=5432
+SDKWORK_DATABASE_NAME=sdkwork_ai_prod
+SDKWORK_DATABASE_SCHEMA=sdkwork_ai_prod
+SDKWORK_DATABASE_SCHEMA_FALLBACK_PUBLIC=false
+SDKWORK_DATABASE_USERNAME=sdkwork_ai_prod
+SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/database/database.secret
+SDKWORK_DATABASE_SSL_MODE=require
+SDKWORK_DATABASE_MAX_CONNECTIONS=20
+```
 
 
 ## 8. Runtime Directory Paths
@@ -892,6 +968,18 @@ For application code `<application-code>`:
 | Windows service | `%ProgramData%\sdkwork\<application-code>\<application-code>.toml` or process-specific equivalent | `%ProgramData%\sdkwork\<application-code>\Data` | `%ProgramData%\sdkwork\<application-code>\Logs` |
 | Windows user/desktop | `%USERPROFILE%\.sdkwork\<application-code>\config\<application-code>.toml` or process-specific equivalent | `%USERPROFILE%\.sdkwork\<application-code>\data` | `%USERPROFILE%\.sdkwork\<application-code>\logs` |
 | Container | `/etc/sdkwork/<application-code>/<application-code>.toml` or process-specific equivalent | `/var/lib/sdkwork/<application-code>` or mounted volume | stdout/stderr, optional `/var/log/sdkwork/<application-code>` |
+
+The workspace database configuration directory (section 7.3) follows the same
+per-OS system-scope pattern without an application-code segment:
+
+| OS/profile | Database config directory |
+| --- | --- |
+| Linux service/container | `/etc/sdkwork/database/` |
+| Linux user/desktop | `~/.sdkwork/database/` (development only) |
+| macOS service | `/Library/Application Support/sdkwork/database/` |
+| macOS user/desktop | `~/.sdkwork/database/` (development only) |
+| Windows service | `%ProgramData%\sdkwork\database\` |
+| Windows user/desktop | `%USERPROFILE%\.sdkwork\database\` (development only) |
 
 Rules:
 
@@ -928,7 +1016,7 @@ port = 5432
 database = "sdkwork_ai_prod"
 schema = "sdkwork_ai_prod"
 username = "sdkwork_ai_prod"
-password_file = "/etc/sdkwork/router/database.secret"
+password_file = "/etc/sdkwork/database/database.secret"
 ssl_mode = "require"
 max_connections = 20
 
@@ -1073,7 +1161,7 @@ port = 5432
 database = "sdkwork_ai_prod"
 schema = "sdkwork_ai_prod"
 username = "sdkwork_ai_prod"
-password_file = "/etc/sdkwork/router/database.secret"
+password_file = "/etc/sdkwork/database/database.secret"
 ssl_mode = "require"
 max_connections = 20
 
@@ -1248,7 +1336,7 @@ SDKWORK_DATABASE_PORT=5432
 SDKWORK_DATABASE_NAME=sdkwork_ai_prod
 SDKWORK_DATABASE_SCHEMA=sdkwork_ai_prod
 SDKWORK_DATABASE_USERNAME=sdkwork_ai_prod
-SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/router/database.secret
+SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/database/database.secret
 SDKWORK_DATABASE_SSL_MODE=require
 SDKWORK_DATABASE_MAX_CONNECTIONS=20
 # SDKWORK_DATABASE_URL=postgresql://sdkwork_ai_prod:change-me@db.example.com:5432/sdkwork_ai_prod
@@ -1337,7 +1425,7 @@ Rules:
 
 - Release packages must include `config/cloudrouter.toml.example`.
 - Release packages must not include `.env.release.local`.
-- Host-local env files may be generated during install initialization, but secrets must remain on the target host. Linux service packages should use `/etc/sdkwork/router/cloudrouter.env` for process overrides and `/etc/sdkwork/router/database.secret` for the default PostgreSQL password file.
+- Host-local env files may be generated during install initialization, but secrets must remain on the target host. Linux service packages should use `/etc/sdkwork/router/cloudrouter.env` for process overrides and `/etc/sdkwork/database/database.secret` for the workspace PostgreSQL password file.
 - Desktop SQLite files must live under the SDKWork user private data directory, not beside the executable.
 - Server mutable state belongs under the OS service data directory or a mounted volume.
 - Historical desktop paths such as XDG or display-name based locations may be read as compatibility fallbacks during migration, but canonical writes must target `~/.sdkwork/router` or the Windows equivalent `%USERPROFILE%/.sdkwork/router`.
@@ -1521,7 +1609,7 @@ port = 5432
 database = "sdkwork_ai_prod"
 schema = "sdkwork_ai_prod"
 username = "sdkwork_ai_prod"
-password_file = "/etc/sdkwork/router/database.secret"
+password_file = "/etc/sdkwork/database/database.secret"
 # password = "real-password"
 ssl_mode = "require"
 max_connections = 16

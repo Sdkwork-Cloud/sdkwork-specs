@@ -119,6 +119,13 @@ const CONCATENATED_RUNTIME_DATABASE_KEY = /SDKWORK_["'`]\s*\+[^;\r\n]+["'`]_[A-Z
 const RETIRED_TEST_POSTGRES_KEY = /\b(?!SDKWORK_DATABASE_TEST_POSTGRES_URL\b)(?:SDKWORK_(?!DATABASE_)[A-Z0-9_]+_(?:TEST_POSTGRES_URL|POSTGRES_TEST_URL)|[A-Z0-9_]+_TEST_POSTGRES_URL)\b/gu;
 const RETIRED_RUNTIME_POSTGRES_KEY = /\bSDKWORK_(?!DATABASE_)[A-Z0-9_]+_RUNTIME_POSTGRES_(?:URL|URI)\b/gu;
 const RETIRED_KEY_REJECTION_MARKER = 'sdkwork-retired-database-key-rejection';
+// Workspace database configuration directory standard (ENVIRONMENT_SPEC §7.3):
+// production/staging database config resolves from /etc/sdkwork/database/ on
+// Linux (macOS: /Library/Application Support/sdkwork/database, Windows:
+// %ProgramData%\sdkwork\database). Per-application paths such as
+// /etc/sdkwork/<app>/database.secret are dated migration fallbacks only.
+const WORKSPACE_DATABASE_CONFIG_DIR_PATTERN = /\/etc\/sdkwork\/database(?:\/|$|\b)/iu;
+const PER_APP_DATABASE_CONFIG_PATH = /\/etc\/sdkwork\/([a-z0-9_-]+)\/(?:[a-z0-9_-]+\.)?database\.(?:secret|toml|env)\b/iu;
 
 function isCheckedInConfigFile(filePath) {
   const normalized = path.normalize(filePath);
@@ -303,6 +310,10 @@ export function inspectRuntimeSourceLine(line, filePath = '') {
       filePath,
     );
   }
+  const databaseConfigPathIssue = inspectWorkspaceDatabaseConfigPath(line, filePath);
+  if (databaseConfigPathIssue) {
+    return databaseConfigPathIssue;
+  }
   return null;
 }
 
@@ -415,6 +426,76 @@ function inspectPostgresIdentityAssignment(line, filePath) {
   return `non-canonical POSTGRES_${field}=${value}; expected ${expectedValue}`;
 }
 
+// Repository names whose canonical application code differs from the
+// sdkwork-<name> derivation (RUNTIME_DIRECTORY_SPEC.md section 3).
+const REPO_APP_CODE_OVERRIDES = {
+  'sdkwork-cloudrouter': 'router',
+  'sdkwork-im': 'im',
+};
+
+function repoAppCodeFor(filePath) {
+  const segments = String(filePath).split(/[\\/]/u).filter(Boolean);
+  const repoSegment = segments
+    .filter((segment) => /^sdkwork-/iu.test(segment))
+    .at(-1);
+  if (repoSegment) {
+    const repoName = repoSegment.toLowerCase();
+    return REPO_APP_CODE_OVERRIDES[repoName] ?? repoSegment.replace(/^sdkwork-/iu, '');
+  }
+  return path.basename(scanRoot).replace(/^sdkwork-/, '');
+}
+
+function inspectWorkspaceDatabaseConfigPath(line, filePath) {
+  const normalized = String(line).replace(/\\/gu, '/');
+  if (!/\/etc\/sdkwork\//iu.test(normalized)) {
+    return null;
+  }
+  if (WORKSPACE_DATABASE_CONFIG_DIR_PATTERN.test(normalized)) {
+    return null;
+  }
+  if (normalized.includes('/run/secrets/')) {
+    return null;
+  }
+  PER_APP_DATABASE_CONFIG_PATH.lastIndex = 0;
+  const match = PER_APP_DATABASE_CONFIG_PATH.exec(normalized);
+  if (!match) {
+    return null;
+  }
+  const referenced = match[1].toLowerCase();
+  if (referenced === 'database') {
+    return null;
+  }
+  const appCode = repoAppCodeFor(filePath);
+  if (referenced === appCode) {
+    return 'per-application database secret path is a dated migration fallback; use /etc/sdkwork/database/database.secret (ENVIRONMENT_SPEC section 7.3)';
+  }
+  return `cross-application database secret path references ${referenced}; use /etc/sdkwork/database/database.secret (ENVIRONMENT_SPEC section 7.3)`;
+}
+
+function inspectProductionDatabasePassword(line, filePath, { section } = {}) {
+  const trimmed = String(line).trim();
+  if (!trimmed || trimmed.startsWith('#')) {
+    return null;
+  }
+  if (/^(?:SDKWORK_DATABASE_PASSWORD|password)\s*[:=]\s*"?DEPLOY_INJECT:/iu.test(trimmed)) {
+    return 'inline DEPLOY_INJECT database password; use SDKWORK_DATABASE_PASSWORD_FILE=/etc/sdkwork/database/database.secret';
+  }
+  const normalized = filePath.replace(/\\/gu, '/').toLowerCase();
+  if (!/production|staging/u.test(normalized)) {
+    return null;
+  }
+  const normalizedSection = String(section ?? '').trim().toLowerCase();
+  const isDatabaseSection = !normalizedSection || normalizedSection === 'database';
+  if (
+    isDatabaseSection
+    && /^password\s*=\s*"/u.test(trimmed)
+    && !/change-me|REPLACE|placeholder|DEPLOY_INJECT/iu.test(trimmed)
+  ) {
+    return 'inline database password in production/staging config; use password_file = "/etc/sdkwork/database/database.secret"';
+  }
+  return null;
+}
+
 function retiredDatabaseKey(line) {
   const candidate = line.trim().replace(/^#\s*/u, '');
   const sdkworkMatch = candidate.match(
@@ -442,9 +523,20 @@ export function inspectLine(line, filePath, { section } = {}) {
     return retiredKeyIssue;
   }
 
+  const databaseConfigPathIssue = inspectWorkspaceDatabaseConfigPath(line, filePath);
+  if (databaseConfigPathIssue) {
+    return databaseConfigPathIssue;
+  }
+
   if (trimmed.startsWith('#')) {
     return null;
   }
+
+  const productionPasswordIssue = inspectProductionDatabasePassword(line, filePath, { section });
+  if (productionPasswordIssue) {
+    return productionPasswordIssue;
+  }
+
   if (trimmed.includes('${') || trimmed.includes('DEPLOY_INJECT:') || /sqlite:\/\//u.test(trimmed)) {
     return null;
   }
@@ -777,6 +869,7 @@ function main(args = process.argv.slice(2)) {
     process.stderr.write('Canonical test: sdkwork_ai_test or sdkwork_ai_test_<run_id> / SDKWORK_DATABASE_*\n');
     process.stderr.write('Canonical staging: sdkwork_ai_staging / SDKWORK_DATABASE_*\n');
     process.stderr.write('Canonical prod: sdkwork_ai_prod / SDKWORK_DATABASE_*\n');
+    process.stderr.write('Production database config directory: /etc/sdkwork/database/ (ENVIRONMENT_SPEC section 7.3; macOS /Library/Application Support/sdkwork/database, Windows %ProgramData%\\sdkwork\\database)\n');
     process.stderr.write('Templates: sdkwork-specs/templates/env.postgres.example and env.postgres.production.example\n');
     process.exit(1);
   }
