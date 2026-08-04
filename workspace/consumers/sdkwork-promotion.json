@@ -2,9 +2,10 @@
   "pnpm": {
     "packages": [
       "../sdkwork-account/apps/sdkwork-account-common/packages/*",
-      "../sdkwork-account/apps/sdkwork-account-pc/packages/sdkwork-account-pc-wallet",
+      "../sdkwork-account/apps/sdkwork-account-pc/packages/*",
       "../sdkwork-account/sdks/sdkwork-account-app-sdk/sdkwork-account-app-sdk-typescript",
       "../sdkwork-account/sdks/sdkwork-account-backend-sdk/sdkwork-account-backend-sdk-typescript",
+      "../sdkwork-iam/apps/sdkwork-iam-pc/packages/*",
       "../sdkwork-membership/apps/sdkwork-membership-common/packages/*",
       "../sdkwork-membership/apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-membership",
       "../sdkwork-membership/apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-subscription",
@@ -12,7 +13,10 @@
       "../sdkwork-membership/sdks/sdkwork-membership-backend-sdk/sdkwork-membership-backend-sdk-typescript",
       "../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript",
       "../sdkwork-payment/apps/sdkwork-payment-common/packages/*",
-      "../sdkwork-payment/apps/sdkwork-payment-pc/packages/sdkwork-payment-pc-payment"
+      "../sdkwork-payment/apps/sdkwork-payment-pc/packages/sdkwork-payment-pc-payment",
+      "../sdkwork-search/apps/sdkwork-search-common/packages/sdkwork-search-contracts",
+      "../sdkwork-search/apps/sdkwork-search-pc/packages/sdkwork-search-pc-react",
+      "../sdkwork-ui/sdkwork-ui-mobile-react"
     ]
   },
   "catalog": {
@@ -21,8 +25,8 @@
     "@vitejs/plugin-react": "^6.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router": "\">=6.0.0 <8.0.0\"",
-    "react-router-dom": "\">=6.0.0 <8.0.0\"",
+    "react-router": ">=6.0.0 <8.0.0",
+    "react-router-dom": ">=6.0.0 <8.0.0",
     "typescript": "~6.0.2",
     "vite": "^8.0.3",
     "vitest": "^4.1.2"
