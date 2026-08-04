@@ -130,23 +130,23 @@ test('aligner materializes permissionComposition from HTTP sdkDependencies', () 
 
 test('aligner resolves SDK dependency to sibling IMF module identity', () => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-permission-align-sibling-'));
-  const root = path.join(workspace, 'sdkwork-clawrouter');
-  const appRoot = path.join(root, 'apps/sdkwork-clawrouter-pc');
+  const root = path.join(workspace, 'sdkwork-cloudrouter');
+  const appRoot = path.join(root, 'apps/sdkwork-cloudrouter-pc');
   writeJson(path.join(appRoot, 'sdkwork.app.config.json'), {
     schemaVersion: 1,
-    applicationCode: 'clawrouter',
+    applicationCode: 'cloudrouter',
   });
-  writeJson(path.join(appRoot, 'packages/sdkwork-clawrouter-pc-core/package.json'), {
-    name: '@sdkwork/clawrouter-pc-core',
+  writeJson(path.join(appRoot, 'packages/sdkwork-cloudrouter-pc-core/package.json'), {
+    name: '@sdkwork/cloudrouter-pc-core',
     version: '0.0.0',
   });
-  writeJson(path.join(appRoot, 'packages/sdkwork-clawrouter-pc-core/specs/component.spec.json'), {
+  writeJson(path.join(appRoot, 'packages/sdkwork-cloudrouter-pc-core/specs/component.spec.json'), {
     schemaVersion: 1,
     kind: 'sdkwork.component.spec',
     component: {
-      name: '@sdkwork/clawrouter-pc-core',
+      name: '@sdkwork/cloudrouter-pc-core',
       type: 'react-package',
-      domain: 'clawrouter',
+      domain: 'cloudrouter',
       capability: 'core',
       surface: 'app',
     },
@@ -175,7 +175,7 @@ test('aligner resolves SDK dependency to sibling IMF module identity', () => {
   assert.equal(align.status, 0, align.stderr);
   const spec = JSON.parse(
     fs.readFileSync(
-      path.join(appRoot, 'packages/sdkwork-clawrouter-pc-core/specs/component.spec.json'),
+      path.join(appRoot, 'packages/sdkwork-cloudrouter-pc-core/specs/component.spec.json'),
       'utf8',
     ),
   );

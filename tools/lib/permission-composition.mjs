@@ -241,8 +241,8 @@ function dependencyModuleCandidatesFromWorkspace(workspaceValue) {
     workspace = sdkSegment ?? segments.at(-1) ?? workspace;
   }
 
-  const clawrouterCapability = workspace.match(/^clawrouter-(?:app|backend)-([a-z0-9-]+)-capability$/u);
-  if (clawrouterCapability) candidates.push(clawrouterCapability[1]);
+  const cloudrouterCapability = workspace.match(/^cloudrouter-(?:app|backend)-([a-z0-9-]+)-capability$/u);
+  if (cloudrouterCapability) candidates.push(cloudrouterCapability[1]);
 
   const snakeConsumer = workspace.match(/^sdkwork_([a-z0-9_]+?)_(?:flutter_mobile|android_mobile|ios_mobile|harmony_mobile|h5|mp)?_?app_sdk_consumer$/u);
   if (snakeConsumer) {

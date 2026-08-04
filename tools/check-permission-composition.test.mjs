@@ -189,7 +189,7 @@ test('checker matches legacy SDK dependency aliases to module catalog refs', () 
         credentialMode: 'authenticated-app-api',
       },
       {
-        workspace: 'clawrouter-app-catalog-capability',
+        workspace: 'cloudrouter-app-catalog-capability',
         surface: 'app-api',
         credentialMode: 'authenticated-app-api',
       },

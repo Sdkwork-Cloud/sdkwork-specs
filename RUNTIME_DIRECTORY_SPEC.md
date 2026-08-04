@@ -15,7 +15,7 @@ temporary runtime files.
 
 Every SDKWork application must keep runtime files under an SDKWork namespace and
 must use a short lowercase application code as the final directory segment. For
-example, the Claw Router product uses the application code `router`, so its
+example, the Cloud Router product uses the application code `router`, so its
 Linux service paths are `/etc/sdkwork/router`, `/var/lib/sdkwork/router`, and
 `/var/log/sdkwork/router`.
 
@@ -40,8 +40,8 @@ Runtime layout and infrastructure configuration must satisfy these goals:
 | Term | Meaning |
 | --- | --- |
 | Application code | Short lowercase runtime directory code such as `router`, `chat`, `iam`, `drive`, `commerce`, or `billing`. |
-| Process name | Executable or service name, such as `clawrouter`. It may differ from the application code. |
-| Product name | Human-facing brand or package name, such as SdkWork Claw Router. |
+| Process name | Executable or service name, such as `cloudrouter`. It may differ from the application code. |
+| Product name | Human-facing brand or package name, such as SdkWork Cloud Router. |
 | System scope | Host-level service or daemon files managed by an administrator, package manager, service manager, or container runtime. |
 | User scope | Private files owned by one operating-system user, including desktop app config and local data. |
 | Runtime config file | Host-local TOML/YAML/JSON file loaded at process startup. TOML is preferred for Rust services. |
@@ -69,17 +69,17 @@ Rules:
   paths. Do not write runtime files under a source root `.sdkwork/`.
 - Process-specific files may use the process name inside the application
   directory when it improves operator clarity. For example:
-  `/etc/sdkwork/router/clawrouter.toml`.
+  `/etc/sdkwork/router/cloudrouter.toml`.
 - New applications should use `<application-code>.toml` and `<application-code>.env` unless the runtime
   has an established process name that operators already use.
-- Product display names such as `ClawRouter`, `SdkWork Chat`, or `SDKWork`
+- Product display names such as `CloudRouter`, `SdkWork Chat`, or `SDKWork`
   must not appear in Linux system service directories.
 
 Recommended application codes:
 
 | Application line or capability | Application code | Notes |
 | --- | --- | --- |
-| SdkWork Claw Router | `router` | Process name may remain `clawrouter`. |
+| SdkWork Cloud Router | `router` | Process name may remain `cloudrouter`. |
 | SdkWork Chat | `chat` | User private files use `~/.sdkwork/chat`. |
 | IAM service | `iam` | Use only when deployed as an independent process. |
 | Drive service | `drive` | Owns durable object/file metadata and local adapters. |
@@ -404,7 +404,7 @@ deployment_profile = "standalone"
 profile_id = "standalone.production"
 runtime_target = "server"
 app_code = "router"
-process_name = "clawrouter"
+process_name = "cloudrouter"
 
 [server]
 bind = "0.0.0.0:3900"
@@ -440,7 +440,7 @@ port = 6379
 database = 0
 username = "default"
 password_file = "/etc/sdkwork/router/redis.secret"
-key_prefix = "clawrouter"
+key_prefix = "cloudrouter"
 tls = false
 max_connections = 16
 connect_timeout_ms = 2000
@@ -575,7 +575,7 @@ Canonical `[redis]` fields:
 | `username` | optional | ACL username. |
 | `password_file` | recommended | Path to secret-bearing file. |
 | `password` | allowed with restrictions | Only in protected secret-bearing config. |
-| `key_prefix` | recommended | Application namespace, such as `clawrouter`. |
+| `key_prefix` | recommended | Application namespace, such as `cloudrouter`. |
 | `tls` | production optional | Use TLS for managed or cross-network Redis. |
 | `max_connections` | server/container | Pool limit. |
 | `connect_timeout_ms` | recommended | Connection timeout. |
@@ -661,16 +661,16 @@ Rules:
 - Durable queue state, catalogs, migration state, or generated data required for
   restart belongs under the data directory, not the cache directory.
 
-## 13. SdkWork Claw Router Profile
+## 13. SdkWork Cloud Router Profile
 
-SdkWork Claw Router uses:
+SdkWork Cloud Router uses:
 
 | Concept | Value |
 | --- | --- |
 | Application code | `router` |
-| Process name | `clawrouter` |
-| Linux config file | `/etc/sdkwork/router/clawrouter.toml` |
-| Linux env file | `/etc/sdkwork/router/clawrouter.env` |
+| Process name | `cloudrouter` |
+| Linux config file | `/etc/sdkwork/router/cloudrouter.toml` |
+| Linux env file | `/etc/sdkwork/router/cloudrouter.env` |
 | Linux database secret | `/etc/sdkwork/router/database.secret` |
 | Linux Redis secret | `/etc/sdkwork/router/redis.secret` |
 | Linux immutable runtime assets | `/usr/lib/sdkwork/router` |
@@ -682,15 +682,15 @@ SdkWork Claw Router uses:
 | Linux runtime state | `/run/sdkwork/router` |
 | Archive install root | `/opt/sdkwork/router` |
 | User private root | `~/.sdkwork/router` |
-| User config | `~/.sdkwork/router/config/clawrouter.toml` |
+| User config | `~/.sdkwork/router/config/cloudrouter.toml` |
 | User data | `~/.sdkwork/router/data` |
-| User SQLite database | `~/.sdkwork/router/data/clawrouter.sqlite` |
+| User SQLite database | `~/.sdkwork/router/data/cloudrouter.sqlite` |
 
 Rules:
 
-- `clawrouter.service`, `clawrouterctl`, and `clawrouter` remain valid process
+- `cloudrouter.service`, `cloudrouterctl`, and `cloudrouter` remain valid process
   and operator command names.
-- Directory paths must use `router`, not `clawrouter`, under SDKWork namespaces.
+- Directory paths must use `router`, not `cloudrouter`, under SDKWork namespaces.
 - Standalone server/container and cloud deployments default to PostgreSQL and
   Redis when shared runtime state is required.
 - Desktop user-data targets default to SQLite under the user private data

@@ -17,7 +17,7 @@ Every SDK family `MUST` declare exactly three names. Names are computed from the
 
 | Role | Field | Formula | Example |
 | --- | --- | --- | --- |
-| SDK family stem | `sdkFamilyStem` | Directory name under `sdks/` | `sdkwork-course-app-sdk`, `clawrouter-app-sdk` |
+| SDK family stem | `sdkFamilyStem` | Directory name under `sdks/` | `sdkwork-course-app-sdk`, `cloudrouter-app-sdk` |
 | Consumer npm name | `packageName` / `consumerPackageName` in family-root `sdk-manifest.json`; `name` in `*-typescript/package.json` | `@sdkwork/<token>` where `<token>` is `sdkFamilyStem` with optional `sdkwork-` prefix removed | `@sdkwork/course-app-sdk` |
 | Transport internal id | `transportPackageName` in family-root `sdk-manifest.json`; `name` in `generated/server-openapi/package.json` | `<sdkFamilyStem>-generated-typescript` | `sdkwork-course-app-sdk-generated-typescript` |
 
@@ -95,13 +95,13 @@ Hard rules:
 - Consumer `package.json` `exports` `MUST NOT` expose `./generated` to applications. Transport is reachable only through composed `src/**` re-exports.
 - Composed `src/**` `MAY` import only from `../generated/**` within the same `*-typescript` root.
 
-Claw Router federated domains:
+Cloud Router federated domains:
 
 | Consumer import | Composed entry |
 | --- | --- |
-| `@sdkwork/clawrouter-app-sdk` | `src/index.ts` |
-| `@sdkwork/clawrouter-app-sdk/domains` | `src/domains/index.ts` |
-| `@sdkwork/clawrouter-backend-sdk/domains` | `src/domains/index.ts` |
+| `@sdkwork/cloudrouter-app-sdk` | `src/index.ts` |
+| `@sdkwork/cloudrouter-app-sdk/domains` | `src/domains/index.ts` |
+| `@sdkwork/cloudrouter-backend-sdk/domains` | `src/domains/index.ts` |
 
 Domain transport lives under `generated/domains/server-openapi/` inside the same family; standalone `*-domain-transport-typescript` roots are forbidden.
 
@@ -135,7 +135,7 @@ Tooling, workspace registration, alias maps, and integration contract tests `MUS
 Permanently forbidden in consumer code and workspace metadata:
 
 - `@sdkwork/commerce-app-sdk`, `@sdkwork/commerce-backend-sdk`
-- `@sdkwork/clawrouter-*-domain-transport-sdk`
+- `@sdkwork/cloudrouter-*-domain-transport-sdk`
 - `sdkwork-*-generated-typescript` as consumer import
 - `@sdk/` or `@sdk/composed/` shorthand aliases
 - deep imports into `generated/server-openapi/src/*` from consumers when a composed facade exists

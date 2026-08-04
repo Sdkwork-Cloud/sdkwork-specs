@@ -498,7 +498,7 @@ Required examples (IAM canonical reference):
 ```typescript
 import { createClient, type SdkworkAppClient } from '@sdkwork/iam-app-sdk';
 import type { SdkworkBackendClient } from '@sdkwork/iam-backend-sdk'; // backend-admin only
-import { createClient as createClawRouterDomainsClient } from '@sdkwork/clawrouter-app-sdk/domains'; // federated T1 domains via Claw Router
+import { createClient as createCloudRouterDomainsClient } from '@sdkwork/cloudrouter-app-sdk/domains'; // federated T1 domains via Cloud Router
 ```
 
 Verification:
@@ -512,12 +512,12 @@ node <sdkwork-specs>/tools/check-app-sdk-consumer-imports.mjs --workspace <works
 
 Use `--materialize-facades` to create missing `src/index.ts` composed entries for `@sdkwork/*` SDK families. Use `--align-alias-paths` to rewrite consumer Vite/tsconfig/package alias paths from `generated/server-openapi` to composed facade entries before re-validating.
 
-Composed facade physical layout (Claw Router federated domains example):
+Composed facade physical layout (Cloud Router federated domains example):
 
 ```text
-sdks/clawrouter-app-sdk/clawrouter-app-sdk-typescript/
-  src/index.ts                    → @sdkwork/clawrouter-app-sdk
-  src/domains/index.ts            → @sdkwork/clawrouter-app-sdk/domains
+sdks/cloudrouter-app-sdk/cloudrouter-app-sdk-typescript/
+  src/index.ts                    → @sdkwork/cloudrouter-app-sdk
+  src/domains/index.ts            → @sdkwork/cloudrouter-app-sdk/domains
   generated/server-openapi/       → portal transport (generator ownership)
   generated/domains/server-openapi/ → federated domain transport (generator ownership)
 ```
@@ -526,13 +526,13 @@ Rules for composed facades:
 
 - `src/index.ts` and optional subpaths such as `src/domains/index.ts` `MAY` re-export from `../generated/**` or `../../generated/domains/**` within the same `*-sdk-typescript` family root only.
 - Composed facades `MUST NOT` import from sibling `*-domain-transport-typescript` directories or cross-family `../../*-typescript/generated` hops.
-- Retired `@sdkwork/clawrouter-*-domain-transport-sdk` packages and standalone `*-domain-transport-typescript` SDK family roots are forbidden; domain transport lives under `generated/domains/server-openapi/` inside the standard SDK family.
+- Retired `@sdkwork/cloudrouter-*-domain-transport-sdk` packages and standalone `*-domain-transport-typescript` SDK family roots are forbidden; domain transport lives under `generated/domains/server-openapi/` inside the standard SDK family.
 
 Retired commerce packages:
 
 - `@sdkwork/commerce-app-sdk` and `@sdkwork/commerce-backend-sdk` are removed.
-- Legacy `sdkwork-commerce-*-generated-typescript` transport names map to `@sdkwork/clawrouter-app-sdk/domains` and `@sdkwork/clawrouter-backend-sdk/domains`.
-- Non-standard `@sdkwork/clawrouter-*-domain-transport-sdk` packages are retired; use the `./domains` export on the standard Claw Router SDK packages.
+- Legacy `sdkwork-commerce-*-generated-typescript` transport names map to `@sdkwork/cloudrouter-app-sdk/domains` and `@sdkwork/cloudrouter-backend-sdk/domains`.
+- Non-standard `@sdkwork/cloudrouter-*-domain-transport-sdk` packages are retired; use the `./domains` export on the standard Cloud Router SDK packages.
 
 Authority: `SDK_SPEC.md` package naming table, `SDK_WORKSPACE_GENERATION_SPEC.md` composed facade rules, this section.
 

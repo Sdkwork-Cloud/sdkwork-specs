@@ -92,7 +92,7 @@ Every cache instance must expose these fields to runtime and admin APIs:
 Rules:
 
 - Instance names must be unique.
-- Key prefixes must not overlap. `claw` and `claw:auth` cannot be configured as separate instances in the same runtime because prefix scans would collide.
+- Key prefixes must not overlap. `cloud` and `cloud:auth` cannot be configured as separate instances in the same runtime because prefix scans would collide.
 - Local cache must enforce `maxEntries` at write time when configured.
 - Redis cache must require `connectionProfileName`.
 - Unsupported admin operations must return a business conflict response, not an internal server error.

@@ -30,8 +30,8 @@ const EMBEDDED_IAM_REPOS = [
     governanceTest: 'scripts/dev/sdkwork-birdcoder-iam-application-bootstrap-standard.test.mjs',
   },
   {
-    name: 'sdkwork-clawrouter',
-    governanceTest: 'scripts/dev/sdkwork-clawrouter-iam-application-bootstrap-standard.test.mjs',
+    name: 'sdkwork-cloudrouter',
+    governanceTest: 'scripts/dev/sdkwork-cloudrouter-iam-application-bootstrap-standard.test.mjs',
   },
   {
     name: 'sdkwork-api-cloud-gateway',

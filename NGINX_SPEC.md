@@ -33,7 +33,7 @@ Rules:
 The canonical repository template is:
 
 ```text
-apps/sdkwork-clawrouter/etc/nginx/NGINX_SAMPLE.conf
+apps/sdkwork-cloudrouter/etc/nginx/NGINX_SAMPLE.conf
 ```
 
 `API_SAMPLE.conf` is retained only as a compatibility sample for older references. New documentation and operator handoff must point to `etc/nginx/NGINX_SAMPLE.conf` or to generated full-domain examples under `etc/nginx/sdkwork/`.
@@ -52,7 +52,7 @@ Rules:
 - The edge server owns the portal, vendor compatibility open-api gateway surfaces (for example OpenAI `/v1/*` declared per `API_SPEC.md` section 4.5.2), business open-api, backend/admin API, app API, OpenAPI documents, `/healthz`, and `/readyz`.
 - The proxy must preserve `Host`, real client IP, `X-Forwarded-*`, and websocket upgrade headers.
 - Streaming and generation routes must not be broken by proxy buffering; generated configs set `proxy_buffering off` and use long read/send timeouts.
-- `client_max_body_size` must not be lower than the Claw Router upload body limits. The default generated value is `1100m`.
+- `client_max_body_size` must not be lower than the Cloud Router upload body limits. The default generated value is `1100m`.
 
 ## 3. Certificate Path Contract
 
@@ -79,7 +79,7 @@ Rules:
 
 ## 4. Generated Command Contract
 
-The Claw Router workspace exposes these pnpm commands:
+The Cloud Router workspace exposes these pnpm commands:
 
 ```sh
 pnpm nginx:plan -- --domain api.sdkwork.com
@@ -117,10 +117,10 @@ pnpm install:package:build -- --package-id linux-x64-service
 Install and start on Ubuntu:
 
 ```sh
-sudo apt install ./clawrouter-linux-x64-server-0.3.0.deb
-sudo editor /etc/sdkwork/router/clawrouter.toml
+sudo apt install ./cloudrouter-linux-x64-server-0.3.0.deb
+sudo editor /etc/sdkwork/router/cloudrouter.toml
 sudo editor /etc/sdkwork/router/database.secret
-sudo systemctl start clawrouter
+sudo systemctl start cloudrouter
 curl http://127.0.0.1:3900/healthz
 curl http://127.0.0.1:3900/readyz
 ```

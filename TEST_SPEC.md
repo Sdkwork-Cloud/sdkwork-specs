@@ -343,7 +343,7 @@ Rules:
   gateway processes, inherits standalone loopback URLs, or falls back to
   `cloud.production`.
 - Tests `MUST` fail when repository root public script names start with product
-  tokens such as `drive`, `im`, `clawrouter`, or the application-specific
+  tokens such as `drive`, `im`, `cloudrouter`, or the application-specific
   application code.
 - Tests `MUST` fail when root public script names contain retired deployment
   words such as `self-hosted`, `cloud-hosted`, `hosting`, or
@@ -1109,7 +1109,7 @@ Rules:
   `docker`, `self-hosted`, `cloud-hosted`, or `hosting` as deployment profile
   values.
 - Static config scans `MUST` fail for new application startup inputs that define
-  `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_MODE`, `SDKWORK_CLAW_DEPLOYMENT_MODE`,
+  `SDKWORK_<APPLICATION_CODE>_DEPLOYMENT_MODE`, `SDKWORK_CLOUDROUTER_DEPLOYMENT_MODE`,
   `[runtime].deployment_mode`, `deploymentMode`, or CLI flags such as
   `--hosting` as active deployment architecture. Migration tools may cover
   those aliases only when tests prove they normalize to `deploymentProfile`,

@@ -105,7 +105,7 @@ test('aligns flat shared packages into common app root', () => {
   for (const packageName of [
     'sdkwork-appstore-publisher-console-core',
     'sdkwork-appstore-search-core',
-    'sdkwork-clawrouter-app-sdk',
+    'sdkwork-cloudrouter-app-sdk',
   ]) {
     fs.mkdirSync(path.join(root, 'packages', packageName, 'src'), { recursive: true });
     fs.writeFileSync(path.join(root, 'packages', packageName, 'package.json'), '{"private":true}\n');
@@ -126,7 +126,7 @@ test('aligns flat shared packages into common app root', () => {
   assert.equal(result.issuesAfter.length, 0);
   assert.equal(fs.existsSync(path.join(root, 'apps/sdkwork-appstore-common/packages/sdkwork-appstore-publisher-console-core/package.json')), true);
   assert.equal(fs.existsSync(path.join(root, 'apps/sdkwork-appstore-common/packages/sdkwork-appstore-search-core/package.json')), true);
-  assert.equal(fs.existsSync(path.join(root, 'apps/sdkwork-appstore-common/packages/sdkwork-clawrouter-app-sdk/package.json')), true);
+  assert.equal(fs.existsSync(path.join(root, 'apps/sdkwork-appstore-common/packages/sdkwork-cloudrouter-app-sdk/package.json')), true);
   assert.equal(fs.existsSync(path.join(root, 'apps/sdkwork-appstore-pc/packages/sdkwork-appstore-search-core')), false);
   const workspace = fs.readFileSync(path.join(root, 'pnpm-workspace.yaml'), 'utf8');
   assert.match(workspace, /apps\/sdkwork-appstore-common\/packages\/\*/);

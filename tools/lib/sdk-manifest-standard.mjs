@@ -24,7 +24,7 @@ function readJson(filePath) {
 export function inferApiAuthority(sdkFamilyStem) {
   const sdkworkMatch = sdkFamilyStem.match(/^(sdkwork-[a-z0-9-]+)-(app|backend|internal)-sdk$/u);
   if (sdkworkMatch) return `${sdkworkMatch[1]}-${sdkworkMatch[2]}-api`;
-  const clawMatch = sdkFamilyStem.match(/^(clawrouter)-(app|backend|open)-sdk$/u);
+  const clawMatch = sdkFamilyStem.match(/^(cloudrouter)-(app|backend|open)-sdk$/u);
   if (clawMatch) return `${clawMatch[1]}-${clawMatch[2]}-api`;
   if (sdkFamilyStem.endsWith('-sdk')) {
     return `${sdkFamilyStem.slice(0, -4)}-api`;
@@ -34,10 +34,10 @@ export function inferApiAuthority(sdkFamilyStem) {
 
 export function inferSdkOwner(repoRoot, sdkFamilyStem) {
   const repoName = path.basename(repoRoot);
-  if (repoName.startsWith('sdkwork-') || repoName.startsWith('clawrouter')) return repoName;
+  if (repoName.startsWith('sdkwork-') || repoName.startsWith('cloudrouter')) return repoName;
   const sdkworkStem = sdkFamilyStem.match(/^(sdkwork-[a-z0-9-]+)-/u)?.[1];
   if (sdkworkStem) return sdkworkStem;
-  if (sdkFamilyStem.startsWith('clawrouter-')) return 'sdkwork-clawrouter';
+  if (sdkFamilyStem.startsWith('cloudrouter-')) return 'sdkwork-cloudrouter';
   return null;
 }
 

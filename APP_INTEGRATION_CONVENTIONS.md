@@ -145,7 +145,7 @@ Forbidden:
           {
             "kind": "permission-code-replacement",
             "from": "legacy:console",
-            "to": "clawrouter.console.access",
+            "to": "cloudrouter.console.access",
             "scope": "bootstrap-dev-only"
           }
         ]

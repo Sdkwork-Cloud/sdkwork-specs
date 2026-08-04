@@ -18,7 +18,7 @@ Prevent PostgreSQL connection exhaustion and inconsistent schema selection by ma
 
 - `DATABASE_SPEC_PROCESS_SHARED_POOL.md` defines process, identity, driver, schema, and capacity boundaries.
 - A canonical validator checks application process-pool contracts and production entrypoints.
-- Manager, IM, Birdcoder, Clawrouter, and API Cloud Gateway publish process-pool contracts and pass the validator.
+- Manager, IM, Birdcoder, Cloudrouter, and API Cloud Gateway publish process-pool contracts and pass the validator.
 - Integrated modules resolve one database/schema identity and do not independently multiply pool capacity.
 - Live verification records PostgreSQL connection counts before startup, after readiness, and after shutdown.
 

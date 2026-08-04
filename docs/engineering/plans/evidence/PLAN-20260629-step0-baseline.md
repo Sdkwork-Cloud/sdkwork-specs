@@ -22,7 +22,7 @@
 - `sdkwork-im/apps/sdkwork-im-pc/specs/dependency.composition.json`
 - `sdkwork-mcp/apps/sdkwork-mcp-h5/specs/dependency.composition.json`
 - `sdkwork-iam/apps/sdkwork-iam-pc/specs/dependency.composition.json`
-- `sdkwork-clawrouter/apps/sdkwork-clawrouter-pc/packages/sdkwork-clawrouter-pc-core/src/composition/permission-composition.ts`
+- `sdkwork-cloudrouter/apps/sdkwork-cloudrouter-pc/packages/sdkwork-cloudrouter-pc-core/src/composition/permission-composition.ts`
 - `sdkwork-knowledgebase/tools/check_dependency_composition_standard.mjs`
 - `sdkwork-im/apps/sdkwork-im-pc/pnpm-workspace.yaml`
 

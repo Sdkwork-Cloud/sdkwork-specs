@@ -62,9 +62,9 @@ SDKWORK_DATABASE_ADMIN_USERNAME=postgres`,
 
 assert.throws(
   () => parseWorkspacePostgresConfig({
-    configText: `${scopedDatabaseKey('CLAW', 'URL')}=postgresql://user:secret@db/sdkwork_ai_dev`,
+    configText: `${scopedDatabaseKey('CLOUD', 'URL')}=postgresql://user:secret@db/sdkwork_ai_dev`,
   }),
-  new RegExp(`retired database configuration ${scopedDatabaseKey('CLAW', 'URL')}`, 'u'),
+  new RegExp(`retired database configuration ${scopedDatabaseKey('CLOUD', 'URL')}`, 'u'),
 );
 assert.throws(
   () => parseWorkspacePostgresConfig({

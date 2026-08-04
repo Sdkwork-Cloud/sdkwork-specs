@@ -50,7 +50,7 @@ could recreate a retired artifact after it was deleted.
 - Active source and current-contract scan reports zero legacy filename references.
 - All family and component JSON contracts parse successfully.
 - SDK standard checks pass for SDKWork Specs, Agents, Drive, IM, and BirdCoder.
-- BirdCoder manifest discovery, IM authority, ClawRouter guardian/standardizer, Kernel structure,
+- BirdCoder manifest discovery, IM authority, CloudRouter guardian/standardizer, Kernel structure,
   and SDK integration skill contract tests pass.
 
 ## Review And Rollback

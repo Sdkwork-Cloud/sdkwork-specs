@@ -128,7 +128,7 @@ Rules:
 - Field validation keys `SHOULD` use `validation.<domain>.<resourceOrWorkflow>.<field>.<rule>` or a documented narrower package convention.
 - Key prefixes `MUST` align with the owning package and catalog fragment.
 - A fragment that owns `iam.auth.login.*` keys `MUST NOT` also own unrelated `billing.invoice.*` or `admin.audit.*` keys.
-- Reusable appbase keys `MUST NOT` contain application names such as `birdcoder`, `claw`, or `magic-studio`.
+- Reusable appbase keys `MUST NOT` contain application names such as `birdcoder`, `cloud`, or `magic-studio`.
 - Validation, loading, empty, error, success, tooltip, aria label, placeholder, confirmation, and operator-facing strings need keys when user-facing.
 
 ## 6. Catalog Ownership And Fragmentation

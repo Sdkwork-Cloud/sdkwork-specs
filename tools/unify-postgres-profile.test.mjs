@@ -20,15 +20,15 @@ test('resolves every lifecycle environment without mapping staging to production
 });
 
 test('renames application and module database keys in source text', () => {
-  const source = `${scopedDatabaseKey('CLAW', 'URL')}=postgresql://old:secret@db/sdkwork_claw_dev
-${scopedDatabaseKey('CLAW_ROUTER', 'AUTO_MIGRATE')}=true
+  const source = `${scopedDatabaseKey('CLOUD', 'URL')}=postgresql://old:secret@db/sdkwork_cloudrouter_dev
+${scopedDatabaseKey('CLOUDROUTER', 'AUTO_MIGRATE')}=true
 ${scopedDatabaseKey('IAM', 'MAX_CONNECTIONS')}=4`;
   const result = migratePostgresProfileContent(source, 'src/config.rs');
   assert.equal(result.conflicts.length, 0);
   assert.match(result.content, /SDKWORK_DATABASE_URL/u);
   assert.match(result.content, /SDKWORK_DATABASE_AUTO_MIGRATE/u);
   assert.match(result.content, /SDKWORK_DATABASE_MAX_CONNECTIONS/u);
-  assert.doesNotMatch(result.content, /SDKWORK_(?:CLAW|CLAW_ROUTER|IAM)_DATABASE_/u);
+  assert.doesNotMatch(result.content, /SDKWORK_(?:CLOUD|CLOUDROUTER|IAM)_DATABASE_/u);
 });
 
 test('renames custom PostgreSQL URL keys to canonical database keys', () => {
@@ -125,7 +125,7 @@ test('migration includes root batch scripts and Dockerfiles', () => {
 
 test('detects canonical key conflicts without exposing values', () => {
   const result = migratePostgresProfileContent(
-    `${scopedDatabaseKey('CLAW', 'PASSWORD')}=first
+    `${scopedDatabaseKey('CLOUD', 'PASSWORD')}=first
 SDKWORK_DATABASE_PASSWORD=second`,
     'sdkwork-demo/.env.release.example',
   );

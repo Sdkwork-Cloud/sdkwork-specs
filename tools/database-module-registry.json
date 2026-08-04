@@ -61,11 +61,11 @@
     ]
   },
   {
-    "repo": "sdkwork-clawrouter",
-    "moduleId": "clawrouter",
-    "serviceCode": "CLAW_ROUTER",
-    "tablePrefix": "claw_",
-    "ownerTeam": "claw-router-platform",
+    "repo": "sdkwork-cloudrouter",
+    "moduleId": "cloudrouter",
+    "serviceCode": "CLOUDROUTER",
+    "tablePrefix": "cloud_",
+    "ownerTeam": "cloud-router-platform",
     "legacySqlGlobs": ["generated/schema/postgres/schema.sql"]
   },
   {

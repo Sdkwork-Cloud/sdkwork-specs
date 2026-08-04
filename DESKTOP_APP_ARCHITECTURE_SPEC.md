@@ -75,7 +75,7 @@ Rules:
 - Desktop/Tauri development commands that start the product service runtime
   `MUST` use the server PostgreSQL development profile for the service/backend
   process. Applications whose default desktop development commands are
-  API-surface-backed client commands, such as SDKWork Claw Router `pnpm dev:desktop`,
+  API-surface-backed client commands, such as SDKWork Cloud Router `pnpm dev:desktop`,
   must keep product server startup on explicit server commands.
 - The desktop shell must not infer that the service database is SQLite just
   because the runtime target is `desktop`. The deployment profile remains

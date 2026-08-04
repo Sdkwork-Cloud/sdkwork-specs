@@ -328,15 +328,15 @@ test('walkOpenApiFiles includes SDK open-sdk authority OpenAPI files', () => {
   const authority = path.join(
     root,
     'sdks',
-    'clawrouter-open-sdk',
+    'cloudrouter-open-sdk',
     'openapi',
-    'clawrouter-open-sdk.openapi.json',
+    'cloudrouter-open-sdk.openapi.json',
   );
   fs.mkdirSync(path.dirname(authority), { recursive: true });
   fs.writeFileSync(authority, '{}\n', 'utf8');
 
   const files = walkOpenApiFiles(root).map((file) => file.replace(/\\/g, '/'));
-  assert.ok(files.some((file) => file.endsWith('/sdks/clawrouter-open-sdk/openapi/clawrouter-open-sdk.openapi.json')));
+  assert.ok(files.some((file) => file.endsWith('/sdks/cloudrouter-open-sdk/openapi/cloudrouter-open-sdk.openapi.json')));
 });
 
 test('walkOpenApiFiles ignores generated nested SDK OpenAPI snapshots', () => {

@@ -109,13 +109,13 @@ describe('complete-repository-docs-migration', () => {
 
   it('runs end-to-end migration on a repository with numbered legacy docs', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'sdkwork-complete-docs-'));
-    writeFileSync(path.join(root, 'AGENTS.md'), '# sdkwork-clawrouter\n');
-    writeFileSync(path.join(root, 'README.md'), '# claw-router\n');
+    writeFileSync(path.join(root, 'AGENTS.md'), '# sdkwork-cloudrouter\n');
+    writeFileSync(path.join(root, 'README.md'), '# cloud-router\n');
     mkdirSync(path.join(root, 'docs/product/prd'), { recursive: true });
     mkdirSync(path.join(root, 'docs/architecture/tech'), { recursive: true });
     writeFileSync(path.join(root, CANON_PATHS.index), '# Docs\n');
     writeFileSync(path.join(root, CANON_PATHS.prd), [
-      '# Claw Router PRD',
+      '# Cloud Router PRD',
       'Status: draft',
       'Owner: SDKWork maintainers',
       'Specs: REQUIREMENTS_SPEC.md',
@@ -124,7 +124,7 @@ describe('complete-repository-docs-migration', () => {
       '',
     ].join('\n'));
     writeFileSync(path.join(root, CANON_PATHS.techArchitecture), [
-      '# Claw Router Technical Architecture',
+      '# Cloud Router Technical Architecture',
       'Status: draft',
       'Owner: SDKWork maintainers',
       'Specs: ARCHITECTURE_DECISION_SPEC.md',
@@ -134,12 +134,12 @@ describe('complete-repository-docs-migration', () => {
       '## 2. Technology Choices',
       '',
     ].join('\n'));
-    writeFileSync(path.join(root, 'docs/01-PRD-sdkwork-clawrouter.md'), '# PRD\n\nUnified AI API Router product scope.\n'.repeat(5));
+    writeFileSync(path.join(root, 'docs/01-PRD-sdkwork-cloudrouter.md'), '# PRD\n\nUnified AI API Router product scope.\n'.repeat(5));
     writeFileSync(path.join(root, 'docs/02-技术架构设计.md'), '# Architecture\n\nGateway and control-plane design.\n'.repeat(5));
 
     const result = completeRepositoryDocsMigration(root);
     assert.ok(result.ingested.length >= 2);
     assert.equal(result.validation.issues.length, 0);
-    assert.ok(existsSync(path.join(root, 'docs/archive/migrated-legacy/numbered-docs/01-PRD-sdkwork-clawrouter.md')));
+    assert.ok(existsSync(path.join(root, 'docs/archive/migrated-legacy/numbered-docs/01-PRD-sdkwork-cloudrouter.md')));
   });
 });

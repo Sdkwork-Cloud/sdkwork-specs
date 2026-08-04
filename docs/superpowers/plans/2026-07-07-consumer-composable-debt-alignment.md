@@ -13,9 +13,9 @@
 ### Task 1: Component Port Binding Shape Debt
 
 **Files:**
-- Modify: `../sdkwork-clawrouter/specs/component.spec.json`
-- Modify: `../sdkwork-clawrouter/apps/sdkwork-clawrouter-pc/specs/component.spec.json`
-- Modify: `../sdkwork-clawrouter/apps/sdkwork-clawrouter-pc/packages/sdkwork-clawroutes-pc-commons/specs/component.spec.json`
+- Modify: `../sdkwork-cloudrouter/specs/component.spec.json`
+- Modify: `../sdkwork-cloudrouter/apps/sdkwork-cloudrouter-pc/specs/component.spec.json`
+- Modify: `../sdkwork-cloudrouter/apps/sdkwork-cloudrouter-pc/packages/sdkwork-cloudroutes-pc-commons/specs/component.spec.json`
 - Modify: `../sdkwork-notary/apps/sdkwork-notary-pc/packages/sdkwork-notary-pc-notary/specs/component.spec.json`
 - Modify: `../sdkwork-notary/apps/sdkwork-notary-pc/packages/sdkwork-notary-pc-shell/specs/component.spec.json`
 

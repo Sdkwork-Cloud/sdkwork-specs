@@ -4,7 +4,7 @@
 - Scope: public `package.json#scripts` command names for SDKWork application repositories, application roots, app surface roots, and TypeScript/JavaScript packages
 - Related: `README.md`, `SOUL.md`, `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `APPLICATION_GATEWAY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `RELEASE_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `SDKWORK_DEPLOY_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `TEST_SPEC.md`, `TYPESCRIPT_CODE_SPEC.md`
 
-This standard defines the public `pnpm` command surface for SDKWork. It prevents each application from inventing application-code-prefixed or locally ordered commands such as `drive:dev`, `clawrouter:dev`, or `im:dev`.
+This standard defines the public `pnpm` command surface for SDKWork. It prevents each application from inventing application-code-prefixed or locally ordered commands such as `drive:dev`, `cloudrouter:dev`, or `im:dev`.
 
 The command name must describe the action and standard runtime axis. Product-specific implementation belongs behind a standard dispatcher, manifest, topology profile, workflow config, or internal runner script.
 
@@ -347,8 +347,8 @@ drive:dev
 drive:build
 im:dev
 im:dev:desktop
-clawrouter:dev
-clawrouter:plan
+cloudrouter:dev
+cloudrouter:plan
 <application-code>:dev
 <application-code>:build
 <application-code>:release
@@ -362,9 +362,9 @@ Migration examples:
 | `drive:dev:desktop` | `dev:desktop` |
 | `drive:build` | `build` |
 | `drive:build:self-hosted` | `build:standalone` |
-| `clawrouter:dev` | `dev` |
-| `clawrouter:dev:postgres` | `dev:server:postgres` or `dev:browser:postgres` based on the orchestrated target |
-| `clawrouter:dev:cloud:split` | `dev:browser:cloud` |
+| `cloudrouter:dev` | `dev` |
+| `cloudrouter:dev:postgres` | `dev:server:postgres` or `dev:browser:postgres` based on the orchestrated target |
+| `cloudrouter:dev:cloud:split` | `dev:browser:cloud` |
 | `browser:dev` | `dev:browser` |
 | `desktop:dev` | `dev:desktop` |
 | `desktop:build` | `build:desktop` |
@@ -644,7 +644,7 @@ Rules:
 - [ ] `dev` directly delegates to `dev:standalone`; both profile entrypoints resolve to the matching `development` profile.
 - [ ] `dev:cloud` consumes explicit deployed cloud API surfaces without starting a local API, gateway, or database.
 - [ ] Capability-specific root commands exist for release, deploy, API, SDK, database, gateway, topology, and supply-chain workflows when those capabilities exist.
-- [ ] No repository root public script starts with a application-code prefix such as `drive`, `im`, or `clawrouter`.
+- [ ] No repository root public script starts with a application-code prefix such as `drive`, `im`, or `cloudrouter`.
 - [ ] Runtime-target commands are action-first, for example `dev:browser`, `dev:desktop`, `build:desktop`, `build:container`, `build:android-native`, `build:ios-native`, and `build:mini-program`; no public script uses platform/tool-first aliases such as `browser:*`, `desktop:*`, `tauri:*`, `docker:*`, `android:*`, `ios:*`, `harmony:*`, `flutter:*`, `mini-program:*`, or `*:tauri`.
 - [ ] Root `dev:browser` and `dev:desktop` default to
       `postgres:standalone` with `environment = development`; cloud variants

@@ -69,7 +69,7 @@ export async function ensurePostgresDevDatabaseReady({
       stderr.write(
         'PostgreSQL is reachable but the connection pool is exhausted. Stop stale dev gateways, then retry:\n'
         + '  taskkill /F /IM sdkwork-api-im-standalone-gateway.exe\n'
-        + '  taskkill /F /IM sdkwork-api-clawrouter-standalone-gateway.exe\n'
+        + '  taskkill /F /IM sdkwork-api-cloudrouter-standalone-gateway.exe\n'
         + '  pnpm db:postgres:migrate\n'
         + '  pnpm dev\n',
       );

@@ -270,7 +270,7 @@ application lifecycle environment prefix.
 connectivity environment key names and is authoritative after initialization.
 New topology initialization may propose conventional env names from the new
 application code, while established products may preserve a different explicit
-prefix such as `SDKWORK_CLAW_ROUTER_*`. Migration tooling derives an existing
+prefix such as `SDKWORK_CLOUDROUTER_*`. Migration tooling derives an existing
 application prefix from `envKeys.deploymentProfile`, not from `applicationCode`.
 The prefix is not a database namespace.
 

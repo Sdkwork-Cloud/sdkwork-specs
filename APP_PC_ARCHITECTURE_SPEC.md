@@ -12,7 +12,7 @@ Reference inputs:
 
 - `apps/docs/ARCHITECT.md` defines the pnpm workspace, thin root `src/`, `packages/`, and service-layer split pattern.
 - `apps/sdkwork-im/apps/sdkwork-chat-pc` demonstrates a PC app root with renderer bootstrap, app packages, console/admin package families, and desktop package placement.
-- `apps/sdkwork-clawrouter/apps/sdkwork-clawrouter-pc` demonstrates app, console, and admin capability decomposition at scale. Its packages without a `pc` segment are migration references; new PC packages use the normalized naming in this standard.
+- `apps/sdkwork-cloudrouter/apps/sdkwork-cloudrouter-pc` demonstrates app, console, and admin capability decomposition at scale. Its packages without a `pc` segment are migration references; new PC packages use the normalized naming in this standard.
 - Tauri v2 official docs define mobile development commands, platform-specific config merging, iOS signing, Android/iOS build outputs, and mobile multi-window behavior. SDKWork PC tablet packaging uses those capabilities only as a large-screen PC runtime/package target.
 
 ## 1. Core Model
@@ -143,6 +143,44 @@ Rules:
 - Host applications register integrated sibling repositories through `@source` directives in `src/index.css`.
 - Feature packages under `packages/` `MUST NOT` `@import "tailwindcss"` in CSS imported by the host shell.
 - `vite.config.ts` `MUST` register `@tailwindcss/vite` and `MUST NOT` alias bare specifier `tailwindcss`.
+
+### 2.0.1 Workspace Package Resolution
+
+Package imports `MUST` resolve through pnpm workspace linking and package
+`exports` maps. `vite.config.ts` is the Vite process configuration, not a
+dependency-resolution authority; it `MUST NOT` restate the workspace dependency
+graph and `MUST NOT` grow alias entries that package resolution already
+provides.
+
+Rules:
+
+- `vite.config.ts` `MUST NOT` declare `resolve.alias` entries for package
+  specifiers — scoped (`@sdkwork/*`), unscoped (`sdkwork-drive-pc-core`,
+  `lucide-react`, `react`, `i18next`), bare, or subpath forms such as
+  `@sdkwork/utils/money`. Every alias entry that maps a package name to a
+  directory or file is a resolution remap that workspace linking must provide
+  instead.
+- Package imports `MUST` resolve through `node_modules` workspace symlinks
+  created by `pnpm install` from `pnpm-workspace.yaml`, and through the owning
+  package's `exports` map. Missing links are fixed by completing
+  `pnpm-workspace.yaml` and the importing package's declared dependencies, then
+  running `pnpm install` — never by consumer aliases.
+- Workspace packages consumed as source `MUST` expose their concrete source
+  entry through `exports` (for example `"./src/index.ts"`); consumers `MUST NOT`
+  map them to `src/index.ts` with aliases.
+- Subpath imports such as `@sdkwork/<package>/<segment>` `MUST` be declared in
+  the owning package's `exports` map; consumers `MUST NOT` alias the segment.
+- Hook-bearing dependency deduplication (`react`, `react-dom`,
+  `react-i18next`, `i18next`) `MUST` use `resolve.dedupe` only; `MUST NOT`
+  declare `resolve.alias` entries for those packages.
+- Project-internal path aliases (for example `"@"` → the application source
+  root) remain allowed only when they map directory paths, never package
+  specifiers.
+- `tailwindcss` integration follows section 2.0: register
+  `@tailwindcss/vite`; `MUST NOT` alias bare specifier `tailwindcss`.
+- Verification `MUST` run
+  `node ../sdkwork-specs/tools/check-vite-workspace-aliases.mjs --root .` and
+  pass before a PC application root is considered compliant.
 
 ## 2.1 Configuration And Environment Matrix
 
@@ -607,8 +645,8 @@ Rules:
 Reference applications may contain packages such as:
 
 ```text
-sdkwork-clawrouter-console-settings
-sdkwork-clawrouter-admin-monitor
+sdkwork-cloudrouter-console-settings
+sdkwork-cloudrouter-admin-monitor
 sdkwork-clawchat-console-core
 sdkwork-clawchat-admin-dashboard
 ```

@@ -97,8 +97,8 @@ function moduleCandidatesForDependency(dep) {
   }
 
   const token = workspaceToken(dep.workspace);
-  const clawrouterCapability = token.match(/^clawrouter-(?:app|backend)-([a-z0-9-]+)-capability$/u);
-  if (clawrouterCapability) candidates.add(clawrouterCapability[1]);
+  const cloudrouterCapability = token.match(/^cloudrouter-(?:app|backend)-([a-z0-9-]+)-capability$/u);
+  if (cloudrouterCapability) candidates.add(cloudrouterCapability[1]);
 
   const snakeConsumer = token.match(/^sdkwork_([a-z0-9_]+?)_(?:flutter_mobile|android_mobile|ios_mobile|harmony_mobile|h5|mp)?_?app_sdk_consumer$/u);
   if (snakeConsumer) {

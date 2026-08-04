@@ -58,8 +58,8 @@ const TEXT_EXTENSIONS = new Set([
 const CRATE_TARGET_BY_NAME = {
   'sdkwork-webserver-api-server': 'sdkwork-api-web-standalone-gateway',
   'sdkwork-deploy-api-server': 'sdkwork-api-deployments-standalone-gateway',
-  'sdkwork-clawrouter-app-api-server': 'sdkwork-api-clawrouter-standalone-gateway',
-  'sdkwork-clawrouter-admin-api-server': 'sdkwork-clawrouter-admin-gateway',
+  'sdkwork-cloudrouter-app-api-server': 'sdkwork-api-cloudrouter-standalone-gateway',
+  'sdkwork-cloudrouter-admin-api-server': 'sdkwork-cloudrouter-admin-gateway',
 };
 
 const PLATFORM_LISTENER_CRATE = 'sdkwork-api-cloud-gateway-api-server';

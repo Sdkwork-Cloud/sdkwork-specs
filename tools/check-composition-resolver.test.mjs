@@ -14,7 +14,7 @@ import {
 } from './lib/composition-resolver.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const clawRouterRoot = path.resolve(__dirname, '../../../sdkwork-clawrouter');
+const cloudRouterRoot = path.resolve(__dirname, '../../../sdkwork-cloudrouter');
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -166,10 +166,10 @@ function createOwnershipResolutionFixture({ integrationOverrides = {} } = {}) {
   return { root, resolution: resolveComposition(root) };
 }
 
-test('resolveComposition derives platform IAM integration from clawrouter sdkDependencies', () => {
-  if (!fs.existsSync(clawRouterRoot)) return;
+test('resolveComposition derives platform IAM integration from cloudrouter sdkDependencies', () => {
+  if (!fs.existsSync(cloudRouterRoot)) return;
 
-  const resolution = resolveComposition(clawRouterRoot);
+  const resolution = resolveComposition(cloudRouterRoot);
   const iam = resolution.integrations.find((entry) => entry.workspace === 'sdkwork-iam-app-sdk');
   assert.ok(iam, 'expected sdkwork-iam-app-sdk integration');
   assert.equal(iam.connectivityPlane, 'platform');

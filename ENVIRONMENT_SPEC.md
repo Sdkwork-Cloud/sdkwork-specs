@@ -97,7 +97,7 @@ For SDKWork application private runtime values:
 SDKWORK_<APPLICATION_CODE>_<SETTING>
 ```
 
-Legacy application-specific prefixes such as `SDKWORK_CLAW_*` may remain only during a documented migration window.
+Legacy application-specific prefixes such as `SDKWORK_CLOUDROUTER_*` may remain only during a documented migration window.
 
 For browser-public portal values:
 
@@ -714,7 +714,7 @@ it `MUST NOT` select SQLite for a backend service.
 
 ### 7.1 Unified Workspace PostgreSQL Profile
 
-All SDKWork applications in one workspace share one PostgreSQL connection identity per lifecycle environment and deployment profile. The canonical contract is owned by `sdkwork-specs/templates/env.postgres.example` and uses `SDKWORK_DATABASE_*` keys; workspace or deployment infrastructure materializes its values. In a workspace environment, every application service, embedded dependency module, gateway-owned route module, worker, bootstrap command, and migration command resolves the same endpoint, database name, schema, and credential identity for that environment. Application-specific alternatives such as `sdkwork_clawrouter_dev`, `sdkwork_drive_dev`, `<application_code>_test_<run_id>`, `sdkwork_<application-code>_prod`, or per-module schemas are forbidden.
+All SDKWork applications in one workspace share one PostgreSQL connection identity per lifecycle environment and deployment profile. The canonical contract is owned by `sdkwork-specs/templates/env.postgres.example` and uses `SDKWORK_DATABASE_*` keys; workspace or deployment infrastructure materializes its values. In a workspace environment, every application service, embedded dependency module, gateway-owned route module, worker, bootstrap command, and migration command resolves the same endpoint, database name, schema, and credential identity for that environment. Application-specific alternatives such as `sdkwork_cloudrouter_dev`, `sdkwork_drive_dev`, `<application_code>_test_<run_id>`, `sdkwork_<application-code>_prod`, or per-module schemas are forbidden.
 
 Applications MUST NOT define per-app PostgreSQL database names, usernames, passwords, schemas, or URLs that differ from this profile in checked-in `.env.postgres.example`, topology profile env files, runtime TOML examples, release templates, CI templates, or operator documentation.
 
@@ -784,7 +784,7 @@ Rules:
 - SDKWork application root commands follow `PNPM_SCRIPT_SPEC.md`. `pnpm dev`
   starts the default development workflow. `pnpm dev:browser` and
   `pnpm dev:desktop` default to PostgreSQL, standalone, and development.
-  Product-prefixed public commands such as `clawrouter:dev`, `drive:dev`, and
+  Product-prefixed public commands such as `cloudrouter:dev`, `drive:dev`, and
   `im:dev` are retired. The PostgreSQL development profile belongs to dev
   orchestration and any launched service runtime; it must not be treated as the
   installed desktop-local data store.
@@ -940,7 +940,7 @@ database = 0
 # username = "default"
 # url = "redis://redis.example.com:6379/0"
 password_file = "/etc/sdkwork/router/redis.secret"
-key_prefix = "clawrouter"
+key_prefix = "cloudrouter"
 tls = false
 max_connections = 16
 connect_timeout_ms = 2000
@@ -1288,9 +1288,9 @@ SDKWORK_DATABASE_MAX_CONNECTIONS=20
 SDKWORK_<APPLICATION_CODE>_SERVER_BIND=0.0.0.0:3900
 ```
 
-## 11. sdkwork-clawrouter Application Env
+## 11. sdkwork-cloudrouter Application Env
 
-The SdkWork Claw Router product uses the `SDKWORK_CLAW_` prefix for private process values and `PORTAL_PUBLIC_` for browser-visible portal values.
+The SdkWork Cloud Router product uses the `SDKWORK_CLOUDROUTER_` prefix for private process values and `PORTAL_PUBLIC_` for browser-visible portal values.
 
 Database config is not application product config. Release and operations docs `MUST` use `SDKWORK_DATABASE_*` for PostgreSQL and declared client-local SQLite settings. Legacy application/module aliases such as `SDKWORK_<APP>_DATABASE_ENGINE`, `SDKWORK_<APP>_DATABASE_SSL_MODE`, and `SDKWORK_<APPLICATION_CODE>_DATABASE_URL` are retired migration inputs and must not appear in checked-in env, runtime TOML, installer templates, deployment mappings, or application startup defaults.
 
@@ -1299,22 +1299,22 @@ Desktop runtime targets default to SQLite.
 
 ### 11.1 Runtime Config Precedence
 
-Claw Router startup must resolve runtime configuration in this order:
+Cloud Router startup must resolve runtime configuration in this order:
 
 1. Built-in deployment-profile and runtime-target defaults.
 2. Canonical runtime TOML path defined by `RUNTIME_DIRECTORY_SPEC.md`.
-3. `SDKWORK_CLAW_CONFIG_FILE`.
+3. `SDKWORK_CLOUDROUTER_CONFIG_FILE`.
 4. Private process env overrides such as `SDKWORK_DATABASE_URL`.
 5. CLI flags for development, smoke tests, or explicit one-shot operations.
 
 Rules:
 
-- `SDKWORK_CLAW_DEPLOYMENT_PROFILE=standalone` is the default for archive, service, single-container, and desktop releases.
-- `SDKWORK_CLAW_DEPLOYMENT_PROFILE=cloud` is the default for cloud image/bundle releases.
-- `SDKWORK_CLAW_ENVIRONMENT`, `SDKWORK_CLAW_CONFIG_PROFILE`, and
-  `SDKWORK_CLAW_DEPLOYMENT_PROFILE`, and `SDKWORK_CLAW_RUNTIME_TARGET` must be
+- `SDKWORK_CLOUDROUTER_DEPLOYMENT_PROFILE=standalone` is the default for archive, service, single-container, and desktop releases.
+- `SDKWORK_CLOUDROUTER_DEPLOYMENT_PROFILE=cloud` is the default for cloud image/bundle releases.
+- `SDKWORK_CLOUDROUTER_ENVIRONMENT`, `SDKWORK_CLOUDROUTER_CONFIG_PROFILE`, and
+  `SDKWORK_CLOUDROUTER_DEPLOYMENT_PROFILE`, and `SDKWORK_CLOUDROUTER_RUNTIME_TARGET` must be
   resolved before database, Redis, or SDK base URL defaults are selected.
-- `SDKWORK_CLAW_CONFIG_FILE` may point to any administrator-managed TOML file.
+- `SDKWORK_CLOUDROUTER_CONFIG_FILE` may point to any administrator-managed TOML file.
 - `SDKWORK_DATABASE_URL` overrides TOML database fields only as an explicit operator override.
 - `SDKWORK_DATABASE_MAX_CONNECTIONS` overrides `[database].max_connections` in TOML.
 - If a config file is missing, startup tooling should initialize the default TOML file before validation.
@@ -1326,18 +1326,18 @@ Rules:
 
 | Target | Config file | Data directory | Default database |
 | --- | --- | --- | --- |
-| Linux server/service/container | `/etc/sdkwork/router/clawrouter.toml` | `/var/lib/sdkwork/router` | PostgreSQL through structured TOML fields |
-| Windows server/service | `%ProgramData%/sdkwork/router/clawrouter.toml` | `%ProgramData%/sdkwork/router/Data` | PostgreSQL through structured TOML fields |
-| macOS server/service | `/Library/Application Support/sdkwork/router/clawrouter.toml` | `/Library/Application Support/sdkwork/router/Data` | PostgreSQL through structured TOML fields |
-| Linux desktop | `~/.sdkwork/router/config/clawrouter.toml` | `~/.sdkwork/router/data` | `sqlite://~/.sdkwork/router/data/clawrouter.sqlite` |
-| Windows desktop | `%USERPROFILE%/.sdkwork/router/config/clawrouter.toml` | `%USERPROFILE%/.sdkwork/router/data` | `sqlite://%USERPROFILE%/.sdkwork/router/data/clawrouter.sqlite` |
-| macOS desktop | `~/.sdkwork/router/config/clawrouter.toml` | `~/.sdkwork/router/data` | `sqlite://~/.sdkwork/router/data/clawrouter.sqlite` |
+| Linux server/service/container | `/etc/sdkwork/router/cloudrouter.toml` | `/var/lib/sdkwork/router` | PostgreSQL through structured TOML fields |
+| Windows server/service | `%ProgramData%/sdkwork/router/cloudrouter.toml` | `%ProgramData%/sdkwork/router/Data` | PostgreSQL through structured TOML fields |
+| macOS server/service | `/Library/Application Support/sdkwork/router/cloudrouter.toml` | `/Library/Application Support/sdkwork/router/Data` | PostgreSQL through structured TOML fields |
+| Linux desktop | `~/.sdkwork/router/config/cloudrouter.toml` | `~/.sdkwork/router/data` | `sqlite://~/.sdkwork/router/data/cloudrouter.sqlite` |
+| Windows desktop | `%USERPROFILE%/.sdkwork/router/config/cloudrouter.toml` | `%USERPROFILE%/.sdkwork/router/data` | `sqlite://%USERPROFILE%/.sdkwork/router/data/cloudrouter.sqlite` |
+| macOS desktop | `~/.sdkwork/router/config/cloudrouter.toml` | `~/.sdkwork/router/data` | `sqlite://~/.sdkwork/router/data/cloudrouter.sqlite` |
 
 Rules:
 
-- Release packages must include `config/clawrouter.toml.example`.
+- Release packages must include `config/cloudrouter.toml.example`.
 - Release packages must not include `.env.release.local`.
-- Host-local env files may be generated during install initialization, but secrets must remain on the target host. Linux service packages should use `/etc/sdkwork/router/clawrouter.env` for process overrides and `/etc/sdkwork/router/database.secret` for the default PostgreSQL password file.
+- Host-local env files may be generated during install initialization, but secrets must remain on the target host. Linux service packages should use `/etc/sdkwork/router/cloudrouter.env` for process overrides and `/etc/sdkwork/router/database.secret` for the default PostgreSQL password file.
 - Desktop SQLite files must live under the SDKWork user private data directory, not beside the executable.
 - Server mutable state belongs under the OS service data directory or a mounted volume.
 - Historical desktop paths such as XDG or display-name based locations may be read as compatibility fallbacks during migration, but canonical writes must target `~/.sdkwork/router` or the Windows equivalent `%USERPROFILE%/.sdkwork/router`.
@@ -1345,10 +1345,10 @@ Rules:
 ### 11.3 Development
 
 ```text
-SDKWORK_CLAW_DEPLOYMENT_PROFILE=standalone
-SDKWORK_CLAW_ENVIRONMENT=development
-SDKWORK_CLAW_CONFIG_PROFILE=dev
-SDKWORK_CLAW_RUNTIME_TARGET=server
+SDKWORK_CLOUDROUTER_DEPLOYMENT_PROFILE=standalone
+SDKWORK_CLOUDROUTER_ENVIRONMENT=development
+SDKWORK_CLOUDROUTER_CONFIG_PROFILE=dev
+SDKWORK_CLOUDROUTER_RUNTIME_TARGET=server
 SDKWORK_DATABASE_ENGINE=postgresql
 SDKWORK_DATABASE_HOST=127.0.0.1
 SDKWORK_DATABASE_PORT=5432
@@ -1365,24 +1365,24 @@ SDKWORK_DATABASE_ADMIN_PASSWORD=postgres_admin_pass
 SDKWORK_DATABASE_ADMIN_DATABASE=postgres
 SDKWORK_DATABASE_ADMIN_SSL_MODE=disable
 # SDKWORK_DATABASE_URL=postgresql://sdkwork_ai_dev:sdkworkdev123@127.0.0.1:5432/sdkwork_ai_dev?sslmode=disable
-SDKWORK_CLAW_REDIS_ENABLED=true
-SDKWORK_CLAW_REDIS_HOST=redis.example.com
-SDKWORK_CLAW_REDIS_PORT=6379
-SDKWORK_CLAW_REDIS_DATABASE=0
-# SDKWORK_CLAW_REDIS_URL=redis://redis.example.com:6379/0
-SDKWORK_CLAW_REDIS_KEY_PREFIX=clawrouter
-SDKWORK_CLAW_REDIS_TLS=false
-SDKWORK_CLAW_REDIS_MAX_CONNECTIONS=16
-SDKWORK_CLAW_REDIS_CONNECT_TIMEOUT_MILLIS=2000
-SDKWORK_CLAW_REDIS_COMMAND_TIMEOUT_MILLIS=1000
-SDKWORK_CLAW_REDIS_POOL_IDLE_TIMEOUT_SECONDS=60
-SDKWORK_CLAW_SERVER_BIND=127.0.0.1:3900
-SDKWORK_CLAW_GATEWAY_BIND=127.0.0.1:3901
-SDKWORK_CLAW_ADMIN_API_BIND=127.0.0.1:3902
-SDKWORK_CLAW_APP_API_BIND=127.0.0.1:3903
-SDKWORK_CLAW_API_KEY_PEPPER=development-only-change-me
-SDKWORK_CLAW_TRUSTED_SUBJECT_SECRET=development-only-change-me
-SDKWORK_CLAW_APP_SESSION_SECRET=development-only-change-me
+SDKWORK_CLOUDROUTER_REDIS_ENABLED=true
+SDKWORK_CLOUDROUTER_REDIS_HOST=redis.example.com
+SDKWORK_CLOUDROUTER_REDIS_PORT=6379
+SDKWORK_CLOUDROUTER_REDIS_DATABASE=0
+# SDKWORK_CLOUDROUTER_REDIS_URL=redis://redis.example.com:6379/0
+SDKWORK_CLOUDROUTER_REDIS_KEY_PREFIX=cloudrouter
+SDKWORK_CLOUDROUTER_REDIS_TLS=false
+SDKWORK_CLOUDROUTER_REDIS_MAX_CONNECTIONS=16
+SDKWORK_CLOUDROUTER_REDIS_CONNECT_TIMEOUT_MILLIS=2000
+SDKWORK_CLOUDROUTER_REDIS_COMMAND_TIMEOUT_MILLIS=1000
+SDKWORK_CLOUDROUTER_REDIS_POOL_IDLE_TIMEOUT_SECONDS=60
+SDKWORK_CLOUDROUTER_SERVER_BIND=127.0.0.1:3900
+SDKWORK_CLOUDROUTER_GATEWAY_BIND=127.0.0.1:3901
+SDKWORK_CLOUDROUTER_ADMIN_API_BIND=127.0.0.1:3902
+SDKWORK_CLOUDROUTER_APP_API_BIND=127.0.0.1:3903
+SDKWORK_CLOUDROUTER_API_KEY_PEPPER=development-only-change-me
+SDKWORK_CLOUDROUTER_TRUSTED_SUBJECT_SECRET=development-only-change-me
+SDKWORK_CLOUDROUTER_APP_SESSION_SECRET=development-only-change-me
 # /v1 is valid here only for vendor compatibility open-api declared with x-sdkwork-wire-protocol: external per API_SPEC.md section 4.5.2.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
@@ -1392,7 +1392,7 @@ PORTAL_PUBLIC_BACKEND_API_BASE_URL=/backend/v3/api
 PORTAL_PUBLIC_TOOL_API_ENABLED=false
 ```
 
-Claw Router checks in `.env.postgres.example` with these local PostgreSQL
+Cloud Router checks in `.env.postgres.example` with these local PostgreSQL
 fields. Developers may copy it to `.env.postgres`; that override is host-local
 and excluded from source control. Startup scripts assemble the structured fields into
 `SDKWORK_DATABASE_URL` for Rust services only after validation.
@@ -1400,29 +1400,29 @@ and excluded from source control. Startup scripts assemble the structured fields
 This development PostgreSQL profile is for the workspace server/runtime
 integration path. It does not change the desktop runtime profile. Desktop
 packages and desktop user data remain SQLite by default at
-`~/.sdkwork/router/data/clawrouter.sqlite` or the equivalent Windows user
+`~/.sdkwork/router/data/cloudrouter.sqlite` or the equivalent Windows user
 profile path.
 
 ### 11.4 Desktop Install
 
 ```text
-SDKWORK_CLAW_DEPLOYMENT_PROFILE=standalone
-SDKWORK_CLAW_ENVIRONMENT=production
-SDKWORK_CLAW_CONFIG_PROFILE=prod
-SDKWORK_CLAW_RUNTIME_TARGET=desktop
-SDKWORK_CLAW_CONFIG_FILE=~/.sdkwork/router/config/clawrouter.toml
+SDKWORK_CLOUDROUTER_DEPLOYMENT_PROFILE=standalone
+SDKWORK_CLOUDROUTER_ENVIRONMENT=production
+SDKWORK_CLOUDROUTER_CONFIG_PROFILE=prod
+SDKWORK_CLOUDROUTER_RUNTIME_TARGET=desktop
+SDKWORK_CLOUDROUTER_CONFIG_FILE=~/.sdkwork/router/config/cloudrouter.toml
 SDKWORK_DATABASE_MAX_CONNECTIONS=1
-SDKWORK_CLAW_REDIS_ENABLED=false
-SDKWORK_CLAW_REDIS_HOST=redis.example.com
-SDKWORK_CLAW_REDIS_PORT=6379
-SDKWORK_CLAW_REDIS_DATABASE=0
-# SDKWORK_CLAW_REDIS_URL=redis://redis.example.com:6379/0
-SDKWORK_CLAW_REDIS_KEY_PREFIX=clawrouter
-SDKWORK_CLAW_REDIS_TLS=false
-SDKWORK_CLAW_REDIS_MAX_CONNECTIONS=4
-SDKWORK_CLAW_REDIS_CONNECT_TIMEOUT_MILLIS=2000
-SDKWORK_CLAW_REDIS_COMMAND_TIMEOUT_MILLIS=1000
-SDKWORK_CLAW_REDIS_POOL_IDLE_TIMEOUT_SECONDS=60
+SDKWORK_CLOUDROUTER_REDIS_ENABLED=false
+SDKWORK_CLOUDROUTER_REDIS_HOST=redis.example.com
+SDKWORK_CLOUDROUTER_REDIS_PORT=6379
+SDKWORK_CLOUDROUTER_REDIS_DATABASE=0
+# SDKWORK_CLOUDROUTER_REDIS_URL=redis://redis.example.com:6379/0
+SDKWORK_CLOUDROUTER_REDIS_KEY_PREFIX=cloudrouter
+SDKWORK_CLOUDROUTER_REDIS_TLS=false
+SDKWORK_CLOUDROUTER_REDIS_MAX_CONNECTIONS=4
+SDKWORK_CLOUDROUTER_REDIS_CONNECT_TIMEOUT_MILLIS=2000
+SDKWORK_CLOUDROUTER_REDIS_COMMAND_TIMEOUT_MILLIS=1000
+SDKWORK_CLOUDROUTER_REDIS_POOL_IDLE_TIMEOUT_SECONDS=60
 # /v1 is valid here only for vendor compatibility open-api declared with x-sdkwork-wire-protocol: external per API_SPEC.md section 4.5.2.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
@@ -1448,7 +1448,7 @@ config_profile = "prod"
 
 [database]
 engine = "sqlite"
-file = "~/.sdkwork/router/data/clawrouter.sqlite"
+file = "~/.sdkwork/router/data/cloudrouter.sqlite"
 max_connections = 1
 
 [redis]
@@ -1458,7 +1458,7 @@ port = 6379
 database = 0
 # username = "default"
 # url = "redis://redis.example.com:6379/0"
-key_prefix = "clawrouter"
+key_prefix = "cloudrouter"
 tls = false
 max_connections = 4
 connect_timeout_ms = 2000
@@ -1469,21 +1469,21 @@ pool_idle_timeout_seconds = 60
 ### 11.5 Server Release
 
 ```text
-SDKWORK_CLAW_DEPLOYMENT_PROFILE=standalone
-SDKWORK_CLAW_ENVIRONMENT=production
-SDKWORK_CLAW_CONFIG_PROFILE=prod
-SDKWORK_CLAW_RUNTIME_TARGET=server
-SDKWORK_CLAW_CONFIG_FILE=/etc/sdkwork/router/clawrouter.toml
+SDKWORK_CLOUDROUTER_DEPLOYMENT_PROFILE=standalone
+SDKWORK_CLOUDROUTER_ENVIRONMENT=production
+SDKWORK_CLOUDROUTER_CONFIG_PROFILE=prod
+SDKWORK_CLOUDROUTER_RUNTIME_TARGET=server
+SDKWORK_CLOUDROUTER_CONFIG_FILE=/etc/sdkwork/router/cloudrouter.toml
 SDKWORK_DATABASE_MAX_CONNECTIONS=16
-SDKWORK_CLAW_REDIS_ENABLED=true
-SDKWORK_CLAW_REDIS_HOST=redis.example.com
-SDKWORK_CLAW_REDIS_PORT=6379
-SDKWORK_CLAW_REDIS_DATABASE=0
-# SDKWORK_CLAW_REDIS_URL=redis://redis.example.com:6379/0
-SDKWORK_CLAW_SERVER_BIND=0.0.0.0:3900
-SDKWORK_CLAW_EDGE_SERVER=1
-SDKWORK_CLAW_EDGE_EXTERNAL_SCHEME=https
-SDKWORK_CLAW_EDGE_TRUST_FORWARDED_HEADERS=1
+SDKWORK_CLOUDROUTER_REDIS_ENABLED=true
+SDKWORK_CLOUDROUTER_REDIS_HOST=redis.example.com
+SDKWORK_CLOUDROUTER_REDIS_PORT=6379
+SDKWORK_CLOUDROUTER_REDIS_DATABASE=0
+# SDKWORK_CLOUDROUTER_REDIS_URL=redis://redis.example.com:6379/0
+SDKWORK_CLOUDROUTER_SERVER_BIND=0.0.0.0:3900
+SDKWORK_CLOUDROUTER_EDGE_SERVER=1
+SDKWORK_CLOUDROUTER_EDGE_EXTERNAL_SCHEME=https
+SDKWORK_CLOUDROUTER_EDGE_TRUST_FORWARDED_HEADERS=1
 # /v1 is valid here only for vendor compatibility open-api declared with x-sdkwork-wire-protocol: external per API_SPEC.md section 4.5.2.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
@@ -1491,14 +1491,14 @@ PORTAL_PUBLIC_OPEN_API_BASE_URL=/v1
 PORTAL_PUBLIC_APP_API_BASE_URL=/app/v3/api
 PORTAL_PUBLIC_BACKEND_API_BASE_URL=/backend/v3/api
 PORTAL_PUBLIC_TOOL_API_ENABLED=false
-SDKWORK_CLAW_EDGE_CSP_CONNECT_SRC=
-SDKWORK_CLAW_TOOL_API_RATE_LIMIT_REQUESTS=120
-SDKWORK_CLAW_TOOL_API_RATE_LIMIT_WINDOW_SECONDS=60
-SDKWORK_CLAW_TOOL_API_SDK_GENERATOR_BASE_URL=
-SDKWORK_CLAW_TOOL_API_SDK_ARCHIVE_ROOT=
+SDKWORK_CLOUDROUTER_EDGE_CSP_CONNECT_SRC=
+SDKWORK_CLOUDROUTER_TOOL_API_RATE_LIMIT_REQUESTS=120
+SDKWORK_CLOUDROUTER_TOOL_API_RATE_LIMIT_WINDOW_SECONDS=60
+SDKWORK_CLOUDROUTER_TOOL_API_SDK_GENERATOR_BASE_URL=
+SDKWORK_CLOUDROUTER_TOOL_API_SDK_ARCHIVE_ROOT=
 ```
 
-Private edge-server env keys use the `SDKWORK_CLAW_EDGE_*` and `SDKWORK_CLAW_TOOL_API_*`
+Private edge-server env keys use the `SDKWORK_CLOUDROUTER_EDGE_*` and `SDKWORK_CLOUDROUTER_TOOL_API_*`
 prefixes. The Rust edge gateway reads these canonical names first and accepts legacy
 `PORTAL_TOOL_API_*`, `PORTAL_CSP_*`, `PORTAL_SECURITY_*`, and `PORTAL_STATIC_*` aliases
 only as a read-only migration fallback. New release-host configuration must not assign
@@ -1534,7 +1534,7 @@ database = 0
 # username = "default"
 # url = "redis://redis.example.com:6379/0"
 password_file = "/etc/sdkwork/router/redis.secret"
-key_prefix = "clawrouter"
+key_prefix = "cloudrouter"
 tls = false
 max_connections = 16
 connect_timeout_ms = 2000
@@ -1545,7 +1545,7 @@ pool_idle_timeout_seconds = 60
 data_directory = "/var/lib/sdkwork/router"
 ```
 
-For Claw Router, Redis is enabled and required by default for server and
+For Cloud Router, Redis is enabled and required by default for server and
 container deployments. Keep `[redis].enabled = true`, set `[redis].host`,
 `[redis].port`, and `[redis].database` before first startup, and use
 `[redis].url` only as an advanced managed-endpoint override. Prefer
@@ -1557,11 +1557,11 @@ keep Redis optional and disabled by default.
 Use when the portal edge service forwards to separate internal gateway, app API, and `backend-admin` API services while the public deployment profile remains `cloud`.
 
 ```text
-SDKWORK_CLAW_DEPLOYMENT_PROFILE=cloud
-SDKWORK_CLAW_RUNTIME_TARGET=container
-SDKWORK_CLAW_EDGE_GATEWAY_BASE_URL=http://gateway.internal:18080
-SDKWORK_CLAW_EDGE_APP_API_BASE_URL=http://app-api.internal:18082
-SDKWORK_CLAW_EDGE_BACKEND_API_BASE_URL=http://admin-api.internal:18081
+SDKWORK_CLOUDROUTER_DEPLOYMENT_PROFILE=cloud
+SDKWORK_CLOUDROUTER_RUNTIME_TARGET=container
+SDKWORK_CLOUDROUTER_EDGE_GATEWAY_BASE_URL=http://gateway.internal:18080
+SDKWORK_CLOUDROUTER_EDGE_APP_API_BASE_URL=http://app-api.internal:18082
+SDKWORK_CLOUDROUTER_EDGE_BACKEND_API_BASE_URL=http://admin-api.internal:18081
 # /v1 is valid here only for vendor compatibility open-api declared with x-sdkwork-wire-protocol: external per API_SPEC.md section 4.5.2.
 # SDKWork-owned business open-api domains use their approved prefix, for example /im/v3/api.
 PORTAL_PUBLIC_API_BASE_URL=/v1
@@ -1599,7 +1599,7 @@ Rules:
 - Strict release preflight must validate required values before packaging.
 - Optional public overrides, such as `PORTAL_PUBLIC_OPEN_API_BASE_URL`, may be omitted when they inherit a required base URL.
 
-Minimum release host contract for `sdkwork-clawrouter`:
+Minimum release host contract for `sdkwork-cloudrouter`:
 
 ```text
 SDKWORK_DATABASE_URL=postgres://sdkwork_ai_test:password@host:5432/sdkwork_ai_test

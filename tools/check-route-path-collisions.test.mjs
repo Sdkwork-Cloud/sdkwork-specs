@@ -488,12 +488,12 @@ test('checker reconciles dependency-owned operations declared by dependency-api-
     },
   );
   writeJson(
-    path.join(root, 'apis/app-api/clawrouter/openapi.json'),
+    path.join(root, 'apis/app-api/cloudrouter/openapi.json'),
     openApi({
       '/app/v3/api/ai/model_rankings': {
         get: {
           operationId: 'modelRankings.list',
-          'x-sdkwork-source-route-crate': 'sdkwork-routes-clawrouter-app-api',
+          'x-sdkwork-source-route-crate': 'sdkwork-routes-cloudrouter-app-api',
           responses: { 200: { description: 'ok' } },
         },
       },
@@ -512,11 +512,11 @@ test('checker reconciles dependency-owned operations declared by dependency-api-
     }),
   );
   writeJson(
-    path.join(root, 'sdks/_route-manifests/app-api/sdkwork-routes-clawrouter-app-api.route-manifest.json'),
+    path.join(root, 'sdks/_route-manifests/app-api/sdkwork-routes-cloudrouter-app-api.route-manifest.json'),
     {
       schemaVersion: 1,
       kind: 'sdkwork.route.manifest',
-      packageName: 'sdkwork-routes-clawrouter-app-api',
+      packageName: 'sdkwork-routes-cloudrouter-app-api',
       surface: 'app-api',
       routes: [
         {

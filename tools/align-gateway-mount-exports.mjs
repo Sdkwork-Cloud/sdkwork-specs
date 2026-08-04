@@ -37,7 +37,7 @@ function pickManifestFn(manifestExports) {
     'iam_app_api_route_manifest',
     'route_manifest',
     'http_route_manifest',
-    'claw_router_app_http_route_manifest',
+    'cloud_router_app_http_route_manifest',
   ];
   for (const candidate of preferred) {
     if (names.includes(candidate)) {

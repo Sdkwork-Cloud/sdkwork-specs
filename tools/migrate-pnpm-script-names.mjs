@@ -125,7 +125,7 @@ const PREFER_MAPPED_RENAMES = new Set([
 ]);
 
 const ROOT_SCOPED_SCRIPT_RENAMES = new Map([
-  ['sdkwork-clawrouter', new Map([
+  ['sdkwork-cloudrouter', new Map([
     ['size', 'check:size'],
   ])],
   ['sdkwork-codebox', new Map([

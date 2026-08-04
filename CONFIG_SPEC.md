@@ -610,7 +610,7 @@ Rules:
 - For appbase backend-admin IAM, `PORTAL_PUBLIC_SDK_BASE_URL` may derive
   `PORTAL_PUBLIC_APPBASE_BACKEND_API_BASE_URL` only when topology proves that origin serves
   `/backend/v3/api/iam/*`. An application backend default such as
-  `PORTAL_PUBLIC_BACKEND_API_BASE_URL` or `VITE_CLAWROUTER_BACKEND_API_BASE_URL` may be used for
+  `PORTAL_PUBLIC_BACKEND_API_BASE_URL` or `VITE_CLOUDROUTER_BACKEND_API_BASE_URL` may be used for
   `@sdkwork/iam-backend-sdk` only when `dependencyApiSurfaces` records verified same-origin
   mount coverage for a production-capable appbase backend IAM router/controller/service adapter.
   Appbase app SDK configuration, route metadata, local/demo routers, and fake response handlers are

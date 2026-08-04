@@ -106,13 +106,13 @@ test('requires exact shared identities in every application development profile'
 });
 
 test('rejects application-specific development databases and schemas', () => {
-  const filePath = 'sdkwork-clawrouter/.env.postgres.example';
+  const filePath = 'sdkwork-cloudrouter/.env.postgres.example';
   assert.match(
-    inspectLine('SDKWORK_DATABASE_NAME=sdkwork_clawrouter_dev', filePath),
+    inspectLine('SDKWORK_DATABASE_NAME=sdkwork_cloudrouter_dev', filePath),
     /non-canonical/u,
   );
   assert.match(
-    inspectLine('SDKWORK_DATABASE_SCHEMA=sdkwork_clawrouter_dev', filePath),
+    inspectLine('SDKWORK_DATABASE_SCHEMA=sdkwork_cloudrouter_dev', filePath),
     /non-canonical/u,
   );
   assert.match(
@@ -122,10 +122,10 @@ test('rejects application-specific development databases and schemas', () => {
 });
 
 test('rejects application-specific PostgreSQL URL targets', () => {
-  const filePath = 'sdkwork-clawrouter/etc/topology/standalone.development.env';
+  const filePath = 'sdkwork-cloudrouter/etc/topology/standalone.development.env';
   assert.match(
     inspectLine(
-      'SDKWORK_DATABASE_URL=postgresql://user:pass@127.0.0.1:5432/sdkwork_clawrouter_dev?sslmode=disable',
+      'SDKWORK_DATABASE_URL=postgresql://user:pass@127.0.0.1:5432/sdkwork_cloudrouter_dev?sslmode=disable',
       filePath,
     ),
     /non-canonical/u,
@@ -182,21 +182,21 @@ test('ignores deployment-time connection placeholders', () => {
   );
 });
 
-test('rejects retired claw-scoped database keys', () => {
+test('rejects retired cloud-scoped database keys', () => {
   assert.match(
-    inspectLine(`${scopedDatabaseKey('CLAW', 'NAME')}=sdkwork_ai_dev`, 'sdkwork-demo/.env.postgres.example'),
+    inspectLine(`${scopedDatabaseKey('CLOUD', 'NAME')}=sdkwork_ai_dev`, 'sdkwork-demo/.env.postgres.example'),
     /retired application\/module-prefixed database key/u,
   );
   assert.match(
     inspectLine(
-      `${scopedDatabaseKey('CLAW', 'URL')}=\${SDKWORK_DATABASE_URL}`,
+      `${scopedDatabaseKey('CLOUD', 'URL')}=\${SDKWORK_DATABASE_URL}`,
       'sdkwork-demo/etc/topology/standalone.development.env',
     ),
     /retired application\/module-prefixed database key/u,
   );
   assert.match(
     inspectLine(
-      `# ${scopedDatabaseKey('CLAW', 'URL')}=postgresql://db.example.com/sdkwork_ai_dev`,
+      `# ${scopedDatabaseKey('CLOUD', 'URL')}=postgresql://db.example.com/sdkwork_ai_dev`,
       'sdkwork-demo/.env.postgres.example',
     ),
     /retired application\/module-prefixed database key/u,
@@ -260,7 +260,7 @@ test('workspace temporary pool governance keys remain canonical database keys', 
 
 test('runtime source rejects concrete module-scoped database keys', () => {
   assert.match(
-    inspectRuntimeSourceLine(`${scopedDatabaseKey('CLAW', 'URL')}=postgresql://localhost/db`),
+    inspectRuntimeSourceLine(`${scopedDatabaseKey('CLOUD', 'URL')}=postgresql://localhost/db`),
     /retired application\/module-prefixed database key/u,
   );
   assert.match(

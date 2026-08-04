@@ -12,9 +12,9 @@ SDKWork names use a fixed identity lattice. Do not collapse these layers into on
 
 | Layer | Canonical term | Placeholder | Example | Must not use for this layer |
 | --- | --- | --- | --- | --- |
-| L1 product name | product name | (prose only) | SdkWork Claw Router | paths, packages, crates, env keys |
+| L1 product name | product name | (prose only) | SdkWork Cloud Router | paths, packages, crates, env keys |
 | L2 application code | application code | `<application-code>` (kebab-case paths) or `<application_code>` (Dart snake_case) | `commerce`, `router`, `drive` | `product`, bare `app`, repository name, process name |
-| L3 process name | process name | `<process-name>` | `clawrouter` | application code |
+| L3 process name | process name | `<process-name>` | `cloudrouter` | application code |
 | L4 manifest key | `app.key` | (manifest field, not a path placeholder) | `commerce-pc` | application code alone |
 | L5 repository stem | SDKWork repository | `sdkwork-<application-code>` when they match | `sdkwork-drive` | guaranteed equal to L2 |
 | L6 client architecture | client-arch | `<client-arch>` | `pc`, `h5`, `flutter-mobile` | business capability or deployment profile |
@@ -187,7 +187,7 @@ Rules:
 | Agent entrypoint | `AGENTS.md` | `AGENTS.md` |
 | Tool compatibility shim | `<TOOL>.md` | `CLAUDE.md`, `GEMINI.md`, `CODEX.md` |
 
-`package.json#scripts` public command names follow `PNPM_SCRIPT_SPEC.md`. Repository root scripts use action-first standard names such as `dev`, `build`, `verify`, `release:package`, `api:materialize:check`, `sdk:generate`, and `gateway:package:cloud`. Application-code-prefixed root script names such as `drive:dev`, `im:dev`, and `clawrouter:dev` are forbidden public command names.
+`package.json#scripts` public command names follow `PNPM_SCRIPT_SPEC.md`. Repository root scripts use action-first standard names such as `dev`, `build`, `verify`, `release:package`, `api:materialize:check`, `sdk:generate`, and `gateway:package:cloud`. Application-code-prefixed root script names such as `drive:dev`, `im:dev`, and `cloudrouter:dev` are forbidden public command names.
 
 ## 3. Language Naming
 

@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | `magic-studio` | **Isolate** | Legacy monolith; not on `apps/sdkwork-*-{pc,h5,...}` taxonomy |
 | `magic-studio-v2` | **Isolate** | Same as magic-studio |
-| `claw-studio` | **Isolate** | Product fork using `packages/sdkwork-claw-*`; outside SDKWork app registry |
+| `claw-studio` | **Isolate** | Product fork using `packages/sdkwork-cloudrouter-*`; outside SDKWork app registry |
 | `sdkwork-notes` | **Adopted (hybrid)** | `sdkwork-notes-pc-react/` verified via native composition; optional future move to `apps/sdkwork-notes-pc/` |
 
 ## Registry documentation

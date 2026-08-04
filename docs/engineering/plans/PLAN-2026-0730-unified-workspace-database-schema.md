@@ -9,7 +9,7 @@
 
 The previous standard allowed application- or module-scoped database variables and did not require every integrated module in one environment to resolve the same PostgreSQL database and schema. That produced independent schemas, inconsistent bootstrap histories, duplicated pool identities, and runtime failures when one module expected columns that another module's lifecycle had not applied.
 
-The Claw Router startup failure on `ai_model_pricing.supplier_code` demonstrated the operational impact: the application catalog writer reached a shared table whose historical schema did not match the current model contract.
+The Cloud Router startup failure on `ai_model_pricing.supplier_code` demonstrated the operational impact: the application catalog writer reached a shared table whose historical schema did not match the current model contract.
 
 ## Required End State
 
@@ -37,15 +37,15 @@ Authoritative services, gateways, workers, servers, and containers use PostgreSQ
 5. Preserve migration checksums. Complete new migration headers before tracking; record missing historical operational metadata in `migrations/{engine}/metadata.json` without changing migration SQL bytes.
 6. Add workspace audit, alignment, unified-profile, metadata, and process-pool regression tests.
 7. Repair ownership conflicts for comments, promotion, web framework, and knowledgebase tables.
-8. Verify Claw Router dependency migrations run before catalog refresh and execute the installer against the shared development schema.
+8. Verify Cloud Router dependency migrations run before catalog refresh and execute the installer against the shared development schema.
 
 ## Verification Evidence
 
 - Database framework audit: 93 repositories scanned, 64 database owners, 64 compliant, 0 partial, 0 legacy-only.
 - Unified PostgreSQL profile validator: passed.
 - Migration metadata alignment dry-run: 0 pending assets.
-- Claw Router database framework and process-shared pool checks: passed.
-- Claw Router installer: `status=installed`, catalog refresh `succeeded`; the `ai_model_pricing.supplier_code` error no longer occurs.
+- Cloud Router database framework and process-shared pool checks: passed.
+- Cloud Router installer: `status=installed`, catalog refresh `succeeded`; the `ai_model_pricing.supplier_code` error no longer occurs.
 - Governed IM documentation encoding check: strict UTF-8, no BOM, no replacement characters, and no known mojibake markers.
 
 ## Recovery

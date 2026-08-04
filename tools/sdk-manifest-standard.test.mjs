@@ -73,37 +73,37 @@ test('workspace consumers resolve an SDK family whose directory stem omits the s
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-sdk-manifest-family-stem-'));
   try {
     const consumer = path.join(workspace, 'sdkwork-web');
-    const owner = path.join(workspace, 'sdkwork-clawrouter');
+    const owner = path.join(workspace, 'sdkwork-cloudrouter');
     fs.mkdirSync(path.join(consumer, 'specs'), { recursive: true });
     fs.mkdirSync(path.join(owner, 'specs'), { recursive: true });
-    fs.mkdirSync(path.join(owner, 'sdks', 'clawrouter-app-sdk'), { recursive: true });
+    fs.mkdirSync(path.join(owner, 'sdks', 'cloudrouter-app-sdk'), { recursive: true });
     fs.writeFileSync(path.join(consumer, 'specs', 'component.spec.json'), '{}\n', 'utf8');
     fs.writeFileSync(path.join(owner, 'specs', 'component.spec.json'), '{}\n', 'utf8');
     fs.writeFileSync(
-      path.join(owner, 'sdks', 'clawrouter-app-sdk', 'sdk-manifest.json'),
+      path.join(owner, 'sdks', 'cloudrouter-app-sdk', 'sdk-manifest.json'),
       `${JSON.stringify({
         schemaVersion: 1,
-        sdkFamily: 'clawrouter-app-sdk',
-        packageName: '@sdkwork/clawrouter-app-sdk',
-        sdkOwner: 'sdkwork-clawrouter',
-        apiAuthority: 'sdkwork-clawrouter.app',
+        sdkFamily: 'cloudrouter-app-sdk',
+        packageName: '@sdkwork/cloudrouter-app-sdk',
+        sdkOwner: 'sdkwork-cloudrouter',
+        apiAuthority: 'sdkwork-cloudrouter.app',
       }, null, 2)}\n`,
       'utf8',
     );
 
     assert.deepEqual(
-      loadSdkFamilyManifestForWorkspaceConsumer(consumer, 'sdkwork-clawrouter-app-sdk'),
+      loadSdkFamilyManifestForWorkspaceConsumer(consumer, 'sdkwork-cloudrouter-app-sdk'),
       {
         schemaVersion: 1,
-        sdkFamily: 'clawrouter-app-sdk',
-        packageName: '@sdkwork/clawrouter-app-sdk',
-        sdkOwner: 'sdkwork-clawrouter',
-        apiAuthority: 'sdkwork-clawrouter.app',
+        sdkFamily: 'cloudrouter-app-sdk',
+        packageName: '@sdkwork/cloudrouter-app-sdk',
+        sdkOwner: 'sdkwork-cloudrouter',
+        apiAuthority: 'sdkwork-cloudrouter.app',
       },
     );
     assert.deepEqual(
-      loadSdkFamilyManifestForWorkspaceConsumer(owner, 'sdkwork-clawrouter-app-sdk'),
-      loadSdkFamilyManifestForWorkspaceConsumer(consumer, 'sdkwork-clawrouter-app-sdk'),
+      loadSdkFamilyManifestForWorkspaceConsumer(owner, 'sdkwork-cloudrouter-app-sdk'),
+      loadSdkFamilyManifestForWorkspaceConsumer(consumer, 'sdkwork-cloudrouter-app-sdk'),
     );
   } finally {
     fs.rmSync(workspace, { force: true, recursive: true });

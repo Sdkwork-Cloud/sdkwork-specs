@@ -162,7 +162,7 @@ Projection or analytics tables that read sibling-owned base tables `MUST` use `s
   profile: ledger_projection
   system_of_record: false
   generated_by_this_project: false
-  write_owner: clawrouter-settlement-worker
+  write_owner: cloudrouter-settlement-worker
   source_refs:
     - module_id: commerce-core
       table: commerce_account_ledger_entry

@@ -37,7 +37,7 @@
 
 - Renamed `check:dependency-composition` → `check:app-composition` (canonical name per `APP_COMPOSITION_SPEC.md`)
 - Wired `check:app-composition` into **all** client repo `check`/`verify` scripts (see post-closeout evidence)
-- Fixed stale docs in `sdkwork-skills`, `sdkwork-clawrouter`
+- Fixed stale docs in `sdkwork-skills`, `sdkwork-cloudrouter`
 
 ## Gate checklist
 

@@ -269,7 +269,7 @@ function workspaceEntryToComposed(entry) {
   if (!entry.includes('generated/server-openapi')) return null;
   const composed = entry.replace(/\/generated\/server-openapi\/?$/u, '');
   if (composed.endsWith('-backend-sdk') || composed.endsWith('-app-sdk') || composed.endsWith('-sdk')) {
-    const typescriptSuffix = composed.match(/(?:^|\/)(sdkwork-[a-z0-9-]+-sdk|clawrouter-[a-z0-9-]+-sdk)$/u)?.[1];
+    const typescriptSuffix = composed.match(/(?:^|\/)(sdkwork-[a-z0-9-]+-sdk|cloudrouter-[a-z0-9-]+-sdk)$/u)?.[1];
     if (typescriptSuffix && !composed.endsWith('-typescript')) {
       return `${composed}/${typescriptSuffix}-typescript`;
     }

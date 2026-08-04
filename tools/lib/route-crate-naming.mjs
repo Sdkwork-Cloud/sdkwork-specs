@@ -56,21 +56,21 @@ const SKIP_FILE_NAMES = new Set([
 export function transformRouteCrateNamingText(content) {
   let out = content;
   const shortLegacyRouteCrates = [
-    ['sdkwork-router-app-api', 'sdkwork-routes-clawrouter-app-api'],
-    ['sdkwork-router-backend-api', 'sdkwork-routes-clawrouter-backend-api'],
-    ['sdkwork-router-open-api', 'sdkwork-routes-clawrouter-open-api'],
+    ['sdkwork-router-app-api', 'sdkwork-routes-cloudrouter-app-api'],
+    ['sdkwork-router-backend-api', 'sdkwork-routes-cloudrouter-backend-api'],
+    ['sdkwork-router-open-api', 'sdkwork-routes-cloudrouter-open-api'],
   ];
   for (const [from, to] of shortLegacyRouteCrates) {
     if (out.includes(from)) {
       out = out.split(from).join(to);
     }
   }
-  out = out.replace(/sdkwork_router_app_api/gu, 'sdkwork_routes_clawrouter_app_api');
-  out = out.replace(/sdkwork_router_backend_api/gu, 'sdkwork_routes_clawrouter_backend_api');
-  out = out.replace(/sdkwork_router_open_api/gu, 'sdkwork_routes_clawrouter_open_api');
-  out = out.replace(/sdkwork_routes_app_api/gu, 'sdkwork_routes_clawrouter_app_api');
-  out = out.replace(/sdkwork_routes_backend_api/gu, 'sdkwork_routes_clawrouter_backend_api');
-  out = out.replace(/sdkwork_routes_open_api/gu, 'sdkwork_routes_clawrouter_open_api');
+  out = out.replace(/sdkwork_router_app_api/gu, 'sdkwork_routes_cloudrouter_app_api');
+  out = out.replace(/sdkwork_router_backend_api/gu, 'sdkwork_routes_cloudrouter_backend_api');
+  out = out.replace(/sdkwork_router_open_api/gu, 'sdkwork_routes_cloudrouter_open_api');
+  out = out.replace(/sdkwork_routes_app_api/gu, 'sdkwork_routes_cloudrouter_app_api');
+  out = out.replace(/sdkwork_routes_backend_api/gu, 'sdkwork_routes_cloudrouter_backend_api');
+  out = out.replace(/sdkwork_routes_open_api/gu, 'sdkwork_routes_cloudrouter_open_api');
   out = out.replace(
     new RegExp(
       `${LEGACY_HTTP_ROUTE_PREFIX}([a-z0-9]+(?:-[a-z0-9]+)*)-(open-api|app-api|backend-api|internal-api|common|http-auth|http-shared|deploy-common)`,
@@ -81,7 +81,7 @@ export function transformRouteCrateNamingText(content) {
   out = out.replace(/sdkwork-routes-product-/gu, 'sdkwork-routes-merchandise-');
   out = out.replace(/routes-product-/gu, 'routes-merchandise-');
   // Keep this scoped to sdkwork-router-* route crates only; a bare router- rule
-  // false-positives on product ids such as clawrouter-pc-commons.
+  // false-positives on product ids such as cloudrouter-pc-commons.
   if (out.includes('sdkwork-router-mobile-react')) {
     out = out.split('sdkwork-router-mobile-react').join('sdkwork-shell-mobile-react');
   }

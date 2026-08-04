@@ -32,7 +32,7 @@ These roots are **excluded** from the composition registry until restructured un
 | --- | --- | --- |
 | `magic-studio` | Isolate | Legacy monolith layout; no `apps/sdkwork-*-{pc,h5,...}` standard |
 | `magic-studio-v2` | Isolate | Same as magic-studio |
-| `claw-studio` | Isolate | Product fork layout (`packages/sdkwork-claw-*`); not SDKWork app taxonomy |
+| `claw-studio` | Isolate | Product fork layout (`packages/sdkwork-cloudrouter-*`); not SDKWork app taxonomy |
 
 Hybrid client roots (for example `sdkwork-notes-pc-react/`) are verified through `listClientAppRoots()` when they declare `sdkwork.app.config.json` at the app root. They must still use a single repository-root `pnpm-workspace.yaml`.
 

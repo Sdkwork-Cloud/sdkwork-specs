@@ -15,7 +15,7 @@ All remaining `sdkwork-*` repositories with `apps/` client surfaces (~33 repos i
    - `alignCoreSdkDependencySurfaces` — admin-core `sdkDependencies` without `surface` get `backend-api`
    - Removes nested `apps/**/pnpm-workspace.yaml` when repo-root workspace exists
 3. Lifted nested workspaces to repo root for repos that lacked root `pnpm-workspace.yaml`:
-   - `sdkwork-clawrouter`, `sdkwork-video`, `sdkwork-github`, `sdkwork-notary`, `sdkwork-local-router`, `sdkwork-generations`, `sdkwork-appstore`, `sdkwork-aiot`
+   - `sdkwork-cloudrouter`, `sdkwork-video`, `sdkwork-github`, `sdkwork-notary`, `sdkwork-local-router`, `sdkwork-generations`, `sdkwork-appstore`, `sdkwork-aiot`
    - Removed nested `sdkwork-news-pc` workspace (root already existed)
 4. Re-aligned `sdkwork-agents` after composition manifests reappeared (materialize script previously still emitted them; now fixed)
 

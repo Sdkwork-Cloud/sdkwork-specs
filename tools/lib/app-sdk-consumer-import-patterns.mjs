@@ -14,13 +14,13 @@ import path from 'node:path';
 
 export const LEGACY_GENERATED_TYPESCRIPT_PATTERN =
 
-  /\b(?:sdkwork-[a-z0-9-]+-(?:app|backend|internal)-sdk-generated-typescript|sdkwork-[a-z0-9-]+-sdk-generated-typescript|clawrouter-(?:app|backend)-domain-transport-generated-typescript|sdkwork-clawrouter-(?:app|backend)-sdk-domains-generated-typescript)\b/gu;
+  /\b(?:sdkwork-[a-z0-9-]+-(?:app|backend|internal)-sdk-generated-typescript|sdkwork-[a-z0-9-]+-sdk-generated-typescript|cloudrouter-(?:app|backend)-domain-transport-generated-typescript|sdkwork-cloudrouter-(?:app|backend)-sdk-domains-generated-typescript)\b/gu;
 
 
 
 export const NON_STANDARD_SDK_PATH_PATTERN =
 
-  /(?:domain-transport-typescript|domain-transport-sdk|clawrouter-(?:app|backend)-domain-transport(?:-generated-typescript)?)/gu;
+  /(?:domain-transport-typescript|domain-transport-sdk|cloudrouter-(?:app|backend)-domain-transport(?:-generated-typescript)?)/gu;
 
 
 
@@ -40,7 +40,7 @@ Application, feature, shell, and service packages \`MUST\` consume HTTP SDKs thr
 
 - Backend API clients (\`backend-admin\` only): \`@sdkwork/<application-code>-backend-sdk\`
 
-- Federated Claw Router domain surfaces: \`@sdkwork/clawrouter-app-sdk/domains\` and \`@sdkwork/clawrouter-backend-sdk/domains\`
+- Federated Cloud Router domain surfaces: \`@sdkwork/cloudrouter-app-sdk/domains\` and \`@sdkwork/cloudrouter-backend-sdk/domains\`
 
 - Open/domain API clients: \`@sdkwork/<domain>-sdk\`
 
@@ -56,7 +56,7 @@ import { createClient, type SdkworkAppClient } from '@sdkwork/iam-app-sdk';
 
 import type { SdkworkBackendClient } from '@sdkwork/iam-backend-sdk'; // backend-admin only
 
-import { createClient as createClawRouterDomainsClient } from '@sdkwork/clawrouter-app-sdk/domains';
+import { createClient as createCloudRouterDomainsClient } from '@sdkwork/cloudrouter-app-sdk/domains';
 
 \`\`\`
 
@@ -68,7 +68,7 @@ Forbidden in application \`apps/\`, \`packages/\`, bootstrap, services, UI, cont
 
 - \`sdkwork-*-app-sdk-generated-typescript\`, \`sdkwork-*-backend-sdk-generated-typescript\`, and other generator transport names as consumer imports
 
-- \`@sdkwork/commerce-app-sdk\`, \`@sdkwork/commerce-backend-sdk\`, \`@sdkwork/clawrouter-*-domain-transport-sdk\`
+- \`@sdkwork/commerce-app-sdk\`, \`@sdkwork/commerce-backend-sdk\`, \`@sdkwork/cloudrouter-*-domain-transport-sdk\`
 
 - filesystem paths containing \`domain-transport-typescript\`, \`domain-transport-sdk\`, or sibling \`*-typescript/generated\` hops from composed \`src/**\`
 
@@ -80,7 +80,7 @@ Allowed:
 
 
 
-- Composed facade entry imports such as \`@sdkwork/iam-app-sdk\`, \`@sdkwork/knowledgebase-app-sdk\`, and \`@sdkwork/clawrouter-app-sdk/domains\`
+- Composed facade entry imports such as \`@sdkwork/iam-app-sdk\`, \`@sdkwork/knowledgebase-app-sdk\`, and \`@sdkwork/cloudrouter-app-sdk/domains\`
 
 - Composed re-exports that import only from \`../generated/**\` within the same \`*-sdk-typescript\` family root
 
@@ -134,19 +134,19 @@ const IGNORE_DIRS = new Set([
 
 const CUSTOM_LEGACY_TO_SCOPED = new Map([
 
-  ['clawrouter-app-domain-transport-generated-typescript', '@sdkwork/clawrouter-app-sdk/domains'],
+  ['cloudrouter-app-domain-transport-generated-typescript', '@sdkwork/cloudrouter-app-sdk/domains'],
 
-  ['clawrouter-backend-domain-transport-generated-typescript', '@sdkwork/clawrouter-backend-sdk/domains'],
+  ['cloudrouter-backend-domain-transport-generated-typescript', '@sdkwork/cloudrouter-backend-sdk/domains'],
 
-  ['sdkwork-clawrouter-app-sdk-domains-generated-typescript', '@sdkwork/clawrouter-app-sdk/domains'],
+  ['sdkwork-cloudrouter-app-sdk-domains-generated-typescript', '@sdkwork/cloudrouter-app-sdk/domains'],
 
-  ['sdkwork-clawrouter-backend-sdk-domains-generated-typescript', '@sdkwork/clawrouter-backend-sdk/domains'],
+  ['sdkwork-cloudrouter-backend-sdk-domains-generated-typescript', '@sdkwork/cloudrouter-backend-sdk/domains'],
 
   ['sdkwork-games-app-sdk-generated-typescript', '@sdkwork/games-app-sdk'],
 
-  ['sdkwork-commerce-app-sdk-generated-typescript', '@sdkwork/clawrouter-app-sdk/domains'],
+  ['sdkwork-commerce-app-sdk-generated-typescript', '@sdkwork/cloudrouter-app-sdk/domains'],
 
-  ['sdkwork-commerce-backend-sdk-generated-typescript', '@sdkwork/clawrouter-backend-sdk/domains'],
+  ['sdkwork-commerce-backend-sdk-generated-typescript', '@sdkwork/cloudrouter-backend-sdk/domains'],
 
 ]);
 
@@ -431,7 +431,7 @@ export function findViolationsInText(text, filePath) {
 
       legacy: match[0],
 
-      scoped: '(use @sdkwork/<application-code>-app-sdk or @sdkwork/clawrouter-app-sdk/domains)',
+      scoped: '(use @sdkwork/<application-code>-app-sdk or @sdkwork/cloudrouter-app-sdk/domains)',
 
       kind: 'non-standard-sdk-path',
 
@@ -517,7 +517,7 @@ export function findViolationsInText(text, filePath) {
 
 
 
-  for (const match of text.matchAll(/@sdkwork\/(?:commerce-(?:app|backend)-sdk|clawrouter-(?:app|backend)-domain-transport-sdk)\b/gu)) {
+  for (const match of text.matchAll(/@sdkwork\/(?:commerce-(?:app|backend)-sdk|cloudrouter-(?:app|backend)-domain-transport-sdk)\b/gu)) {
 
     violations.push({
 
@@ -527,9 +527,9 @@ export function findViolationsInText(text, filePath) {
 
       scoped: match[0].includes('backend')
 
-        ? '@sdkwork/clawrouter-backend-sdk/domains'
+        ? '@sdkwork/cloudrouter-backend-sdk/domains'
 
-        : '@sdkwork/clawrouter-app-sdk/domains',
+        : '@sdkwork/cloudrouter-app-sdk/domains',
 
       kind: 'retired-scoped-package',
 
