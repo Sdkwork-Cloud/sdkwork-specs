@@ -154,12 +154,12 @@ provides.
 
 Rules:
 
-- `vite.config.ts` `MUST NOT` declare `resolve.alias` entries for package
-  specifiers — scoped (`@sdkwork/*`), unscoped (`sdkwork-drive-pc-core`,
-  `lucide-react`, `react`, `i18next`), bare, or subpath forms such as
-  `@sdkwork/utils/money`. Every alias entry that maps a package name to a
-  directory or file is a resolution remap that workspace linking must provide
-  instead.
+- `vite.config.ts` and `vitest.config.ts` `MUST NOT` declare `resolve.alias`
+  entries for package specifiers — scoped (`@sdkwork/*`), unscoped
+  (`sdkwork-drive-pc-core`, `lucide-react`, `react`, `i18next`), bare, or
+  subpath forms such as `@sdkwork/utils/money`. Every alias entry that maps a
+  package name to a directory or file is a resolution remap that workspace
+  linking must provide instead.
 - Package imports `MUST` resolve through `node_modules` workspace symlinks
   created by `pnpm install` from `pnpm-workspace.yaml`, and through the owning
   package's `exports` map. Missing links are fixed by completing

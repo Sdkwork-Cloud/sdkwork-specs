@@ -58,7 +58,7 @@ function walk(dir, out) {
       if (!SKIP_DIRS.has(entry.name)) {
         walk(path.join(dir, entry.name), out);
       }
-    } else if (/^vite\.config\.(ts|mts|js|mjs)$/u.test(entry.name) || /^vitest\.config\.(ts|mts|js|mjs)$/u.test(entry.name)) {
+    } else if (/^vite\.config(\.[a-z0-9-]+)?\.(ts|mts|js|mjs)$/u.test(entry.name) || /^vitest\.config(\.[a-z0-9-]+)?\.(ts|mts|js|mjs)$/u.test(entry.name)) {
       out.push(path.join(dir, entry.name));
     }
   }

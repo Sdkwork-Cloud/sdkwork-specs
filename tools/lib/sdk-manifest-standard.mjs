@@ -166,8 +166,36 @@ export function loadSdkFamilyManifestForWorkspaceConsumer(repoRoot, workspace) {
         if (manifest) return manifest;
       }
     }
+    // Naming-derived ownership can differ from the owning repository name
+    // (for example sdkwork-web-internal-sdk lives in sdkwork-webserver).
+    // Fall back to a workspace scan for the repository that actually ships
+    // this SDK family before giving up.
+    const ownerRoot = findSdkFamilyOwnerRepo(repoRoot, workspace);
+    if (ownerRoot) {
+      const manifest = loadSdkFamilyManifestFromFamilyMetadata(ownerRoot, workspace);
+      if (manifest) return manifest;
+    }
   }
   return loadSdkFamilyManifestFromFamilyMetadata(repoRoot, workspace);
+}
+
+function findSdkFamilyOwnerRepo(repoRoot, workspace) {
+  const workspaceRoot = path.resolve(repoRoot, '..');
+  let entries;
+  try {
+    entries = fs.readdirSync(workspaceRoot, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith('sdkwork-')) continue;
+    if (entry.name === path.basename(repoRoot)) continue;
+    const candidate = path.join(workspaceRoot, entry.name, 'sdks', workspace, 'sdk-manifest.json');
+    if (fs.existsSync(candidate)) {
+      return path.join(workspaceRoot, entry.name);
+    }
+  }
+  return null;
 }
 
 export function loadDiscoverySurfaceFromFamilyMetadata(repoRoot, workspace) {

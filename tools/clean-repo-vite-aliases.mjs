@@ -69,7 +69,7 @@ function findPackageDirs(repoRoot) {
 
 // ---- Step 1: remove single-line alias entries from vite configs ----
 const configs = [];
-walk(repoRoot, configs, (name) => /^vite\.config\.(ts|mts|js|mjs)$/u.test(name));
+walk(repoRoot, configs, (name) => /^vite\.config(\.[a-z0-9-]+)?\.(ts|mts|js|mjs)$/u.test(name) || /^vitest\.config(\.[a-z0-9-]+)?\.(ts|mts|js|mjs)$/u.test(name));
 let removedAliases = 0;
 for (const config of configs) {
   const source = readFileSync(config, "utf8");
