@@ -24,7 +24,10 @@
       "../sdkwork-ui/sdkwork-ui-pc-react",
       "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript",
       "../sdkwork-utils/packages/sdkwork-utils-typescript",
-      "../sdkwork-comments/sdks/sdkwork-comments-app-sdk/sdkwork-comments-app-sdk-typescript"
+      "../sdkwork-comments/sdks/sdkwork-comments-app-sdk/sdkwork-comments-app-sdk-typescript",
+      "../sdkwork-agents/sdks/sdkwork-agents-app-sdk/sdkwork-agents-app-sdk-typescript",
+      "../sdkwork-skills/sdks/sdkwork-skills-app-sdk/sdkwork-skills-app-sdk-typescript",
+      "../sdkwork-mcp/sdks/sdkwork-mcp-app-sdk/sdkwork-mcp-app-sdk-typescript"
     ]
   },
   "catalog": {

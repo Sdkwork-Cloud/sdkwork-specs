@@ -239,6 +239,18 @@ function renderLibRs(applicationCode, routeCrates, bootstrapExists, bootstrapSou
       /pub\s+(?:async\s+)?fn\s+assemble_internal_api_contribution\b/u.test(bootstrapSource)
         ? 'assemble_internal_api_contribution'
         : null,
+      /pub\s+(?:async\s+)?fn\s+assemble_business_routes\b/u.test(bootstrapSource)
+        ? 'assemble_business_routes'
+        : null,
+      /pub\s+struct\s+DomainCertificateBlocks\b/u.test(bootstrapSource)
+        ? 'DomainCertificateBlocks'
+        : null,
+      /pub\s+(?:async\s+)?fn\s+assemble_domain_certificate_blocks\b/u.test(bootstrapSource)
+        ? 'assemble_domain_certificate_blocks'
+        : null,
+      /pub\s+(?:async\s+)?fn\s+migrate_database_from_env\b/u.test(bootstrapSource)
+        ? 'migrate_database_from_env'
+        : null,
     ].filter(Boolean).join(', ');
     return `//! API assembly for sdkwork-${applicationCode}.
 //! Application bootstrap lives in \`bootstrap.rs\`; route inventory is in \`assembly-manifest.json\`.
