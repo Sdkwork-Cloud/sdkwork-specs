@@ -3,12 +3,18 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { alignDatabaseLayout } from './align-database-framework-workspace.mjs';
 import { validateDatabaseFramework } from './check-database-framework-standard.mjs';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-align-'));
-fs.cpSync(path.resolve('templates/database'), path.join(root, 'database'), { recursive: true });
+// Resolve the canonical template root relative to this file, not the process cwd.
+const templateDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../templates/database',
+);
+fs.cpSync(templateDir, path.join(root, 'database'), { recursive: true });
 
 const manifestPath = path.join(root, 'database/database.manifest.json');
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
