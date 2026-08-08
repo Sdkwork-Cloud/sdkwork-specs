@@ -908,7 +908,11 @@ Production and staging server/container deployments resolve the unified workspac
 
 1. `SDKWORK_DATABASE_CONFIG_DIR` explicit override.
 2. Canonical OS directory from the table above.
-3. Dated migration fallback: per-application `/etc/sdkwork/<application-code>/` database files and `database.secret` (read-only compatibility during a bounded migration window; new templates must not use it).
+3. Single-application host: when the host runs exactly one SDKWork application, the application config directory
+   `/etc/sdkwork/<application-code>/` (or the OS equivalent) may carry the workspace database files and
+   `database.secret` (for example `/etc/sdkwork/webserver/secrets/database.secret`), referenced through
+   `password_file`. Multi-application hosts `MUST` resolve from the canonical shared directory (item 2).
+   Historical per-application paths remain readable during a bounded migration window.
 4. Process environment variables (`SDKWORK_DATABASE_*`) as late operator overrides.
 5. Secret manager or OS secure storage for password material.
 
@@ -916,7 +920,9 @@ Production and staging server/container deployments resolve the unified workspac
 
 - Production and staging startup `MUST` fail closed when the workspace database configuration directory is missing, when `database.toml`/`database.env` contains placeholder values, or when the resolved `database`/`schema`/`username` do not match the unified environment identity (`sdkwork_ai_prod`, `sdkwork_ai_staging`).
 - All applications in one workspace share this directory and the single connection identity per environment from section 7.1. Applications `MUST NOT` create per-application or per-module database configuration subdirectories, database names, schemas, or connection identities inside it.
-- Checked-in production templates, topology env files, release templates, installers, and operator documentation `MUST` reference `/etc/sdkwork/database/database.secret` (or the OS equivalent) and `MUST NOT` introduce per-application `database.secret` paths. A cross-application reference such as `/etc/sdkwork/router/database.secret` inside a non-router repository is a violation.
+- Checked-in production templates, topology env files, release templates, installers, and operator documentation `MUST` reference `/etc/sdkwork/database/database.secret` (or the OS equivalent) by default and `MUST NOT` introduce per-application `database.secret` paths on multi-application hosts. A cross-application reference such as `/etc/sdkwork/router/database.secret` inside a non-router repository is a violation.
+- Single-application host exception: an installer targeting a host that runs exactly one SDKWork application `MAY` keep the workspace database password secret at the application config directory
+  (`/etc/sdkwork/<application-code>/secrets/database.secret` or the OS equivalent) so the application is self-contained. The secret file `MUST` be `0600` (or `0640`) with the service identity, `MUST` be referenced only through `password_file` (never inlined), and the chosen location `MUST` be declared in the installer/operator documentation. The workspace database identity values (database, schema, username) still follow section 7.1 — only the secret file location differs.
 - Production config files `MUST NOT` contain inline passwords or `DEPLOY_INJECT:<name>` password placeholders; they reference `password_file` or platform secrets only.
 - Container images contain examples only; the running container receives the directory as a mounted config volume and secrets through `/run/secrets/`.
 - Directory and file permissions follow `RUNTIME_DIRECTORY_SPEC.md` section 11: config directory `0750` (`root:sdkwork`), config files `0640`, secret files `0600` or `0640`, never world-readable.

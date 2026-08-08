@@ -13,7 +13,8 @@
     "check:credential-entry-bootstrap": "node tools/check-credential-entry-bootstrap-standard.mjs --workspace ..",
     "check:api-runtime-parity": "node tools/check-api-runtime-parity.mjs --workspace ..",
     "check:component-api-surface-prefixes": "node tools/check-component-api-surface-prefixes.mjs --workspace ..",
-    "check:rust-http-header-standard": "node tools/check-rust-http-header-standard.mjs --workspace .."
+    "check:rust-http-header-standard": "node tools/check-rust-http-header-standard.mjs --workspace ..",
+    "check:package-content-standard": "node tools/check-package-content-standard.mjs --workspace .."
   },
   "dependencies": {
     "pg": "^8.16.3"

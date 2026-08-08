@@ -1,6 +1,6 @@
 # Runtime Directory And Infrastructure Configuration Standard
 
-- Version: 1.0
+- Version: 1.1
 - Scope: runtime directories, server install layout, desktop private files, development layout, release configuration files, database configuration, Redis configuration, secrets, logs, cache, temporary files, cross-OS path conventions
 - Related: `SDKWORK_WORKSPACE_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `NGINX_SPEC.md`
 
@@ -99,7 +99,7 @@ Linux service, archive, and package deployments must use these directories.
 | Secret files | `/etc/sdkwork/<application-code>/*.secret` | `root:sdkwork` | Prefer `0600` or `0640`; never world-readable. |
 | Workspace database config | `/etc/sdkwork/database` | `root:sdkwork` | Shared unified workspace PostgreSQL profile for production/staging (`ENVIRONMENT_SPEC.md` section 7.3). One directory per host; applications must not create per-app database subdirectories. |
 | Workspace database config file | `/etc/sdkwork/database/database.toml` | `root:sdkwork` | Structured `[database]` fields; `database.env` is the env-form equivalent. Optional `<profile-id>.env` per deployment profile. |
-| Workspace database secret | `/etc/sdkwork/database/database.secret` or `/etc/sdkwork/database/*.secret` | `root:sdkwork` | PostgreSQL password material; `0600` or `0640`; referenced by `password_file`. |
+| Workspace database secret | `/etc/sdkwork/database/database.secret` or `/etc/sdkwork/database/*.secret` | `root:sdkwork` | PostgreSQL password material; `0600` or `0640`; referenced by `password_file`. Single-application hosts may keep it at `/etc/sdkwork/<application-code>/secrets/database.secret` (`ENVIRONMENT_SPEC.md` section 7.3 exception). |
 | Private immutable runtime assets | `/usr/lib/sdkwork/<application-code>` | `root:root` | Binaries, service-local runtime assets, bundled native libraries. |
 | Shared read-only assets | `/usr/share/sdkwork/<application-code>` | `root:root` | Static portal assets, templates, generated SDK archives, catalogs. |
 | Documentation | `/usr/share/doc/sdkwork/<application-code>` | `root:root` | Install guide, license notices, runbooks. |
@@ -168,11 +168,18 @@ service conventions.
 | Cache | `/Library/Caches/sdkwork/<application-code>` | `~/.sdkwork/<application-code>/cache` |
 | Secrets | `/Library/Application Support/sdkwork/<application-code>/Secrets` | `~/.sdkwork/<application-code>/secrets` |
 | Workspace database config | `/Library/Application Support/sdkwork/database` | `~/.sdkwork/database` (development only) |
+| Application bundle | `/Applications/<DisplayName>.app` | Not applicable |
+| Service registration | `/Library/LaunchDaemons/sdkwork.<application-code>.plist` | Not applicable |
 | App support alternate | Not applicable | `~/Library/Application Support/sdkwork/<application-code>` |
 
 Rules:
 
 - Service or launchd-managed deployments should use the system-scope locations.
+- macOS GUI application bundles must be installed under `/Applications` following
+  platform convention. The bundle identifier must be `sdkwork.<application-code>`
+  and the display name may be the human-facing product name (for example
+  `SDKWork Web Server.app`). LaunchDaemon registration for a bundled or
+  service-mode app must use `/Library/LaunchDaemons/sdkwork.<application-code>.plist`.
 - SDKWork-managed desktop private files should use `~/.sdkwork/<application-code>` for
   consistency across operating systems.
 - A signed macOS app bundle may also use `~/Library/Application Support/sdkwork/<application-code>`

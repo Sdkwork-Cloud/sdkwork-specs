@@ -76,6 +76,13 @@ function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function primaryManifestPrefix(manifest) {
+  if (Array.isArray(manifest.tablePrefixes) && manifest.tablePrefixes.length > 0) {
+    return manifest.tablePrefixes[0];
+  }
+  return manifest.tablePrefix ?? null;
+}
+
 function isValidSemver(value) {
   return isNonEmptyString(value) && SEMVER_PATTERN.test(value);
 }
@@ -362,10 +369,10 @@ export function validateDatabaseModuleContract(moduleRootDir) {
     }
     if (
       databaseRole === AUTHORITATIVE_ROLE
-      && (!isNonEmptyString(schemaTablePrefix) || schemaTablePrefix !== manifest.tablePrefix)
+      && (!isNonEmptyString(schemaTablePrefix) || schemaTablePrefix !== primaryManifestPrefix(manifest))
     ) {
       fail(
-        `contract/schema.yaml table_prefix must match database.manifest.json tablePrefix (manifest=${manifest.tablePrefix ?? 'missing'}, schema=${schemaTablePrefix ?? 'missing'})`,
+        `contract/schema.yaml table_prefix must match database.manifest.json primary tablePrefix (manifest=${primaryManifestPrefix(manifest) ?? 'missing'}, schema=${schemaTablePrefix ?? 'missing'})`,
       );
     }
   } catch (error) {
@@ -420,8 +427,10 @@ export function validateDatabaseModuleContract(moduleRootDir) {
       const prefixRegistry = readJsonAt(moduleRootDir, 'contract/prefix-registry.json');
       if (!Array.isArray(prefixRegistry.prefixes) || prefixRegistry.prefixes.length === 0) {
         fail('contract/prefix-registry.json prefixes must be non-empty for L2 modules');
-      } else if (!prefixRegistry.prefixes.some((entry) => entry?.prefix === manifest.tablePrefix)) {
-        fail('contract/prefix-registry.json must declare database.manifest.json tablePrefix');
+      } else if (!prefixRegistry.prefixes.some((entry) => entry?.prefix === primaryManifestPrefix(manifest))) {
+        fail(
+          `contract/prefix-registry.json must declare database.manifest.json primary tablePrefix (${primaryManifestPrefix(manifest) ?? 'missing'})`,
+        );
       }
     } catch (error) {
       fail(`contract/prefix-registry.json must be valid JSON (${error.message})`);
@@ -432,7 +441,19 @@ export function validateDatabaseModuleContract(moduleRootDir) {
       if (!Array.isArray(tableRegistry.tables) || tableRegistry.tables.length === 0) {
         fail('contract/table-registry.json tables must be non-empty for L2 modules');
       } else if (
-        isNonEmptyString(manifest.tablePrefix)
+        Array.isArray(manifest.tablePrefixes) && manifest.tablePrefixes.length > 0
+        && tableRegistry.tables.some(
+          (entry) =>
+            !isNonEmptyString(entry?.table_name)
+            || !manifest.tablePrefixes.some((prefix) => entry.table_name.startsWith(prefix)),
+        )
+      ) {
+        fail(
+          'contract/table-registry.json table names must use a database.manifest.json tablePrefixes prefix',
+        );
+      } else if (
+        !Array.isArray(manifest.tablePrefixes)
+        && isNonEmptyString(manifest.tablePrefix)
         && tableRegistry.tables.some(
           (entry) => !isNonEmptyString(entry?.table_name) || !entry.table_name.startsWith(manifest.tablePrefix),
         )

@@ -216,7 +216,7 @@ function migrateAuthoritativeContract(repoRoot, manifest, dryRun, changes) {
     schema = replaceTopLevelYamlScalar(
       schema,
       'table_prefix',
-      manifest.tablePrefix,
+      primaryManifestPrefix(manifest),
       'engines',
     );
     writeTextIfChanged(schemaPath, schema, dryRun, changes);
@@ -392,7 +392,7 @@ function ensurePackageScripts(repoRoot, dryRun, changes) {
       const manifest = readJson(manifestPath);
       const moduleId = manifest.moduleId ?? path.basename(repoRoot).replace(/^sdkwork-/u, '');
       const baseline = `database/ddl/baseline/postgres/0001_${moduleId}_baseline.sql`;
-      const prefixArg = manifest.tablePrefix ? ` --prefixes ${manifest.tablePrefix}` : '';
+      const prefixArg = primaryManifestPrefix(manifest) ? ` --prefixes ${primaryManifestPrefix(manifest)}` : '';
       packageJson.scripts['db:materialize:contract'] =
         `node ../sdkwork-specs/tools/materialize-database-contract-from-baseline.mjs --root . --baseline ${baseline} --module-id ${moduleId} --owner ${manifest.owner ?? moduleId}${prefixArg}`;
       changed = true;
@@ -452,10 +452,17 @@ function ensureSeedManifest(databaseDir, dryRun, changes) {
   writeJsonIfChanged(seedManifestPath, seedManifest, dryRun, changes);
 }
 
+function primaryManifestPrefix(manifest) {
+  if (Array.isArray(manifest.tablePrefixes) && manifest.tablePrefixes.length > 0) {
+    return manifest.tablePrefixes[0];
+  }
+  return manifest.tablePrefix ?? null;
+}
+
 function ensureContractRegistries(databaseDir, manifest, dryRun, changes) {
   const prefixPath = path.join(databaseDir, 'contract/prefix-registry.json');
   const tablePath = path.join(databaseDir, 'contract/table-registry.json');
-  const tablePrefix = manifest.tablePrefix ?? '';
+  const tablePrefix = primaryManifestPrefix(manifest) ?? '';
   const owner = manifest.owner ?? manifest.moduleId ?? 'platform';
   const domain = manifest.moduleId ?? 'platform';
 
