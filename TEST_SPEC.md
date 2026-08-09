@@ -107,6 +107,14 @@ Rules:
   canonical authority prefix is omitted, added, duplicated, rewritten, or
   replaced by a synthetic routing prefix. A mounted router, broad surface
   fallback, or successful health check is not sufficient evidence.
+- Platform gateway realtime hosting verification `MUST` prove, per
+  `ADR-20260809-platform-gateway-realtime-hosting`, that a declared embedded
+  application realtime plane is reachable through the gateway's single HTTP
+  listener (WebSocket upgrade returns 101 and completes a handshake), that
+  client link transports (TCP/UDP/QUIC) spawn only when their bind env keys
+  are declared, that the realtime Cargo feature and component-spec dependency
+  surface are both required, and that single HTTP ingress checks still pass
+  with declared non-HTTP link listeners.
 - Every protected API surface `MUST` include an unauthenticated request test
   that reaches a representative canonical operation and returns
   `application/problem+json` with the contract status/code. The process and

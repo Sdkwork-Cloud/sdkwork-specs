@@ -76,3 +76,6 @@ release, and deployment-profile decisions remain active.
 
 Supersedes gateway-hosting portions of
 `ADR-20260719-unified-development-release-profiles`.
+
+Extended by `ADR-20260809-platform-gateway-realtime-hosting` (the platform
+cloud gateway may host a declared application realtime plane).

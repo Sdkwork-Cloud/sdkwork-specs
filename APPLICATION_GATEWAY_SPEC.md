@@ -15,13 +15,20 @@ SDKWork defines exactly two generic HTTP gateway roles:
 | Role | Canonical crate | Owner | Deployment profile | Surface |
 | --- | --- | --- | --- | --- |
 | Application standalone gateway | `sdkwork-api-<application-code>-standalone-gateway` | Application repository | `standalone` | `application.public-ingress` |
-| Platform cloud gateway | `sdkwork-api-cloud-gateway` | Platform gateway repository | `cloud` | Deployed application and platform HTTP ingress |
+| Platform cloud gateway | `sdkwork-api-cloud-gateway` | Platform gateway repository | `cloud` | Deployed application and platform HTTP ingress; optionally declared application realtime planes |
 
 Rules:
 
 - Application-level generic HTTP cloud gateways are retired.
 - `sdkwork-api-cloud-gateway` is not an application component, dependency,
   local development sidecar, config bundle, or release artifact.
+- The platform cloud gateway `MAY` host a declared application realtime plane
+  (WebSocket upgrade on the HTTP listener plus declared client link
+  transports) as an embedded dependency runtime surface. This mode requires
+  the application topology declaration, the platform gateway's embedded
+  realtime surface and Cargo feature, and `ADR-20260809-platform-gateway-realtime-hosting`.
+  It does not change `application.public-ingress` surface identity or env
+  keys, and it does not make the gateway an `edge`-plane process.
 - Device or edge protocol ingress uses
   `sdkwork-<application-code>-<edge-capability>-edge-runtime`, declares topology
   role `edge-runtime`, and requires an ADR. It `MUST NOT` use the retired generic
@@ -161,6 +168,15 @@ cloud host config live in the platform gateway or platform deployment
 authority. Cross-assembly route collisions are validated before bind and
 process infrastructure is mounted once.
 
+The platform cloud gateway `MAY` host a declared application realtime plane as
+an embedded dependency runtime surface per `APP_RUNTIME_TOPOLOGY_SPEC.md`
+section 3 and `ADR-20260809-platform-gateway-realtime-hosting`. The WebSocket
+upgrade shares the gateway's single HTTP listener; client link transports
+(TCP, UDP, QUIC) are additional non-HTTP listeners owned by the embedded
+realtime plane, spawned only when the application declares their binds, and
+never mount HTTP API surfaces. The gateway keeps exactly one HTTP ingress
+(section 5) and is not an `edge`-plane or `edge-runtime` process.
+
 ## 5. Single HTTP Ingress
 
 Standalone application development and deployment allows exactly one
@@ -190,6 +206,15 @@ endpoints when its topology declares that operations surface. Such a listener
 is not `application.public-ingress`, does not make the application assembly
 `served`, and must be composed through `sdkwork-web-bootstrap`. It must not
 mount business routes or become a second application-plane HTTP ingress.
+
+A gateway or standalone host that embeds a declared application realtime plane
+owns exactly one HTTP ingress (the WebSocket upgrade path rides that listener)
+and `MAY` additionally own the application's declared client link transport
+listeners (TCP, UDP, QUIC) as non-HTTP sockets spawned by the embedded
+realtime plane. Link transport binds are server-side declarations of the
+application realtime surface (`APP_RUNTIME_TOPOLOGY_SPEC.md` section 4), are
+not HTTP listeners, and `MUST NOT` be counted as HTTP ingress for this
+section.
 
 Cloud development is remote-client-only. `cloud.development` starts no local
 standalone gateway, platform gateway, API listener, data service, migration,

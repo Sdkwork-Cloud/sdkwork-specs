@@ -78,12 +78,23 @@ Rules:
 Rules:
 
 - Application realtime WebSocket `MUST` terminate on `application.public-ingress`.
+  In a `cloud` profile, the deployed platform cloud gateway
+  (`sdkwork-api-cloud-gateway`) `MAY` terminate the application realtime plane
+  (WebSocket upgrade plus declared client link transports) behind that surface
+  when the application declares the platform-hosted realtime mode, the
+  platform gateway declares the embedded realtime surface, and an ADR
+  (`ADR-20260809-platform-gateway-realtime-hosting`) is recorded. The
+  application standalone gateway remains the host for `standalone` profiles.
 - External platform APIs use `platform.api-gateway` URLs only in cloud client
   bootstrap. A standalone profile embeds every selected same-origin dependency
   as an owner assembly contribution behind `application.public-ingress` and
   `MUST NOT` resolve a `platform.api-gateway` URL.
 - Edge protocols `MUST NOT` be routed through `sdkwork-api-cloud-gateway` unless a
-  future platform spec adds an edge tier.
+  future platform spec adds an edge tier. Application client link transports
+  (TCP, UDP, QUIC) that belong to a declared application realtime surface are
+  `application`-plane protocols, not `edge`-plane protocols; device and edge
+  protocols (device WebSocket, MQTT bridge, device UDP) remain `edge`-plane
+  and keep the `edge-runtime` role.
 - Each plane `MUST` have distinct env keys from `APP_RUNTIME_TOPOLOGY_NAMING.md`.
 - Application topology describes deployed surface URLs, not the implementation
   identity of the remote platform gateway. Cloud API assembly selection
@@ -118,15 +129,29 @@ Example declaration in `specs/topology.spec.json`:
   "bindEnv": "SDKWORK_IM_APPLICATION_PUBLIC_INGRESS_BIND",
   "httpUrlEnv": "SDKWORK_IM_APPLICATION_PUBLIC_HTTP_URL",
   "websocketUrlEnv": "SDKWORK_IM_APPLICATION_PUBLIC_WEBSOCKET_URL",
-  "websocketPath": "/im/v3/api/realtime/ws"
+  "websocketPath": "/im/v3/api/realtime/ws",
+  "realtimeHosting": "platform-cloud-gateway"
 }
 ```
+
+`realtimeHosting` declares who terminates the application realtime plane in a
+`cloud` profile: `application` (application ingress, default) or
+`platform-cloud-gateway` (the deployed platform cloud gateway, per
+`ADR-20260809-platform-gateway-realtime-hosting`). `standalone` profiles
+always terminate realtime on `application.public-ingress` regardless of the
+declared value.
 
 Rules:
 
 - HTTP and WebSocket on the same surface share host and port; only the scheme differs.
 - `websocketUrlEnv` is origin only; SDKs append `websocketPath`.
 - `bindEnv` is server-side; `*UrlEnv` keys are used by clients and orchestration.
+- `realtimeHosting: "platform-cloud-gateway"` requires the platform gateway to
+  declare the embedded realtime dependency surface and its Cargo feature; it
+  does not change the surface id, env keys, or SDK-facing URLs.
+- Client link transport binds (for example `SDKWORK_IM_REALTIME_TCP_BIND_ADDR`)
+  are server-side declarations of the application realtime surface; they are
+  non-HTTP listeners and are not `edge`-plane ingress.
 
 ## 5. Archetypes
 

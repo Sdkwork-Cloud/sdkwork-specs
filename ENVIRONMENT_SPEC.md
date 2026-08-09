@@ -122,6 +122,12 @@ Rules:
   Prefer `OPEN_API_BASE_URL`, `APP_API_BASE_URL`, or `BACKEND_API_BASE_URL` for
   resolved surface overrides.
 - Dependency SDK base URL override variables must include a stable dependency SDK family or dependency app code segment, for example `SDKWORK_<APPLICATION_CODE>_APPBASE_APP_API_BASE_URL`, `SDKWORK_<APPLICATION_CODE>_DRIVE_APP_API_BASE_URL`, or `PORTAL_PUBLIC_IM_OPEN_API_BASE_URL`.
+- Application realtime surfaces use the `SDKWORK_<APPLICATION_CODE>_REALTIME_*`
+  family registered in `APP_RUNTIME_TOPOLOGY_NAMING.md` section 6 (for example
+  `SDKWORK_IM_REALTIME_TCP_BIND_ADDR`, `SDKWORK_IM_REALTIME_CLUSTER_BUS_URL`,
+  `SDKWORK_IM_REALTIME_NODE_ID`). Link transport binds are server-side only and
+  `MUST NOT` be exposed to browser code. The platform cloud gateway realtime
+  hosting toggle is `SDKWORK_API_CLOUD_GATEWAY_REALTIME_ENABLED`.
 - Do not put secrets in names prefixed with `PORTAL_PUBLIC_`, `VITE_`, `PUBLIC_`, `NEXT_PUBLIC_`, or any variable that is exposed to browser code.
 - `SDKWORK_ACCESS_TOKEN` is the unified private bootstrap access credential for every application root. It `MUST` appear in checked-in private env templates such as `.env.example` when the application calls protected app-api or backend-api surfaces. It `MUST NOT` use an app-prefixed name such as `SDKWORK_<APPLICATION_CODE>_ACCESS_TOKEN`. It `MUST NOT` be exposed through `VITE_*`, `PORTAL_PUBLIC_*`, or other browser-visible runtime config.
 - `SDKWORK_AUTH_TOKEN`, `SDKWORK_REFRESH_TOKEN`, `SDKWORK_API_KEY`, app-prefixed credential env names, and `VITE_*_TOKEN` remain forbidden as live credential inputs. `auth_token`, `refresh_token`, and API keys `MUST` come from login, refresh, or approved runtime credential providers—not environment variables.

@@ -166,6 +166,38 @@ Plane segment is uppercase single word: `APPLICATION`, `PLATFORM`,
 Surface segment uses uppercase with underscores: `PUBLIC_INGRESS`,
 `API_GATEWAY`, `CONTROL_INGRESS`, or `DEVICE_INGRESS`.
 
+### Realtime Server-Side
+
+Application realtime surfaces (WebSocket upgrade plus client link transports)
+use the application realtime key family:
+
+```text
+SDKWORK_<APPLICATION_CODE>_REALTIME_<PROPERTY>
+```
+
+| Property | Meaning | Example |
+| --- | --- | --- |
+| `TCP_BIND_ADDR` | Client link TCP `host:port` listen address | `SDKWORK_IM_REALTIME_TCP_BIND_ADDR` |
+| `UDP_BIND_ADDR` | Client link UDP `host:port` listen address | `SDKWORK_IM_REALTIME_UDP_BIND_ADDR` |
+| `QUIC_BIND_ADDR` | Client link QUIC `host:port` listen address | `SDKWORK_IM_REALTIME_QUIC_BIND_ADDR` |
+| `QUIC_TLS_CERT_PATH` | QUIC TLS certificate file path | `SDKWORK_IM_REALTIME_QUIC_TLS_CERT_PATH` |
+| `QUIC_TLS_KEY_PATH` | QUIC TLS key file path | `SDKWORK_IM_REALTIME_QUIC_TLS_KEY_PATH` |
+| `CLUSTER_BUS_URL` | Realtime cluster bus URL (Redis) | `SDKWORK_IM_REALTIME_CLUSTER_BUS_URL` |
+| `ROUTE_STORE_URL` | Realtime route store URL | `SDKWORK_IM_REALTIME_ROUTE_STORE_URL` |
+| `NODE_ID` | Realtime node identity | `SDKWORK_IM_REALTIME_NODE_ID` |
+
+Link transport binds are server-side declarations of the application realtime
+surface. They are non-HTTP listeners, `MUST NOT` be counted as HTTP ingress,
+and `MUST NOT` become client bootstrap keys. WebSocket upgrade stays on the
+surface's HTTP listener and keeps the `WEBSOCKET_URL` key from
+Server-Side Surfaces.
+
+Platform gateway realtime hosting toggle:
+
+| Key | Meaning |
+| --- | --- |
+| `SDKWORK_API_CLOUD_GATEWAY_REALTIME_ENABLED` | Platform cloud gateway hosts declared application realtime planes (`true`/`false`/`1`/`0`) |
+
 ### Internal Upstream
 
 Cloud profiles and advanced standalone profiles may define internal upstream

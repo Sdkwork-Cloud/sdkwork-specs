@@ -138,6 +138,13 @@ Choose one canonical pattern per deployment and declare it in the app topology s
   fixed, for example `/im/v3/api/realtime/ws` on `im.sdkwork.com`.
 - Pattern B: Dedicated realtime host. Both hosts must appear explicitly in the
   `cloud.production` profile.
+- Pattern C: Platform-hosted realtime. The deployed platform cloud gateway
+  terminates the application realtime plane (WebSocket upgrade on its HTTP
+  listener plus declared client link transports TCP/UDP/QUIC) per
+  `ADR-20260809-platform-gateway-realtime-hosting`. The application declares
+  `realtimeHosting: "platform-cloud-gateway"` on
+  `application.public-ingress`; SDK-facing URLs and env keys are unchanged.
+  `standalone` profiles always terminate realtime on the application ingress.
 
 ## 4. `application-rest-edge-device`
 
