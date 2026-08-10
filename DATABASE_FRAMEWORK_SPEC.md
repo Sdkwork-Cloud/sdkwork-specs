@@ -361,6 +361,26 @@ Rules:
 - Table definitions `MUST` follow `DATABASE_SPEC.md` sections 4–21.
 - Contract is the semantic source of truth. Migrations `MUST` implement contract evolution.
 
+### 6.2.1 `organization_id` Column Contract
+
+The framework checker enforces the `DATABASE_SPEC.md` §6.10 and DB089–DB093
+rules on every authoritative baseline and migration:
+
+- Every `organization_id` column definition in baseline DDL `MUST` declare
+  `NOT NULL` together with the platform sentinel default:
+  - `BIGINT`/`INTEGER` → `NOT NULL DEFAULT 0`
+  - `TEXT`/`VARCHAR(n)` → `NOT NULL DEFAULT '0'`
+  - `UUID` → `NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'`
+- Nullable `organization_id` definitions (no `NOT NULL`) fail the module
+  contract check, including columns added by `ALTER TABLE ... ADD COLUMN`.
+- Column names that are different fields (`parent_organization_id`,
+  `merchant_organization_id`, `definition_organization_id`, ...) are scoped
+  by their own domain contract and are not covered by this rule.
+- The check applies to every database module root's
+  `ddl/baseline/<engine>/` SQL files. Multi-module databases
+  (`database/modules/*`) are validated through their own module entrypoint
+  (`--layout module`), which applies the same contract to their baselines.
+
 ### 6.3 Registry Files
 
 `prefix-registry.json` and `table-registry.json` `MUST` list owned prefixes/tables, owner team, compliance level, and lifecycle status (`active`, `deprecated`, `legacy-compat`).

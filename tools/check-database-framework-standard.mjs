@@ -298,6 +298,57 @@ function validateApplicationOwnedSql(sql, relativePath, fail) {
   }
 }
 
+/**
+ * Organization id column contract (DATABASE_SPEC.md DB089-DB093).
+ *
+ * Every `organization_id` column in baseline DDL must be NOT NULL with the
+ * platform sentinel default:
+ * - BIGINT/INTEGER -> NOT NULL DEFAULT 0
+ * - TEXT/VARCHAR(n) -> NOT NULL DEFAULT '0'
+ * - UUID -> NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'
+ *
+ * Different fields (parent_/merchant_/definition_organization_id, ...) are
+ * scoped by their own domain contract and are skipped.
+ */
+const ORGANIZATION_ID_COLUMN_PATTERN = /\borganization_id\s+(TEXT|VARCHAR\(\d+\)|BIGINT|UUID|INTEGER)/gmu;
+const ORGANIZATION_ID_SENTINEL_BY_TYPE = {
+  BIGINT: /\bNOT NULL\b[\s\S]*?\bDEFAULT\s+0\b/iu,
+  INTEGER: /\bNOT NULL\b[\s\S]*?\bDEFAULT\s+0\b/iu,
+  TEXT: /\bNOT NULL\b[\s\S]*?\bDEFAULT\s+'0'/iu,
+  VARCHAR: /\bNOT NULL\b[\s\S]*?\bDEFAULT\s+'0'/iu,
+  UUID: /\bNOT NULL\b[\s\S]*?\bDEFAULT\s+'00000000-0000-0000-0000-000000000000'/iu,
+};
+
+function validateOrganizationIdContract(moduleRootDir, engine, baselineFiles, fail) {
+  for (const fileName of baselineFiles) {
+    const sql = fs.readFileSync(path.join(moduleRootDir, 'ddl/baseline', engine, fileName), 'utf8');
+    ORGANIZATION_ID_COLUMN_PATTERN.lastIndex = 0;
+    for (const match of sql.matchAll(ORGANIZATION_ID_COLUMN_PATTERN)) {
+      const type = match[1];
+      // \b already excludes prefixed fields such as parent_organization_id.
+      const lineEnd = sql.indexOf('\n', match.index);
+      const declaration = sql.slice(
+        match.index,
+        lineEnd === -1 ? undefined : lineEnd + 1,
+      );
+      const baseType = type.split('(')[0];
+      const sentinelPattern = ORGANIZATION_ID_SENTINEL_BY_TYPE[baseType];
+      const sentinelOk = sentinelPattern ? sentinelPattern.test(declaration) : false;
+      const notNull = /\bNOT NULL\b/iu.test(declaration);
+      if (!notNull || !sentinelOk) {
+        const expected = baseType === 'BIGINT' || baseType === 'INTEGER'
+          ? 'NOT NULL DEFAULT 0'
+          : baseType === 'UUID'
+            ? "NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'"
+            : "NOT NULL DEFAULT '0'";
+        fail(
+          `ddl/baseline/${engine}/${fileName}: organization_id (${type}) must be ${expected} (DATABASE_SPEC DB089); found ${declaration.trim().replace(/\s+/g, ' ')}`,
+        );
+      }
+    }
+  }
+}
+
 export function validateDatabaseModuleContract(moduleRootDir) {
   const failures = [];
 
@@ -414,6 +465,7 @@ export function validateDatabaseModuleContract(moduleRootDir) {
       fail(`ddl/baseline/${expectedEngine} must contain at least one .sql baseline file`);
     }
     validateBaselineSourceEngines(moduleRootDir, expectedEngine, baselineFiles, fail);
+    validateOrganizationIdContract(moduleRootDir, expectedEngine, baselineFiles, fail);
   }
 
   if (databaseRole === AUTHORITATIVE_ROLE) {

@@ -586,8 +586,7 @@ try {
   const invalidCliOutput = `${invalidCli.stdout}${invalidCli.stderr}`;
   assert.equal(invalidCli.status, 1, invalidCliOutput);
   assert.match(invalidCli.stderr, /Database framework standard failed/, invalidCliOutput);
-  assert.match(invalidCli.stderr, /README\.md must exist/, invalidCliOutput);
-} finally {
+  assert.match(invalidCli.stderr, /README\.md must exist/, invalidCliOutput);} finally {
   fs.rmSync(cliTempRoot, { recursive: true, force: true });
 }
 
@@ -657,5 +656,59 @@ function scaffoldValidClientLocalRoot(rootDir, mode = 'cache') {
   writeText('database/fixtures/.gitkeep', '', rootDir);
   writeJson('package.json', { scripts: { 'db:validate': 'echo validate' } }, rootDir);
 }
+
+// organization_id column contract (DATABASE_SPEC DB089-DB093).
+const orgContractRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-db-org-contract-'));
+scaffoldValidDatabaseRoot(orgContractRoot);
+writeText(
+  'database/ddl/baseline/postgres/0001_org_contract.sql',
+  [
+    'CREATE TABLE org_good (',
+    '  id TEXT NOT NULL PRIMARY KEY,',
+    '  tenant_id TEXT NOT NULL,',
+    "  organization_id TEXT NOT NULL DEFAULT '0',",
+    '  name TEXT NOT NULL',
+    ');',
+    'CREATE TABLE org_nullable (',
+    '  id TEXT NOT NULL PRIMARY KEY,',
+    '  tenant_id TEXT NOT NULL,',
+    '  organization_id TEXT,',
+    '  name TEXT NOT NULL',
+    ');',
+    'CREATE TABLE org_no_default (',
+    '  id TEXT NOT NULL PRIMARY KEY,',
+    '  tenant_id TEXT NOT NULL,',
+    '  organization_id BIGINT NOT NULL,',
+    '  name TEXT NOT NULL',
+    ');',
+    'CREATE TABLE org_wrong_default (',
+    '  id TEXT NOT NULL PRIMARY KEY,',
+    '  tenant_id TEXT NOT NULL,',
+    "  organization_id TEXT NOT NULL DEFAULT '',",
+    '  name TEXT NOT NULL',
+    ');',
+    '',
+  ].join('\n'),
+  orgContractRoot,
+);
+const orgContract = validateDatabaseModuleContract(path.join(orgContractRoot, 'database'));
+const orgContractFails = orgContract.failures.filter((item) => item.includes('organization_id ('));
+assert.equal(
+  orgContractFails.length,
+  3,
+  'organization_id contract must reject nullable, missing-default and wrong-default columns (DB089)',
+);
+assert.ok(
+  orgContractFails.some((item) => item.includes('organization_id (TEXT) must be NOT NULL DEFAULT')),
+  'nullable TEXT organization_id must be reported',
+);
+assert.ok(
+  orgContractFails.some((item) => item.includes('organization_id (BIGINT) must be NOT NULL DEFAULT 0')),
+  'NOT NULL BIGINT without sentinel default must be reported',
+);
+assert.ok(
+  orgContractFails.some((item) => item.includes("DEFAULT ''")),
+  'empty-string default must be reported as not the sentinel',
+);
 
 process.stdout.write('check-database-framework-standard.test.mjs passed\n');

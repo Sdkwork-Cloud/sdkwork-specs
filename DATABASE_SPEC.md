@@ -292,6 +292,11 @@ Rules:
 - These fields `MUST` store resolved numeric subject ids from the trusted request context, not client-provided opaque strings.
 - Tenant-scoped tables `MUST` include `tenant_id` and tenant-leading indexes for list/search paths.
 - Organization-scoped tables `MUST` include both `tenant_id` and `organization_id`; organization isolation must never depend on an optional payload field, inferred join, process-global state, or post-query filtering.
+- `organization_id` `MUST` be declared `NOT NULL` with the platform sentinel default (`BIGINT ... DEFAULT 0`; `TEXT`/`VARCHAR`/`UUID` columns use the sentinel `'0'` / zero-UUID default). Nullable `organization_id` columns are a contract violation.
+- The platform sentinel `organization_id = '0'` (zero) is the single representation of platform-wide or "no organization" rows. `NULL` must never be used for that meaning.
+- Runtime SQL that reads organization-scoped data `MUST` resolve a missing IAM organization context (`organization_id = None`) to the sentinel (`organization_id = '0'`) or match it explicitly (`organization_id = $n OR organization_id = '0'`); a predicate that only matches `organization_id IS NULL` is a contract violation.
+- Migration of a legacy nullable `organization_id` column `MUST` backfill the sentinel (`UPDATE ... SET organization_id = '0' WHERE organization_id IS NULL`) before `SET NOT NULL`, and `MUST` be idempotent.
+- Unique indexes and constraints on `organization_id` `MUST` reference the column directly; `COALESCE(organization_id, '0')` expressions are only tolerated as legacy migration facts, never in new DDL.
 - User-owned tables `SHOULD` include `user_id` when user ownership affects authorization, listing, or audit.
 - Cross-tenant platform tables `MUST` document why `tenant_id` is absent or nullable and how access is authorized.
 
@@ -704,6 +709,11 @@ CI, schema linters, migration tools, or repository audits `SHOULD` implement the
 | DB086 | MUST | Organization-scoped tables include both `tenant_id` and `organization_id`. |
 | DB087 | MUST | Ordinary runtime SQL binds tenant and organization scope for every organization-scoped read or mutation. |
 | DB088 | MUST | Cross-organization operations are typed, independently authorized, bounded, audited, machine-inventoried, and rejected when their exact SQL shape is not approved. |
+| DB089 | MUST | `organization_id` columns are `NOT NULL` with the platform sentinel default (`0` / `'0'` / zero-UUID); nullable `organization_id` is a contract violation. |
+| DB090 | MUST | Platform-wide or "no organization" rows use the sentinel `organization_id = '0'`; `NULL` is never a valid organization scope. |
+| DB091 | MUST | Runtime queries resolve a missing IAM organization context to the sentinel or match it explicitly; predicates matching only `organization_id IS NULL` are contract violations. |
+| DB092 | MUST | Legacy nullable `organization_id` migrations backfill the sentinel before `SET NOT NULL` and are idempotent. |
+| DB093 | MUST | New DDL references `organization_id` directly in unique indexes/constraints; `COALESCE(organization_id, '0')` is a legacy migration fact only. |
 
 ## 27. Design Review Checklist
 
