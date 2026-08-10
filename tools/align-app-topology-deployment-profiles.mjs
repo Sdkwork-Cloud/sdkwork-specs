@@ -541,7 +541,10 @@ function ensurePlatformSurface(spec, deploymentProfiles) {
 function ensurePublicIngressCloudHost(spec) {
   if (!spec.surfaces?.['application.public-ingress']) return spec;
 
-  if (spec.cloudPublicHosts?.['application.public-ingress']?.httpHost) return spec;
+  const publicHost = spec.cloudPublicHosts?.['application.public-ingress'];
+  if (publicHost?.httpHost || (Array.isArray(publicHost?.httpHosts) && publicHost.httpHosts.length > 0)) {
+    return spec;
+  }
 
   const preferredSurfaceIds = [
     'application.app-http',

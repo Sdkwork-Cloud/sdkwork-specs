@@ -1,6 +1,6 @@
 # Application Runtime Topology Naming Registry
 
-- Version: 4.0
+- Version: 5.5
 - Scope: canonical names for deployment profile, runtime topology vocabulary, profiles, surfaces, environment keys, CLI flags, and documentation
 - Related: `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `NAMING_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`
 
@@ -266,18 +266,135 @@ Avoid:
 
 Application-plane public hosts `MUST` match product domain, not feature nicknames.
 
-| Application | `application.public-ingress` host | Platform gateway |
-| --- | --- | --- |
-| `sdkwork-im` | `im.sdkwork.com` | `api.sdkwork.com` |
-| LLM / Agent dialogue apps | `chat.sdkwork.com` | `api.sdkwork.com` |
-| `sdkwork-drive` | `drive.sdkwork.com` | `api.sdkwork.com` |
+### 9.1 Environment Host Formula
+
+Public hosts follow one formula per lifecycle environment and per registered
+base domain. Non-production hosts carry an environment suffix between the host
+role and the base domain; production hosts carry no suffix.
+
+```text
+<public-host> = <host-role>[-<environment-suffix>].<base-domain>   (non-production)
+<public-host> = <host-role>.<base-domain>                          (production)
+<base-domain> ∈ the product's registered base domain set
+```
+
+| environment | environment-suffix | `<application-code>` role example (IM) | `api` role example |
+| --- | --- | --- | --- |
+| `development` | `-dev` | `im-dev.sdkwork.com` | `api-dev.sdkwork.com` |
+| `test` | `-test` | `im-test.sdkwork.com` | `api-test.sdkwork.com` |
+| `staging` | `-staging` | `im-staging.sdkwork.com` | `api-staging.sdkwork.com` |
+| `production` | (no suffix) | `im.sdkwork.com` | `api.sdkwork.com` |
 
 Rules:
 
-- IM HTTP and WebSocket share `im.sdkwork.com` unless the topology spec declares
-  a separate realtime host.
+- The platform gateway role is always `api`: `api.sdkwork.com` in production,
+  `api-<suffix>.sdkwork.com` in every non-production environment.
+- The application public-ingress role is the canonical lowercase
+  `topology.applicationCode` (for example `im`): `im.sdkwork.com` in production,
+  `im-<suffix>.sdkwork.com` in every non-production environment. A product MAY
+  bind a different explicitly registered role host (for example
+  `sdkwork-birdcoder` binding `code.sdkwork.com` with
+  `applicationCode = birdcoder`) when the host is registered in
+  `cloudPublicHosts` and in the section 9.2 registry; the registered host
+  takes precedence over the formula.
+- Production public hosts `MUST NOT` carry an environment suffix. A domain such
+  as `api-prod.sdkwork.com` or `im-prod.sdkwork.com` is never a valid public
+  host.
+- Non-production public hosts `MUST` use suffix style (`im-test.sdkwork.com`,
+  `api-staging.sdkwork.com`). Prefix style (`test-im.sdkwork.com`,
+  `staging-api.sdkwork.com`) is retired and `MUST NOT` appear in new
+  configuration, examples, certificates, or documentation.
+- `dev`, `test`, and `staging` are domain-registry-only suffixes. They apply to
+  public hostnames, certificates, and nginx site file names; they `MUST NOT`
+  replace canonical `environment` values (`development`, `test`, `staging`,
+  `production`) in profile ids, env keys, or materialized runtime documents
+  (`ENVIRONMENT_SPEC.md` section 5.1). A profile id stays
+  `cloud.development`; its public host is `im-dev.sdkwork.com`.
+- `sdkwork.com` is the primary base domain for SDKWork-managed cloud
+  deployments. A product `MAY` bind additional base domains (brand or partner
+  domains such as `birdcoder.com` or `dtupay.com`) through the Base Domain
+  Registry (section 9.3); every registered base domain follows the same
+  formula and environment suffixes.
+- Customer-managed deployments may substitute their own base domain set with
+  the same formula and `MUST` record the substitution in release metadata.
+- Hosts `MUST` be registered per environment in `cloudPublicHosts.environments`
+  (`APP_RUNTIME_TOPOLOGY_SPEC.md` section 4) or derivable from the
+  `topology.applicationCode` formula. Multi-host surfaces use the `httpHosts`
+  array in `cloudPublicHosts`. Deviations require a dated governance
+  exception.
+- WebSocket hosts follow the same formula and share the HTTP host unless the
+  topology spec declares a separate realtime host.
+- A multi-domain site binds the primary host as `expose.domain` and every
+  additional registered host as `aliases` (`SDKWORK_DEPLOY_SPEC.md` section
+  7.2): aliases share the primary site file, TLS certificate, and routing;
+  each alias is an extra `server_name` value.
+
+### 9.2 Host Registry
+
+| Application | `application.public-ingress` hosts (production / dev / test / staging) | Platform gateway (production / dev / test / staging) |
+| --- | --- | --- |
+| `sdkwork-im` | `im.sdkwork.com` / `im-dev.sdkwork.com` / `im-test.sdkwork.com` / `im-staging.sdkwork.com` | `api.sdkwork.com` / `api-dev.sdkwork.com` / `api-test.sdkwork.com` / `api-staging.sdkwork.com` |
+| LLM / Agent dialogue apps | `chat.sdkwork.com` / `chat-dev.sdkwork.com` / `chat-test.sdkwork.com` / `chat-staging.sdkwork.com` | `api.sdkwork.com` / `api-dev.sdkwork.com` / `api-test.sdkwork.com` / `api-staging.sdkwork.com` |
+| `sdkwork-drive` | `drive.sdkwork.com` / `drive-dev.sdkwork.com` / `drive-test.sdkwork.com` / `drive-staging.sdkwork.com` | `api.sdkwork.com` / `api-dev.sdkwork.com` / `api-test.sdkwork.com` / `api-staging.sdkwork.com` |
+| `sdkwork-cloudrouter` | `router.sdkwork.com` + `router.birdcoder.com` + `router.dtupay.com` / `router-dev.<base-domain>` / `router-test.<base-domain>` / `router-staging.<base-domain>` (every registered base domain) | `api.sdkwork.com` / `api-dev.sdkwork.com` / `api-test.sdkwork.com` / `api-staging.sdkwork.com` |
+| `sdkwork-knowledgebase` | `knowledgebase.sdkwork.com` / `knowledgebase-dev.sdkwork.com` / `knowledgebase-test.sdkwork.com` / `knowledgebase-staging.sdkwork.com` | `api.sdkwork.com` / `api-dev.sdkwork.com` / `api-test.sdkwork.com` / `api-staging.sdkwork.com` |
+| `sdkwork-birdcoder` | `code.sdkwork.com` / `code-dev.sdkwork.com` / `code-test.sdkwork.com` / `code-staging.sdkwork.com` | `api.sdkwork.com` / `api-dev.sdkwork.com` / `api-test.sdkwork.com` / `api-staging.sdkwork.com` |
+| `sdkwork-appstore` | `appstore.sdkwork.com` / `appstore-dev.sdkwork.com` / `appstore-test.sdkwork.com` / `appstore-staging.sdkwork.com` | `api.sdkwork.com` / `api-dev.sdkwork.com` / `api-test.sdkwork.com` / `api-staging.sdkwork.com` |
+| `sdkwork-manager` | `admin.sdkwork.com` / `admin-dev.sdkwork.com` / `admin-test.sdkwork.com` / `admin-staging.sdkwork.com` | `api.sdkwork.com` / `api-dev.sdkwork.com` / `api-test.sdkwork.com` / `api-staging.sdkwork.com` |
+
+Rules:
+
+- IM HTTP and WebSocket share `im.sdkwork.com` (and `im-<suffix>.sdkwork.com`
+  per environment) unless the topology spec declares a separate realtime host.
 - Do not reuse `chat.sdkwork.com` for IM.
-- Platform SDKs use `api.sdkwork.com` in cloud deployments.
+- Platform SDKs use `api.sdkwork.com` (and `api-<suffix>.sdkwork.com` per
+  environment) in cloud deployments.
+- `sdkwork-cloudrouter` binds the `router` role on every registered base
+  domain; the primary host on `sdkwork.com` is the `expose.domain` and the
+  remaining hosts are `aliases`.
+- `sdkwork-knowledgebase` uses the full `knowledgebase` role on
+  `sdkwork.com` (single base domain). Its auxiliary surfaces follow the same
+  suffix formula on their own roles: backend/admin = `knowledgebase-admin.sdkwork.com`
+  (`knowledgebase-admin-<suffix>.sdkwork.com` per environment), open =
+  `knowledge.sdkwork.com` (`knowledge-<suffix>.sdkwork.com` per environment).
+  These auxiliary hosts are registered in `cloudPublicHosts` and bound as
+  `expose.aliases` (or per-surface hosts) in `deployments/deploy.yaml`.
+- `sdkwork-birdcoder` binds the `code` role host on `sdkwork.com` while
+  keeping `topology.applicationCode = birdcoder`: an explicitly registered
+  role host MAY differ from `applicationCode` when it is registered in
+  `cloudPublicHosts` and in this registry (section 9.1). Crate names, env key
+  prefixes (`SDKWORK_BIRDCODER_*`), and runtime directories
+  (`/etc/sdkwork/birdcoder`) keep following `applicationCode`.
+- `sdkwork-manager` binds the `admin` role host on `sdkwork.com` while
+  keeping `topology.applicationCode = manager` (same explicit-registration
+  rule as `sdkwork-birdcoder`). Bare `admin.sdkwork.com` is this product's
+  primary role host; it is distinct from the `*-admin.sdkwork.com` auxiliary
+  surface form used by other products (for example
+  `knowledgebase-admin.sdkwork.com`). Crate names, env key prefixes
+  (`SDKWORK_MANAGER_*`), and runtime directories (`/etc/sdkwork/manager`)
+  keep following `applicationCode`.
+
+### 9.3 Base Domain Registry
+
+| Base domain | Kind | Owned by | Notes |
+| --- | --- | --- | --- |
+| `sdkwork.com` | primary | SDKWork | Default for every SDKWork-managed product; wildcard `*.sdkwork.com` covers environment hosts |
+| `birdcoder.com` | partner | SDKWork | Registered additional base domain for selected products (for example `sdkwork-cloudrouter`) |
+| `dtupay.com` | partner | SDKWork | Registered additional base domain for selected products (for example `sdkwork-cloudrouter`) |
+
+Rules:
+
+- New base domains `MUST` be registered here before any product host uses them;
+  a product `MUST` register its base domain set in release metadata and in
+  `cloudPublicHosts`.
+- Every registered base domain follows the same environment suffix formula:
+  `router-dev.birdcoder.com`, `router-test.dtupay.com`, `router.sdkwork.com`,
+  and so on.
+- Multi-base-domain certificates: a site binding hosts on multiple base
+  domains `MUST` use a SAN certificate covering all bound hosts or one
+  wildcard/SAN certificate per base domain (`NGINX_SPEC.md` section 3).
+- Retired brand domains are removed from this registry and from product
+  `cloudPublicHosts` before their DNS entries are withdrawn.
 
 ## 10. API Assembly And Gateway Registry
 
@@ -318,6 +435,12 @@ Retired crate naming:
 
 | Version | Change |
 | --- | --- |
+| 5.5 | Registered `sdkwork-manager` host row (`admin.sdkwork.com` role host with `applicationCode = manager`) and the bare-admin role-host precedence note |
+| 5.4 | Registered `sdkwork-appstore` host row (`appstore.sdkwork.com` role host) |
+| 5.3 | Registered `sdkwork-birdcoder` host row (`code.sdkwork.com` role host with `applicationCode = birdcoder`) and the explicit-registration precedence rule |
+| 5.2 | Registered `sdkwork-knowledgebase` host row and its auxiliary surfaces (admin/open roles) in the public host registry |
+| 5.1 | Added multi-base-domain support: Base Domain Registry (§9.3), `httpHosts` multi-host surfaces, Cloud Router host registration (`router.*`), alias semantics for multi-domain sites |
+| 5.0 | Added environment host formula and per-environment public host registry (`<role>[-<env-suffix>].sdkwork.com`); production keeps the bare role host |
 | 4.0 | Collapsed topology profiles to `deploymentProfile.environment`; public process-layout axis removed from application integration |
 | 3.2 | Platform gateway crate standardized as `sdkwork-api-cloud-gateway`; retired listener crate |
 | 3.1 | Gateway crates must use scope plus `standalone` or `cloud` deployment qualifiers |

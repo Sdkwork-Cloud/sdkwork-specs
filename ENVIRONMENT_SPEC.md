@@ -257,6 +257,22 @@ Rules:
   `production`. New env file names, profile ids, persisted config, artifacts,
   and evidence `MUST NOT` use `.dev`, `.prod`, `local`, `private`, `saas`, or
   `self-hosted` as substitutes for a canonical profile id.
+- Public hostnames follow the environment host formula in
+  `APP_RUNTIME_TOPOLOGY_NAMING.md` section 9: non-production hosts use
+  `<role>-<environment-suffix>.<base-domain>` (`im-dev.sdkwork.com`,
+  `api-test.sdkwork.com`) and production uses the bare role host
+  (`im.sdkwork.com`, `api.sdkwork.com`). The `dev`/`test`/`staging` suffix in a
+  hostname is a domain-registry-only abbreviation; it does not replace the
+  canonical `development`/`test`/`staging` `environment` values in profile ids,
+  env keys (`SDKWORK_IM_ENVIRONMENT=development`), or materialized runtime
+  documents. Profile id `cloud.development` maps to public host
+  `im-dev.sdkwork.com`; the two vocabularies must not be conflated.
+- Cloud profile env files `MUST` resolve the application public ingress and the
+  platform API gateway to their declared environment hosts from the registry.
+  A cloud profile `MUST NOT` point the application public ingress at the
+  `api-*` platform host or vice versa unless the application declares
+  `applicationAndApiOriginsAreDistinct: false` with a dated governance
+  exception.
 - File names select a candidate profile, but content remains authoritative only
   after it declares matching `environment`, `deploymentProfile`, `profileId`,
   and `runtimeTarget` values. A mismatch fails before SDK construction or host
@@ -356,13 +372,23 @@ VITE_<APP_CODE>_SDK_BASE_URL=/
 ```
 
 ```dotenv
+# .env.cloud.development
+VITE_SDKWORK_ENVIRONMENT=development
+VITE_SDKWORK_DEPLOYMENT_PROFILE=cloud
+VITE_SDKWORK_PROFILE_ID=cloud.development
+VITE_SDKWORK_RUNTIME_TARGET=browser
+VITE_SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL=https://im-dev.sdkwork.com
+VITE_SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL=https://api-dev.sdkwork.com
+```
+
+```dotenv
 # .env.cloud.production
 VITE_SDKWORK_ENVIRONMENT=production
 VITE_SDKWORK_DEPLOYMENT_PROFILE=cloud
 VITE_SDKWORK_PROFILE_ID=cloud.production
 VITE_SDKWORK_RUNTIME_TARGET=browser
-VITE_SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL=https://app.example.com
-VITE_SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL=https://api.example.com
+VITE_SDKWORK_<APPLICATION_CODE>_APPLICATION_PUBLIC_HTTP_URL=https://im.sdkwork.com
+VITE_SDKWORK_<APPLICATION_CODE>_PLATFORM_API_GATEWAY_HTTP_URL=https://api.sdkwork.com
 ```
 
 Rules:

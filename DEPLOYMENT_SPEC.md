@@ -240,6 +240,14 @@ Rules:
   `ENVIRONMENT_SPEC.md` section 5.1. Deployment and environment selection never
   relies on a one-dimensional `.env.production`, Vite mode, Flutter flavor,
   Spring profile, or native build variant.
+- Public hostnames `MUST` follow the environment host formula registered in
+  `APP_RUNTIME_TOPOLOGY_NAMING.md` section 9: `<role>[-<environment-suffix>].<base-domain>`
+  for `development` (`-dev`), `test` (`-test`), and `staging` (`-staging`);
+  bare `<role>.<base-domain>` for `production`. Deployment manifests, nginx
+  site files, certificates, and operator runbooks reference the same registered
+  hosts (`im-test.sdkwork.com`, `api-dev.sdkwork.com`, `im.sdkwork.com`,
+  `api.sdkwork.com`). Prefix-style hosts such as `test-im.sdkwork.com` are
+  retired.
 
 ## 3. Runtime Bootstrap
 

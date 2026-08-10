@@ -126,6 +126,7 @@ function assertCloudClientUrls(values, profile) {
   if (profile.deploymentProfile !== 'cloud') {
     return;
   }
+  const development = profile.environment === 'development';
   for (const [key, value] of Object.entries(values)) {
     if (!/(?:_URL|_HTTP_URL|_BASE_URL)$/u.test(key) || !value) {
       continue;
@@ -136,8 +137,14 @@ function assertCloudClientUrls(values, profile) {
     } catch {
       throw new Error(`${profile.profileId} ${key} must be an absolute public URL.`);
     }
-    if (!['https:', 'wss:'].includes(parsed.protocol) || LOOPBACK_HOSTS.has(parsed.hostname)) {
+    if (LOOPBACK_HOSTS.has(parsed.hostname)) {
+      throw new Error(`${profile.profileId} ${key} must use a remote public host.`);
+    }
+    if (!development && !['https:', 'wss:'].includes(parsed.protocol)) {
       throw new Error(`${profile.profileId} ${key} must use an explicit remote HTTPS/WSS URL.`);
+    }
+    if (development && !['http:', 'https:', 'ws:', 'wss:'].includes(parsed.protocol)) {
+      throw new Error(`${profile.profileId} ${key} must use an HTTP(S)/WS(S) URL.`);
     }
   }
 }

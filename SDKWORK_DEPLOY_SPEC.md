@@ -250,18 +250,45 @@ expose:
 
 | Field | Required | Default | Notes |
 | --- | --- | --- | --- |
-| `domain` | yes | — | full hostname; conf file stem |
+| `domain` | yes | — | full hostname; conf file stem; must be an element of the profile-environment host set |
 | `tls` | no | prod managed; dev `off` | certificate directory name |
 | `mode` | no | `web+api` | `web`, `api`, `web+api` |
 | `web` | when Web served | — | `adaptive`, `pc`, `h5`, `[pc, h5]` |
-| `aliases` | no | `[]` | extra `server_name` values |
+| `aliases` | no | `[]` | extra `server_name` values; registered hosts bound to the same site |
 | `apiPathStyle` | no | `full-prefix` | only for `mode: api`; `strip-prefix` optional |
+
+Multi-domain binding modes:
+
+- **One site, many hosts**: bind the primary registered host as `domain` and
+  every additional registered host of the same profile environment as
+  `aliases`. Aliases share the primary site file, TLS certificate, upstream,
+  and routing; nginx emits one `server_name` per alias
+  (`NGINX_SPEC.md` section 1).
+- **One host per site**: declare one `expose` item per host; each item gets
+  its own site file and certificate directory.
 
 Constraints:
 
 - `mode: api` MUST NOT include `web`.
 - `mode: web` MUST NOT expose API locations unless overridden in `overrides.nginx`.
 - production MUST NOT use `tls: off` unless `overrides.allowInsecureTls: true`.
+- `domain` MUST be an element of the host set registered for the profile
+  environment in `topology.spec.json` `cloudPublicHosts` (including its
+  `environments` overrides and the `httpHosts` multi-host arrays) per
+  `APP_RUNTIME_TOPOLOGY_NAMING.md` section 9. Non-production profiles expose
+  suffix hosts (`im-test.sdkwork.com`, `router-staging.birdcoder.com`);
+  production exposes the bare role host (`im.sdkwork.com`, `router.dtupay.com`).
+  Prefix-style hosts (`staging-im.sdkwork.com`) and production-suffixed hosts
+  (`im-prod.sdkwork.com`) fail validation. Customer-managed base domains are
+  allowed when release metadata records the substitution.
+- Every `aliases` entry MUST be a bare hostname (no scheme, port, or path) and
+  MUST be an element of the same profile-environment host set (or a recorded
+  customer base domain). Aliases MUST NOT be registered hosts of a different
+  environment (for example `im-test.sdkwork.com` as a production alias).
+- When `domain` + `aliases` cover the full registered host set of the profile
+  environment, the site serves every host; a registered host that is neither
+  `domain` nor an alias of any expose item SHOULD be declared in a separate
+  expose item or dropped from the registry.
 
 There is NO `routes` section.
 
@@ -523,6 +550,7 @@ plan → render → nginx -t → deploy → reload → health-check → rollback
 | V18 | v2 profiles declare typed delivery, driver, management, tenancy, isolation, exposure, rollout, and availability dimensions |
 | V19 | production source-tree installation fails without an approved dated governance exception |
 | V20 | side-effecting operations require explicit profile/environment/artifact digest/evidence/rollback selection and never consume `defaultProfile` |
+| V21 | `expose.domain` is an element of the profile-environment host set from `cloudPublicHosts` (including `httpHosts` and `environments` overrides) per `APP_RUNTIME_TOPOLOGY_NAMING.md` section 9; `aliases` are bare hostnames from the same environment host set; prefix-style (`staging-im.*`) and production-suffixed (`*-prod.*`) hosts fail |
 
 ## 14. Examples
 

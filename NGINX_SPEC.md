@@ -21,7 +21,31 @@ Examples:
 ```text
 /etc/nginx/sites-enabled/sdkwork/api.sdkwork.com.conf
 /etc/nginx/sites-enabled/sdkwork/www.sdkwork.com.conf
+/etc/nginx/sites-enabled/sdkwork/api-dev.sdkwork.com.conf
+/etc/nginx/sites-enabled/sdkwork/im-test.sdkwork.com.conf
+/etc/nginx/sites-enabled/sdkwork/im-staging.sdkwork.com.conf
 ```
+
+Environment hosts follow the registry in `APP_RUNTIME_TOPOLOGY_NAMING.md`
+section 9: non-production hosts carry a suffix (`api-dev.sdkwork.com`,
+`im-test.sdkwork.com`, `im-staging.sdkwork.com`), production carries none
+(`api.sdkwork.com`, `im.sdkwork.com`). Each environment host gets its own site
+file with the full hostname as the file name stem. Prefix-style hosts such as
+`staging-im.sdkwork.com` are retired and `MUST NOT` be deployed.
+
+Multi-domain sites (`SDKWORK_DEPLOY_SPEC.md` section 7.2) bind the primary
+registered host as the site `domain` and additional registered hosts of the
+same profile environment as `aliases`:
+
+```text
+/etc/nginx/sites-enabled/sdkwork/router.sdkwork.com.conf
+```
+
+The generated site file emits `server_name router.sdkwork.com
+router.birdcoder.com router.dtupay.com;` (domain plus every alias) on both the
+80→443 redirect server and the 443 server block. Aliases share the primary
+site file, certificate, and upstream; each alias is never a separate site
+file.
 
 Rules:
 
@@ -29,6 +53,9 @@ Rules:
 - The deployed nginx file name must be the full domain plus `.conf`.
 - Do not deploy `domain/api.sdkwork.com.conf`, `api.conf`, or `sdkwork.com.conf` for an `api.sdkwork.com` virtual host.
 - Generated config comments must include the domain, site family, canonical deploy path, upstream, and certificate root.
+- `server_name` values are the expose `domain` plus every `aliases` entry,
+  joined by spaces; a multi-base-domain site therefore serves every registered
+  host from one site file.
 
 The canonical repository template is:
 
@@ -70,6 +97,23 @@ For `api.sdkwork.com` and `www.sdkwork.com`, the default certificate name is `sd
 /opt/certs/letsencrypt/live/sdkwork.com/privkey.pem
 ```
 
+Non-production environment hosts (`api-dev.sdkwork.com`, `im-test.sdkwork.com`,
+`im-staging.sdkwork.com`, and the application-role hosts from
+`APP_RUNTIME_TOPOLOGY_NAMING.md` section 9) SHOULD be covered by a wildcard or
+SAN certificate for `*.sdkwork.com` so one certificate serves every
+environment host. When a wildcard is not available, each environment host uses
+its own certificate directory named after the full hostname; operators pass
+`--cert-name` accordingly. Production hosts keep the bare `sdkwork.com`
+certificate name.
+
+Multi-base-domain sites: a site whose `aliases` span multiple registered base
+domains (for example `router.sdkwork.com` + `router.birdcoder.com` +
+`router.dtupay.com`) `MUST` use a certificate that covers every bound host —
+either one SAN certificate listing all hosts or one wildcard/SAN certificate
+per base domain (`*.sdkwork.com`, `*.birdcoder.com`, `*.dtupay.com`). The
+certificate directory name follows the primary `domain` unless the operator
+passes an explicit `--cert-name`.
+
 Rules:
 
 - Operators may override the certificate name with `--cert-name`.
@@ -94,6 +138,11 @@ Command behavior:
 - `nginx:deploy` writes the selected output file. On Linux with no `--output` or `--output-root`, it writes the canonical `/etc/nginx/sites-enabled/sdkwork/<domain>.conf` path.
 - `--output <path>` writes one exact file.
 - `--output-root <path>` writes `sites-enabled/sdkwork/<domain>.conf` under the given local root.
+- Multi-domain sites are rendered by invoking the commands once per host:
+  plan/render/deploy each registered host (`router.sdkwork.com`,
+  `router.birdcoder.com`, `router.dtupay.com`) or rely on the `expose` list of
+  `deployctl plan/nginx render` (`SDKWORK_DEPLOY_SPEC.md` section 12) which
+  emits one site file per expose item with shared `server_name` aliases.
 - `--platform linux|windows|macos` lets operators produce a platform-specific plan from any workstation.
 
 After deploy, operators validate and reload nginx explicitly:

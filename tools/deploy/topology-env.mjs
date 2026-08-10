@@ -63,13 +63,65 @@ export function resolveSurfaceBind(topology, profileEnv, surfaceId, overrides = 
   return null;
 }
 
+function hostMatches(host, normalized) {
+  return typeof host === 'string' && host.trim().toLowerCase() === normalized;
+}
+
 export function resolveDomainSurfaceId(topology, domain) {
   const normalized = typeof domain === 'string' ? domain.trim().toLowerCase() : '';
   for (const [surfaceId, config] of Object.entries(topology?.cloudPublicHosts ?? {})) {
-    const host = config?.httpHost;
-    if (typeof host === 'string' && host.trim().toLowerCase() === normalized) {
+    if ([...hostSet(config)].some((host) => hostMatches(host, normalized))) {
       return surfaceId;
+    }
+    for (const variant of Object.values(config?.environments ?? {})) {
+      if ([...hostSet(variant)].some((host) => hostMatches(host, normalized))) {
+        return surfaceId;
+      }
     }
   }
   return 'application.public-ingress';
+}
+
+function hostSet(config) {
+  const hosts = new Set();
+  for (const host of config?.httpHosts ?? []) {
+    if (host) hosts.add(host);
+  }
+  if (config?.httpHost) hosts.add(config.httpHost);
+  if (config?.websocketHost) hosts.add(config.websocketHost);
+  return hosts;
+}
+
+export function environmentHostForSurface(topology, surfaceId, environment) {
+  const config = topology?.cloudPublicHosts?.[surfaceId];
+  const variant = config?.environments?.[environment];
+  return variant?.httpHost ?? variant?.httpHosts?.[0]
+    ?? config?.httpHost ?? config?.httpHosts?.[0] ?? null;
+}
+
+export function environmentWebsocketHostForSurface(topology, surfaceId, environment) {
+  const config = topology?.cloudPublicHosts?.[surfaceId];
+  const variant = config?.environments?.[environment];
+  return variant?.websocketHost ?? variant?.httpHost ?? variant?.httpHosts?.[0]
+    ?? config?.websocketHost ?? config?.httpHost ?? config?.httpHosts?.[0] ?? null;
+}
+
+export function registeredEnvironmentHosts(topology) {
+  const byEnvironment = new Map();
+  const all = new Set();
+  for (const config of Object.values(topology?.cloudPublicHosts ?? {})) {
+    for (const [environment, variant] of Object.entries(config?.environments ?? {})) {
+      for (const host of hostSet(variant)) {
+        all.add(host);
+        if (!byEnvironment.has(environment)) byEnvironment.set(environment, new Set());
+        byEnvironment.get(environment).add(host);
+      }
+    }
+    for (const host of hostSet(config)) {
+      all.add(host);
+      if (!byEnvironment.has('production')) byEnvironment.set('production', new Set());
+      byEnvironment.get('production').add(host);
+    }
+  }
+  return { byEnvironment, all };
 }

@@ -1,6 +1,6 @@
 # Application Runtime Topology Standard
 
-- Version: 4.3
+- Version: 4.4
 - Scope: cross-application deployment entrypoints, multi-plane routing, multi-protocol surfaces, dev orchestration contracts, and client bootstrap URL authority
 - Related: `APPLICATION_GATEWAY_SPEC.md`, `NAMING_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `CONFIG_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `../sdkwork-app-topology/README.md`
 
@@ -152,6 +152,85 @@ Rules:
 - Client link transport binds (for example `SDKWORK_IM_REALTIME_TCP_BIND_ADDR`)
   are server-side declarations of the application realtime surface; they are
   non-HTTP listeners and are not `edge`-plane ingress.
+
+### 4.1 Cloud Public Host Registry
+
+`specs/topology.spec.json` `cloudPublicHosts` maps topology surfaces to their
+public hostnames. Hostnames follow the environment host formula from
+`APP_RUNTIME_TOPOLOGY_NAMING.md` section 9 (`<role>[-<environment-suffix>].<base-domain>`;
+production carries no suffix).
+
+```json
+{
+  "cloudPublicHosts": {
+    "application.public-ingress": {
+      "httpHost": "im.sdkwork.com",
+      "websocketHost": "im.sdkwork.com",
+      "note": "chat.sdkwork.com is reserved for LLM conversational apps, not IM",
+      "environments": {
+        "development": { "httpHost": "im-dev.sdkwork.com", "websocketHost": "im-dev.sdkwork.com" },
+        "test": { "httpHost": "im-test.sdkwork.com", "websocketHost": "im-test.sdkwork.com" },
+        "staging": { "httpHost": "im-staging.sdkwork.com", "websocketHost": "im-staging.sdkwork.com" }
+      }
+    },
+    "platform.api-gateway": {
+      "httpHost": "api.sdkwork.com",
+      "environments": {
+        "development": { "httpHost": "api-dev.sdkwork.com" },
+        "test": { "httpHost": "api-test.sdkwork.com" },
+        "staging": { "httpHost": "api-staging.sdkwork.com" }
+      }
+    },
+    "application.multi-domain-ingress": {
+      "httpHost": "router.sdkwork.com",
+      "httpHosts": ["router.sdkwork.com", "router.birdcoder.com", "router.dtupay.com"],
+      "environments": {
+        "test": { "httpHosts": ["router-test.sdkwork.com", "router-test.birdcoder.com", "router-test.dtupay.com"] }
+      }
+    }
+  }
+}
+```
+
+Field contract:
+
+| Field | Meaning |
+| --- | --- |
+| `httpHost` | Production primary HTTP hostname for the surface. Its absence means the surface has no cloud public host. |
+| `httpHosts` | Optional complete production host set for the surface (multi-base-domain bindings per `APP_RUNTIME_TOPOLOGY_NAMING.md` section 9). When both are declared, `httpHost` `MUST` be an element of `httpHosts`. When only `httpHosts` is declared, `httpHost` defaults to its first element. |
+| `websocketHost` | Optional production WebSocket hostname; defaults to `httpHost`. |
+| `note` | Optional registry annotation (top-level entries only; never used for routing). |
+| `environments` | Optional per-environment overrides keyed by canonical environment (`development`, `test`, `staging`, `production`). Each entry may override `httpHost`, `httpHosts`, and/or `websocketHost`. |
+
+Resolution rules:
+
+- For a profile with environment `E`, the effective host set is
+  `environments[E].httpHosts` when declared, otherwise
+  `[environments[E].httpHost]` when declared.
+- The top-level `httpHosts` / `httpHost` values are the `production` default:
+  they apply to `production` profiles and to profiles whose environment has no
+  `environments` override **only when the surface is production-only**.
+  Non-production environments `MUST` declare their own override and `MUST NOT`
+  fall back to the top-level (production) host set; a `cloud.development`
+  profile without an override has no registered host for the surface and
+  fails validation (`SDKWORK_DEPLOY_SPEC.md` V21) rather than inheriting the
+  production host.
+- A profile `MUST` NOT resolve an unregistered environment host from the
+  formula implicitly for routing decisions; tools may verify a host against
+  `APP_RUNTIME_TOPOLOGY_NAMING.md` section 9.1 but routing and deploy manifests
+  consume the declared registry.
+- `expose.domain` in `deployments/deploy.yaml` `MUST` be an element of the
+  effective host set for the profile environment; every additional registered
+  host `SHOULD` be bound as `expose.aliases` so the site serves the full set
+  (`SDKWORK_DEPLOY_SPEC.md` section 7.2).
+- Each host in the effective set maps to one nginx site file
+  (`/etc/nginx/sites-enabled/sdkwork/<host>.conf`) when it appears as an
+  `expose` item; hosts bound only as `aliases` share the primary site file and
+  appear as extra `server_name` values.
+- Standalone profiles `MUST NOT` resolve or require `cloudPublicHosts`.
+- Per-environment hosts are never inherited across environments; a
+  `cloud.development` profile does not fall back to the production host or to a
+  loopback URL.
 
 ## 5. Archetypes
 

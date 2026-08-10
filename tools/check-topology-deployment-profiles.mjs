@@ -546,7 +546,9 @@ function checkSpec(repoRoot, specPath) {
     if (!platformSurface) {
       issues.push(`${rel}: cloud deployment capability requires platform.api-gateway surface`);
     } else {
-      if (!spec.cloudPublicHosts?.['platform.api-gateway']?.httpHost) {
+      if (!spec.cloudPublicHosts?.['platform.api-gateway']?.httpHost
+        && !(Array.isArray(spec.cloudPublicHosts?.['platform.api-gateway']?.httpHosts)
+          && spec.cloudPublicHosts['platform.api-gateway'].httpHosts.length > 0)) {
         issues.push(`${rel}: cloud deployment capability requires a platform.api-gateway cloud public host`);
       }
       if (!platformSurface.httpUrlEnv

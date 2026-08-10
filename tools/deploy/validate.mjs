@@ -11,7 +11,7 @@ import { loadAppConfig, loadDeployManifest, loadTopology, resolveProfileBlock } 
 import { resolveAppId, resolveRuntimeCode, packagePath, surfaceExists } from './identity.mjs';
 import { nginxSiteFile, webRoots } from './paths.mjs';
 import { resolveWebMode, normalizeWeb } from './web.mjs';
-import { loadProfileEnv, resolveDomainSurfaceId } from './topology-env.mjs';
+import { loadProfileEnv, resolveDomainSurfaceId, registeredEnvironmentHosts } from './topology-env.mjs';
 import { validateDeploySchema } from './schema-validate.mjs';
 
 function normalizePackageList(packages) {
@@ -108,11 +108,100 @@ export function buildDeployContext(repoRoot, profileId, options = {}) {
   const upstreams = resolveUpstreams(topology, overrides, profileEnv);
 
   const exposePlans = [];
+  const environment = selectedProfile.split('.')[1] ?? '';
+  const deploymentProfile = block?.deployment?.deploymentProfile
+    ?? selectedProfile.split('.')[0] ?? '';
+  const registeredHosts = registeredEnvironmentHosts(topology);
+  for (const [surfaceId, config] of Object.entries(topology?.cloudPublicHosts ?? {})) {
+    const hosts = config?.httpHosts ?? [];
+    if (Array.isArray(hosts) && hosts.length > 0 && config?.httpHost && !hosts.includes(config.httpHost)) {
+      errors.push(
+        `cloudPublicHosts.${surfaceId}: httpHost "${config.httpHost}" must be an element of httpHosts`,
+      );
+    }
+    for (const [environment, variant] of Object.entries(config?.environments ?? {})) {
+      const variantHosts = variant?.httpHosts ?? [];
+      if (Array.isArray(variantHosts) && variantHosts.length > 0 && variant?.httpHost
+        && !variantHosts.includes(variant.httpHost)) {
+        errors.push(
+          `cloudPublicHosts.${surfaceId}.environments.${environment}:`
+          + ` httpHost "${variant.httpHost}" must be an element of httpHosts`,
+        );
+      }
+    }
+  }
   for (const item of exposeList) {
     const domain = item?.domain;
     if (!domain || typeof domain !== 'string') {
       errors.push('each expose item requires domain');
       continue;
+    }
+
+    const bareDomain = domain.trim().toLowerCase();
+    if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/.test(bareDomain)) {
+      errors.push(`domain "${domain}": must be a bare hostname without scheme, port, or path`);
+    }
+    if (/^(?:dev|test|staging|prod)[.-]/u.test(bareDomain.split('.')[0] ?? '')
+      || /-prod\./u.test(bareDomain)) {
+      errors.push(
+        `domain "${domain}": prefix-style (test-im.*) and production-suffixed (*-prod.*) hosts`
+        + ' are retired (APP_RUNTIME_TOPOLOGY_NAMING.md section 9.1)',
+      );
+    }
+
+    if (deploymentProfile === 'cloud' && registeredHosts.all.size > 0) {
+      const expected = registeredHosts.byEnvironment.get(environment);
+      if (!expected?.has(bareDomain)) {
+        if (registeredHosts.all.has(bareDomain)) {
+          errors.push(
+            `domain "${domain}": registered for a different environment in topology cloudPublicHosts;`
+            + ` expected one of [${[...(expected ?? [])].join(', ')}]`,
+          );
+        } else if (/\.sdkwork\.com$/i.test(bareDomain)) {
+          errors.push(
+            `domain "${domain}": not registered in topology cloudPublicHosts for profile "${selectedProfile}"`
+            + ` (APP_RUNTIME_TOPOLOGY_NAMING.md section 9)`,
+          );
+        } else {
+          warnings.push(
+            `domain "${domain}": not in the SDKWork host registry;`
+            + ' customer-managed base domain requires release metadata',
+          );
+        }
+      }
+    }
+
+    for (const alias of item.aliases ?? []) {
+      const bareAlias = String(alias ?? '').trim().toLowerCase();
+      if (!bareAlias) {
+        errors.push(`domain "${domain}": aliases must contain non-empty bare hostnames`);
+        continue;
+      }
+      if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/.test(bareAlias)) {
+        errors.push(`domain "${domain}": alias "${alias}" must be a bare hostname without scheme, port, or path`);
+        continue;
+      }
+      if (deploymentProfile === 'cloud' && registeredHosts.all.size > 0) {
+        const expected = registeredHosts.byEnvironment.get(environment);
+        if (!expected?.has(bareAlias)) {
+          if (registeredHosts.all.has(bareAlias)) {
+            errors.push(
+              `domain "${domain}": alias "${alias}" is registered for a different environment`
+              + ` (expected one of [${[...(expected ?? [])].join(', ')}])`,
+            );
+          } else if (/\.sdkwork\.com$/i.test(bareAlias)) {
+            errors.push(
+              `domain "${domain}": alias "${alias}" is not registered in topology cloudPublicHosts`
+              + ` for profile "${selectedProfile}"`,
+            );
+          } else {
+            warnings.push(
+              `domain "${domain}": alias "${alias}" is not in the SDKWork host registry;`
+              + ' customer-managed base domain requires release metadata',
+            );
+          }
+        }
+      }
     }
 
     const mode = item.mode ?? 'web+api';

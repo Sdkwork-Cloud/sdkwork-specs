@@ -508,6 +508,39 @@ Recommended caller metadata shape:
 | `service_actor_id` | Internal caller service name | Required for audit. |
 | `idempotency_key` | Caller-generated per orchestration step | Required for create/bind/start commands. |
 
+## 13.2 Cross-Application Launch Tickets
+
+Applications that launch another product surface (for example IM launching a
+group Knowledgebase space) `MUST` use an opaque launch ticket instead of
+passing space identifiers, destination routes, session tokens, or caller
+context across the boundary. The ticket lifecycle is a typed RPC contract
+between the issuing and consuming domains.
+
+Rules:
+
+- The ticket `MUST` be opaque: a short-lived, single-use value stored
+  server-side as a hash by the issuer, bound to the actor, scope, version, and
+  binding epoch. It `MUST NOT` be a signed JWT that carries space identity,
+  destinations, session tokens, or caller authority.
+- The issuing domain `MUST` emit the ticket only after the binding is active
+  and the requester is authorized (for example a joined non-Guest conversation
+  member for group Knowledgebase launch).
+- The consuming domain `MUST` redeem the ticket through a generated RPC SDK
+  (`ConsumeGroupKnowledgebaseLaunchTicket` pattern) over the trusted path:
+  mTLS with a signed caller context. Raw HTTP, manual credential headers, and
+  local SDK forks are forbidden.
+- Browser launch `MUST` carry only the opaque ticket in the standalone
+  route fragment and `MUST` remove it from browser history once consumed.
+  Space identifiers, destinations, session tokens, and caller context are
+  never passed in the URL.
+- Desktop launch `MUST` carry only the ticket through the registered deep
+  link (for example `sdkwork-knowledgebase://group-launch/<opaque-ticket>`)
+  handled by the independent consumer application process. The issuer `MUST
+  NOT` create embedded webview windows for the consumer surface.
+- The consuming domain `MUST` enforce final ACL and one-to-one binding on
+  redemption; the issuer stores only the binding reference and the ticket
+  ledger, never the consumer's content or membership tables.
+
 ## 14. Error Mapping
 
 RPC errors use gRPC status codes plus SDKWork error detail metadata/messages.

@@ -6,6 +6,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { validateDeploySchema } from './deploy/schema-validate.mjs';
+import { buildDeployContext } from './deploy/validate.mjs';
+import { resolveDomainSurfaceId, registeredEnvironmentHosts } from './deploy/topology-env.mjs';
 import { assertSideEffectSelection, validateSideEffectSelection } from './deploy/selection.mjs';
 import { resolveProfileBlock } from './deploy/load-manifest.mjs';
 import { parseYaml } from './deploy/yaml-resolver.mjs';
@@ -294,7 +296,7 @@ test('side-effecting profile resolution cannot consume defaultProfile', () => {
 });
 
 test('deploy v2 examples satisfy the executable schema', () => {
-  for (const name of ['multi-profile-mail.yaml', 'adaptive-web-production.yaml', 'simple-api-only.yaml']) {
+  for (const name of ['multi-profile-mail.yaml', 'adaptive-web-production.yaml', 'simple-api-only.yaml', 'environment-domains.yaml', 'multi-base-domain.yaml']) {
     const file = path.resolve('examples/deploy', name);
     const doc = parseYaml(fs.readFileSync(file, 'utf8'), path.resolve('.'));
     assert.deepEqual(validateDeploySchema(doc), [], name);
@@ -383,4 +385,195 @@ test('nginx test and reload failures restore the previous site', () => {
     }), failure === 'test' ? /nginx -t failed/u : /nginx reload failed/u);
     assert.equal(fs.readFileSync(siteFile, 'utf8'), 'server { listen 80; }\n');
   }
+});
+
+function makeDomainRepo(profileId, domain) {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-domain-'));
+  const repoRoot = path.join(workspace, 'sdkwork-demo');
+  fs.mkdirSync(path.join(repoRoot, 'deployments'), { recursive: true });
+  fs.mkdirSync(path.join(repoRoot, 'specs'), { recursive: true });
+  fs.mkdirSync(path.join(repoRoot, 'etc', 'topology'), { recursive: true });
+  fs.writeFileSync(path.join(repoRoot, 'deployments', 'deploy.yaml'), [
+    'version: 2',
+    `profile: ${profileId}`,
+    'deployment:',
+    '  deploymentProfile: cloud',
+    `  environment: ${profileId.split('.')[1]}`,
+    '  deliveryKind: configuration-bundle',
+    '  deploymentDriver: nginx',
+    '  managementModel: sdkwork-managed',
+    '  tenancyModel: multi-tenant',
+    '  isolationModel: shared',
+    '  networkExposure: public',
+    '  rolloutStrategy: rolling',
+    '  availabilityMode: high-availability',
+    'install:',
+    '  layout: binary-package',
+    'expose:',
+    `  - domain: ${domain}`,
+    '    tls: sdkwork.com',
+    '    mode: api',
+    'packages: []',
+    'overrides: {}',
+    '',
+  ].join('\n'));
+  fs.writeFileSync(path.join(repoRoot, 'specs', 'topology.spec.json'), JSON.stringify({
+    schemaVersion: 5,
+    kind: 'sdkwork.app.topology',
+    appId: 'sdkwork-demo',
+    applicationCode: 'demo',
+    profileFiles: {
+      'cloud.test': 'etc/topology/cloud.test.env',
+      'cloud.production': 'etc/topology/cloud.production.env',
+    },
+    surfaces: {
+      'application.public-ingress': { bindEnv: 'SDKWORK_DEMO_BIND' },
+    },
+    cloudPublicHosts: {
+      'application.public-ingress': {
+        httpHost: 'demo.sdkwork.com',
+        environments: {
+          test: { httpHost: 'demo-test.sdkwork.com' },
+        },
+      },
+    },
+  }, null, 2));
+  fs.writeFileSync(
+    path.join(repoRoot, 'etc', 'topology', 'cloud.test.env'),
+    'SDKWORK_DEMO_BIND=127.0.0.1:9000\n',
+  );
+  fs.writeFileSync(
+    path.join(repoRoot, 'etc', 'topology', 'cloud.production.env'),
+    'SDKWORK_DEMO_BIND=127.0.0.1:9000\n',
+  );
+  return repoRoot;
+}
+
+test('domain resolution honors per-environment cloudPublicHosts variants', () => {
+  const topology = {
+    cloudPublicHosts: {
+      'application.public-ingress': {
+        httpHost: 'demo.sdkwork.com',
+        environments: {
+          test: { httpHost: 'demo-test.sdkwork.com' },
+          staging: { httpHost: 'demo-staging.sdkwork.com', websocketHost: 'ws-demo-staging.sdkwork.com' },
+        },
+      },
+    },
+  };
+  assert.equal(resolveDomainSurfaceId(topology, 'demo.sdkwork.com'), 'application.public-ingress');
+  assert.equal(resolveDomainSurfaceId(topology, 'demo-test.sdkwork.com'), 'application.public-ingress');
+  assert.equal(resolveDomainSurfaceId(topology, 'ws-demo-staging.sdkwork.com'), 'application.public-ingress');
+  assert.equal(resolveDomainSurfaceId(topology, 'unknown.example'), 'application.public-ingress');
+
+  const { byEnvironment, all } = registeredEnvironmentHosts(topology);
+  assert.deepEqual([...byEnvironment.get('test')], ['demo-test.sdkwork.com']);
+  assert.deepEqual(
+    [...byEnvironment.get('staging')].sort(),
+    ['demo-staging.sdkwork.com', 'ws-demo-staging.sdkwork.com'],
+  );
+  assert.deepEqual([...byEnvironment.get('production')], ['demo.sdkwork.com']);
+  assert.ok(all.has('demo-test.sdkwork.com'));
+  assert.ok(!all.has('demo-prod.sdkwork.com'));
+});
+
+test('cloud expose domains must match the registered environment host (V21)', () => {
+  const wrongRepo = makeDomainRepo('cloud.test', 'demo.sdkwork.com');
+  const wrong = buildDeployContext(wrongRepo, 'cloud.test');
+  assert.ok(
+    wrong.errors.some((error) => error.includes('different environment')),
+    wrong.errors.join('\n'),
+  );
+
+  const wrongSuffixRepo = makeDomainRepo('cloud.test', 'test-demo.sdkwork.com');
+  const wrongSuffix = buildDeployContext(wrongSuffixRepo, 'cloud.test');
+  assert.ok(
+    wrongSuffix.errors.some((error) => error.includes('not registered') || error.includes('prefix-style')),
+    wrongSuffix.errors.join('\n'),
+  );
+
+  const prodSuffixRepo = makeDomainRepo('cloud.test', 'demo-prod.sdkwork.com');
+  const prodSuffix = buildDeployContext(prodSuffixRepo, 'cloud.test');
+  assert.ok(
+    prodSuffix.errors.some((error) => error.includes('prefix-style')),
+    prodSuffix.errors.join('\n'),
+  );
+
+  const rightRepo = makeDomainRepo('cloud.test', 'demo-test.sdkwork.com');
+  const right = buildDeployContext(rightRepo, 'cloud.test');
+  assert.ok(
+    !right.errors.some((error) => error.includes('domain')),
+    right.errors.join('\n'),
+  );
+});
+
+test('multi-host httpHosts surfaces pass V21 and require httpHost membership', () => {
+  const topology = {
+    cloudPublicHosts: {
+      'application.public-ingress': {
+        httpHost: 'router.sdkwork.com',
+        httpHosts: ['router.sdkwork.com', 'router.birdcoder.com', 'router.dtupay.com'],
+        environments: {
+          test: {
+            httpHosts: ['router-test.sdkwork.com', 'router-test.birdcoder.com', 'router-test.dtupay.com'],
+          },
+        },
+      },
+    },
+  };
+  const { byEnvironment, all } = registeredEnvironmentHosts(topology);
+  assert.deepEqual(
+    [...byEnvironment.get('production')].sort(),
+    ['router.birdcoder.com', 'router.dtupay.com', 'router.sdkwork.com'],
+  );
+  assert.deepEqual(
+    [...byEnvironment.get('test')].sort(),
+    ['router-test.birdcoder.com', 'router-test.dtupay.com', 'router-test.sdkwork.com'],
+  );
+  assert.equal(resolveDomainSurfaceId(topology, 'router.birdcoder.com'), 'application.public-ingress');
+  assert.equal(resolveDomainSurfaceId(topology, 'router-test.dtupay.com'), 'application.public-ingress');
+
+  const orphanRepo = makeDomainRepo('cloud.test', 'router-test.sdkwork.com');
+  fs.writeFileSync(path.join(orphanRepo, 'specs', 'topology.spec.json'), JSON.stringify({
+    schemaVersion: 5,
+    kind: 'sdkwork.app.topology',
+    appId: 'sdkwork-demo',
+    applicationCode: 'demo',
+    profileFiles: {
+      'cloud.test': 'etc/topology/cloud.test.env',
+      'cloud.production': 'etc/topology/cloud.production.env',
+    },
+    surfaces: {
+      'application.public-ingress': { bindEnv: 'SDKWORK_DEMO_BIND' },
+    },
+    cloudPublicHosts: topology.cloudPublicHosts,
+  }, null, 2));
+  const okContext = buildDeployContext(orphanRepo, 'cloud.test');
+  assert.ok(
+    !okContext.errors.some((error) => error.includes('domain')),
+    okContext.errors.join('\n'),
+  );
+
+  const orphanHostRepo = makeDomainRepo('cloud.test', 'router-test.sdkwork.com');
+  const orphanTopology = JSON.parse(JSON.stringify(topology));
+  orphanTopology.cloudPublicHosts['application.public-ingress'].httpHosts = ['router.birdcoder.com', 'router.dtupay.com'];
+  fs.writeFileSync(path.join(orphanHostRepo, 'specs', 'topology.spec.json'), JSON.stringify({
+    schemaVersion: 5,
+    kind: 'sdkwork.app.topology',
+    appId: 'sdkwork-demo',
+    applicationCode: 'demo',
+    profileFiles: {
+      'cloud.test': 'etc/topology/cloud.test.env',
+      'cloud.production': 'etc/topology/cloud.production.env',
+    },
+    surfaces: {
+      'application.public-ingress': { bindEnv: 'SDKWORK_DEMO_BIND' },
+    },
+    cloudPublicHosts: orphanTopology.cloudPublicHosts,
+  }, null, 2));
+  const orphanContext = buildDeployContext(orphanHostRepo, 'cloud.test');
+  assert.ok(
+    orphanContext.errors.some((error) => error.includes('must be an element of httpHosts')),
+    orphanContext.errors.join('\n'),
+  );
 });
