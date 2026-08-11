@@ -696,6 +696,40 @@ as another API ingress:
   service matrices, or reserved loopback port tables whose only purpose is to
   keep extra application HTTP listeners alive locally.
 
+### 8.3 Automated Test Port Isolation
+
+Automated test runs that boot the application or any runtime surface (gateway,
+portal, backend/admin API, app API, or embedded dependency APIs) `MUST NOT`
+bind the manual development default ports. Manual development keeps exclusive
+ownership of the default dev bind values declared by the workspace
+`standalone.development` topology profile, so a developer can start
+`pnpm dev` at any time without port conflicts and without any automated run
+displacing, restarting, or competing with the manually started instance.
+
+Rules:
+
+- Automated test runs `MUST` configure dedicated test ports through the
+  topology bind authority — explicit `--*-bind` orchestration flags or
+  `SDKWORK_*_BIND` environment overrides resolved from the test run's profile
+  or environment — and `MUST NOT` fall back to the manual dev default ports.
+- Automated test runs `MUST NOT` kill, restart, or share ports with a
+  manually started dev instance; when the manual defaults are occupied, the
+  automated run proceeds on its test ports without touching the occupant.
+- Test port allocation `MUST` be deterministic per test suite (declared
+  ranges in the test launch profile or test environment) and `MUST` be
+  documented; test code `MUST NOT` hard-code loopback ports outside the
+  declared test range.
+- Automated test runs `MUST` release their test ports and terminate every
+  spawned runtime process on completion — success or failure — leaving no
+  orphan listeners or daemonized dev stacks behind.
+- A test launcher `MUST` fail fast with a clear diagnostic when its declared
+  test ports are already in use, instead of retrying against or displacing
+  the occupant.
+
+The default dev ports belong to manual startup only; automated test
+configuration (profiles, env files, CI matrices) `MUST` reference the
+dedicated test ports, never the manual defaults.
+
 Normative gateway integration rules live in `APPLICATION_GATEWAY_SPEC.md`
 section 5. From an application root, workspace verification is:
 `node ../sdkwork-specs/tools/audit-single-http-ingress-workspace.mjs --workspace ..`.

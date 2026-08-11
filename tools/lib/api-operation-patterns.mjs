@@ -370,6 +370,7 @@ const COMMAND_ACTIONS = new Set([
 
 const SINGLETON_READ_SEGMENTS = new Set([
   'catalog',
+  'current',
   'health',
   'ready',
   'resolve',
