@@ -10,11 +10,19 @@ const SPECS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '.
 export const FOUNDATION_PNPM_PACKAGES = [
   ...IAM_PNPM_WORKSPACE_PACKAGES,
   '../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-credential-entry',
+  // `sdkwork-auth-runtime-pc-react` depends on the user-center core package
+  // via `workspace:*`; without this entry the closure is uninstallable
+  // (ERR_PNPM_WORKSPACE_PKG_NOT_FOUND).
+  '../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-user-center-core-pc-react',
   '../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript',
   '../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript',
   '../sdkwork-appbase/packages/common/foundation/sdkwork-runtime-bootstrap',
   '../sdkwork-appbase/packages/pc-react/foundation/sdkwork-appbase-pc-react',
   '../sdkwork-appbase/packages/pc-react/foundation/sdkwork-i18n-pc-react',
+  // `sdkwork-appbase-pc-react` depends on the base-data backend SDK via
+  // `workspace:*`; without this entry the closure is uninstallable
+  // (ERR_PNPM_WORKSPACE_PKG_NOT_FOUND).
+  '../sdkwork-appbase/sdks/sdkwork-base-data-backend-sdk/sdkwork-base-data-backend-sdk-typescript',
   '../sdkwork-core/sdkwork-core-pc-react',
   '../sdkwork-ui/sdkwork-ui-pc-react',
   '../sdkwork-sdk-commons/sdkwork-sdk-common-typescript',

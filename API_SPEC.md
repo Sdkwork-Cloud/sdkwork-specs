@@ -1824,6 +1824,7 @@ Rules:
 - `POST` search operations are safe and idempotent. They `MUST NOT` mutate audit-visible domain state except optional search audit records explicitly required by product or compliance.
 - Long-running import, export, report generation, AI execution, media processing, or provider synchronization operations `MUST` use async command semantics when they cannot reliably complete within the normal P0/P1 HTTP latency budget.
 - Every SDKWork-owned operation `SHOULD` be covered by `node <sdkwork-specs>/tools/check-api-operation-patterns.mjs --workspace <workspace-root>` in addition to the response-envelope and pagination validators when the repository owns or materializes HTTP API contracts.
+- The operation-patterns validator enforces the int64-string closure of §13.6: any schema property or operation parameter declared `format: int64` `MUST` be `type: string` with `x-sdkwork-int64-string: true` and a decimal `pattern`. `type: integer, format: int64` fails the check (`int64-integer-type` / `int64-string-marker-missing`), because it makes generated TypeScript SDKs emit `number` and browsers round ids past `Number.MAX_SAFE_INTEGER` (2^53), causing wrong-id lookups such as partner parent resolution failures. Keep Rust/Java/Go/C#/SQL native numeric types on the server; only the HTTP JSON boundary is string-based.
 
 ## 16. Pagination, Filtering, Sorting, And List Output
 

@@ -18,6 +18,80 @@ export function classifyOpenApiOperationPatterns(text) {
     issues.push(...classifyIdempotencyContract(entry, document));
     issues.push(...classifyOperation(entry));
   }
+  issues.push(...classifyInt64StringContract(document));
+  return issues;
+}
+
+/**
+ * API_SPEC §13.6 int64-string closure: every `format: int64` schema property
+ * and parameter MUST be `type: string` with `x-sdkwork-int64-string: true`
+ * and a decimal digit pattern. `type: integer, format: int64` silently makes
+ * generated TypeScript SDKs emit `number`, and browsers round ids past
+ * Number.MAX_SAFE_INTEGER — the same 40401-style parent lookup failure class
+ * observed repeatedly across workspaces.
+ */
+function classifyInt64StringContract(document) {
+  const issues = [];
+  const schemas = (document && document.components && document.components.schemas) || {};
+  for (const [schemaName, schema] of Object.entries(schemas)) {
+    if (!schema || typeof schema !== 'object') {
+      continue;
+    }
+    const properties = (schema.properties && typeof schema.properties === 'object')
+      ? schema.properties
+      : {};
+    for (const [propertyName, property] of Object.entries(properties)) {
+      if (!property || typeof property !== 'object' || property.format !== 'int64') {
+        continue;
+      }
+      const label = `${schemaName}.${propertyName}`;
+      if (property.type === 'integer') {
+        issues.push({
+          kind: 'int64-integer-type',
+          detail: `${label} MUST declare type: string (format: int64) per API_SPEC §13.6; type: integer makes browsers round ids past Number.MAX_SAFE_INTEGER`,
+        });
+      }
+      if (property['x-sdkwork-int64-string'] !== true) {
+        issues.push({
+          kind: 'int64-string-marker-missing',
+          detail: `${label} MUST declare x-sdkwork-int64-string: true per API_SPEC §13.6`,
+        });
+      }
+    }
+  }
+  const paths = (document && document.paths) || {};
+  for (const [routePath, pathItem] of Object.entries(paths)) {
+    if (!pathItem || typeof pathItem !== 'object') {
+      continue;
+    }
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operation || typeof operation !== 'object' || !Array.isArray(operation.parameters)) {
+        continue;
+      }
+      for (const parameter of operation.parameters) {
+        if (!parameter || typeof parameter !== 'object') {
+          continue;
+        }
+        const schema = parameter.schema;
+        if (!schema || typeof schema !== 'object' || schema.format !== 'int64') {
+          continue;
+        }
+        const label = `${method.toUpperCase()} ${routePath} param ${parameter.name}`;
+        if (schema.type === 'integer') {
+          issues.push({
+            kind: 'int64-integer-type',
+            detail: `${label} MUST declare type: string (format: int64) per API_SPEC §13.6`,
+          });
+        }
+        if (schema['x-sdkwork-int64-string'] !== true) {
+          issues.push({
+            kind: 'int64-string-marker-missing',
+            detail: `${label} MUST declare x-sdkwork-int64-string: true per API_SPEC §13.6`,
+          });
+        }
+      }
+    }
+  }
   return issues;
 }
 

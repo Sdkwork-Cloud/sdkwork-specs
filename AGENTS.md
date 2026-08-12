@@ -82,6 +82,21 @@ The following are task gates, not a startup bundle. Read the relevant sections o
 | Contract or platform change | `README.md`, `REQUIREMENTS_SPEC.md`, `ARCHITECTURE_DECISION_SPEC.md`, `ENGINEERING_WORKFLOW_SPEC.md`, `CODE_REVIEW_SPEC.md`, `QUALITY_GATE_SPEC.md`, the affected domain spec, `GOVERNANCE_SPEC.md`, and `TEST_SPEC.md` | Read the applicable sections in lifecycle order rather than loading every full file at startup |
 | Release, migration, or supply-chain standard change | `RELEASE_SPEC.md`, `MIGRATION_SPEC.md`, `SUPPLY_CHAIN_SECURITY_SPEC.md`, `QUALITY_GATE_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `GOVERNANCE_SPEC.md`, and `TEST_SPEC.md` | Read the applicable sections in release, migration, and supply-chain sequence rather than loading every full file at startup |
 
+## Int64 Wire Contract (API_SPEC §13.6)
+
+- OpenAPI `int64` fields and parameters `MUST` be `type: string`, `format: int64`,
+  a decimal `pattern` such as `^-?[0-9]+$`, and `x-sdkwork-int64-string: true`.
+  `type: integer, format: int64` is a contract violation: generated TypeScript
+  SDKs then emit `number`, and browsers silently round ids past
+  `Number.MAX_SAFE_INTEGER` (2^53), replaying wrong ids into lookups.
+- Rust response DTOs `MUST` serialize `i64` wire fields with
+  `#[serde(with = "sdkwork_utils_rust::serde_int64")]` (or `::option`); request
+  boundaries parse inbound strings with the same helper.
+- Generated TypeScript SDKs keep `int64` as `string`; frontend code `MUST NOT`
+  convert ids/snowflake ids/sequence ids to `number` for storage, comparison,
+  or submission.
+- Verification: `node <sdkwork-specs>/tools/check-api-operation-patterns.mjs --workspace .`
+
 ## Code Style Rules
 
 Spec files use concise Markdown, RFC-style `MUST`/`SHOULD`/`MAY` language where rules are normative, and examples only when they make validation clearer. Do not duplicate large sections across specs; cross-link instead.
