@@ -580,7 +580,7 @@ GitHub workflow tests make `GITHUB_WORKFLOW_SPEC.md` executable.
 Rules:
 
 - Application workflow tests `MUST` verify `sdkwork.workflow.json` exists when the application is packaged, released, or deployed through GitHub Actions.
-- Application workflow tests `MUST` verify `.github/workflows/package.yml` is a thin reusable workflow call to `Sdkwork-Cloud/sdkwork-github-workflow/.github/workflows/sdkwork-package.yml@<pinned-ref>`.
+- Application workflow tests `MUST` verify `.github/workflows/package.yml` is a thin reusable workflow call to `sdkwork-ai/sdkwork-github-workflow/.github/workflows/sdkwork-package.yml@<pinned-ref>`.
 - Application workflow tests `MUST` fail when large framework workflow bodies, dependency checkout scripts, matrix planning, release upload logic, or attestation logic are copied into application repositories.
 - Application repositories may call the canonical entrypoint validator with:
 

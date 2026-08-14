@@ -298,7 +298,7 @@ Recommended release dependency shape:
 ```json
 {
   "id": "sdkwork-appbase",
-  "repository": "Sdkwork-Cloud/sdkwork-appbase",
+  "repository": "sdkwork-ai/sdkwork-appbase",
   "ref": "0123456789abcdef0123456789abcdef01234567",
   "refInput": "SDKWORK_APPBASE_REF",
   "tokenSecret": "SDKWORK_RELEASE_TOKEN"

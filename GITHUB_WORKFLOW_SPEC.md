@@ -14,7 +14,7 @@ Rules:
 
 - The canonical reusable workflow framework is the `sdkwork-github-workflow` repository.
 - Application repositories own `sdkwork.workflow.json`.
-- Application repositories own one thin `.github/workflows/package.yml` entrypoint that calls `Sdkwork-Cloud/sdkwork-github-workflow/.github/workflows/sdkwork-package.yml@<ref>`.
+- Application repositories own one thin `.github/workflows/package.yml` entrypoint that calls `sdkwork-ai/sdkwork-github-workflow/.github/workflows/sdkwork-package.yml@<ref>`.
 - Application-specific build, package, validation, signing, SBOM, deploy, and publish commands live in lifecycle steps inside `sdkwork.workflow.json`.
 - Framework-level behavior lives in reusable workflows, composite actions, and tested planner code in `sdkwork-github-workflow`.
 - Application repositories `MUST NOT` copy large framework workflow bodies, dependency checkout scripts, matrix planners, release upload logic, or attestation logic into local workflow YAML.
@@ -34,7 +34,7 @@ The standard integration shape is:
 Rules:
 
 - `.github/workflows/package.yml` `MUST` be a thin reusable workflow call.
-- The workflow `uses:` target `MUST` point to `Sdkwork-Cloud/sdkwork-github-workflow/.github/workflows/sdkwork-package.yml@<pinned-ref>`.
+- The workflow `uses:` target `MUST` point to `sdkwork-ai/sdkwork-github-workflow/.github/workflows/sdkwork-package.yml@<pinned-ref>`.
 - The workflow `MUST` pass `config_path: sdkwork.workflow.json` unless the configuration file has an explicitly documented alternate location.
 - The workflow `SHOULD` support these standard triggers:
   - tag push for release packaging.

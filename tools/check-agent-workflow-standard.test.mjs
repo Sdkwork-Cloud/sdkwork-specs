@@ -26,7 +26,7 @@ function makeRepo(options = {}) {
     app: {
       id: 'sdkwork-demo',
       name: 'SDKWork Demo',
-      repository: 'Sdkwork-Cloud/sdkwork-demo',
+      repository: 'sdkwork-ai/sdkwork-demo',
       sourcePath: '.',
       configPath: 'sdkwork.app.config.json',
     },
@@ -38,7 +38,7 @@ function makeRepo(options = {}) {
     dependencies: [
       {
         id: 'sdkwork-web-framework',
-        repository: 'Sdkwork-Cloud/sdkwork-web-framework',
+        repository: 'sdkwork-ai/sdkwork-web-framework',
         ref: 'main',
         refInput: 'SDKWORK_WEB_FRAMEWORK_REF',
         tokenSecret: 'SDKWORK_RELEASE_TOKEN',
@@ -109,7 +109,7 @@ function makeRepo(options = {}) {
     '  attestations: write',
     'jobs:',
     '  package:',
-    '    uses: Sdkwork-Cloud/sdkwork-github-workflow/.github/workflows/sdkwork-package.yml@b0829529b9277a3da32b90c2d36ff34ff09fa832',
+    '    uses: sdkwork-ai/sdkwork-github-workflow/.github/workflows/sdkwork-package.yml@b0829529b9277a3da32b90c2d36ff34ff09fa832',
     '    with:',
     '      config_path: sdkwork.workflow.json',
     "      tag: ${{ github.event.inputs.tag || github.event.release.tag_name || github.ref_name }}",
@@ -286,7 +286,7 @@ describe('check-agent-workflow-standard', () => {
       mutate(repoRoot) {
         write(repoRoot, 'sdkwork.workflow.json', JSON.stringify({
           schemaVersion: '2026-06-06.sdkwork.workflow.v1',
-          app: { id: 'sdkwork-demo', repository: 'Sdkwork-Cloud/sdkwork-demo' },
+          app: { id: 'sdkwork-demo', repository: 'sdkwork-ai/sdkwork-demo' },
           release: { artifactPrefix: 'sdkwork-demo', defaultVersion: '0.1.0' },
           targets: [
             {
@@ -344,7 +344,7 @@ describe('check-agent-workflow-standard', () => {
           app: {
             id: 'sdkwork-demo',
             name: 'SDKWork Demo',
-            repository: 'Sdkwork-Cloud/sdkwork-demo',
+            repository: 'sdkwork-ai/sdkwork-demo',
             sourcePath: '.',
             configPath: 'sdkwork.app.config.json',
           },
@@ -356,14 +356,14 @@ describe('check-agent-workflow-standard', () => {
           dependencies: [
             {
               id: 'sdkwork-web-framework',
-              repository: 'Sdkwork-Cloud/sdkwork-web-framework',
+              repository: 'sdkwork-ai/sdkwork-web-framework',
               ref: 'main',
               refInput: 'SDKWORK_WEB_FRAMEWORK_REF',
               tokenSecret: 'SDKWORK_RELEASE_TOKEN',
             },
             {
               id: 'sdkwork-database',
-              repository: 'Sdkwork-Cloud/sdkwork-database',
+              repository: 'sdkwork-ai/sdkwork-database',
               ref: 'main',
               refInput: 'SDKWORK_DATABASE_REF',
               tokenSecret: 'SDKWORK_RELEASE_TOKEN',

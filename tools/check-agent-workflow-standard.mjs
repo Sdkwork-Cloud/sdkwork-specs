@@ -342,7 +342,7 @@ function validatePackageWorkflow(root) {
     const workflowText = packageWorkflowText;
     const packageLabel = relative(root, packageWorkflowPath);
     const reusableMatch = workflowText.match(
-      /uses:\s*Sdkwork-Cloud\/sdkwork-github-workflow\/\.github\/workflows\/sdkwork-package\.yml@([^\s]+)/u,
+      /uses:\s*sdkwork-ai\/sdkwork-github-workflow\/\.github\/workflows\/sdkwork-package\.yml@([^\s]+)/u,
     );
     if (!reusableMatch) {
       issues.push(`${packageLabel} must call the SDKWork reusable package workflow`);
