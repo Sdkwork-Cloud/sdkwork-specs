@@ -54,7 +54,8 @@ Rules:
 - OpenAPI `MUST` declare `x-sdkwork-auth-mode: ingress-token` for protected internal-api operations unless a documented anonymous health or bootstrap operation is explicitly public.
 - Generated `custom` internal SDKs use `components.securitySchemes.ApiKey` with header `X-API-Key` under `sdkwork-v3`; runtime hosts `MUST` accept that header as an ingress-token alias alongside `Authorization: Bearer` and `x-sdkwork-access-token`.
 - Internal-api `MUST NOT` require app-api dual-token headers for its baseline protected operations.
-- Session ownership and caller identity projection for runtime routes `MAY` use application-local headers such as `x-sdkwork-tenant-id` and `x-sdkwork-user-id` when documented by the owning runtime spec.
+- Session ownership and caller identity for runtime routes `MUST` be derived from verified ingress-token/dual-token claims or typed request-context extensions.
+- Runtime routes `MUST NOT` use the forbidden client identity projection headers (`x-sdkwork-tenant-id`, `x-sdkwork-user-id`, `x-sdkwork-organization-id`, and the other names listed in `API_SPEC.md` §10.2). Sending or forwarding those headers on any business or internal surface is rejected by Web Framework surface classification (40001) and they `MUST NOT` be documented as client-sendable. Trusted inter-service subject projection `MUST` use the signed `x-sdkwork-subject-*` header family or request extensions, never the forbidden client names.
 
 ## 5. Authority, OpenAPI, And SDK Generation
 

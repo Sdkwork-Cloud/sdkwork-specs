@@ -29,8 +29,19 @@ export function classifyOpenApiOperationPatterns(text) {
  * generated TypeScript SDKs emit `number`, and browsers round ids past
  * Number.MAX_SAFE_INTEGER — the same 40401-style parent lookup failure class
  * observed repeatedly across workspaces.
+ *
+ * Exemption: an OpenAPI document may declare `x-sdkwork-int64-openai-compat:
+ * true` when it mirrors a third-party wire protocol (OpenAI / Anthropic
+ * compatible gateways). Those protocols require JSON numbers for Unix
+ * timestamps, byte sizes, and seeds, and every such value stays below
+ * Number.MAX_SAFE_INTEGER (2^53), so the browser rounding failure class does
+ * not apply. The marker must be set on every authority and derived mirror;
+ * API_SPEC §13.6 documents the exemption.
  */
 function classifyInt64StringContract(document) {
+  if (document && document['x-sdkwork-int64-openai-compat'] === true) {
+    return [];
+  }
   const issues = [];
   const schemas = (document && document.components && document.components.schemas) || {};
   for (const [schemaName, schema] of Object.entries(schemas)) {
