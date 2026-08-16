@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { validateAppManifestDeployment } from './check-app-manifest-deployment-standard.mjs';
+import {
+  validateAppManifestDeployment,
+  validateAppManifestWorkflowAlignment,
+} from './check-app-manifest-deployment-standard.mjs';
 
 function manifest(packages) {
   return {
@@ -181,4 +184,70 @@ test('rejects disabled profile coverage for active publication', () => {
   const issues = validateAppManifestDeployment(value);
   assert.ok(issues.some((issue) => issue.includes('no enabled package covers deployment profile cloud')));
   assert.ok(issues.some((issue) => issue.includes('no enabled package covers deployment profile standalone')));
+});
+
+test('strict release alignment requires every current package in the workflow matrix', () => {
+  const value = manifest([
+    {
+      id: 'linux-x64-standalone-server-tar-gz',
+      sourceType: 'SCRIPT',
+      profileBinding: 'fixed',
+      deploymentProfile: 'standalone',
+      runtimeTarget: 'server',
+      architecture: 'x64',
+    },
+    {
+      id: 'container-x64-standalone-container-oci',
+      sourceType: 'CONTAINER_IMAGE',
+      profileBinding: 'fixed',
+      deploymentProfile: 'standalone',
+      runtimeTarget: 'container',
+      architecture: 'x64',
+    },
+  ]);
+  value.release = {
+    notes: [{ current: true, packageIds: value.artifacts.installConfig.packages.map((item) => item.id) }],
+  };
+  const workflow = {
+    targets: [
+      {
+        id: 'linux-x64-standalone-server-tar-gz',
+        formats: ['tar.gz'],
+        deploymentProfile: 'standalone',
+        runtimeTarget: 'server',
+        architecture: 'x64',
+      },
+    ],
+  };
+  const issues = validateAppManifestWorkflowAlignment(value, workflow);
+  assert.ok(issues.some((issue) => issue.includes('container-x64-standalone-container-oci')));
+});
+
+test('strict release alignment rejects target axis drift', () => {
+  const value = manifest([
+    {
+      id: 'container-x64-standalone-container-oci',
+      sourceType: 'CONTAINER_IMAGE',
+      profileBinding: 'fixed',
+      deploymentProfile: 'standalone',
+      runtimeTarget: 'container',
+      architecture: 'x64',
+    },
+  ]);
+  value.release = {
+    notes: [{ current: true, packageIds: ['container-x64-standalone-container-oci'] }],
+  };
+  const workflow = {
+    targets: [
+      {
+        id: 'container-x64-standalone-container-oci',
+        formats: ['oci'],
+        deploymentProfile: 'cloud',
+        runtimeTarget: 'server',
+        architecture: 'arm64',
+      },
+    ],
+  };
+  const issues = validateAppManifestWorkflowAlignment(value, workflow);
+  assert.equal(issues.length, 3);
 });

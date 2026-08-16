@@ -104,6 +104,11 @@ Rules:
 
 - Docker-compatible image tags are not immutable evidence. Release records must
   store the digest used by the deployment or publication.
+- OCI image evidence `MUST` set `artifactKind = oci-image`, bind `digest` to
+  the remote registry `artifactLocator` suffix, and preserve a local image
+  manifest at `artifactPath` whose `repoDigest` exactly equals that locator.
+  A local image id, mutable tag, or hash of the image-manifest JSON file
+  `MUST NOT` substitute for the remote registry digest.
 - Mobile, tablet, desktop, and mini program signing credentials `MUST` live in
   protected CI environments, platform key stores, or approved secret managers,
   not in source-controlled manifests, config, or package assets.

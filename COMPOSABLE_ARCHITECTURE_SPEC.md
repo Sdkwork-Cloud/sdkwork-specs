@@ -127,6 +127,10 @@ Rules:
 - Repository crates implement ports and own SQL/schema/row mapping. They must not depend on `sdkwork-web-framework`, `axum`, or other HTTP framework crates.
 - Route crates implement one capability and one surface. They must not depend on generated SDKs for the same API authority and must not depend on concrete repository crates.
 - Service host, native host, worker, standalone gateway, and cloud gateway crates are runtime composition units. They construct dependencies and mount public entrypoints; they do not own business rules. Retired `*-api-server` crates may appear only as migration evidence and must move to the gateway role before release.
+- For HTTP capabilities, the owner API assembly is the indivisible runtime building block. It owns
+  database lifecycle plus service/repository/provider construction and returns the complete
+  contribution/runtime bundle. Standalone and cloud gateways supply process context and compose
+  that public entrypoint; they do not import owner implementation crates.
 - Cargo features for composition must be additive and named by adapter, runtime, or surface. Broad default features must not hide dependency API mounts or provider integrations.
 - Member `Cargo.toml` files must consume sibling SDKWork crates with `{ workspace = true }`; root `[workspace.dependencies]` owns sibling paths.
 
@@ -134,6 +138,7 @@ Verification:
 
 ```bash
 node sdkwork-specs/tools/check-rust-backend-composition.mjs --root <repo>
+node sdkwork-specs/tools/check-api-assembly-integration-closure.mjs --root <repo>
 ```
 
 ## 6. Backend Layer Contract
@@ -224,6 +229,7 @@ node sdkwork-specs/tools/check-component-port-bindings.mjs --root <repo>
 node sdkwork-specs/tools/check-application-layering.mjs --root <repo>
 node sdkwork-specs/tools/check-frontend-composition.mjs --root <repo>
 node sdkwork-specs/tools/check-rust-backend-composition.mjs --root <repo>
+node sdkwork-specs/tools/check-api-assembly-integration-closure.mjs --root <repo>
 node sdkwork-specs/tools/resolve-composition.mjs --root <repo> --write
 node sdkwork-specs/tools/check-composition-resolver.mjs --root <repo>
 node sdkwork-specs/tools/check-permission-composition.mjs --root <repo>

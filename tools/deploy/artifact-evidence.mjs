@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 const DIGEST = /^sha256:[a-f0-9]{64}$/u;
 const SEMVER = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
 const COMMIT = /^[0-9a-f]{7,64}$/u;
+const OCI_LOCATOR = /^([^\s@]+)@(sha256:[a-f0-9]{64})$/u;
 
 function sha256File(file) {
   const hash = createHash('sha256');
@@ -41,6 +42,16 @@ export function validateArtifactEvidence(evidence, selection) {
     }
   }
   if (evidence.digest && !DIGEST.test(evidence.digest)) errors.push('artifact evidence digest must use sha256:<64 lowercase hex characters>');
+  const artifactKind = evidence.artifactKind ?? 'file';
+  if (!['file', 'oci-image'].includes(artifactKind)) errors.push('artifact evidence artifactKind must be file or oci-image');
+  if (artifactKind === 'oci-image') {
+    const match = OCI_LOCATOR.exec(String(evidence.artifactLocator ?? ''));
+    if (!match) errors.push('OCI artifact evidence requires an immutable repository@sha256 artifactLocator');
+    if (match && evidence.digest !== match[2]) errors.push('OCI artifact evidence digest must match artifactLocator');
+    if (evidence.runtimeTarget !== 'container') errors.push('OCI artifact evidence runtimeTarget must be container');
+  } else if (evidence.artifactLocator !== undefined) {
+    errors.push('file artifact evidence forbids artifactLocator');
+  }
   if (evidence.version && !SEMVER.test(evidence.version)) errors.push('artifact evidence version must use SemVer');
   if (evidence.sourceCommit && !COMMIT.test(evidence.sourceCommit)) errors.push('artifact evidence sourceCommit must be a 7-64 character lowercase Git object id');
   if (!['fixed', 'runtime-configurable'].includes(evidence.profileBinding)) {
@@ -99,8 +110,20 @@ export function loadArtifactEvidence(file, selection, { artifactRoot = process.c
       if (!fs.existsSync(artifactPath)) {
         errors.push(`artifact evidence artifactPath does not exist: ${artifactPath}`);
       } else {
-        const actualDigest = sha256File(artifactPath);
-        if (actualDigest !== evidence.digest) errors.push('artifact evidence digest does not match packaged artifact bytes');
+        if ((evidence.artifactKind ?? 'file') === 'oci-image') {
+          let imageManifest;
+          try {
+            imageManifest = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
+          } catch (error) {
+            errors.push(`OCI artifact evidence manifest is not valid JSON: ${error.message}`);
+          }
+          if (imageManifest && imageManifest.repoDigest !== evidence.artifactLocator) {
+            errors.push('OCI artifact evidence locator does not match image manifest repoDigest');
+          }
+        } else {
+          const actualDigest = sha256File(artifactPath);
+          if (actualDigest !== evidence.digest) errors.push('artifact evidence digest does not match packaged artifact bytes');
+        }
       }
     }
   }

@@ -25,17 +25,17 @@
     ]
   },
   "catalog": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@sdkwork/sdk-common": "^1.0.3",
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.4",
-    "lucide-react": "^0.546.0",
+    "@sdkwork/sdk-common": "workspace:*",
+    "@types/node": "^25.9.2",
+    "@vitejs/plugin-react": "^6.0.5",
+    "lucide-react": "^1.31.0",
     "qrcode": "^1.5.4",
-    "vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^5.0.3"
   }
 }

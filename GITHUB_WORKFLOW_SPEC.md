@@ -241,6 +241,11 @@ Rules:
   Multi-format fixed ids use
   `<platform>-<architecture>-<deployment-profile>-<profile>`; runtime-configurable
   ids use `<platform>-<architecture>-dual-<profile>`.
+- When `sdkwork.app.config.json` has a current release note, every enabled
+  `release.notes[].packageIds` entry `MUST` resolve to one exact single-format
+  workflow target. The package id, runtime target, deployment profile, and
+  architecture must match. This includes container packages whose manifest URL
+  still points at the previously published digest.
 - Explicit `targets[].packageId`, when present, `MUST` equal the canonical package id for a single-format target. Multi-format targets `MUST` omit `packageId` so the planner can generate one package id per format.
 - Targets with format-specific output globs `SHOULD` be split into separate single-format targets. Windows desktop packages that produce both `.msi` and `.exe` installers SHOULD use `windows-x64-standalone-desktop-msi` and `windows-x64-standalone-desktop-exe` as separate targets unless one lifecycle command deliberately emits only the active `SDKWORK_PACKAGE_FORMAT`.
 - `targets[].distribution` is required for `platform: linux` with `formats: ["deb"]` or `formats: ["rpm"]`, and it is invalid for generic Linux archive formats such as `tar.gz`.
@@ -358,6 +363,10 @@ Rules:
 - `release.changelog.source: auto` `MUST NOT` reuse stale `sdkwork.app.config.json` `release.notes[]` entries whose version does not match the requested package version or release tag; it must fall back to `CHANGELOG.md` or git commit subjects instead.
 - When a workflow is triggered by a Git tag and no explicit `package_version` input is provided, changelog matching `MUST` use the tag-derived package version before `release.defaultVersion` so an old default manifest note cannot be reused for a newer tag.
 - Framework logs `MUST` redact secret-like values and must not print raw tokens, API keys, or credentials.
+- Reusable workflows that expose application signing or container publication
+  hooks `MUST` pass private keys and registry credentials through declared
+  secrets. They `MUST NOT` model those values as workflow inputs or lifecycle
+  config fields.
 
 ## 8. Deployment Jobs
 
@@ -403,6 +412,12 @@ Rules:
   SBOM/provenance/signature references. `outputGlobs` remains the upload set and
   must include referenced SBOM or signature files that deployment consumers
   need; it is not a substitute for the primary byte-bound artifact path.
+- Container targets use `artifactKind = oci-image`: the evidence `digest`
+  `MUST` match the remote `repository@sha256` locator and the target's local
+  image-manifest `artifactPath` `MUST` repeat that exact locator. Framework
+  verification `MUST` fail on local-only image ids, mutable tags, missing
+  registry digests, and attempts to use the image-manifest file checksum as
+  the OCI deployment digest.
 - Workflow artifact names `MUST` use the framework scopes
   `sdkwork-publishable-` and `sdkwork-non-deployable-`. Aggregate Release jobs
   `MUST` download only the publishable scope; a wildcard over all workflow
@@ -478,6 +493,7 @@ Application repositories may call the canonical entrypoint validator with:
 
 ```text
 node ../sdkwork-specs/tools/check-agent-workflow-standard.mjs --root .
+node ../sdkwork-specs/tools/check-app-manifest-deployment-standard.mjs --root . --strict-release-targets
 ```
 
 The validator checks the thin packaging workflow, pinned reusable workflow ref,

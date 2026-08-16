@@ -1,0 +1,203 @@
+# Reusable workflow: publish SDKWork SDK packages.
+#
+# Authority: SDK_SPEC.md, SDK_PACKAGE_NAMING_SPEC.md §1.1, RELEASE_SPEC.md §2/§4.
+#
+# Call from any repository that can reach the sdkwork-space workspace:
+#
+#   jobs:
+#     publish:
+#       uses: sdkwork-ai/sdkwork-specs/.github/workflows/publish-sdks.yml@main
+#       with:
+#         language: typescript
+#         dry-run: true
+#       secrets: inherit
+#
+# The workflow checks out sdkwork-specs and the workspace root, installs pnpm,
+# and invokes `pnpm publish:sdk`. Credentials are injected via environment
+# from repository secrets; only the languages you have tokens for will publish.
+name: publish-sdks
+
+on:
+  workflow_call:
+    inputs:
+      workspace-root:
+        description: 'Absolute or repo-relative path to sdkwork-space root (parent of sdkwork-specs)'
+        type: string
+        default: '.'
+      repo:
+        description: 'Limit to one repository (e.g. sdkwork-iam). Empty = all repos.'
+        type: string
+        default: ''
+      family:
+        description: 'Limit to one SDK family stem. Empty = all families.'
+        type: string
+        default: ''
+      language:
+        description: 'typescript | rust | java | flutter | python | go | all'
+        type: string
+        default: 'all'
+      dry-run:
+        description: 'Discover + version-check only; do not publish.'
+        type: boolean
+        default: true
+      tag:
+        description: 'npm dist-tag (TypeScript only).'
+        type: string
+        default: 'latest'
+      allow-pre-release:
+        description: 'Allow publishing 0.x / -rc / -beta versions.'
+        type: boolean
+        default: false
+      skip-build:
+        description: 'Skip per-package build step before publish.'
+        type: boolean
+        default: false
+      node-version:
+        description: 'Node.js version for the runner.'
+        type: string
+        default: '22'
+    secrets:
+      NPM_TOKEN:
+        description: 'npm publish token (TypeScript).'
+        required: false
+      CARGO_REGISTRY_TOKEN:
+        description: 'crates.io publish token (Rust).'
+        required: false
+      MAVEN_USERNAME:
+        description: 'Maven Central OSSRH username (Java).'
+        required: false
+      MAVEN_PASSWORD:
+        description: 'Maven Central OSSRH password (Java).'
+        required: false
+      MAVEN_GPG_PASSPHRASE:
+        description: 'GPG signing passphrase for Maven Central (Java).'
+        required: false
+      PUB_DEV_TOKEN:
+        description: 'pub.dev OAUTH2 token (Flutter/Dart).'
+        required: false
+      PYPI_TOKEN:
+        description: 'PyPI upload token (Python).'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+      MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+      MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+      PUB_DEV_TOKEN: ${{ secrets.PUB_DEV_TOKEN }}
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout sdkwork-specs
+        uses: actions/checkout@v4
+        with:
+          repository: sdkwork-ai/sdkwork-specs
+          path: sdkwork-specs
+
+      - name: Checkout workspace root (submodules)
+        if: inputs.workspace-root != 'sdkwork-specs'
+        uses: actions/checkout@v4
+        with:
+          path: workspace
+          submodules: recursive
+
+      - name: Move specs into workspace
+        if: inputs.workspace-root != 'sdkwork-specs'
+        run: |
+          # Place sdkwork-specs at workspace/sdkwork-specs so --workspace .. resolves.
+          mkdir -p workspace
+          rm -rf workspace/sdkwork-specs
+          mv sdkwork-specs workspace/sdkwork-specs
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Configure npm auth (TypeScript)
+        if: ${{ secrets.NPM_TOKEN != '' }}
+        run: printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" > ~/.npmrc
+
+      - name: Configure cargo auth (Rust)
+        if: ${{ secrets.CARGO_REGISTRY_TOKEN != '' }}
+        run: |
+          mkdir -p ~/.cargo
+          printf '[registry]\ntoken = "%s"\n' "$CARGO_REGISTRY_TOKEN" > ~/.cargo/credentials.toml
+
+      - name: Configure pub.dev auth (Flutter)
+        if: ${{ secrets.PUB_DEV_TOKEN != '' }}
+        run: |
+          mkdir -p ~/.config/dart
+          dart pub token add https://pub.dev --env-var PUB_DEV_TOKEN || true
+
+      - name: Install Java toolchain (Java)
+        if: inputs.language == 'java' || inputs.language == 'all'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          server-id: ossrh
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Install Flutter (Flutter)
+        if: inputs.language == 'flutter' || inputs.language == 'all'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install Python build deps (Python)
+        if: inputs.language == 'python' || inputs.language == 'all'
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Install Go (Go)
+        if: inputs.language == 'go' || inputs.language == 'all'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install specs-tools deps
+        working-directory: workspace/sdkwork-specs
+        run: pnpm install --frozen-lockfile
+
+      - name: Publish SDKs
+        working-directory: workspace/sdkwork-specs
+        run: |
+          set -euo pipefail
+          args=(
+            --workspace ..
+            --language "${{ inputs.language }}"
+            --tag "${{ inputs.tag }}"
+            --report ../publish-report.json
+          )
+          if [ -n "${{ inputs.repo }}" ]; then args+=(--repo "${{ inputs.repo }}"); fi
+          if [ -n "${{ inputs.family }}" ]; then args+=(--family "${{ inputs.family }}"); fi
+          if [ "${{ inputs.dry-run }}" = "true" ]; then args+=(--dry-run); fi
+          if [ "${{ inputs.allow-pre-release }}" = "true" ]; then args+=(--allow-pre-release); fi
+          if [ "${{ inputs.skip-build }}" = "true" ]; then args+=(--skip-build); fi
+
+          node tools/publish-sdk.mjs "${args[@]}"
+
+      - name: Upload publish report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-report
+          path: workspace/publish-report.json
+          if-no-files-found: ignore

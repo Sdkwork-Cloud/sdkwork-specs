@@ -324,6 +324,34 @@ test('artifact evidence must match immutable deployment selection', () => {
   );
 });
 
+test('OCI artifact evidence verifies the remote digest recorded by the image manifest', () => {
+  const { repoRoot, evidencePath, artifactPath, selection } = makeDeployRepo();
+  const repoDigest = `registry.sdkwork.com/sdkwork-demo@sha256:${'c'.repeat(64)}`;
+  fs.writeFileSync(artifactPath, JSON.stringify({ repoDigest }));
+  const evidence = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+  Object.assign(evidence, {
+    artifactId: repoDigest,
+    artifactKind: 'oci-image',
+    artifactLocator: repoDigest,
+    digest: `sha256:${'c'.repeat(64)}`,
+    runtimeTarget: 'container',
+  });
+  fs.writeFileSync(evidencePath, JSON.stringify(evidence));
+  const ociSelection = {
+    ...selection,
+    artifactId: repoDigest,
+    artifactDigest: `sha256:${'c'.repeat(64)}`,
+  };
+  assert.equal(loadArtifactEvidence(evidencePath, ociSelection, { artifactRoot: repoRoot }).document.artifactLocator, repoDigest);
+  fs.writeFileSync(artifactPath, JSON.stringify({
+    repoDigest: `registry.sdkwork.com/sdkwork-demo@sha256:${'d'.repeat(64)}`,
+  }));
+  assert.throws(
+    () => loadArtifactEvidence(evidencePath, ociSelection, { artifactRoot: repoRoot }),
+    /locator does not match image manifest repoDigest/u,
+  );
+});
+
 test('atomic file replacement leaves complete target content', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-atomic-replace-'));
   const source = path.join(dir, 'source.conf');

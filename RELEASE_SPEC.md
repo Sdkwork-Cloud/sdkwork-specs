@@ -107,6 +107,13 @@ Rules:
   origins, local tunnel config, or development credentials. Public production
   runtime config is a versioned deployment/publication input with its own
   provenance.
+- Production-publishable `server` and `container` artifacts that embed runtime
+  config templates `MUST` use an explicit production-safe allowlist and `MUST
+  NOT` include development, test, or staging templates. Non-production profiles
+  remain source/deployment inputs and are supplied through external config
+  mounts, a controlled environment overlay, or a separately identified
+  non-production artifact; they are not bundled as operator reference files in
+  the production artifact.
 - Release artifacts must not encode retired deployment profile values such as
   `saas`, `private`, `local`, `server`, `container`, or `desktop`; `server`,
   `container`, and `desktop` are runtime targets only.
@@ -139,7 +146,10 @@ Rules:
 - Client runtime releases `MUST` name the SDK/API surface versions they expect
   and the minimum compatible backend/runtime version when compatibility matters.
 - Container/Docker-compatible releases `MUST` record immutable image digests;
-  mutable tags are convenience labels, not release identity.
+  the canonical artifact evidence digest is the remote registry digest, not a
+  local daemon image id and not the checksum of a metadata JSON file. The
+  evidence retains that metadata file only to re-verify the digest locator.
+  Mutable tags are convenience labels, not release identity.
 
 ## 5. Rollout And Rollback
 

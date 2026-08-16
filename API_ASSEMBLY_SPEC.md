@@ -1,6 +1,6 @@
 # API Assembly Standard
 
-- Version: 1.1
+- Version: 1.2
 - Scope: application-owned HTTP API composition, host-neutral assembly crates, route-surface completeness, gateway dependency direction, manifests, pnpm commands, migration, and verification
 - Related: `APPLICATION_GATEWAY_SPEC.md`, `APPLICATION_SPEC.md`, `APP_COMPOSITION_SPEC.md`, `APP_PERMISSION_COMPOSITION_SPEC.md`, `COMPOSABLE_ARCHITECTURE_SPEC.md`, `COMPONENT_SPEC.md`, `NAMING_SPEC.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `MIGRATION_SPEC.md`, `TEST_SPEC.md`
 
@@ -182,6 +182,78 @@ inventories. Assemblies and gateways `MUST NOT` use `Box::leak`, leaked allocati
 global mutation, or source parsing to coerce a runtime-composed manifest into a `'static` slice.
 Static route-crate manifests and runtime-composed manifests use the same validation and binding API.
 
+### 4.1 Building-Block Integration Point
+
+Every served owner assembly `MUST` expose one canonical building-block integration point used by
+both its standalone gateway and the platform cloud gateway:
+
+```text
+gateway-owned ApiAssemblyContext
+  -> owner sdkwork-api-<application-code>-assembly bootstrap
+     -> owner database/module lifecycle
+     -> owner service/repository/provider construction
+     -> ApiAssemblyRuntime
+        -> indivisible ApiAssemblyContribution
+        -> owner-retained workers and graceful-shutdown handles
+```
+
+`ApiAssemblyContext` contains only process-shared, host-neutral inputs such as `DatabasePool`, the
+selected lifecycle environment/profile, topology values, and explicitly declared provider ports.
+`ApiAssemblyRuntime` is the owner-defined lifetime bundle when the contribution alone is
+insufficient; it `MUST` expose the complete `ApiAssemblyContribution` without requiring consumers
+to reconstruct owner state.
+
+Rules:
+
+- The owner assembly manages its route, service, repository, database migration/bootstrap,
+  readiness, provider adapters, and retained runtime handles behind this public bootstrap.
+- A gateway provides process resources and topology context. It `MUST NOT` depend directly on or
+  invoke owner `sdkwork-routes-*`, `sdkwork-*-service`, `sdkwork-*-service-host`,
+  `sdkwork-*-repository-*`, `sdkwork-*-provider-*-adapter`, or `sdkwork-*-database-host` crates.
+- Runtime startup, explicit migration/install, and release smoke tests `MUST` enter through the
+  same owner bootstrap contract. A gateway-local database module catalog or parallel migration
+  switch is forbidden.
+- Each platform `foundation-*` feature that selects an HTTP owner declares exactly one direct
+  `sdkwork-api-<application-code>-assembly`; component dependency surfaces, Cargo feature wiring,
+  and the called executable export `MUST` agree.
+- Responsibility-specific process adapters such as the one Web Framework IAM resolver or a
+  separately governed realtime plane remain gateway-owned only when they are not owner API
+  construction dependencies and their exception is explicit in the component/topology contract.
+- Owner assembly bootstrap paths `MUST NOT` call `service_router`, a generic single-router
+  `wrap_router_with_web_framework*`, `ComposedApiAssembly::into_hosted`, or an equivalent process
+  infrastructure wrapper around the complete owner router. They return host-neutral business
+  routers inside the complete contribution; the selected standalone/cloud host composes every
+  contribution and installs the one process Web Framework pipeline. A specialized route-local
+  security layer that requires explicit machine-credential collaborators is not a substitute for
+  that process pipeline and requires a component security contract plus human review.
+- When an owner assembly requires another module's lifecycle or same-origin routes, the owner
+  assembly declares that dependency as a required assembly port, passes the same host context or
+  process pool into the dependency assembly, and invokes its public bootstrap before constructing
+  dependent routes. The gateway still selects only the top-level owner and `MUST NOT` duplicate the
+  nested dependency lifecycle. The owner component contract and process-pool contract record the
+  dependency assembly, ordering, profile coverage, and executable evidence.
+
+The canonical gate is:
+
+```text
+node ../sdkwork-specs/tools/check-api-assembly-integration-closure.mjs --root .
+node ../sdkwork-specs/tools/check-api-assembly-integration-closure.mjs --root . --strict-standalone-hosting
+node ../sdkwork-specs/tools/check-api-assembly-integration-closure.mjs --root . --strict-selected-standalone-parity
+```
+
+The first command enforces dependency and lifecycle ownership during staged migration. Standalone
+release candidates additionally run the strict command, which rejects router-only projections and
+requires the complete contribution to pass through `ComposedApiAssembly::try_compose(...).into_hosted(...)`.
+Strict mode also requires the standalone crate's own `specs/component.spec.json`, matching component
+identity/type, non-empty runtime entrypoints, and one `requiredPorts` declaration for every direct
+owner assembly dependency. Each required assembly port names the exact executable `crate::function`
+entrypoint, and the standalone source calls that declared export. The same gate rejects owner
+assembly bootstrap calls that pre-install Web Framework or process service-router infrastructure.
+Platform release candidates run `--strict-selected-standalone-parity`; it resolves every owner
+workspace selected by the cloud gateway component contract, requires that workspace's standalone
+gateway, and applies the same complete-hosting checks. Unrelated workspace applications do not
+block that application-scoped release gate.
+
 ## 5. Assembly Manifest
 
 `assembly-manifest.json` is source-controlled deterministic materialized
@@ -322,8 +394,9 @@ database implementation crates already owned by an assembly. All such
 dependencies enter through assemblies.
 
 The thin-host Cargo gate rejects direct runtime dependencies matching
-`sdkwork-routes-*`, `sdkwork-*-service`, `sdkwork-*-repository-*`, or
-`sdkwork-*-database-host` whenever the gateway selects an API assembly.
+`sdkwork-routes-*`, `sdkwork-*-service`, `sdkwork-*-repository-*`,
+`sdkwork-*-provider-*-adapter`, or `sdkwork-*-database-host` whenever the gateway selects an API
+assembly.
 Process infrastructure such as `sdkwork-database-sqlx`, Web Framework/bootstrap
 crates, and responsibility-specific host adapters remain allowed when they
 serve listener, framework, topology, or process-lifecycle concerns rather than
@@ -481,6 +554,7 @@ Required workspace checks:
 ```text
 node ../sdkwork-specs/tools/audit-api-assembly-workspace.mjs --workspace ..
 node ../sdkwork-specs/tools/check-application-cloud-gateway-boundary.mjs --workspace ..
+node ../sdkwork-specs/tools/check-api-assembly-integration-closure.mjs --workspace .. --strict-standalone-hosting
 ```
 
 ## 11. Acceptance Checklist

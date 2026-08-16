@@ -10,6 +10,7 @@ import { classifyRouteRegistry } from './lib/route-registry.mjs';
 import { validateComponentPortBindings } from './lib/component-port-bindings.mjs';
 import { validateFrontendComposition } from './lib/frontend-composition.mjs';
 import { validateRustBackendComposition } from './lib/rust-backend-composition.mjs';
+import { validateApiAssemblyIntegrationClosure } from './lib/api-assembly-integration-closure.mjs';
 import { validateI18nStandard } from './check-i18n-standard.mjs';
 import { validateApplicationLayering } from './check-application-layering.mjs';
 import { specsRoot } from './lib/workspace-registry.mjs';
@@ -139,6 +140,7 @@ function main() {
     issues.push(...validateApplicationLayering(args.root));
     issues.push(...validateFrontendComposition(args.root));
     issues.push(...validateRustBackendComposition(args.root));
+    issues.push(...validateApiAssemblyIntegrationClosure(args.root));
     issues.push(...validateI18nStandard(args.root));
     issues.push(...validateWorkspaceMemberProtocol(args.root, {
       repoName: path.basename(args.root),

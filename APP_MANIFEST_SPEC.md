@@ -465,6 +465,12 @@ Rules:
 - Docker-compatible images use `runtimeTarget = "container"`. `docker` may
   appear in `packageFormat = "DOCKER_IMAGE"` and operator documentation only,
   not as a runtime target or deployment profile.
+- Every enabled package listed by the current release note `MUST` have one exact
+  single-format `sdkwork.workflow.json` target when the application owns a
+  release workflow. Package id, runtime target, deployment profile, and
+  architecture `MUST` agree across the app manifest and workflow target; a
+  registry URL or previously published digest does not replace a build target
+  for the current source release.
 - Example rows that share a package id represent alternative implementation
   architectures for the same platform/package shape. One manifest `MUST NOT`
   declare duplicate package ids; if one app ships multiple releasable artifacts

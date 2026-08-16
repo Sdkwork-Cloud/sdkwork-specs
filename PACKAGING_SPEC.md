@@ -203,6 +203,14 @@ Rules:
   entry only for the packaged app id.
 - The archive entry list `MUST` be the declarative plan (§1); no recursive
   copy of the build root.
+- Server, gateway, worker, and migration-capable binaries `MUST` expose
+  `--help` and `--version` before runtime configuration, database, Redis,
+  network, tracing exporter, or owner assembly initialization. These
+  information commands `MUST` have no durable or external side effects.
+- A target-host Linux installer `MUST` execute the installed or staged primary
+  binary with `--version` before service registration/start. Failure due to
+  architecture, dynamic linking, or runtime initialization `MUST` fail the
+  install with a clear diagnostic.
 
 ### 5.3 Windows (MSI, EXE, NSIS)
 

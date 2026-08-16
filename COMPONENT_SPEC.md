@@ -262,11 +262,20 @@ Rules:
 - A `rust-api-assembly` component declares its complete route inventory. A
   `rust-api-standalone-gateway` declares every API assembly it hosts and must
   not duplicate their route/service/repository dependencies.
+- A `rust-api-assembly` owns the complete runtime building block behind one public bootstrap:
+  database lifecycle, service/repository/provider construction, complete API contribution,
+  readiness, and owner-retained handles. Its standalone and cloud consumers use the same export.
 - A `rust-platform-cloud-gateway` component `MUST` use component and Cargo package name
   `sdkwork-api-cloud-gateway`, live under `crates/sdkwork-api-cloud-gateway/`, and declare
   `component.domain: "platform"`.
 - A `rust-platform-cloud-gateway` component manifest `MUST` include the same gateway canonical
   specs as application gateway components.
+- A `rust-platform-cloud-gateway` component `MUST` declare
+  `gatewayIntegration.assemblyIntegrationPoint`. Its `databaseLifecycleOwner` is
+  `sdkwork-api-<application-code>-assembly`; every selected dependency surface aligns one Cargo
+  feature, one owner assembly dependency, and one executable export. Direct dependency-owned
+  route, service, service-host, repository, provider implementation, or database-host entries are
+  forbidden.
 - A `web-backend-service` component `MUST` include `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `API_SPEC.md`, and
   `TEST_SPEC.md` in `canonicalSpecs`.
 - A `web-backend-service` component that owns persistence `MUST` also include
@@ -385,6 +394,9 @@ Rules:
 - Run `node ../sdkwork-specs/tools/check-application-layering.mjs --root .` when component specs or source changes affect API/service/domain/repository/adapter/runtime/frontend boundaries.
 - Run `node ../sdkwork-specs/tools/check-permission-composition.mjs --root .` when component specs declare HTTP `sdkDependencies`.
 - Run `node ../sdkwork-specs/tools/check-route-path-collisions.mjs --root .` when component specs declare route manifests or materialize OpenAPI authorities.
+- Run `node ../sdkwork-specs/tools/check-api-assembly-integration-closure.mjs --root .` when an API
+  assembly, standalone gateway, platform gateway, Cargo composition feature, module database
+  lifecycle, or dependency surface executable export changes.
 - Standard changes require tests for the discovery and validation tooling.
 - Component-local README examples and verification commands should stay aligned with the package manifest and generated SDK surface.
 
@@ -411,6 +423,10 @@ Rules:
   HTTP APIs.
 - [ ] Gateway components align dependency surfaces with native build-tool evidence such as Cargo
   features/dependencies and do not require a parallel gateway catalog.
+- [ ] Gateway components consume each owner only through its API assembly building-block entrypoint
+  and contain no direct owner route/service/repository/provider-adapter/database-host dependencies.
+- [ ] Nested owner assembly dependencies declare a provider-qualified `requiredPorts` entry,
+  same-origin surface or lifecycle ordering, shared host context, and executable bootstrap evidence.
 - [ ] Rust/runtime components expose executable surface-specific integration entrypoints when they
   claim same-origin dependency API coverage.
 - [ ] Generated SDK language outputs are represented at the SDK family root.

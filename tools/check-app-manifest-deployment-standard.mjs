@@ -186,9 +186,56 @@ export function validateAppManifestDeployment(manifest, label = 'sdkwork.app.con
   return issues;
 }
 
+export function validateAppManifestWorkflowAlignment(
+  manifest,
+  workflow,
+  manifestLabel = 'sdkwork.app.config.json',
+  workflowLabel = 'sdkwork.workflow.json',
+) {
+  const issues = [];
+  const packages = new Map(
+    (manifest?.artifacts?.installConfig?.packages ?? [])
+      .filter((item) => item && typeof item.id === 'string')
+      .map((item) => [item.id, item]),
+  );
+  const targets = new Map();
+  for (const target of workflow?.targets ?? []) {
+    if (!target || !Array.isArray(target.formats) || target.formats.length !== 1) continue;
+    const packageId = target.packageId ?? target.id;
+    if (typeof packageId === 'string') targets.set(packageId, target);
+  }
+  const currentNotes = (manifest?.release?.notes ?? []).filter((note) => note?.current === true);
+  for (const note of currentNotes) {
+    for (const packageId of note.packageIds ?? []) {
+      const packageEntry = packages.get(packageId);
+      if (!packageEntry || packageEntry.enabled === false) continue;
+      const target = targets.get(packageId);
+      if (!target) {
+        issues.push(
+          `${manifestLabel}: current release package ${packageId} has no exact single-format target in ${workflowLabel}`,
+        );
+        continue;
+      }
+      for (const field of ['runtimeTarget', 'deploymentProfile', 'architecture']) {
+        if (packageEntry[field] !== undefined && target[field] !== packageEntry[field]) {
+          issues.push(
+            `${workflowLabel}: target ${packageId}.${field} must equal ${manifestLabel} package value ${packageEntry[field]}`,
+          );
+        }
+      }
+    }
+  }
+  return issues;
+}
+
 function main() {
   const parsed = parseArgs({
-    options: { root: { type: 'string' }, config: { type: 'string' } },
+    options: {
+      root: { type: 'string' },
+      config: { type: 'string' },
+      'strict-release-targets': { type: 'boolean', default: false },
+      workflow: { type: 'string' },
+    },
     allowPositionals: false,
   });
   const root = path.resolve(parsed.values.root ?? '.');
@@ -198,7 +245,22 @@ function main() {
     process.exit(1);
   }
   const manifest = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  const issues = validateAppManifestDeployment(manifest, path.relative(root, configPath));
+  const manifestLabel = path.relative(root, configPath);
+  const issues = validateAppManifestDeployment(manifest, manifestLabel);
+  if (parsed.values['strict-release-targets']) {
+    const workflowPath = path.resolve(root, parsed.values.workflow ?? 'sdkwork.workflow.json');
+    if (!fs.existsSync(workflowPath)) {
+      issues.push(`${manifestLabel}: strict release target alignment requires ${path.relative(root, workflowPath)}`);
+    } else {
+      const workflow = JSON.parse(fs.readFileSync(workflowPath, 'utf8'));
+      issues.push(...validateAppManifestWorkflowAlignment(
+        manifest,
+        workflow,
+        manifestLabel,
+        path.relative(root, workflowPath),
+      ));
+    }
+  }
   if (issues.length > 0) {
     console.error('app manifest deployment check failed:');
     for (const issue of issues) console.error(`- ${issue}`);

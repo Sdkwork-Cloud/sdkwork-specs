@@ -593,6 +593,18 @@ or runtime-configurable profile binding, `runtimeTarget` metadata, copied releas
 repository/application `AGENTS.md` dynamic progressive loading, compatibility
 shims, and relative `sdkwork-specs` path resolution.
 
+Release-capable application roots `MUST` also run strict app-manifest/workflow
+target alignment:
+
+```text
+node ../sdkwork-specs/tools/check-app-manifest-deployment-standard.mjs --root . --strict-release-targets
+```
+
+The gate checks that every enabled package in the current release note has an
+exact workflow target with matching package id, runtime target, deployment
+profile, and architecture. It prevents stale registry metadata from hiding a
+missing current-source container build target.
+
 Deployable roots validate source configuration ownership with:
 
 ```text
@@ -657,6 +669,11 @@ that declare no identity fields at all.
   the referenced artifact and prove byte-level SHA-256 mismatch, version/source
   commit drift, evidence upload-path inclusion, and aggregate Release exclusion
   of non-deployable test artifacts.
+- OCI artifact evidence tests `MUST` prove the evidence digest equals the
+  remote `repository@sha256` locator and the local image manifest repeats that
+  exact locator. Tests `MUST` reject null repo digests, local image ids,
+  mutable tags, locator/manifest drift, and use of the manifest file checksum
+  as the container deployment digest.
 - Repository validation for `sdkwork-github-workflow` `MUST` check `AGENTS.md`, compatibility shims, `.sdkwork/` files, reusable workflow YAML, composite actions, schema, examples, templates, generator output, and repository documentation.
 
 ## 2.0.3 Engineering Lifecycle Tests
@@ -1173,9 +1190,38 @@ Rules:
 - Gateway readiness audit tests `MUST` distinguish assembly readiness from
   standalone-host readiness, inspect `apiMode: none` applications instead of
   skipping them, make warnings fail under `--strict`, and reject standalone gateway Cargo runtime
-  dependencies on `sdkwork-routes-*`, `sdkwork-*-service`, `sdkwork-*-repository-*`, and
-  `sdkwork-*-database-host` while permitting `sdkwork-database-sqlx`, Web Framework/bootstrap,
-  topology/listener infrastructure, and explicit host adapters.
+  dependencies on `sdkwork-routes-*`, `sdkwork-*-service`, `sdkwork-*-repository-*`,
+  `sdkwork-*-provider-*-adapter`, and `sdkwork-*-database-host` while permitting
+  `sdkwork-database-sqlx`, Web Framework/bootstrap, topology/listener infrastructure, and explicit
+  host adapters.
+- API assembly integration closure tests `MUST` reverse-check every selected platform
+  `foundation-*` feature against component dependency surfaces and gateway source: exactly one
+  direct owner assembly, the declared executable entrypoint is called, and no owner route,
+  service, service-host, repository, provider-adapter, or database-host dependency or direct source
+  call leaks into standalone/platform gateway code. Explicit installer migration and runtime
+  startup `MUST` use the same owner bootstrap. The canonical gate is
+  `node ../sdkwork-specs/tools/check-api-assembly-integration-closure.mjs --root .`.
+- Standalone gateway closure tests `MUST` reject router-only projections of an API assembly.
+  The host calls each selected owner assembly, validates complete contributions with
+  `ComposedApiAssembly::try_compose`, and binds them with `into_hosted` so route manifests,
+  OpenAPI, permissions, domain injectors, and readiness cannot be discarded. Standalone release
+  verification invokes the closure checker with `--strict-standalone-hosting`; workspace migration
+  audits may run the dependency boundary without that flag until every legacy host is aligned.
+  Strict checks also require a crate-local component spec with matching standalone identity,
+  runtime entrypoints, and exact executable required assembly ports for every direct owner assembly
+  dependency; source must call each component-declared export. The gate `MUST` also reject owner
+  assembly bootstrap paths that call `service_router`, a generic single-router
+  `wrap_router_with_web_framework*`, or an equivalent whole-owner process-host wrapper before the
+  selected host calls `into_hosted`. Specialized route-local machine-credential security layers
+  remain human-reviewed component security contracts rather than automatic exceptions.
+- Platform cloud-gateway release tests `MUST` run the closure checker with
+  `--strict-selected-standalone-parity`. The gate follows only the owner workspaces selected by the
+  platform component contract, requires each selected module's standalone gateway, and applies the
+  same complete contribution checks without making unrelated workspace applications release
+  dependencies.
+- Nested lifecycle tests `MUST` prove that the selected top-level owner assembly calls each declared
+  dependency assembly in the recorded order with the same process context, while the gateway has
+  no parallel dependency bootstrap or database catalog.
 - Component port binding tests `MUST` prove `providedPorts[].export` belongs to the current
   component's `publicExports`, provider-qualified `requiredPorts[].export` resolves against the
   provider component's `publicExports` or `providedPorts`, and Rust components cannot claim
@@ -1293,6 +1339,16 @@ Rules:
   start from outside the source workspace, resolve only packaged owner roots,
   preserve the pre-existing data-plane smoke, and prove both the browser shell
   and at least one dependency-owned API route on the same ingress origin.
+- Linux server artifact tests `MUST` unpack into a temporary `DESTDIR`, verify
+  checksums and executable modes, and run the staged primary binary with
+  `--help` and `--version` while runtime config, database, Redis, and network
+  dependencies are unavailable. Either command performing runtime bootstrap
+  or external I/O is a packaging failure.
+- Production-publishable server archive and OCI build-context tests `MUST`
+  inspect the staged file inventory and install manifest, require an explicit
+  production-safe config-template allowlist, and reject embedded development,
+  test, or staging runtime templates even when the source tree supports those
+  environments through external config or controlled overlays.
 - Topology role tests `MUST` prove responsibility-specific device/edge protocol
   processes use `edge-runtime`, are rejected from `cloud.development`, and are
   not disguised as `worker` or a gateway role.

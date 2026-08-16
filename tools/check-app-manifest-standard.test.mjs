@@ -174,3 +174,19 @@ test('allows a disabled deferred package to omit release checksums', () => {
   const issues = validateAppManifest(manifest);
   assert.ok(!issues.some((issue) => issue.includes('checksum is required')));
 });
+
+test('requires static checksums for direct distribution but not build scripts', () => {
+  const scriptManifest = validManifest();
+  scriptManifest.security.checksumRequired = true;
+  scriptManifest.artifacts.installConfig.packages[0].sourceType = 'SCRIPT';
+  assert.ok(
+    !validateAppManifest(scriptManifest).some((issue) => issue.includes('checksum is required')),
+  );
+
+  const directManifest = validManifest();
+  directManifest.security.checksumRequired = true;
+  directManifest.artifacts.installConfig.packages[0].sourceType = 'BINARY_URL';
+  assert.ok(
+    validateAppManifest(directManifest).some((issue) => issue.includes('checksum is required')),
+  );
+});

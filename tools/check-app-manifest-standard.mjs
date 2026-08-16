@@ -35,6 +35,9 @@ const PLATFORM_VALUES = new Set([
   'API', 'OTHER',
 ]);
 const MEDIA_FORMATS = new Set(['PNG', 'JPG', 'JPEG', 'WEBP', 'MP4', 'MOV']);
+const DIRECT_DISTRIBUTION_SOURCE_TYPES = new Set([
+  'GIT_REPOSITORY', 'BINARY_URL', 'WEB_URL', 'CONTAINER_IMAGE', 'MINI_PROGRAM',
+]);
 const SECRET_KEY_PATTERN = /(?:password|access[-_]?token|refresh[-_]?token|api[-_]?key|private[-_]?key|client[-_]?secret|credential)/iu;
 const SEMVER_PATTERN = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
 
@@ -222,7 +225,8 @@ export function validateAppManifest(manifest, label = 'sdkwork.app.config.json')
       if (pkg.sourceType === 'CONTAINER_IMAGE' && pkg.url && !/@sha256:[a-f0-9]{64}$/iu.test(pkg.url)) {
         issues.push(`${pointer}.url must contain an immutable OCI @sha256 digest`);
       }
-      if (manifest.security?.checksumRequired && pkg.enabled !== false && pkg.sourceType !== 'APP_STORE'
+      if (manifest.security?.checksumRequired && pkg.enabled !== false
+        && DIRECT_DISTRIBUTION_SOURCE_TYPES.has(pkg.sourceType)
         && (!pkg.checksumAlgorithm || !pkg.checksum)) {
         issues.push(`${pointer}: checksum is required by security.checksumRequired`);
       }

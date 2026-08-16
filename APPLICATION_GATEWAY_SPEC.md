@@ -1,6 +1,6 @@
 # Application Gateway Standard
 
-- Version: 2.3
+- Version: 2.4
 - Scope: application standalone and platform cloud HTTP gateway hosts, listener ownership, naming, topology binding, thin-host boundaries, pnpm commands, migration, and verification
 - Related: `API_ASSEMBLY_SPEC.md`, `NAMING_SPEC.md` section 4.3.1, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_NAMING.md`, `WEB_FRAMEWORK_SPEC.md`, `WEB_BACKEND_SPEC.md`, `COMPONENT_SPEC.md`, `PNPM_SCRIPT_SPEC.md`, `MIGRATION_SPEC.md`, `TEST_SPEC.md`
 
@@ -63,6 +63,12 @@ The host applies exactly one `sdkwork-web-framework` pipeline to the combined ro
 integration. A gateway that dispatches into an embedded dependency router `MUST` preserve that
 dependency's manifest and resolver/context injectors through the selected framework pipeline. It
 `MUST NOT` merge or dispatch `assembly.router` while dropping the remaining assembly contract.
+
+The only application building-block boundary visible to a gateway is the owner API assembly public
+bootstrap defined by `API_ASSEMBLY_SPEC.md` section 4.1. The host may pass a process-shared database
+pool, lifecycle environment/profile, topology context, and declared provider ports; it may not
+construct the owner's service/repository/database graph. Serve startup and installer migration use
+that same bootstrap so standalone and cloud hosts cannot drift into separate module catalogs.
 
 ### 2.1 Vocabulary Discipline
 
@@ -257,10 +263,16 @@ platform gateway TOML files, or platform gateway packaging assets.
 Standalone gateway component contracts additionally declare required ports for every selected
 dependency assembly and matching `dependencyApiSurfaces` entries. A dependency assembly export
 remains provider-owned: the gateway lists it in `requiredPorts`, never in the gateway's own
-`publicExports`. Direct route, service, repository, or database-host implementation dependencies
-and undeclared same-origin mounts are invalid even when they compile; process-wide Web Framework,
-database-pool, topology, listener, and explicit host-adapter dependencies remain valid thin-host
-infrastructure.
+`publicExports`. Direct route, service, repository, provider-adapter, or database-host
+implementation dependencies and undeclared same-origin mounts are invalid even when they compile;
+process-wide Web Framework, database-pool, topology, listener, and explicit host-adapter
+dependencies remain valid thin-host infrastructure.
+
+The platform cloud gateway component additionally declares
+`gatewayIntegration.assemblyIntegrationPoint`, including the context, bootstrap, runtime bundle,
+contribution type, and `databaseLifecycleOwner: "sdkwork-api-<application-code>-assembly"`.
+Every component dependency surface that selects an assembly aligns its Cargo feature,
+`cargoDependency`, and executable export with that single integration point.
 
 ## 8. Pnpm Commands
 
