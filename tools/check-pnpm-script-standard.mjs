@@ -214,6 +214,7 @@ const IGNORED_DIRS = new Set([
   'vendor',
 ]);
 const IGNORED_DOCUMENT_PATH_PARTS = new Set([
+  '.zcode',
   'artifacts',
   'docs/archive',
   'docs/release',
