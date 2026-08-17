@@ -76,7 +76,7 @@
       "../sdkwork-skills/sdks/sdkwork-skills-app-sdk/sdkwork-skills-app-sdk-typescript",
       "../sdkwork-voice/sdks/sdkwork-voice-app-sdk/sdkwork-voice-app-sdk-typescript",
       "../sdkwork-prompts/sdks/sdkwork-prompts-app-sdk/sdkwork-prompts-app-sdk-typescript",
-      "../sdkwork-prompts/sdks/sdkwork-prompts-app-sdk/generated/server-openapi",
+      "../sdkwork-prompts/sdks/sdkwork-prompts-app-sdk/sdkwork-prompts-app-sdk-typescript/src/index.ts",
       "../sdkwork-prompts/sdks/sdkwork-prompts-backend-sdk/sdkwork-prompts-backend-sdk-typescript",
       "../sdkwork-models/sdks/sdkwork-models-sdk/sdkwork-models-sdk-typescript",
       "../sdkwork-community/sdks/sdkwork-community-app-sdk/sdkwork-community-app-sdk-typescript",

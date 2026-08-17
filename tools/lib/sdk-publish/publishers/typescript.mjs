@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { readJson, runCommand, toDisplayPath } from '../util.mjs';
+import { bumpVersion, readJson, runCommand, toDisplayPath } from '../util.mjs';
 
 export const language = 'typescript';
 export const registry = 'npm';
@@ -65,19 +65,71 @@ export function build(pkgPath, { skipBuild }) {
   return { ok: true, detail: 'built' };
 }
 
+/**
+ * Bump the version in the package.json (in place) and return the new version.
+ * Used when re-publishing a previously broken release: npm forbids overwriting
+ * an already-published version, so callers pass `--bump patch` to republish
+ * at 0.1.1 instead of failing on the existing 0.1.0.
+ *
+ * @param {string} pkgPath
+ * @param {'patch'|'minor'|'major'} level
+ * @returns {{ ok: true, version: string } | { ok: false, detail: string }}
+ */
+export function bumpPackageVersion(pkgPath, level) {
+  const pkgJsonPath = path.join(pkgPath, 'package.json');
+  const pkg = readJson(pkgJsonPath);
+  if (!pkg || !pkg.version) {
+    return { ok: false, detail: 'package.json missing version field' };
+  }
+  // bumpVersion imported at top of file from ../util.mjs
+  const next = bumpVersion(pkg.version, level);
+  pkg.version = next;
+  fs.writeFileSync(pkgJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+  return { ok: true, version: next };
+}
+
 export function publish(pkgPath, { tag = 'latest', access = 'public', env = {} }) {
-  const args = ['publish', '--access', access, '--tag', tag];
-  // When NPM_TOKEN is in env, pass it via CLI so it overrides any stale ~/.npmrc
-  // entry. This avoids writing token files and works in CI without .npmrc.
+  // IMPORTANT: use `pnpm publish`, not `npm publish`.
+  // pnpm publish resolves `workspace:*` protocol specifiers to the actual
+  // version of the referenced workspace package before publishing, so the
+  // published package.json contains concrete versions (e.g. `^1.0.5`) instead
+  // of `workspace:*` (which external consumers cannot resolve). See
+  // SDK_PACKAGE_NAMING_SPEC.md §1.1 and pnpm docs on workspace protocol.
+  const args = [
+    'publish',
+    '--access', access,
+    '--tag', tag,
+    '--no-git-checks',
+  ];
+
+  // Write a temporary .npmrc in the package directory so pnpm picks up the
+  // correct token. This is necessary because ~/.npmrc may contain a stale
+  // token, and pnpm may stop searching for .npmrc at submodule boundaries.
+  // The token comes from NPM_TOKEN env var or the workspace-level .npmrc.
   const token = env.NPM_TOKEN || process.env.NPM_TOKEN;
+  const tempNpmrc = path.join(pkgPath, '.npmrc');
+  let wroteTempNpmrc = false;
   if (token) {
-    args.push(`--//registry.npmjs.org/:_authToken=${token}`);
+    fs.writeFileSync(
+      tempNpmrc,
+      `//registry.npmjs.org/:_authToken=${token}\nalways-auth=true\n`,
+      'utf8',
+    );
+    wroteTempNpmrc = true;
   }
-  const r = runCommand('npm', args, { cwd: pkgPath, env });
-  if (r.error || r.status !== 0) {
-    return { ok: false, detail: `npm publish exit ${r.status ?? 'null'} at ${toDisplayPath(pkgPath)}` };
+
+  try {
+    const r = runCommand('pnpm', args, { cwd: pkgPath, env });
+    if (r.error || r.status !== 0) {
+      return { ok: false, detail: `pnpm publish exit ${r.status ?? 'null'} at ${toDisplayPath(pkgPath)}` };
+    }
+    return { ok: true, detail: `published to npm (${tag})` };
+  } finally {
+    // Always clean up the temporary .npmrc so it never gets committed.
+    if (wroteTempNpmrc) {
+      try { fs.unlinkSync(tempNpmrc); } catch { /* ignore */ }
+    }
   }
-  return { ok: true, detail: `published to npm (${tag})` };
 }
 
 export function credentialName() {

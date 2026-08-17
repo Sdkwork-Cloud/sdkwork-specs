@@ -1,0 +1,28 @@
+{
+  "runId": "2026-08-17T02:11:55.482Z",
+  "mode": "publish",
+  "workspace": "E:/sdkwork-space",
+  "startedAt": "2026-08-17T02:11:55.482Z",
+  "finishedAt": "2026-08-17T02:12:01.068Z",
+  "summary": {
+    "total": 1,
+    "success": 1,
+    "skipped": 0,
+    "failed": 0,
+    "dryRun": 0
+  },
+  "items": [
+    {
+      "repo": "sdkwork-voice",
+      "family": "sdkwork-voice-app-sdk",
+      "language": "typescript",
+      "packageName": "@sdkwork/voice-app-sdk",
+      "version": "0.1.1",
+      "status": "success",
+      "registry": "npm",
+      "durationMs": 4021,
+      "reason": "published to npm (latest)",
+      "languageRoot": "E:/sdkwork-space/sdkwork-voice/sdks/sdkwork-voice-app-sdk/sdkwork-voice-app-sdk-typescript"
+    }
+  ]
+}

@@ -30,6 +30,162 @@ function inferSdkType(family) {
   return 'open';
 }
 
+/**
+ * Resolve the published version spec for `@sdkwork/sdk-common`.
+ *
+ * Composed consumer packages (`@sdkwork/<x>-sdk`) are PUBLISHED to npm, so
+ * their `dependencies.@sdkwork/sdk-common` MUST be a concrete semver spec
+ * (e.g. `^1.0.5`) that external consumers can resolve — never `workspace:*`,
+ * which only resolves inside this monorepo. (See SDK_PACKAGE_NAMING_SPEC.md
+ * §1.1: consumer packages are published; transport packages are not.)
+ *
+ * The version is read from the local source package at
+ * `<workspaceRoot>/sdkwork-sdk-commons/sdkwork-sdk-common-typescript/package.json`
+ * so align tracks sdk-common releases automatically. Falls back to `^1.0.5`
+ * (the current published version) if the source package is missing.
+ */
+const SDK_COMMON_PUBLISHED_FALLBACK = '^1.0.5';
+const SDK_COMMON_SOURCE_RELATIVE = path.join(
+  'sdkwork-sdk-commons',
+  'sdkwork-sdk-common-typescript',
+  'package.json',
+);
+
+/**
+ * `@sdkwork/utils` source package. Composed consumer packages that import
+ * `sha256Hash` (or other utils) from `@sdkwork/utils` need it declared in
+ * `dependencies` with a concrete semver spec — never `workspace:*`.
+ * Source: `<workspaceRoot>/sdkwork-utils/packages/sdkwork-utils-typescript/package.json`.
+ */
+const SDK_UTILS_PUBLISHED_FALLBACK = '^0.11.0';
+const SDK_UTILS_SOURCE_RELATIVE = path.join(
+  'sdkwork-utils',
+  'packages',
+  'sdkwork-utils-typescript',
+  'package.json',
+);
+
+/**
+ * `@sdkwork/sdk-generator` source package. Composed consumer packages and
+ * internal SDK tooling packages may reference the generator (e.g. via
+ * `devDependencies` for `sdkgen` script discovery). Because the generator is
+ * PUBLISHED to npm (`@sdkwork/sdk-generator`), any `workspace:*` reference
+ * MUST be rewritten to a concrete semver spec — never left as `workspace:*`.
+ * Source: `<workspaceRoot>/sdkwork-sdk-generator/package.json`.
+ */
+const SDK_GENERATOR_PUBLISHED_FALLBACK = '^1.0.9';
+const SDK_GENERATOR_SOURCE_RELATIVE = path.join('sdkwork-sdk-generator', 'package.json');
+
+function resolveSourcePublishedVersion(workspaceRoot, sourceRelative, fallback) {
+  const sourcePath = path.join(workspaceRoot, sourceRelative);
+  try {
+    if (!fs.existsSync(sourcePath)) return fallback;
+    const pkg = readJson(sourcePath);
+    const version = pkg && typeof pkg.version === 'string' ? pkg.version.trim() : '';
+    if (!/^\d+\.\d+\.\d+/.test(version)) return fallback;
+    return `^${version}`;
+  } catch {
+    return fallback;
+  }
+}
+
+function resolveSdkCommonPublishedVersion(workspaceRoot) {
+  return resolveSourcePublishedVersion(
+    workspaceRoot,
+    SDK_COMMON_SOURCE_RELATIVE,
+    SDK_COMMON_PUBLISHED_FALLBACK,
+  );
+}
+
+function resolveSdkUtilsPublishedVersion(workspaceRoot) {
+  return resolveSourcePublishedVersion(
+    workspaceRoot,
+    SDK_UTILS_SOURCE_RELATIVE,
+    SDK_UTILS_PUBLISHED_FALLBACK,
+  );
+}
+
+function resolveSdkGeneratorPublishedVersion(workspaceRoot) {
+  return resolveSourcePublishedVersion(
+    workspaceRoot,
+    SDK_GENERATOR_SOURCE_RELATIVE,
+    SDK_GENERATOR_PUBLISHED_FALLBACK,
+  );
+}
+
+/**
+ * Returns true if a dependency spec is a pnpm workspace protocol reference
+ * (`workspace:*`, `workspace:^`, `workspace:~`, `workspace:1.0.0`, etc.).
+ * Such specs MUST NOT appear in published consumer package manifests.
+ */
+function isWorkspaceProtocolSpec(spec) {
+  return typeof spec === 'string' && spec.startsWith('workspace:');
+}
+
+/**
+ * Build a map of `@sdkwork/<name>` -> published version spec (`^x.y.z`) by
+ * scanning every composed consumer package.json under the workspace. This lets
+ * align rewrite cross-SDK `workspace:*` references (e.g. `@sdkwork/iam-app-sdk`
+ * as a peerDependency of `@sdkwork/knowledgebase-app-sdk`) to concrete versions
+ * so the published consumer package resolves externally.
+ *
+ * Returns a Map<string, string>.
+ */
+function buildSdkworkConsumerVersionMap(workspaceRoot) {
+  const map = new Map();
+  for (const family of discoverAllSdkFamiliesIncludingApps(workspaceRoot)) {
+    try {
+      if (!fs.existsSync(family.composedPackageJsonPath)) continue;
+      const pkg = readJson(family.composedPackageJsonPath);
+      if (!pkg || typeof pkg.name !== 'string' || typeof pkg.version !== 'string') continue;
+      if (!pkg.name.startsWith('@sdkwork/')) continue;
+      if (!/^\d+\.\d+\.\d+/.test(pkg.version)) continue;
+      // Don't overwrite an existing entry — first one wins (deterministic by
+      // discoverAllSdkFamiliesIncludingApps's sort order).
+      if (!map.has(pkg.name)) map.set(pkg.name, `^${pkg.version}`);
+    } catch {
+      // ignore unreadable manifests
+    }
+  }
+  return map;
+}
+
+/**
+ * Rewrite every `workspace:*` spec in a dependency section (dependencies /
+ * peerDependencies / devDependencies) to a concrete `^x.y.z` spec when the
+ * package name is known. Known names are:
+ *   - `@sdkwork/sdk-common` (from source package)
+ *   - `@sdkwork/utils` (from source package)
+ *   - `@sdkwork/sdk-generator` (from source package — published to npm)
+ *   - any `@sdkwork/<x>` consumer package present in the workspace (from the
+ *     consumer version map)
+ *
+ * Mutates `pkg[section]` in place. Returns true if any rewrite happened.
+ */
+function rewriteWorkspaceSpecsInSection(pkg, section, workspaceRoot, consumerVersions, sdkCommonVersion, sdkUtilsVersion, sdkGeneratorVersion) {
+  const deps = pkg[section];
+  if (!deps || typeof deps !== 'object') return false;
+  let changed = false;
+  for (const [name, spec] of Object.entries(deps)) {
+    if (!isWorkspaceProtocolSpec(spec)) continue;
+    let resolved;
+    if (name === '@sdkwork/sdk-common') {
+      resolved = sdkCommonVersion;
+    } else if (name === '@sdkwork/utils') {
+      resolved = sdkUtilsVersion;
+    } else if (name === '@sdkwork/sdk-generator') {
+      resolved = sdkGeneratorVersion;
+    } else if (consumerVersions.has(name)) {
+      resolved = consumerVersions.get(name);
+    }
+    if (resolved && resolved !== spec) {
+      deps[name] = resolved;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 function cleanComposedPackageDependencies(family, pkg) {
   let changed = false;
   if (!pkg.dependencies) return false;
@@ -46,7 +202,7 @@ function cleanComposedPackageDependencies(family, pkg) {
   return changed;
 }
 
-function ensureComposedPackageJson(family) {
+function ensureComposedPackageJson(family, workspaceRoot, context) {
   const target = family.composedPackageJsonPath;
   fs.mkdirSync(path.dirname(target), { recursive: true });
   let pkg;
@@ -100,13 +256,48 @@ function ensureComposedPackageJson(family) {
     changed = true;
   }
 
-  if (!pkg.dependencies?.['@sdkwork/sdk-common']) {
-    pkg.dependencies = {
-      ...(pkg.dependencies ?? {}),
-      '@sdkwork/sdk-common': 'workspace:*',
-    };
-    changed = true;
+  // Composed consumer packages are PUBLISHED to npm. Their `@sdkwork/sdk-common`
+  // dependency MUST be a concrete semver spec (e.g. `^1.0.5`), never
+  // `workspace:*`. If missing, add it. If already a workspace:* spec (left
+  // behind by older align runs), rewrite it. If it's a non-workspace spec
+  // that matches the fallback (meaning a prior align wrote it from a missing
+  // source), upgrade to the current source version. Otherwise leave it alone.
+  const desiredSdkCommonVersion = context.sdkCommonVersion;
+  const currentSdkCommonSpec = pkg.dependencies?.['@sdkwork/sdk-common'];
+  if (currentSdkCommonSpec !== desiredSdkCommonVersion) {
+    const shouldRewrite = !currentSdkCommonSpec
+      || isWorkspaceProtocolSpec(currentSdkCommonSpec)
+      || currentSdkCommonSpec === SDK_COMMON_PUBLISHED_FALLBACK;
+    if (shouldRewrite) {
+      pkg.dependencies = {
+        ...(pkg.dependencies ?? {}),
+        '@sdkwork/sdk-common': desiredSdkCommonVersion,
+      };
+      changed = true;
+    }
   }
+
+  // Rewrite any remaining `workspace:*` specs in `dependencies`,
+  // `peerDependencies`, and `devDependencies` to concrete published versions.
+  // This covers:
+  //   - `@sdkwork/utils: workspace:*` (auto-declared by clean-repo-vite-aliases)
+  //   - cross-SDK peerDependencies like `@sdkwork/iam-app-sdk: workspace:*`
+  //   - `@sdkwork/sdk-generator: workspace:*` in devDependencies (used by
+  //     composed packages that expose a `generate` script)
+  // External consumers cannot resolve the workspace protocol, so any
+  // `workspace:*` that survives to npm corrupts the published package.
+  if (rewriteWorkspaceSpecsInSection(
+    pkg, 'dependencies', workspaceRoot,
+    context.consumerVersions, context.sdkCommonVersion, context.sdkUtilsVersion, context.sdkGeneratorVersion,
+  )) changed = true;
+  if (rewriteWorkspaceSpecsInSection(
+    pkg, 'peerDependencies', workspaceRoot,
+    context.consumerVersions, context.sdkCommonVersion, context.sdkUtilsVersion, context.sdkGeneratorVersion,
+  )) changed = true;
+  if (rewriteWorkspaceSpecsInSection(
+    pkg, 'devDependencies', workspaceRoot,
+    context.consumerVersions, context.sdkCommonVersion, context.sdkUtilsVersion, context.sdkGeneratorVersion,
+  )) changed = true;
 
   if (cleanComposedPackageDependencies(family, pkg)) changed = true;
 
@@ -161,7 +352,7 @@ function ensureManifest(family) {
   return target;
 }
 
-function alignTransportPackageJsonForPath(family, transportPackageJsonPath) {
+function alignTransportPackageJsonForPath(family, transportPackageJsonPath, context) {
   const target = transportPackageJsonPath;
   if (!fs.existsSync(target)) return null;
   const pkg = readJson(target);
@@ -185,12 +376,35 @@ function alignTransportPackageJsonForPath(family, transportPackageJsonPath) {
     changed = true;
   }
 
+  // Transport packages are PRIVATE (never published standalone), but their
+  // `package.json` ships inside the composed consumer package's `files` array
+  // (e.g. `generated/server-openapi/dist` is bundled). More importantly, the
+  // transport package's `dependencies` are what `pnpm publish` on the
+  // composed package uses to resolve bundled workspace deps. Any
+  // `workspace:*` left here either (a) survives into the published composed
+  // package's bundled metadata, or (b) breaks if the transport package is
+  // ever published standalone later. Rewrite to concrete semver specs.
+  if (context) {
+    if (rewriteWorkspaceSpecsInSection(
+      pkg, 'dependencies', family.repoRoot,
+      context.consumerVersions, context.sdkCommonVersion, context.sdkUtilsVersion, context.sdkGeneratorVersion,
+    )) changed = true;
+    if (rewriteWorkspaceSpecsInSection(
+      pkg, 'peerDependencies', family.repoRoot,
+      context.consumerVersions, context.sdkCommonVersion, context.sdkUtilsVersion, context.sdkGeneratorVersion,
+    )) changed = true;
+    if (rewriteWorkspaceSpecsInSection(
+      pkg, 'devDependencies', family.repoRoot,
+      context.consumerVersions, context.sdkCommonVersion, context.sdkUtilsVersion, context.sdkGeneratorVersion,
+    )) changed = true;
+  }
+
   if (changed) writeJson(target, pkg);
   return changed ? target : null;
 }
 
-function alignTransportPackageJson(family) {
-  return alignTransportPackageJsonForPath(family, family.transportPackageJsonPath);
+function alignTransportPackageJson(family, context) {
+  return alignTransportPackageJsonForPath(family, family.transportPackageJsonPath, context);
 }
 
 function alignTransportSdkJsonForPath(family, transportSdkJsonPath) {
@@ -222,13 +436,66 @@ function alignTransportSdkJson(family) {
   return alignTransportSdkJsonForPath(family, family.transportSdkJsonPath);
 }
 
-function alignAllFamilyTransports(family) {
+function alignAllFamilyTransports(family, context) {
   const changed = [];
   for (const transport of listTransportRootsInFamily(family.familyRoot, family.sdkFamilyStem)) {
-    const file = alignTransportPackageJsonForPath(family, transport.transportPackageJsonPath);
+    const file = alignTransportPackageJsonForPath(family, transport.transportPackageJsonPath, context);
     if (file) changed.push(file);
     const sdkJson = alignTransportSdkJsonForPath(family, transport.transportSdkJsonPath);
     if (sdkJson) changed.push(sdkJson);
+  }
+  return changed;
+}
+
+/**
+ * Scan `providers/` subdirectories under a TypeScript SDK root and rewrite
+ * any `workspace:*` specs in their `package.json` files.
+ *
+ * Provider packages (e.g. `@sdkwork/rtc-sdk-provider-agora`,
+ * `@sdkwork/mail-sdk-provider-imap`) declare the parent SDK as a
+ * `peerDependency` (concrete version) and a `devDependency` (`workspace:*`
+ * for local dev). Even though these provider packages are currently
+ * `private: true`, leaving `workspace:*` in their manifests is a latent
+ * publish-time hazard: if they are ever published standalone, the
+ * `workspace:*` will corrupt the published package. Rewrite them now so the
+ * manifest is publish-safe.
+ */
+function alignFamilyProviderPackages(family, context) {
+  const changed = [];
+  const providersRoot = path.join(family.typescriptRoot, 'providers');
+  if (!fs.existsSync(providersRoot)) return changed;
+
+  let providerEntries;
+  try {
+    providerEntries = fs.readdirSync(providersRoot, { withFileTypes: true });
+  } catch {
+    return changed;
+  }
+
+  for (const entry of providerEntries) {
+    if (!entry.isDirectory()) continue;
+    const providerPackageJsonPath = path.join(providersRoot, entry.name, 'package.json');
+    if (!fs.existsSync(providerPackageJsonPath)) continue;
+    const pkg = readJson(providerPackageJsonPath);
+    let changedThis = false;
+
+    if (rewriteWorkspaceSpecsInSection(
+      pkg, 'dependencies', family.repoRoot,
+      context.consumerVersions, context.sdkCommonVersion, context.sdkUtilsVersion, context.sdkGeneratorVersion,
+    )) changedThis = true;
+    if (rewriteWorkspaceSpecsInSection(
+      pkg, 'peerDependencies', family.repoRoot,
+      context.consumerVersions, context.sdkCommonVersion, context.sdkUtilsVersion, context.sdkGeneratorVersion,
+    )) changedThis = true;
+    if (rewriteWorkspaceSpecsInSection(
+      pkg, 'devDependencies', family.repoRoot,
+      context.consumerVersions, context.sdkCommonVersion, context.sdkUtilsVersion, context.sdkGeneratorVersion,
+    )) changedThis = true;
+
+    if (changedThis) {
+      writeJson(providerPackageJsonPath, pkg);
+      changed.push(providerPackageJsonPath);
+    }
   }
   return changed;
 }
@@ -465,12 +732,24 @@ export function alignSdkStandard(workspaceRoot) {
   const changed = [];
   const families = discoverAllSdkFamiliesIncludingApps(workspaceRoot);
 
+  // Build a context with concrete published version specs so every
+  // `ensureComposedPackageJson` call can rewrite `workspace:*` to a real
+  // semver range. We compute this once (not per-family) because scanning all
+  // composed manifests for each family would be O(n²).
+  const context = {
+    sdkCommonVersion: resolveSdkCommonPublishedVersion(workspaceRoot),
+    sdkUtilsVersion: resolveSdkUtilsPublishedVersion(workspaceRoot),
+    sdkGeneratorVersion: resolveSdkGeneratorPublishedVersion(workspaceRoot),
+    consumerVersions: buildSdkworkConsumerVersionMap(workspaceRoot),
+  };
+
   for (const family of families) {
     for (const file of [
       ensureManifest(family),
-      ensureComposedPackageJson(family),
+      ensureComposedPackageJson(family, workspaceRoot, context),
       ensureComposedFacade(family),
-      ...alignAllFamilyTransports(family),
+      ...alignAllFamilyTransports(family, context),
+      ...alignFamilyProviderPackages(family, context),
     ]) {
       if (file) changed.push(file);
     }

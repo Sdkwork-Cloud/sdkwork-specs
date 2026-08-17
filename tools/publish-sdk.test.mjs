@@ -18,7 +18,7 @@ import {
 } from './lib/sdk-publish/discover-publishable-sdks.mjs';
 import { getPublisher } from './lib/sdk-publish/publisher-registry.mjs';
 import { ReportBuilder } from './lib/sdk-publish/report.mjs';
-import { isPreRelease, toDisplayPath } from './lib/sdk-publish/util.mjs';
+import { isPreRelease, toDisplayPath, bumpVersion } from './lib/sdk-publish/util.mjs';
 
 function makeTempWorkspace() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdkwork-pub-'));
@@ -50,6 +50,36 @@ test('isPreRelease detects 0.x and -rc / -beta', () => {
 test('toDisplayPath normalizes backslashes', () => {
   assert.equal(toDisplayPath('a\\b\\c'), 'a/b/c');
   assert.equal(toDisplayPath('a/b/c'), 'a/b/c');
+});
+
+test('bumpVersion increments patch/minor/major correctly', () => {
+  assert.equal(bumpVersion('0.1.0', 'patch'), '0.1.1');
+  assert.equal(bumpVersion('1.2.3', 'patch'), '1.2.4');
+  assert.equal(bumpVersion('0.1.0', 'minor'), '0.2.0');
+  assert.equal(bumpVersion('1.2.3', 'minor'), '1.3.0');
+  assert.equal(bumpVersion('0.1.0', 'major'), '1.0.0');
+  assert.equal(bumpVersion('1.2.3', 'major'), '2.0.0');
+  // pre-release suffix stripped
+  assert.equal(bumpVersion('1.0.0-rc.1', 'patch'), '1.0.1');
+  assert.equal(bumpVersion('1.0.0-beta', 'minor'), '1.1.0');
+});
+
+test('typescript publisher bumpPackageVersion writes new version to package.json', () => {
+  const ws = makeTempWorkspace();
+  const familyRoot = path.join(ws, 'sdks', 'sdkwork-bump-app-sdk');
+  const tsRoot = path.join(familyRoot, 'sdkwork-bump-app-sdk-typescript');
+  fs.mkdirSync(tsRoot, { recursive: true });
+  writeJson(path.join(tsRoot, 'package.json'), {
+    name: '@sdkwork/bump-app-sdk',
+    version: '0.1.0',
+  });
+
+  const pub = getPublisher('typescript');
+  const r = pub.bumpPackageVersion(tsRoot, 'patch');
+  assert.ok(r.ok);
+  assert.equal(r.version, '0.1.1');
+  const after = JSON.parse(fs.readFileSync(path.join(tsRoot, 'package.json'), 'utf8'));
+  assert.equal(after.version, '0.1.1');
 });
 
 test('discoverFamilyLanguages picks up manifest-declared languages', () => {

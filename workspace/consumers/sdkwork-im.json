@@ -125,7 +125,7 @@
       "../sdkwork-agents/apps/sdkwork-agents-pc/packages/sdkwork-agents-pc-core",
       "../sdkwork-memory/sdks/sdkwork-memory-app-sdk/sdkwork-memory-app-sdk-typescript",
       "../sdkwork-prompts/sdks/sdkwork-prompts-app-sdk/sdkwork-prompts-app-sdk-typescript",
-      "../sdkwork-prompts/sdks/sdkwork-prompts-app-sdk/generated/server-openapi",
+      "../sdkwork-prompts/sdks/sdkwork-prompts-app-sdk/sdkwork-prompts-app-sdk-typescript/src/index.ts",
       "../sdkwork-utils/packages/sdkwork-utils-typescript",
       "../sdkwork-sdk-commons/sdkwork-sdk-common-typescript",
       "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-application-bootstrap",

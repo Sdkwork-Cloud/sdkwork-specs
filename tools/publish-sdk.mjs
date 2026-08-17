@@ -51,6 +51,7 @@ function parseCli() {
       'skip-build': { type: 'boolean', default: false },
       'allow-pre-release': { type: 'boolean', default: false },
       'skip-standard-check': { type: 'boolean', default: false },
+      bump: { type: 'string' },
       report: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
@@ -77,6 +78,7 @@ Options:
   --skip-build                  skip per-package build step
   --allow-pre-release           allow publishing 0.x / -rc / -beta versions
   --skip-standard-check         skip pre-publish check-sdk-standard gate
+  --bump <patch|minor|major>    bump version before publishing (writes package.json)
   --report <path>               write JSON report to this path
 
 Credentials (env):
@@ -106,6 +108,11 @@ async function main() {
   if (opts.language !== 'all' && !SUPPORTED_LANGUAGES.includes(opts.language)) {
     console.error(`unknown language: ${opts.language}`);
     console.error(`supported: ${SUPPORTED_LANGUAGES.join(', ')}`);
+    process.exit(2);
+  }
+
+  if (opts.bump && !['patch', 'minor', 'major'].includes(opts.bump)) {
+    console.error(`invalid --bump value: ${opts.bump} (must be patch|minor|major)`);
     process.exit(2);
   }
 
@@ -164,8 +171,27 @@ async function processOne(item, opts, report) {
     return;
   }
 
-  const { packageName, version, packagePath } = detected;
-  console.log(`  package: ${packageName}@${version}`);
+  const { packageName, version: detectedVersion, packagePath } = detected;
+  console.log(`  package: ${packageName}@${detectedVersion}`);
+
+  // Optional version bump before publish. Used to republish when the existing
+  // version on the registry is broken (npm forbids overwriting versions).
+  let version = detectedVersion;
+  if (opts.bump) {
+    if (typeof publisher.bumpPackageVersion !== 'function') {
+      report.add(makeItem(item, packageName, version, 'failed', `publisher does not support --bump (${item.language})`, 0));
+      console.log(`  failed: --bump not supported for ${item.language}`);
+      return;
+    }
+    const bumpResult = publisher.bumpPackageVersion(packagePath, opts.bump);
+    if (!bumpResult.ok) {
+      report.add(makeItem(item, packageName, version, 'failed', bumpResult.detail, 0));
+      console.log(`  failed: bump failed: ${bumpResult.detail}`);
+      return;
+    }
+    version = bumpResult.version;
+    console.log(`  bumped:  ${detectedVersion} → ${version}`);
+  }
 
   if (!opts['allow-pre-release'] && isPreRelease(version)) {
     report.add(makeItem(item, packageName, version, 'skipped', 'pre-release version (use --allow-pre-release)', 0));
@@ -210,13 +236,15 @@ async function processOne(item, opts, report) {
   }
   console.log(`  build:   ${buildResult.detail} (${buildMs}ms)`);
 
-  // Publish.
+  // Publish. Pass through process.env so credentials (NPM_TOKEN, etc.) reach
+  // the underlying pnpm/cargo/mvn/twine process. pnpm also reads .npmrc which
+  // can reference ${NPM_TOKEN}, so the env var must be visible to it.
   const pubStart = Date.now();
   const pubResult = publisher.publish(packagePath, {
     tag: opts.tag,
     access: opts.access,
     version,
-    env: {},
+    env: process.env,
   });
   const pubMs = Date.now() - pubStart;
   if (!pubResult.ok) {

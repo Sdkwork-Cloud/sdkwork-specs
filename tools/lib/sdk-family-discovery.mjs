@@ -97,6 +97,16 @@ function discoverFamilyAtRoot(repoRoot, familyRoot, sdkFamilyStem) {
     return buildFamilyRecord(repoRoot, familyRoot, sdkFamilyStem, legacyTypescriptRoot, legacyTransportRoot);
   }
 
+  // Composed-only family: no transport package exists yet (e.g. canvas-sdk
+  // whose generated transport was removed but composed facade remains). We
+  // still want align to manage the composed package.json — otherwise its
+  // `workspace:*` deps never heal. Transport-related fields point at the
+  // canonical expected path even if the package.json is missing.
+  if (typescriptRoot && fs.existsSync(path.join(typescriptRoot, 'package.json'))) {
+    const expectedTransportRoot = path.join(typescriptRoot, 'generated', 'server-openapi');
+    return buildFamilyRecord(repoRoot, familyRoot, sdkFamilyStem, typescriptRoot, expectedTransportRoot);
+  }
+
   return null;
 }
 

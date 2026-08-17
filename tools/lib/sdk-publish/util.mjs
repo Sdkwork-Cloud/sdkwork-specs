@@ -111,6 +111,31 @@ export function isPreRelease(version) {
   return /^0\./.test(core);
 }
 
+/**
+ * Bump a semver version string.
+ *
+ * @param {string} version - e.g. `1.2.3`, `0.1.0`, `1.0.0-rc.1`
+ * @param {'patch'|'minor'|'major'} level
+ * @returns {string} bumped version with pre-release suffix stripped
+ */
+export function bumpVersion(version, level) {
+  const core = String(version).split('+')[0].split('-')[0];
+  const parts = core.split('.').map((n) => parseInt(n, 10));
+  while (parts.length < 3) parts.push(0);
+  let [major, minor, patch] = parts;
+  if (level === 'major') {
+    major += 1;
+    minor = 0;
+    patch = 0;
+  } else if (level === 'minor') {
+    minor += 1;
+    patch = 0;
+  } else {
+    patch += 1;
+  }
+  return `${major}.${minor}.${patch}`;
+}
+
 /** Console wrapper so callers can swap sinks if needed. */
 export const log = (...args) => console.log(...args);
 export const warn = (...args) => console.warn(...args);
