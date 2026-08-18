@@ -340,8 +340,10 @@ The framework enforces secure defaults without per-route business configuration:
 - A production or production-like gateway that mounts any browser-callable `app` surface `MUST`
   fail startup when `allowAnyOrigin` is enabled or `allowedOrigins` is empty. Empty means deny all
   browser origins; it `MUST NOT` be interpreted as same-origin discovery. Each entry `MUST` be an
-  exact HTTP(S) origin without a wildcard, path, query, or fragment. Browser and desktop WebView
-  callers use the same rule, including OAuth authorization and callback completion requests.
+  exact origin without a wildcard, path, query, or fragment: an HTTP(S) origin, or a registered
+  desktop custom-scheme origin such as `app://dsh` or `tauri://localhost`. Browser and desktop
+  WebView callers use the same allowlist, including OAuth authorization and callback completion
+  requests. Unregistered schemes (`javascript:`, `data:`, `file:`) remain forbidden.
 - The source deployment profile is the origin-set authority under `SOURCE_CONFIG_SPEC.md`. Client
   SDK base URL selection, OAuth redirect URI construction, gateway routing, and CORS configuration
   `MUST` resolve from the same selected environment/profile; SDK consumers `MUST NOT` repair a 403

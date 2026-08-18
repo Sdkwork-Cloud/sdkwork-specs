@@ -236,7 +236,24 @@ allowAnyOrigin = false
 allowedOrigins = ["https://*.sdkwork.com", "https://app.sdkwork.com/login"]
 `);
   const issues = checkSourceConfigStandard(root);
-  assert.equal(issues.filter((issue) => issue.includes('invalid exact HTTP(S) origin')).length, 2);
+  assert.equal(issues.filter((issue) => issue.includes('invalid exact origin')).length, 2);
+});
+
+test('accepts production-like desktop custom-scheme origins beside HTTP(S)', () => {
+  const root = fixture();
+  write(root, 'sdkwork.app.config.json', '{}\n');
+  write(root, 'etc/README.md', '# Config\n');
+  write(root, 'etc/sdkwork.deployment.config.json', '{}\n');
+  write(root, 'etc/sdkwork-api-cloud-gateway.production.toml', `
+[service]
+environment = "production"
+[[dependencySurfaces]]
+surface = "app"
+[cors]
+allowAnyOrigin = false
+allowedOrigins = ["https://api.sdkwork.com", "app://dsh"]
+`);
+  assert.deepEqual(checkSourceConfigStandard(root), []);
 });
 
 test('accepts an app surface that delegates deployment and topology to its enclosing application', () => {

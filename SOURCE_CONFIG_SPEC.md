@@ -57,7 +57,10 @@ Rules:
 - Production and production-like profiles that expose an `app` API surface `MUST` set
   `cors.allowAnyOrigin = false` and `MUST` declare at least one exact HTTP(S) origin in
   `cors.allowedOrigins`. An empty list means no browser origin is allowed; it is not a same-origin
-  fallback. Wildcard origins, URL paths, query strings, and fragments are forbidden.
+  fallback. Wildcard origins, URL paths, query strings, and fragments are forbidden. Desktop
+  WebView callers that send a custom-scheme `Origin` (for example `app://dsh`) `MUST` appear as
+  additional exact entries on the same ingress allowlist; they do not replace the required HTTP(S)
+  origin.
 - Development profiles `MAY` use the shared Web Framework loopback/private-network development
   policy. They `MUST NOT` copy development wildcard or private-network directives into production
   source config.

@@ -283,6 +283,25 @@ function isExactHttpOrigin(value) {
   }
 }
 
+function isExactDesktopOrigin(value) {
+  try {
+    const url = new URL(value);
+    const reconstructed = `${url.protocol}//${url.host}`;
+    return (
+      (url.protocol === 'app:' || url.protocol === 'tauri:')
+      && reconstructed === value
+      && !value.includes('*')
+      && url.username === ''
+      && url.password === ''
+      && (url.pathname === '' || url.pathname === '/')
+      && url.search === ''
+      && url.hash === ''
+    );
+  } catch {
+    return false;
+  }
+}
+
 function inspectGatewayCors(file, relative, issues) {
   const source = fs.readFileSync(file, 'utf8');
   const environment = parseTomlString(source, 'environment');
@@ -302,9 +321,12 @@ function inspectGatewayCors(file, relative, issues) {
     issues.push(`${relative}#[cors].allowedOrigins: production-like app-api ingress requires at least one exact origin`);
     return;
   }
+  if (!allowedOrigins.some((origin) => isExactHttpOrigin(origin))) {
+    issues.push(`${relative}#[cors].allowedOrigins: production-like app-api ingress requires at least one exact HTTP(S) origin`);
+  }
   for (const origin of allowedOrigins) {
-    if (!isExactHttpOrigin(origin)) {
-      issues.push(`${relative}#[cors].allowedOrigins: invalid exact HTTP(S) origin ${JSON.stringify(origin)}`);
+    if (!isExactHttpOrigin(origin) && !isExactDesktopOrigin(origin)) {
+      issues.push(`${relative}#[cors].allowedOrigins: invalid exact origin ${JSON.stringify(origin)}`);
     }
   }
 }

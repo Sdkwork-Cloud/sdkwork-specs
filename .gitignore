@@ -72,3 +72,5 @@ Thumbs.db
 *.log
 .DS_Store
 Thumbs.db
+
+tools/_tmp-*
