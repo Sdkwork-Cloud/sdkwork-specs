@@ -82,6 +82,12 @@ Application repositories `MUST` resolve bootstrap access tokens through the shar
 
 Canonical helpers:
 
+- `@sdkwork/iam-application-bootstrap`
+  - `ensureRepoBootstrapAccessToken`
+  - `loadBootstrapAuthProfileFromHome`
+  - `writeRegisteredBootstrapEnvFiles`
+- `sdkwork-iam/scripts/dev/ensure-repo-bootstrap-access-token.mjs`
+- `sdkwork-space/bin/with-bootstrap-token.mjs`
 - `sdkwork-iam/scripts/dev/create-dev-bootstrap-access-token-env.mjs`
   - `mergeRepoBootstrapAccessTokenEnv`
   - `mergeRepoDevBootstrapAccessTokenEnv`

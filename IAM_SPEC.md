@@ -425,7 +425,7 @@ Minimum backend-api resources:
 | `iam.tenantApplications` | `tenantApplications.provision`, `tenantApplications.update`, `tenantApplications.enable` |
 | `iam.accessCredentials` | `accessCredentials.create` |
 
-Bootstrap backend operations `MUST` use body-based super-admin auth, not dual-token headers. Application onboarding `MUST` consume `@sdkwork/iam-application-bootstrap` instead of raw bootstrap HTTP. See `IAM_APPLICATION_BOOTSTRAP_SPEC.md`.
+Bootstrap backend operations `MUST` use body-based bootstrap operator auth, not dual-token headers. Application onboarding `MUST` consume `@sdkwork/iam-application-bootstrap` instead of raw bootstrap HTTP. See `IAM_APPLICATION_BOOTSTRAP_SPEC.md`.
 
 ## 7. Authorization
 

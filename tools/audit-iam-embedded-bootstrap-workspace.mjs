@@ -118,15 +118,15 @@ for (const repo of EMBEDDED_IAM_REPOS) {
   );
 }
 
-const gatewayBootstrapSource = readIfExists(
+const gatewayDependencyRoutesSource = readIfExists(
   workspaceRoot,
-  'sdkwork-api-cloud-gateway/crates/sdkwork-api-cloud-gateway/src/iam_application_bootstrap.rs',
+  'sdkwork-api-cloud-gateway/crates/sdkwork-api-cloud-gateway/src/embedded_dependency_routes.rs',
 );
-assert.ok(gatewayBootstrapSource, 'sdkwork-api-cloud-gateway embedded IAM bootstrap module must exist');
+assert.ok(gatewayDependencyRoutesSource, 'sdkwork-api-cloud-gateway embedded dependency routes must exist');
 assert.match(
-  gatewayBootstrapSource,
-  /ensure_tenant_application_from_app_root_with_env_and_fallback/u,
-  'sdkwork-api-cloud-gateway must provision tenant applications before mounting embedded IAM routes.',
+  gatewayDependencyRoutesSource,
+  /sdkwork_api_iam_assembly::assemble_owner_api_surfaces_with_pool/u,
+  'sdkwork-api-cloud-gateway must initialize IAM through the canonical owner assembly before serving embedded routes.',
 );
 
 console.log('sdkwork-space IAM embedded bootstrap workspace audit passed.');

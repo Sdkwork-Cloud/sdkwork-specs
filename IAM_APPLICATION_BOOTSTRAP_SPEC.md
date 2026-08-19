@@ -40,7 +40,7 @@ Rules:
 
 - Bootstrap operations `MUST NOT` require dual-token headers.
 - `tenantApplications.retrieve` is an authenticated admin read (dual-token) for runtime inspection; it is not part of the bootstrap-body flow and returns redacted `runtimeConfig` (including `[redacted]` for `oauth.relyingParty.clientSecretHash`).
-- Bootstrap body authentication `MUST` use super-admin credentials in the JSON body through `authToken` or username/email/phone plus `password`.
+- Bootstrap body authentication `MUST` use bootstrap operator credentials in the JSON body through `authToken` or username/email/phone plus `password`. Development often uses the platform super-admin account, but the auth profile directory and env keys `MUST NOT` assume that role name.
 - Handlers `MUST` enforce bootstrap-operator checks, per-operation permission codes, and tenant scope before business rules run.
 - Consumers `MUST NOT` hand-craft raw HTTP to these paths when `@sdkwork/iam-application-bootstrap` or generated backend SDK clients are available.
 
@@ -206,6 +206,59 @@ Rules:
 - Embedded bootstrap `MUST` derive `instance_key` through `tenant_application_instance_key(runtime_app_id, environment)` so tenant applications do not collide with platform defaults such as `default`.
 - Embedded bootstrap `MUST` upsert tenant applications by stable row id and reconcile org-template, runtime app id, and instance-key conflicts before enable.
 
+### 5.2 Bootstrap Operator Auth Profile
+
+Bootstrap operator credentials are operational secrets. They `MUST NOT` live in tracked manifests, `.env.example`, or repository scripts.
+
+| Location | Purpose |
+| --- | --- |
+| `~/.sdkwork/iam-bootstrap/<lifecycle>.json` | Canonical per-environment operator auth profile (`username`, `email`, `password`, optional `authToken`) |
+| `~/.sdkwork/users/<stem>.json` | Legacy fallback only; `super-admin` stem is retired as the primary path |
+| `SDKWORK_IAM_BOOTSTRAP_OPERATOR_USERNAME` / `SDKWORK_IAM_BOOTSTRAP_OPERATOR_PASSWORD` | Process env override for CI or one-shot commands |
+| `SDKWORK_IAM_BOOTSTRAP_OPERATOR_PROFILE` | Selects a profile file stem under `iam-bootstrap/` |
+
+Rules:
+
+- The canonical loader is `@sdkwork/iam-application-bootstrap` `loadBootstrapAuthProfileFromHome(...)`. Application and workspace scripts `MUST NOT` fork profile resolution or hard-code `~/.sdkwork/users/super-admin.json` as the primary source.
+- Rust embedded IAM startup `MUST` read the same `iam-bootstrap` directory through `sdkwork-iam-web-adapter` bootstrap auth helpers.
+- Development identity defaults: username `admin`, email `admin@sdkwork.com`. Passwords `MUST` stay in the ignored home profile file.
+- Batch bootstrap and token ensure `MUST` map workspace profile aliases (`dev`, `test`, `staging`, `prod`) to lifecycle names (`development`, `test`, `staging`, `production`) before selecting profile files.
+
+### 5.3 Lifecycle Access Token Ensure
+
+Start, build, test, check, verify, and clean commands that call protected app-api or backend-api surfaces `MUST` resolve `SDKWORK_ACCESS_TOKEN` before spawning child processes.
+
+Resolution order:
+
+1. Process env when the token is a usable signed JWT, or a loopback-only local fixture JWT when the backend URL is loopback.
+2. Registered private overlays: `.sdkwork.local.env`, then `.env.standalone.<lifecycle>.bootstrap.local`.
+3. IAM application bootstrap through `@sdkwork/iam-application-bootstrap` `ensureRepoBootstrapAccessToken(...)` when bootstrap operator credentials exist.
+4. Loopback-only credential-entry fixture generation through `@sdkwork/iam-credential-entry/node-bootstrap` for `development` or isolated `test` runners.
+
+Remote gateway backends `MUST` reject `alg:none` fixture JWTs from gitignored overlays. Operators `MUST` register a real token through IAM bootstrap or supply a signed JWT from a secret store.
+
+Canonical owners:
+
+| Owner | Role |
+| --- | --- |
+| `@sdkwork/app-topology` `sdkwork-app` | `prepareLifecycleAccessTokenEnv(...)` on `dev`, `build`, `test`, `check`, `verify`, and `clean` |
+| `sdkwork-iam/scripts/dev/ensure-repo-bootstrap-access-token.mjs` | CLI ensure for any manifest-bearing repo root |
+| `sdkwork-space/bin/with-bootstrap-token.mjs` | Cross-repo wrapper: workspace profile + repo launch env + home auth → ensure → spawn command |
+| `@sdkwork/iam-application-bootstrap` | `ensureRepoBootstrapAccessToken`, `writeRegisteredBootstrapEnvFiles`, auth profile loaders |
+| Application-specific packages such as `@sdkwork/sdkwork-env-bootstrap` | `MAY` narrow BirdCoder launch env; `MUST` delegate token ensure to the framework helpers |
+
+Rules:
+
+- Application repositories `SHOULD` expose `pnpm run env:token:ensure` when they do not route lifecycle commands through `sdkwork-app` but still own credential-entry surfaces.
+- Workspace batch bootstrap `MUST` load tracked profile values from `configs/bootstrap/profiles/<profile>.env`; ignored overrides use `configs/bootstrap/profiles/<profile>.local.env`.
+- Browser/renderer runtimes `MUST NOT` execute bootstrap registration or token ensure directly; Node orchestrators and topology facades own lifecycle resolution.
+
+Forbidden in application-owned lifecycle code:
+
+- copied fixture JWT signing
+- primary reads of `~/.sdkwork/users/super-admin.json` outside documented legacy fallback
+- sending fixture `alg:none` tokens to non-loopback `SDKWORK_BACKEND_BASE_URL` values
+
 Forbidden in application-owned embedded bootstrap code:
 
 - copied manifest-to-command mapping outside the shared crate
@@ -256,7 +309,7 @@ Workspace-level batch bootstrap lives in `sdkwork-space/bin/`:
 Rules:
 
 - Batch bootstrap `MUST` delegate per-app execution to `@sdkwork/iam-application-bootstrap` through `sdkwork-appbase/scripts/bootstrap/bootstrap-app.mjs`.
-- Batch bootstrap `MUST` load tracked environment profile values from `etc/bootstrap/profiles/<profile>.env`; ignored developer overrides use `etc/bootstrap/profiles/<profile>.local.env`.
+- Batch bootstrap `MUST` load tracked environment profile values from `configs/bootstrap/profiles/<profile>.env`; ignored developer overrides use `configs/bootstrap/profiles/<profile>.local.env`.
 - Batch bootstrap `MUST` resolve per-app domains and API Base URLs from `etc/sdkwork.deployment.config.json` and its referenced typed profiles unless an explicit command-line override is provided. It `MUST NOT` read concrete environment values from `sdkwork.app.config.json`.
 - Legacy `schemaVersion: 1` `sdkwork.app.config` and `schemaVersion: 2` backend gateway manifests `MAY` be upgraded in place through `bin/scaffold-app-manifest-bootstrap.mjs` before batch bootstrap.
 - Public script first segment `MUST` be `admin` per `PNPM_SCRIPT_SPEC.md` for application repositories; workspace `bin/` utilities `MAY` use neutral names such as `bootstrap-all-apps`.
@@ -282,6 +335,18 @@ Embedded IAM application repositories under `sdkwork-space` `MUST` run the works
 node ../sdkwork-specs/tools/audit-iam-embedded-bootstrap-workspace.mjs
 ```
 
+Repositories with credential-entry surfaces or explicit `env:token:ensure` scripts `MUST` run:
+
+```bash
+node ../sdkwork-specs/tools/check-bootstrap-access-token-lifecycle-standard.mjs --root .
+```
+
+Workspace-wide regression `MAY` run:
+
+```bash
+node sdkwork-specs/tools/check-bootstrap-access-token-lifecycle-standard.mjs --workspace .
+```
+
 Each embedded IAM repository `MUST` provide `scripts/dev/*-iam-application-bootstrap-standard.test.mjs` and keep startup ordering aligned with section 5.1. Cloud repositories `MUST` inject `SDKWORK_APP_ROOT` on every dev and gateway startup path (directly or through `@sdkwork/app-topology` `resolveIamDevEnv()`).
 
 ## 8. New Application Checklist
@@ -291,7 +356,8 @@ Each embedded IAM repository `MUST` provide `scripts/dev/*-iam-application-boots
 - [ ] Keep CLI/bootstrap scripts thin; no raw bootstrap HTTP in app code.
 - [ ] Wire backend SDK or IAM service adapter for non-CLI environments.
 - [ ] For embedded standalone/installer runtimes, delegate to `sdkwork-iam-embedded-application-bootstrap` instead of local SQL/bootstrap copies.
-- [ ] Document `admin:bootstrap:app` or approved equivalent in the app runbook.
+- [ ] Document `admin:bootstrap:app`, `env:token:ensure`, or approved `sdkwork-app` lifecycle wiring in the app runbook.
+- [ ] Store bootstrap operator credentials under `~/.sdkwork/iam-bootstrap/<lifecycle>.json` or approved secret store; do not commit passwords.
 - [ ] Run `check-iam-application-bootstrap-standard.mjs` before merge.
 - [ ] For embedded IAM runtimes, run `audit-iam-embedded-bootstrap-workspace.mjs` and the repository `*-iam-application-bootstrap-standard.test.mjs` governance test before merge.
 - [ ] Run `@sdkwork/iam-application-bootstrap` contract tests when the framework package is present in the workspace.

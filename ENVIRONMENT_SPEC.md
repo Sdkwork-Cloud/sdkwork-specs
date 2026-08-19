@@ -695,7 +695,7 @@ Bootstrap lifecycle policy:
 | `staging` | Secret manager, mounted secret, protected host env, or equivalent private runtime source | Fail closed | Never embed in HTML, bundles, public env, or static runtime config. |
 | `production` | Secret manager, mounted secret, protected host env, or equivalent private runtime source | Fail closed | Never embed in HTML, bundles, public env, or static runtime config. |
 
-The canonical Node owner is `sdkwork-iam/scripts/dev/create-dev-bootstrap-access-token-env.mjs`. The canonical Vite owner is `@sdkwork/iam-credential-entry/vite`. Application repositories `MUST NOT` copy fixture JWT creation, manifest identity lookup, env merge, private bootstrap env-file parsing, inline serialization, or canonical global assignment. `process.env.SDKWORK_ACCESS_TOKEN` Vite define replacement is forbidden as the browser handoff because it is not reliable for linked client source in Vite 6.
+The canonical Node owners are `@sdkwork/iam-application-bootstrap` `ensureRepoBootstrapAccessToken(...)`, `sdkwork-iam/scripts/dev/ensure-repo-bootstrap-access-token.mjs`, `sdkwork-space/bin/with-bootstrap-token.mjs`, and loopback fixture merge through `sdkwork-iam/scripts/dev/create-dev-bootstrap-access-token-env.mjs`. The canonical Vite owner is `@sdkwork/iam-credential-entry/vite`. Application repositories `MUST NOT` copy fixture JWT creation, manifest identity lookup, env merge, private bootstrap env-file parsing, inline serialization, or canonical global assignment. `process.env.SDKWORK_ACCESS_TOKEN` Vite define replacement is forbidden as the browser handoff because it is not reliable for linked client source in Vite 6.
 
 | Credential | Source | Header | Env/config rule |
 | --- | --- | --- | --- |
