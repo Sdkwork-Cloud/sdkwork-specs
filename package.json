@@ -18,6 +18,7 @@
     "check:package-content-standard": "node tools/check-package-content-standard.mjs --workspace ..",
     "publish:sdk": "node tools/publish-sdk.mjs --workspace ..",
     "publish:sdk:dry-run": "node tools/publish-sdk.mjs --workspace .. --dry-run",
+    "publish:sdk:list": "node tools/publish-sdk.mjs --workspace .. --list",
     "publish:app": "node tools/publish-app.mjs --workspace ..",
     "publish:app:dry-run": "node tools/publish-app.mjs --workspace .. --dry-run"
   },

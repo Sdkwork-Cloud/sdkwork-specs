@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { listWorkspaceRepos } from '../app-sdk-consumer-import-patterns.mjs';
+import { matchesRepoSelection } from '../repo-selection.mjs';
 import { findLanguageRoot, readJson, toDisplayPath } from './util.mjs';
 
 /**
@@ -138,12 +139,12 @@ export function discoverFamilyLanguages(repoRoot, familyRoot, familyStem) {
  * Filter the discovered list by repo / family / language selectors.
  *
  * @param {PublishableSdk[]} all
- * @param {{repo?: string, family?: string, language?: string}} filters
+ * @param {{repos?: string[], filter?: string | null, family?: string, language?: string}} selectors
  * @returns {PublishableSdk[]}
  */
-export function filterPublishable(all, { repo, family, language } = {}) {
+export function filterPublishable(all, { repos, filter, family, language } = {}) {
   return all.filter((item) => {
-    if (repo && item.repoName !== repo) return false;
+    if (!matchesRepoSelection(item.repoName, repos, filter)) return false;
     if (family && item.sdkFamily !== family) return false;
     if (language && language !== 'all' && item.language !== language) return false;
     return true;

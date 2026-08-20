@@ -139,12 +139,17 @@ test('filterPublishable respects repo / family / language', () => {
     { repoName: 'sdkwork-a', sdkFamily: 'fa', language: 'typescript' },
     { repoName: 'sdkwork-a', sdkFamily: 'fb', language: 'rust' },
     { repoName: 'sdkwork-b', sdkFamily: 'fc', language: 'go' },
+    { repoName: 'sdkwork-image', sdkFamily: 'fi', language: 'typescript' },
   ];
-  assert.equal(filterPublishable(items, { repo: 'sdkwork-a' }).length, 2);
+  assert.equal(filterPublishable(items, { repos: ['sdkwork-a'] }).length, 2);
+  assert.equal(filterPublishable(items, { repos: ['sdkwork-a', 'sdkwork-b'] }).length, 3);
+  assert.equal(filterPublishable(items, { repos: ['sdkwork-im'] }).length, 0);
+  assert.equal(filterPublishable(items, { repos: ['sdkwork-image'] }).length, 1);
+  assert.equal(filterPublishable(items, { filter: 'sdkwork-a' }).length, 2);
   assert.equal(filterPublishable(items, { family: 'fb' }).length, 1);
-  assert.equal(filterPublishable(items, { language: 'typescript' }).length, 1);
-  assert.equal(filterPublishable(items, { language: 'all' }).length, 3);
-  assert.equal(filterPublishable(items, {}).length, 3);
+  assert.equal(filterPublishable(items, { language: 'typescript' }).length, 2);
+  assert.equal(filterPublishable(items, { language: 'all' }).length, 4);
+  assert.equal(filterPublishable(items, {}).length, 4);
 });
 
 test('typescript publisher detects consumer package and rejects transport', () => {

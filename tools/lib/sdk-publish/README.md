@@ -29,8 +29,9 @@ pnpm publish:sdk -- --repo sdkwork-iam --language all
 
 1. **Discovers** every `sdks/<family>/sdk-manifest.json` across `sdkwork-space/*`
    and `sdkwork-space/*/apps/*/sdks/*`.
-2. **Filters** by `--repo`, `--family`, `--language`.
-3. For each package:
+2. **Filters** by `--repo`, `--filter`, `--family`, `--language`.
+3. Unless `--skip-standard-check` is set, runs `check-sdk-standard` once for the workspace.
+4. For each package:
    - Reads `packageName` + `version` from the language manifest.
    - Skips pre-release versions unless `--allow-pre-release` is set.
    - Skips when the registry already has that version.
@@ -67,15 +68,18 @@ Packages with `publish_to: none` (Flutter) are skipped as private.
 
 ```
 --workspace <path>            workspace root (default: parent of sdkwork-specs)
---repo <name>                 limit to one repository
+--repo <name[,name...]>       limit to one or more repositories
+--filter <prefix>             limit to repositories whose name starts with <prefix>
 --family <stem>               limit to one SDK family
 --language <lang|all>         typescript | rust | java | flutter | python | go | all
+--list                        list discovered packages without publishing
 --dry-run                     discover + version-check only
 --tag <npm-dist-tag>          npm dist-tag (default: latest)
 --access <public|restricted>  npm scoped package access (default: public)
 --skip-build                  skip per-package build step
 --allow-pre-release           allow 0.x / -rc / -beta versions
 --skip-standard-check         skip pre-publish check-sdk-standard gate
+--bump <patch|minor|major>    bump version before publishing
 --report <path>               write JSON report to this path
 --help                        show usage
 ```
