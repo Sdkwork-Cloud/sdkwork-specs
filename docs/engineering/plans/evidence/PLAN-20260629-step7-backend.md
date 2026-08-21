@@ -9,7 +9,7 @@
 Type B backend/gateway repositories:
 
 - `sdkwork-api-cloud-gateway`
-- `sdkwork-web-server`
+- `sdkwork-webserver`
 - `sdkwork-database`
 - `sdkwork-app-topology`
 
@@ -27,7 +27,7 @@ Plus backend-only application roots with `apps/` metadata but no standard client
 
 ```text
 node sdkwork-specs/tools/verify-repo.mjs --root sdkwork-api-cloud-gateway  → pass
-node sdkwork-specs/tools/verify-repo.mjs --root sdkwork-web-server         → pass
+node sdkwork-specs/tools/verify-repo.mjs --root sdkwork-webserver         → pass
 node sdkwork-specs/tools/verify-repo.mjs --root sdkwork-database           → pass
 node sdkwork-specs/tools/verify-repo.mjs --root sdkwork-app-topology       → pass
 ```

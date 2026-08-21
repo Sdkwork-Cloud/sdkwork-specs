@@ -1,0 +1,9 @@
+# Example cloud deltas per SDKWORK_WEBSERVER_SPEC.md: inherits
+# server.common.toml; the target set is replaced wholesale (merge rule 5).
+profile = "cloud"
+
+[[http.upstream]]
+name = "api_backend"
+[[http.upstream.target]]
+address = "10.0.4.12:3900"
+weight = 3

@@ -1,18 +1,23 @@
 /**
- * PC application packager (React + Tauri).
+ * PC application packager (React + Tauri / React + Electron).
  *
  * Build targets:
  *  - `web`:      `pnpm run _sdkwork:build` (Vite build + esbuild server) → `dist/`
- *  - `windows` / `macos` / `linux`: Tauri desktop bundle via the app's
- *    `build:desktop:local` script when present.
+ *  - `windows` / `macos` / `linux`: native desktop bundle via the app's
+ *    `build:desktop:local` (Tauri host) or `build:desktop:electron:local`
+ *    (Electron host) script when present. The host kind is read from the app
+ *    manifest `artifacts.installConfig.packages[].clientArchitecture`
+ *    (`tauri` | `electron`).
  *
  * Artifacts:
  *  - web:   `dist/` archived as `web-universal.zip`
- *  - desktop: installers emitted by Tauri under `src-tauri/target/release/bundle/`
+ *  - desktop (Tauri): installers under `src-tauri/target/release/bundle/`
  *    (`.exe`/`.msi`, `.dmg`, `.AppImage`/`.deb`).
+ *  - desktop (Electron): installers under `release/`, `out/`, or `dist/`
+ *    (`.exe`/`.msi`, `.dmg`, `.AppImage`/`.deb`, `.blockmap`).
  *
  * Authority: APP_PC_ARCHITECTURE_SPEC.md, APP_PC_REACT_UI_SPEC.md,
- * RELEASE_SPEC.md §2 (application release type).
+ * DESKTOP_APP_ARCHITECTURE_SPEC.md §5.2, RELEASE_SPEC.md §2.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,6 +28,31 @@ import { artifactPackages, resolveBuildScript, stagingDir } from './shared.mjs';
 export const architecture = 'pc';
 export const defaultPlatforms = ['web', 'windows', 'macos', 'linux'];
 export const registry = 'github';
+
+const TAURI_DESKTOP_BUILD_SCRIPT = 'build:desktop:local';
+const ELECTRON_DESKTOP_BUILD_SCRIPT = 'build:desktop:electron:local';
+const TAURI_BUNDLE_ROOT = path.join('src-tauri', 'target', 'release', 'bundle');
+const ELECTRON_BUNDLE_ROOTS = ['release', 'out', 'dist'];
+
+/** Resolve the desktop host kind from the app manifest, defaulting to tauri. */
+function desktopHostKind(appRoot, appConfig) {
+  const config = appConfig ?? readJson(path.join(appRoot, 'sdkwork.app.config.json')) ?? {};
+  const pkgs = config?.artifacts?.installConfig?.packages;
+  if (Array.isArray(pkgs)) {
+    for (const p of pkgs) {
+      const kind = String(p?.clientArchitecture ?? p?.metadata?.clientArchitecture ?? '').toLowerCase();
+      if (kind === 'electron' || kind === 'tauri') return kind;
+    }
+  }
+  return 'tauri';
+}
+
+function electronBundleRoot(appRoot) {
+  const existing = ELECTRON_BUNDLE_ROOTS
+    .map((dir) => path.join(appRoot, dir))
+    .find((dir) => fs.existsSync(dir));
+  return existing ?? path.join(appRoot, ELECTRON_BUNDLE_ROOTS[0]);
+}
 
 /**
  * @returns {{ appKey: string, version: string, appRoot: string, platforms: string[] } | null}
@@ -75,15 +105,23 @@ export function build(appRoot, { skipBuild, platform, env } = {}) {
   }
 
   if (platform === 'windows' || platform === 'macos' || platform === 'linux') {
-    // Desktop builds are Tauri-host builds; they run on the matching host
-    // runner. The app exposes `build:desktop:local` (filter script) when
-    // desktop packaging is wired.
+    // Desktop builds are native host builds; they run on the matching host
+    // runner. The app exposes `build:desktop:local` (Tauri) or
+    // `build:desktop:electron:local` (Electron) when desktop packaging is
+    // wired. Electron falls back to the Tauri script name when the app has
+    // not yet split its host scripts.
     const pkg = readJson(path.join(appRoot, 'package.json')) ?? {};
-    const hasDesktop = pkg.scripts && typeof pkg.scripts['build:desktop:local'] === 'string';
-    if (!hasDesktop) {
-      return { ok: false, detail: `no build:desktop:local script for ${platform} desktop` };
+    const scripts = (pkg.scripts ?? {});
+    const electron = desktopHostKind(appRoot) === 'electron';
+    const script = electron
+      ? (typeof scripts[ELECTRON_DESKTOP_BUILD_SCRIPT] === 'string'
+          ? ELECTRON_DESKTOP_BUILD_SCRIPT
+          : TAURI_DESKTOP_BUILD_SCRIPT)
+      : TAURI_DESKTOP_BUILD_SCRIPT;
+    if (typeof scripts[script] !== 'string') {
+      return { ok: false, detail: `no ${script} script for ${platform} desktop` };
     }
-    const r = runCommand('pnpm', ['-C', appRoot, 'run', 'build:desktop:local'], { cwd: appRoot, env });
+    const r = runCommand('pnpm', ['-C', appRoot, 'run', script], { cwd: appRoot, env });
     if (r.error || r.status !== 0) {
       return { ok: false, detail: `desktop build failed for ${platform} (status ${r.status ?? 'null'})` };
     }
@@ -110,12 +148,13 @@ export function collectArtifacts(appRoot, { appKey, version, platform, appConfig
   }
 
   if (platform === 'windows' || platform === 'macos' || platform === 'linux') {
-    const bundleRoot = path.join(appRoot, 'src-tauri', 'target', 'release', 'bundle');
+    const electron = desktopHostKind(appRoot, appConfig) === 'electron';
+    const bundleRoot = electron ? electronBundleRoot(appRoot) : path.join(appRoot, TAURI_BUNDLE_ROOT);
     if (!fs.existsSync(bundleRoot)) return [];
     const patterns = {
-      windows: /\.(exe|msi)$/i,
-      macos: /\.dmg$/i,
-      linux: /\.(AppImage|deb)$/i,
+      windows: /\.(exe|msi|blockmap)$/i,
+      macos: /\.(dmg|zip|blockmap)$/i,
+      linux: /\.(AppImage|deb|blockmap)$/i,
     };
     const found = collectFiles(bundleRoot, patterns[platform]);
     if (found.length === 0) return [];
@@ -125,7 +164,7 @@ export function collectArtifacts(appRoot, { appKey, version, platform, appConfig
       name: path.basename(p),
       platform,
       packageId: pkg?.id,
-      label: `${platform} desktop installer`,
+      label: `${platform} desktop installer (${electron ? 'electron' : 'tauri'})`,
     }));
   }
 

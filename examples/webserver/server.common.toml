@@ -1,0 +1,132 @@
+# Example server.common.toml per SDKWORK_WEBSERVER_SPEC.md (layout v2).
+# Shared baseline inherited by both deployment profiles: reverse proxy,
+# static directory mounting, named certificates, raw passthrough, and a
+# stream server. Copy the structure; never copy secrets.
+specVersion = 1
+kind = "sdkwork.webserver.server"
+id = "im"
+description = "IM module web server (example)"
+
+[nginx]
+enabled = true
+profile = "http-core-v1"
+unknownDirectivePolicy = "error"
+strict = true
+confFile = "nginx.conf"
+
+[main]
+user = "sdkwork"
+workerProcesses = "auto"
+workerRlimitNofile = 65535
+pid = "/run/sdkwork/im/webserver/nginx.pid"
+errorLog = "/var/log/sdkwork/im/webserver/error.log warn"
+raw = ["daemon off;"]
+
+[main.events]
+workerConnections = 1024
+use = "epoll"
+acceptMutex = true
+
+[http]
+sendfile = true
+tcpNopush = true
+tcpNodelay = true
+keepaliveTimeout = 75
+keepaliveRequests = 100
+clientMaxBodySize = "1100m"
+clientBodyTimeout = 60
+clientHeaderTimeout = 60
+serverTokens = "off"
+defaultType = "application/octet-stream"
+logFormat = ["main '$remote_addr - $remote_user [$time_local] \"$request\" $status $body_bytes_sent \"$http_referer\" \"$http_user_agent\"'"]
+accessLog = ["/var/log/sdkwork/im/webserver/access.log main"]
+gzip = true
+gzipTypes = ["text/css", "application/javascript", "application/json", "image/svg+xml"]
+gzipMinLength = 1024
+map = ["$http_upgrade $connection_upgrade default upgrade"]
+
+[http.certificates.im]
+certFile = "/opt/certs/letsencrypt/live/im.sdkwork.com/fullchain.pem"
+certKeyFile = "/opt/certs/letsencrypt/live/im.sdkwork.com/privkey.pem"
+chainFile = "/opt/certs/letsencrypt/live/im.sdkwork.com/chain.pem"
+ocspStapling = true
+
+# Reverse proxy target group definition; the target set is profile-specific
+# and lives in server.standalone.toml / server.cloud.toml.
+[[http.upstream]]
+name = "api_backend"
+loadBalancing = "least-connections"
+keepalive = 32
+keepaliveTimeout = "60s"
+
+# Virtual host 1: TLS production host.
+[[http.server]]
+listen = ["443 ssl", "80"]
+serverName = ["im.sdkwork.com", "www.im.sdkwork.com"]
+http2 = true
+
+[http.server.tls]
+cert = "im"
+protocols = ["TLSv1.2", "TLSv1.3"]
+preferServerCiphers = true
+sessionCache = "shared:SSL:10m"
+sessionTimeout = "10m"
+sessionTickets = false
+stapling = true
+staplingVerify = true
+
+[[http.server.location]]
+match = "/api/"
+proxyPass = "http://api_backend"
+proxySetHeader = [
+  "Host $host",
+  "X-Real-IP $remote_addr",
+  "X-Forwarded-For $proxy_add_x_forwarded_for",
+  "X-Forwarded-Proto $scheme",
+]
+proxyHttpVersion = "1.1"
+proxyBuffering = false
+proxyConnectTimeout = "10s"
+proxyReadTimeout = "120s"
+proxySendTimeout = "120s"
+proxyInterceptErrors = true
+
+[[http.server.location]]
+match = "/ws/"
+proxyPass = "http://api_backend"
+proxyHttpVersion = "1.1"
+proxyWebsocketUpgrade = true
+proxyReadTimeout = "3600s"
+proxyBuffering = false
+
+# Directory resource mounting: SPA static root.
+[[http.server.location]]
+match = "/"
+root = "/usr/share/sdkwork/im/web/pc"
+index = ["index.html"]
+tryFiles = ["$uri", "$uri/", "/index.html"]
+expires = "1h"
+
+# Virtual host 2: health-only loopback host.
+[[http.server]]
+listen = ["127.0.0.1:8088"]
+serverName = ["localhost"]
+
+[[http.server.location]]
+match = "= /healthz"
+returnStatus = 200
+returnBody = "{\"status\":\"ok\"}"
+
+[[http.server.location]]
+match = "= /readyz"
+returnStatus = 200
+returnBody = "{\"status\":\"ready\"}"
+
+[[http.server.location]]
+match = "/"
+returnStatus = 404
+returnBody = "not found"
+
+# Optional [[stream.server]] TCP (plaintext / TLS terminate / sslPreread) is
+# mapped by the Rust data plane. UDP and stream.raw fail closed; see
+# sdkwork-webserver/specs/nginx-gap.catalog.json.

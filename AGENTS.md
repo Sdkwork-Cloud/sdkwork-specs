@@ -155,7 +155,7 @@ Those authorities define the permission-inheritance and normalized route-collisi
 
 ## Task-Specific Standards
 
-API work loads `API_SPEC.md` and its validators. List/search work loads `PAGINATION_SPEC.md` and `check-pagination.mjs`. Source configuration work loads `SOURCE_CONFIG_SPEC.md` and `check-source-config-standard.mjs`. Link these authorities instead of copying their normative bodies into `AGENTS.md`.
+API work loads `API_SPEC.md` and its validators. List/search work loads `PAGINATION_SPEC.md` and `check-pagination.mjs`. Source configuration work loads `SOURCE_CONFIG_SPEC.md` and `check-source-config-standard.mjs`. Web server configuration work loads `SDKWORK_WEBSERVER_SPEC.md` and `check-webserver-toml-standard.mjs`. Link these authorities instead of copying their normative bodies into `AGENTS.md`.
 
 ## Human Review Rules
 

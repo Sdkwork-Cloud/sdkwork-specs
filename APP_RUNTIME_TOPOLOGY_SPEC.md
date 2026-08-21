@@ -499,12 +499,21 @@ retain their existing process plan and do not receive inferred access URLs.
 
 ### 8.2 Adaptive Browser Delivery
 
+Independent modules that expose a browser client on `application.public-ingress`
+`MUST` declare both `pc-web` and `h5` client architectures (application roots
+`apps/<appId>-pc` and `apps/<appId>-h5`). Missing one surface collapses at plan
+time; missing both uses production `static-fallback` per
+`SDKWORK_DEPLOY_SPEC.md` §8.
+
 A `dev-server-proxy` browser delivery `MAY` declare `renderers` to become
 **adaptive**: one same-origin dev ingress selects the browser renderer by
 device class, and falls back to another renderer when the preferred one is
 unavailable. Desktop browsers receive `pc-web`; mobile browsers receive `h5`.
-This mirrors production `SDKWORK_DEPLOY_SPEC.md` §8 Adaptive Web on the dev
-side; the device detection contract below is shared with it.
+When the preferred renderer is not ready or fails, the ingress falls back to
+the other available renderer (desktop → `h5`, mobile → `pc-web`). This mirrors
+production `SDKWORK_DEPLOY_SPEC.md` §8 Adaptive Web (including §8.1 stock
+nginx named-location emission) on the dev side; the device detection contract
+below is shared with it.
 
 `browserDeliveries[].renderers`:
 
@@ -662,7 +671,14 @@ For example, PC Web and H5 both use `runtimeTarget = browser` and are selected
 with `clientArchitecture = pc-web` or `h5`; H5 is not a new runtime target.
 Processes without `clientArchitectures` remain shared. The default browser
 architecture is `pc-web` and the default desktop architecture is `tauri` for
-backward-compatible public commands; other architectures are explicit.
+backward-compatible public commands; other architectures are explicit. For
+desktop hosts, `clientArchitecture = "electron"` selects the Electron host and
+`clientArchitecture = "tauri"` selects the Tauri host; both use
+`runtimeTarget = "desktop"` and share the same `client` orchestration process
+while the runtime plan records the selected architecture so package and
+artifact selection stays deterministic. An application that ships both hosts
+`MUST` declare both values in its orchestration `clientArchitectures` and its
+manifest `clientArchitectures`.
 
 `cloud.development` plans `MUST` report zero local standalone gateway,
 platform gateway, API listener, edge runtime, database, Redis, migration, seed,

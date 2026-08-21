@@ -250,15 +250,16 @@ PC applications share one renderer and one package taxonomy across large-screen 
 | Target | Standard mode | Host/package | Required behavior |
 | --- | --- | --- | --- |
 | PC browser web | `web` | root Vite/browser build | Full app/console/admin route composition, no native host dependency, graceful host-adapter fallback |
-| Windows desktop | `desktop-windows` | `sdkwork-<application-code>-pc-desktop` | Tauri desktop bundle, WebView2 runtime boundary, Windows scripts in `bin/windows/` |
-| macOS desktop | `desktop-macos` | `sdkwork-<application-code>-pc-desktop` | Tauri desktop bundle, signed/notarized release when distributed outside development |
-| Linux desktop | `desktop-linux` | `sdkwork-<application-code>-pc-desktop` | Tauri desktop bundle, distro/runtime dependency documentation |
+| Windows desktop | `desktop-windows` | `sdkwork-<application-code>-pc-desktop` (Tauri) or `sdkwork-<application-code>-pc-electron` (Electron) | Native desktop bundle, WebView2 (Tauri) / Chromium (Electron) runtime boundary, Windows scripts in `bin/windows/` |
+| macOS desktop | `desktop-macos` | `sdkwork-<application-code>-pc-desktop` (Tauri) or `sdkwork-<application-code>-pc-electron` (Electron) | Native desktop bundle, signed/notarized release when distributed outside development |
+| Linux desktop | `desktop-linux` | `sdkwork-<application-code>-pc-desktop` (Tauri) or `sdkwork-<application-code>-pc-electron` (Electron) | Native desktop bundle, distro/runtime dependency documentation |
 | iPadOS native tablet | `tablet-ipados` | `sdkwork-<application-code>-pc-desktop` Tauri iOS target | Same PC renderer, adaptive tablet layout, iPad split/multi-window awareness, Apple signing and IPA workflow |
 | Android tablet native | `tablet-android` | `sdkwork-<application-code>-pc-desktop` Tauri Android target | Same PC renderer, adaptive tablet layout, Android large-screen/windowing behavior, APK/AAB workflow |
 
 Rules:
 
 - The PC renderer `MUST` be the source of truth for web, desktop, iPadOS, and Android tablet targets.
+- Desktop native hosts (Tauri and Electron) `MUST` follow `DESKTOP_APP_ARCHITECTURE_SPEC.md`: both consume the same renderer output and the same host adapter contract and bridge protocol, and feature packages `MUST NOT` reference host globals (`window.__TAURI__`, `window.electron`) directly.
 - Tablet native packaging `MUST NOT` create phone-first H5 pages, mobile-only business services, or a separate auth/runtime model inside the PC root.
 - iPadOS and Android tablet targets `MUST` use adaptive large-screen UI patterns: navigation rail/sidebar, split panes, tabs, drawers, resizable detail panels, keyboard shortcuts where available, touch/stylus support, and safe-area handling.
 - iPadOS and Android tablet targets `MUST` keep app, console, and admin route ownership identical to web/desktop mode unless a local component spec documents a platform-specific route exclusion.

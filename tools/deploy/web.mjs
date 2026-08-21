@@ -34,7 +34,7 @@ export function normalizeWeb(web) {
   throw new Error(`unsupported web value: ${JSON.stringify(web)}`);
 }
 
-export function resolveWebMode(repoRoot, appId, webSpec) {
+export function resolveWebMode(repoRoot, appId, webSpec, options = {}) {
   const normalized = normalizeWeb(webSpec);
   if (!normalized) {
     return { mode: null, surfaces: [], warnings: [] };
@@ -43,6 +43,12 @@ export function resolveWebMode(repoRoot, appId, webSpec) {
   const surfaces = normalized.surfaces ?? ['pc', 'h5'];
   const pcExists = surfaceExists(repoRoot, appId, 'pc');
   const h5Exists = surfaceExists(repoRoot, appId, 'h5');
+  const staticRoot =
+    typeof options.staticRoot === 'string' && options.staticRoot.trim()
+      ? options.staticRoot.trim()
+      : typeof options.overrides?.web?.staticRoot === 'string'
+        ? options.overrides.web.staticRoot.trim()
+        : '';
 
   if (normalized.kind === 'single') {
     const surface = surfaces[0];
@@ -62,21 +68,37 @@ export function resolveWebMode(repoRoot, appId, webSpec) {
     return {
       mode: 'collapse-pc',
       surfaces: ['pc'],
-      warnings: ['h5 surface missing; collapsing to pc for all clients'],
+      warnings: [
+        'h5 surface missing; collapsing to pc for all clients (mobile prefers h5, falls back to pc)',
+      ],
     };
   }
   if (!pcExists && h5Exists) {
     return {
       mode: 'collapse-h5',
       surfaces: ['h5'],
-      warnings: ['pc surface missing; collapsing to h5 for all clients'],
+      warnings: [
+        'pc surface missing; collapsing to h5 for all clients (desktop prefers pc, falls back to h5)',
+      ],
+    };
+  }
+  if (staticRoot) {
+    return {
+      mode: 'static-fallback',
+      surfaces: [],
+      staticRoot,
+      warnings: [
+        `no pc/h5 surfaces for appId ${appId}; serving static-fallback root ${staticRoot}`,
+      ],
     };
   }
   return {
     mode: null,
     surfaces: [],
     warnings: [],
-    errors: [`no web surfaces found for appId ${appId}; expected apps/${appId}-pc/ or apps/${appId}-h5/`],
+    errors: [
+      `no web surfaces found for appId ${appId}; expected apps/${appId}-pc/ or apps/${appId}-h5/, or overrides.web.staticRoot for static-fallback`,
+    ],
   };
 }
 
@@ -107,10 +129,12 @@ export function buildAdaptiveMapBlocks(appId, overrides = {}) {
       uaLines.push(`    "~*${escapeNginxRegex(rule.userAgent.trim())}" ${surface};`);
     }
   }
+  // iPad UAs often include "Mobile"; match tablet before the mobile regex
+  // (SDKWORK_DEPLOY_SPEC.md §8 — iPad defaults to pc unless tablet: h5).
+  uaLines.push(
+    tabletSurface(overrides) === 'h5' ? '    "~*iPad" h5;' : '    "~*iPad" pc;',
+  );
   uaLines.push(`    "~*${mobileRegex}" h5;`);
-  if (tabletSurface(overrides) === 'h5') {
-    uaLines.push('    "~*iPad" h5;');
-  }
   uaLines.push('    default pc;');
 
   return [

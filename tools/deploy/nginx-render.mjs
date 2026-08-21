@@ -140,8 +140,32 @@ export function renderNginxSite(plan, domain, options = {}) {
 
   if ((exposeItem.mode === 'web' || exposeItem.mode === 'web+api') && webMode) {
     if (useAdaptive) {
+      const mapVar = `$${mapBase}_surface_final`;
       serverLocations.push(`    location / {
-        include ${snippetDir}/${exposeItem.domain}.web.$${mapBase}_surface_final.conf;
+        try_files /__sdkwork_adaptive_dispatch__ ${mapVar};
+        add_header Vary "User-Agent, Sec-CH-UA-Mobile" always;
+    }
+
+    location @pc {
+        root ${exposeItem.webRoots.find((root) => root.surface === 'pc')?.path ?? `${snippetDir}/../web/pc`};
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    location @h5 {
+        root ${exposeItem.webRoots.find((root) => root.surface === 'h5')?.path ?? `${snippetDir}/../web/h5`};
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }`);
+    } else if (webMode === 'static-fallback') {
+      const root =
+        exposeItem.web?.staticRoot
+        ?? exposeItem.webRoots?.[0]?.path
+        ?? '/var/www/html';
+      serverLocations.push(`    location / {
+        root ${root};
+        index index.html;
+        try_files $uri $uri/ =404;
     }`);
     } else {
       const root = exposeItem.webRoots?.[0]?.path ?? '/var/www/html';

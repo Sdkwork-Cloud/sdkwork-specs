@@ -232,26 +232,33 @@ export function buildDeployContext(repoRoot, profileId, options = {}) {
 
     let webPlan = null;
     if (webSpec && mode !== 'api') {
-      webPlan = resolveWebMode(repoRoot, appId, webSpec);
+      webPlan = resolveWebMode(repoRoot, appId, webSpec, { overrides });
       if (webPlan.errors?.length) {
         errors.push(...webPlan.errors.map((e) => `domain "${domain}": ${e}`));
       }
       warnings.push(...(webPlan.warnings ?? []).map((w) => `domain "${domain}": ${w}`));
 
-      for (const surface of webPlan.surfaces ?? []) {
-        const root = webRoots({
-          appId,
-          runtimeCode,
-          layout,
-          surface,
-          repoRoot: path.resolve(repoRoot),
-          dev: options.dev,
-        });
+      if (webPlan.mode === 'static-fallback') {
+        const root = webPlan.staticRoot;
         if (layout === 'binary-package' && root.includes('/usr/share/sdkwork-space/')) {
           errors.push(`domain "${domain}": binary-package must not use sdkwork-space web root`);
         }
-        if (layout === 'source-tree' && root.includes(`/usr/share/sdkwork/${runtimeCode}/web/`)) {
-          errors.push(`domain "${domain}": source-tree must not use /usr/share/sdkwork/{runtimeCode}/web/`);
+      } else {
+        for (const surface of webPlan.surfaces ?? []) {
+          const root = webRoots({
+            appId,
+            runtimeCode,
+            layout,
+            surface,
+            repoRoot: path.resolve(repoRoot),
+            dev: options.dev,
+          });
+          if (layout === 'binary-package' && root.includes('/usr/share/sdkwork-space/')) {
+            errors.push(`domain "${domain}": binary-package must not use sdkwork-space web root`);
+          }
+          if (layout === 'source-tree' && root.includes(`/usr/share/sdkwork/${runtimeCode}/web/`)) {
+            errors.push(`domain "${domain}": source-tree must not use /usr/share/sdkwork/{runtimeCode}/web/`);
+          }
         }
       }
     }

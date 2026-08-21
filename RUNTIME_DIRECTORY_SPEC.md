@@ -1,8 +1,8 @@
 # Runtime Directory And Infrastructure Configuration Standard
 
-- Version: 1.1
+- Version: 1.2
 - Scope: runtime directories, server install layout, desktop private files, development layout, release configuration files, database configuration, Redis configuration, secrets, logs, cache, temporary files, cross-OS path conventions
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `NGINX_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `ENVIRONMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`, `APPLICATION_DEPLOY_LAYOUT_SPEC.md`, `DATABASE_SPEC.md`, `CACHE_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`, `NGINX_SPEC.md`
 
 This standard is the canonical SDKWork authority for host filesystem layout and
 infrastructure runtime configuration. Application-local documents may provide
@@ -68,10 +68,12 @@ Rules:
 - Source-controlled repository/application `.sdkwork/` directories are not user private runtime
   paths. Do not write runtime files under a source root `.sdkwork/`.
 - Process-specific files may use the process name inside the application
-  directory when it improves operator clarity. For example:
-  `/etc/sdkwork/router/cloudrouter.toml`.
-- New applications should use `<application-code>.toml` and `<application-code>.env` unless the runtime
-  has an established process name that operators already use.
+  directory when it improves operator clarity (for example
+  `/etc/sdkwork/router/cloudrouter.toml`). The universal primary runtime file
+  name is `config.toml` (`APPLICATION_DEPLOY_LAYOUT_SPEC.md` section 3).
+- New applications **MUST** use `config.toml` inside the application config
+  directory. Legacy `<process>.toml` or `<application-code>.toml` names **MAY**
+  remain during migration.
 - Product display names such as `CloudRouter`, `SdkWork Chat`, or `SDKWork`
   must not appear in Linux system service directories.
 
@@ -94,9 +96,9 @@ Linux service, archive, and package deployments must use these directories.
 | Purpose | Canonical path | Ownership | Notes |
 | --- | --- | --- | --- |
 | Runtime config | `/etc/sdkwork/<application-code>` | `root:sdkwork` | TOML, env files, config templates copied during install. |
-| Runtime config file | `/etc/sdkwork/<application-code>/<process>.toml` or `/etc/sdkwork/<application-code>/<application-code>.toml` | `root:sdkwork` | `SDKWORK_<APPLICATION_CODE>_CONFIG_FILE` may override it. |
+| Runtime config file | `/etc/sdkwork/<application-code>/config.toml` | `root:sdkwork` | `SDKWORK_<APPLICATION_CODE>_CONFIG_FILE` may override. Legacy `<process>.toml` readable during migration. |
 | Process env file | `/etc/sdkwork/<application-code>/<process>.env` or `/etc/sdkwork/<application-code>/<application-code>.env` | `root:sdkwork` | Non-public process overrides only. |
-| Secret files | `/etc/sdkwork/<application-code>/*.secret` | `root:sdkwork` | Prefer `0600` or `0640`; never world-readable. |
+| Secret files | `/etc/sdkwork/<application-code>/secrets/*.secret` | `root:sdkwork` | Prefer `0600` or `0640`; never world-readable. |
 | Workspace database config | `/etc/sdkwork/database` | `root:sdkwork` | Shared unified workspace PostgreSQL profile for production/staging (`ENVIRONMENT_SPEC.md` section 7.3). One directory per host; applications must not create per-app database subdirectories. |
 | Workspace database config file | `/etc/sdkwork/database/database.toml` | `root:sdkwork` | Structured `[database]` fields; `database.env` is the env-form equivalent. Optional `<profile-id>.env` per deployment profile. |
 | Workspace database secret | `/etc/sdkwork/database/database.secret` or `/etc/sdkwork/database/*.secret` | `root:sdkwork` | PostgreSQL password material; `0600` or `0640`; referenced by `password_file`. Single-application hosts may keep it at `/etc/sdkwork/<application-code>/secrets/database.secret` (`ENVIRONMENT_SPEC.md` section 7.3 exception). |
@@ -124,6 +126,21 @@ Rules:
 - New Linux service paths such as `/etc/<process>`, `/var/lib/<process>`,
   `/var/log/<process>`, `/usr/lib/<process>`, `/usr/share/<process>`, or
   `/opt/<process>` are not allowed for SDKWork applications.
+
+#### 4.1.1 Adaptive Web Static Roots (All Install Forms)
+
+Read-only SPA/static trees under the platform share root
+(`APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` §2.1):
+
+| Surface | Linux / container | macOS system | Windows system |
+| --- | --- | --- | --- |
+| PC | `/usr/share/sdkwork/<code>/web/pc/` | `/Library/Application Support/sdkwork/<code>/web/pc/` | `%ProgramFiles%\sdkwork\<code>\web\pc\` |
+| H5 | `/usr/share/sdkwork/<code>/web/h5/` | `/Library/Application Support/sdkwork/<code>/web/h5/` | `%ProgramFiles%\sdkwork\<code>\web\h5\` |
+| Static | `/usr/share/sdkwork/<code>/web/static/` | `/Library/Application Support/sdkwork/<code>/web/static/` | `%ProgramFiles%\sdkwork\<code>\web\static\` |
+
+Container images `MAY` prefix with `/app` (e.g. `/app/share/sdkwork/<code>/web/...`).
+Archive installs under `/opt/sdkwork/<code>/` use `share/web/{pc,h5,static}/` inside that tree.
+Packagers copy one source `dist/<envAlias>/` into these flat paths (no `dev|prod` segment retained).
 
 ### 4.2 Linux User Scope
 
@@ -162,7 +179,7 @@ service conventions.
 | Purpose | System scope | User scope |
 | --- | --- | --- |
 | Config root | `/Library/Application Support/sdkwork/<application-code>` | `~/.sdkwork/<application-code>/config` |
-| Config file | `/Library/Application Support/sdkwork/<application-code>/<process>.toml` | `~/.sdkwork/<application-code>/config/<process>.toml` |
+| Config file | `/Library/Application Support/sdkwork/<application-code>/config.toml` | `~/.sdkwork/<application-code>/config/config.toml` |
 | Data root | `/Library/Application Support/sdkwork/<application-code>/Data` | `~/.sdkwork/<application-code>/data` |
 | Logs | `/Library/Logs/sdkwork/<application-code>` | `~/.sdkwork/<application-code>/logs` |
 | Cache | `/Library/Caches/sdkwork/<application-code>` | `~/.sdkwork/<application-code>/cache` |
@@ -195,7 +212,7 @@ Windows paths must use an SDKWork namespace and the canonical application code.
 | --- | --- | --- |
 | Program files | `%ProgramFiles%\sdkwork\<application-code>` | Not applicable |
 | Config root | `%ProgramData%\sdkwork\<application-code>` | `%USERPROFILE%\.sdkwork\<application-code>\config` |
-| Config file | `%ProgramData%\sdkwork\<application-code>\<process>.toml` | `%USERPROFILE%\.sdkwork\<application-code>\config\<process>.toml` |
+| Config file | `%ProgramData%\sdkwork\<application-code>\config.toml` | `%USERPROFILE%\.sdkwork\<application-code>\config\config.toml` |
 | Data root | `%ProgramData%\sdkwork\<application-code>\Data` | `%USERPROFILE%\.sdkwork\<application-code>\data` |
 | Logs | `%ProgramData%\sdkwork\<application-code>\Logs` | `%USERPROFILE%\.sdkwork\<application-code>\logs` |
 | Cache | `%ProgramData%\sdkwork\<application-code>\Cache` | `%USERPROFILE%\.sdkwork\<application-code>\cache` |

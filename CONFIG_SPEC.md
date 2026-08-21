@@ -203,6 +203,13 @@ export interface SdkworkServerConfig {
 
 export interface SdkworkDesktopConfig {
   nativeHost: "tauri" | "electron" | "browser-installed" | "custom";
+  /**
+   * Optional bridge transport override; defaults to "auto". Tauri hosts use
+   * invoke/commands, Electron hosts use contextBridge/ipcRenderer, and browser
+   * hosts use the fallback adapter. Feature code MUST NOT select the transport
+   * directly; it consumes only `@sdkwork/desktop-host-contract` interfaces.
+   */
+  bridgeTransport?: "auto" | "invoke" | "ipc" | "none";
   localServiceEnabled?: boolean;
   localServiceBind?: string;
   userConfigFile?: string;

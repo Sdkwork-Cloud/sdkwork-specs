@@ -90,7 +90,20 @@ Rules:
 - Feature packages use Tailwind utility classes in components; they do not re-bootstrap the Tailwind engine in host-composed CSS.
 - Shared UI libraries may bootstrap Tailwind only for standalone library build stylesheets documented in `TAILWIND_CSS_INTEGRATION_SPEC.md`.
 
-## 7. Verification
+## 7. Browser PC/H5 Build Output Layout
+
+Authority: `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` §2.1.
+
+```text
+apps/sdkwork-<code>-pc/dist/{dev,test,staging,prod}/
+apps/sdkwork-<code>-h5/dist/{dev,test,staging,prod}/
+```
+
+- `build.outDir` = `dist/<envAlias>` (`development`→`dev` … `production`→`prod`).
+- PC and H5 `MUST NOT` share an `outDir`; bare `dist/` is forbidden.
+- Check: `node tools/check-browser-dist-layout.mjs --root <module>`.
+
+## 8. Verification
 
 Rules:
 
@@ -100,8 +113,9 @@ Rules:
 - Application layering scans `MUST` prove UI components do not call raw HTTP and services do not construct SDK clients locally.
 - Visual or browser verification is required for substantial UI changes when a runnable app exists.
 - Tailwind integration changes `MUST` run `check-tailwind-integration.mjs`.
+- Adaptive Web PC/H5 Vite builds `MUST` pass `check-browser-dist-layout.mjs`.
 
-## 8. Acceptance Checklist
+## 9. Acceptance Checklist
 
 - [ ] Correct UI architecture spec was loaded.
 - [ ] UI -> service -> SDK flow is preserved.
@@ -109,3 +123,4 @@ Rules:
 - [ ] `check-application-layering.mjs` passes when package services, UI, or SDK injection code is touched.
 - [ ] Text, errors, and permissions are surfaced intentionally.
 - [ ] Package family naming and SDK surface checks pass.
+- [ ] PC/H5 `outDir` uses `dist/{dev,test,staging,prod}` (`check-browser-dist-layout.mjs`).

@@ -57,7 +57,7 @@ Rules:
 | Foundation | C/D | `sdkwork-iam`, `sdkwork-appbase`, `sdkwork-core`, `sdkwork-ui`, `sdkwork-utils`, `sdkwork-sdk-commons` |
 | Client wave 1 | A | `sdkwork-mall`, `sdkwork-mcp`, `sdkwork-cloudrouter`, `sdkwork-agents`, `sdkwork-terminal`, `sdkwork-birdcoder` |
 | Client wave 2 | A | Remaining `sdkwork-*` client repos with `apps/sdkwork-*-{pc,h5,flutter-mobile,mini-program}/` |
-| Backend wave | B | `sdkwork-api-cloud-gateway`, `sdkwork-web-server`, other backend-only roots |
+| Backend wave | B | `sdkwork-api-cloud-gateway`, `sdkwork-webserver`, other backend-only roots |
 | Legacy decision | E | `sdkwork-notes`, `magic-studio`, `claw-studio`, `magic-studio-v2` — isolate or restructure |
 
 ## 3. Execution Steps
@@ -233,7 +233,7 @@ rg "dependency\.composition" --glob "*.md"
 
 **Objective:** Align backend-only repos (Cargo + `sdkwork.app.config.json`; no client core pattern).
 
-**Repos:** `sdkwork-api-cloud-gateway`, `sdkwork-web-server`, others identified in Step 0
+**Repos:** `sdkwork-api-cloud-gateway`, `sdkwork-webserver`, others identified in Step 0
 
 **Tasks:**
 

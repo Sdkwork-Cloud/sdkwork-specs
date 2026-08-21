@@ -204,6 +204,7 @@ lint
 format
 release
 deploy
+desktop
 db
 api
 sdk
@@ -231,6 +232,8 @@ Rules:
 - Runtime targets `MUST` be exposed through action-first scripts such as `dev:browser`,
   `dev:desktop`, `build:desktop`, `build:container`, `build:android-native`,
   `build:ios-native`, `dev:flutter-android`, and `release:package:mini-program`.
+  Desktop hosts additionally expose the `desktop:*` host family (section 4.1) as
+  equivalent aliases.
 - Root `dev:browser` and `dev:desktop` are normalized development defaults.
   When present, each `MUST` resolve to `database = postgres`,
   `deploymentProfile = standalone`, and `environment = development`,
@@ -253,19 +256,79 @@ Rules:
   `dev:flutter-android:standalone` / `dev:flutter-android:cloud`, and
   `dev:ios-native:standalone` / `dev:ios-native:cloud`. Cloud variants never
   include a database axis or start a local gateway.
+- Desktop hosts with Electron packaging `SHOULD` expose `dev:desktop:electron`
+  and `build:desktop:electron` (and optional `build:desktop:electron:prod`);
+  these select the Electron host while keeping the same renderer dev server,
+  profile defaults, and PostgreSQL database rules as the Tauri host.
 - Client build commands are profile-neutral by default, such as
   `build:desktop`, `build:capacitor-ios`, `build:flutter-android`, and
   `build:ios-native`. A profile-specific client build is allowed only when
   code, permissions, signing identity, entitlement, or store identity differs;
   endpoint selection alone is not sufficient reason to duplicate an artifact.
-- Tool or platform names such as `browser:*`, `desktop:*`, `tauri:*`, `docker:*`,
+- Tool or platform names such as `browser:*`, `tauri:*`, `electron:*`, `docker:*`,
   `android:*`, `ios:*`, `harmony:*`, `flutter:*`, and `mini-program:*` `MUST NOT`
   be public root, app surface, or package-local script names when they represent
-  a runtime target. The tool remains an internal runner detail behind the
-  standard action-first script.
-- `tauri` `MUST NOT` appear as a public script runtime target suffix such as `dev:tauri`; use `dev:desktop` or `build:desktop` instead.
+  a runtime target or tool. The tool remains an internal runner detail behind the
+  standard action-first script or the `desktop:*` host family.
+- `desktop:*` is the reserved desktop host-family prefix (section 4.1). It `MUST`
+  be followed by an allowed action and optional host/profile axes; other
+  `desktop:*` forms are rejected.
+- `tauri` and `electron` `MUST NOT` appear as public script runtime target
+  suffixes such as `dev:tauri` or `dev:electron`; use `dev:desktop`, `build:desktop`,
+  or `desktop:dev` instead. When a specific native host must be selected, use an
+  explicit host suffix such as `dev:desktop:electron`, `build:desktop:electron`,
+  or `desktop:dev:electron`; the default `dev:desktop` / `desktop:dev` remains
+  the Tauri host.
 - Docker-compatible runtime artifacts `MUST` map to `runtimeTarget = container`,
   not to a public `docker:*` command family.
+
+### 4.1 Desktop Host Family
+
+PC desktop roots expose a `desktop:*` command family as the top-level developer
+entry for native desktop hosts. The family is host-aware: it defaults to the
+Tauri host and selects the Electron host with an explicit `electron` axis.
+
+Grammar:
+
+```text
+desktop:<action>[:<host>][:<deploymentProfile>]
+```
+
+Allowed actions: `dev`, `build`, `check`, `test`, `release`, `package`,
+`preview`, and `smoke`.
+
+Allowed host axes: `tauri` (default) and `electron`.
+
+Allowed profile axes: `standalone` and `cloud` (plus `postgres`/`sqlite`
+database and `development`/`staging`/`prod`/`local` environment suffixes where
+the action accepts them).
+
+Examples:
+
+```text
+pnpm desktop:dev                 # 默认宿主 tauri，等价 pnpm dev:desktop
+pnpm desktop:dev:electron        # Electron 宿主，等价 pnpm dev:desktop:electron
+pnpm desktop:dev:standalone      # standalone profile（默认宿主 tauri）
+pnpm desktop:dev:cloud
+pnpm desktop:build               # 默认宿主 tauri，等价 pnpm build:desktop
+pnpm desktop:build:electron
+pnpm desktop:build:electron:prod
+pnpm desktop:check               # 默认宿主校验（tauri config）
+pnpm desktop:test
+pnpm desktop:release
+```
+
+Rules:
+
+- `desktop:dev` / `desktop:build` `MUST` resolve to the same defaults as
+  `dev:desktop` / `build:desktop` (PostgreSQL, standalone, development) and are
+  their equivalent aliases, not separate semantics.
+- `desktop:*` commands with no host axis use the Tauri host; the Electron host
+  is always explicit (`desktop:dev:electron`).
+- The `desktop:*` family applies to root, app-surface, and package-local scripts
+  under the same constraints as `dev:desktop` / `build:desktop`.
+- `desktop:*` is a native-host family. It is not a web/browser alias; use
+  `dev:browser` for browser development.
 
 ## 5. Axis Values
 
@@ -366,10 +429,10 @@ Migration examples:
 | `cloudrouter:dev:postgres` | `dev:server:postgres` or `dev:browser:postgres` based on the orchestrated target |
 | `cloudrouter:dev:cloud:split` | `dev:browser:cloud` |
 | `browser:dev` | `dev:browser` |
-| `desktop:dev` | `dev:desktop` |
-| `desktop:build` | `build:desktop` |
 | `tauri:dev` | `dev:desktop` |
 | `dev:tauri` | `dev:desktop` |
+| `electron:dev` | `dev:desktop:electron` |
+| `dev:electron` | `dev:desktop:electron` |
 | `docker:build` | `build:container` |
 | `android:build` | `build:android-native` |
 | `ios:build` | `build:ios-native` |
@@ -590,10 +653,10 @@ pnpm script validation `MUST` check:
 - Release and deploy commands use phase before deployment profile, expose
   profile-paired variants for supported phases, and keep provider suffixes
   after the deploy profile.
-- Runtime target command aliases use action-first names; `browser:*`, `desktop:*`,
-  `tauri:*`, `docker:*`, `android:*`, `ios:*`, `harmony:*`, `flutter:*`,
-  `mini-program:*`, and `*:tauri` are absent from root, app surface, and
-  package-local scripts.
+- Runtime target command aliases use action-first names or the `desktop:*`
+  host family (section 4.1); `browser:*`, `tauri:*`, `electron:*`, `docker:*`,
+  `android:*`, `ios:*`, `harmony:*`, `flutter:*`, `mini-program:*`, and `*:tauri`
+  are absent from root, app surface, and package-local scripts.
 - App surface and package scripts use standard local names where applicable, and do not keep
   retired public namespaces such as `server:*`, `service:*`, `portal:*`, `product:*`,
   `alignment:*`, `apis:*`, `file-sdk:*`, or `prepare:*`.
@@ -604,7 +667,7 @@ pnpm script validation `MUST` check:
   order such as `gateway:cloud:bundle`.
 - Active runner scripts under `scripts/` and `tools/` do not invoke or
   document retired public `pnpm` commands such as `browser:dev`,
-  `desktop:dev`, `server:dev`, `tauri:dev`, `dev:tauri`,
+  `server:dev`, `tauri:dev`, `dev:tauri`,
   `dev:portal`, or `dev:service`; internal implementation may still call
   native tools such as Vite, Tauri, Cargo, Docker, Flutter, Gradle, Xcode, or
   hvigor behind the standard action-first `pnpm` surface.
@@ -645,7 +708,7 @@ Rules:
 - [ ] `dev:cloud` consumes explicit deployed cloud API surfaces without starting a local API, gateway, or database.
 - [ ] Capability-specific root commands exist for release, deploy, API, SDK, database, gateway, topology, and supply-chain workflows when those capabilities exist.
 - [ ] No repository root public script starts with a application-code prefix such as `drive`, `im`, or `cloudrouter`.
-- [ ] Runtime-target commands are action-first, for example `dev:browser`, `dev:desktop`, `build:desktop`, `build:container`, `build:android-native`, `build:ios-native`, and `build:mini-program`; no public script uses platform/tool-first aliases such as `browser:*`, `desktop:*`, `tauri:*`, `docker:*`, `android:*`, `ios:*`, `harmony:*`, `flutter:*`, `mini-program:*`, or `*:tauri`.
+- [ ] Runtime-target commands are action-first, for example `dev:browser`, `dev:desktop`, `build:desktop`, `build:container`, `build:android-native`, `build:ios-native`, and `build:mini-program`; the `desktop:*` host family uses only section 4.1 actions/axes; no public script uses platform/tool-first aliases such as `browser:*`, `tauri:*`, `electron:*`, `docker:*`, `android:*`, `ios:*`, `harmony:*`, `flutter:*`, `mini-program:*`, or `*:tauri`.
 - [ ] Root `dev:browser` and `dev:desktop` default to
       `postgres:standalone` with `environment = development`; cloud variants
       are explicit suffixed commands, and `dev:desktop:sqlite` is client-local

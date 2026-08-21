@@ -1,6 +1,6 @@
 # Application Runtime Topology Naming Registry
 
-- Version: 5.5
+- Version: 5.7
 - Scope: canonical names for deployment profile, runtime topology vocabulary, profiles, surfaces, environment keys, CLI flags, and documentation
 - Related: `APP_RUNTIME_TOPOLOGY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_ARCHETYPES.md`, `NAMING_SPEC.md`, `DEPLOYMENT_SPEC.md`, `CONFIG_SPEC.md`
 
@@ -341,6 +341,7 @@ Rules:
 | `sdkwork-birdcoder` | `code.sdkwork.com` / `code-dev.sdkwork.com` / `code-test.sdkwork.com` / `code-staging.sdkwork.com` | `api.sdkwork.com` / `api-dev.sdkwork.com` / `api-test.sdkwork.com` / `api-staging.sdkwork.com` |
 | `sdkwork-appstore` | `appstore.sdkwork.com` / `appstore-dev.sdkwork.com` / `appstore-test.sdkwork.com` / `appstore-staging.sdkwork.com` | `api.sdkwork.com` / `api-dev.sdkwork.com` / `api-test.sdkwork.com` / `api-staging.sdkwork.com` |
 | `sdkwork-manager` | `admin.sdkwork.com` / `admin-dev.sdkwork.com` / `admin-test.sdkwork.com` / `admin-staging.sdkwork.com` | `api.sdkwork.com` / `api-dev.sdkwork.com` / `api-test.sdkwork.com` / `api-staging.sdkwork.com` |
+| `sdkwork-webserver` | `server.sdkwork.com` / `server-dev.sdkwork.com` / `server-test.sdkwork.com` / `server-staging.sdkwork.com` | `api.sdkwork.com` / `api-dev.sdkwork.com` / `api-test.sdkwork.com` / `api-staging.sdkwork.com` |
 
 Rules:
 
@@ -373,6 +374,15 @@ Rules:
   `knowledgebase-admin.sdkwork.com`). Crate names, env key prefixes
   (`SDKWORK_MANAGER_*`), and runtime directories (`/etc/sdkwork/manager`)
   keep following `applicationCode`.
+- `sdkwork-webserver` binds the `server` role host on `sdkwork.com` while
+  keeping `topology.applicationCode = webserver` (explicit-registration
+  precedence). Auxiliary surfaces follow the same suffix formula:
+  app-api = `server-app.sdkwork.com` (`server-app-<suffix>.sdkwork.com`),
+  backend-admin = `server-admin.sdkwork.com` (`server-admin-<suffix>.sdkwork.com`).
+  Crate names, env key prefixes (`SDKWORK_WEBSERVER_*`), and runtime
+  directories (`/etc/sdkwork/webserver`) keep following `applicationCode`.
+  Retired nicknames `server.sdkwork.com`, `web-<suffix>.sdkwork.com`, and
+  `testserver.sdkwork.com` MUST NOT appear in new configuration.
 
 ### 9.3 Base Domain Registry
 
@@ -435,6 +445,8 @@ Retired crate naming:
 
 | Version | Change |
 | --- | --- |
+| 5.7 | Restored `sdkwork-webserver` role host to `server.sdkwork.com` (`server-<suffix>.sdkwork.com`); auxiliary `server-app` / `server-admin`; retired `web.*` and `testserver` nicknames |
+| 5.6 | Temporarily registered `server.sdkwork.com` role host (superseded by 5.7); auxiliary `web-app` / `web-admin` |
 | 5.5 | Registered `sdkwork-manager` host row (`admin.sdkwork.com` role host with `applicationCode = manager`) and the bare-admin role-host precedence note |
 | 5.4 | Registered `sdkwork-appstore` host row (`appstore.sdkwork.com` role host) |
 | 5.3 | Registered `sdkwork-birdcoder` host row (`code.sdkwork.com` role host with `applicationCode = birdcoder`) and the explicit-registration precedence rule |

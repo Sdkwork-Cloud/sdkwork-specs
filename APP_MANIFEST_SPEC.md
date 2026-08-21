@@ -209,7 +209,7 @@ Client roots must keep manifest runtime metadata aligned with their root archite
 
 | Root architecture | Runtime family | Runtime framework examples | Publish platform examples |
 | --- | --- | --- | --- |
-| PC browser/desktop/tablet root | `web` or `desktop` | `react`, `react-tauri` | `WEB`, `DESKTOP_WINDOWS`, `DESKTOP_MACOS`, `DESKTOP_LINUX` |
+| PC browser/desktop/tablet root | `web` or `desktop` | `react`, `react-tauri`, `react-electron`, `electron` | `WEB`, `DESKTOP_WINDOWS`, `DESKTOP_MACOS`, `DESKTOP_LINUX` |
 | H5/Capacitor application root | `mobile` | `react-h5`, `react-capacitor` | `H5`, `H5_WEIXIN`, `APP_IOS`, `APP_ANDROID` |
 | Flutter mobile root | `mobile` | `flutter` | `APP_IOS`, `APP_ANDROID`, `APP_HARMONY` when supported |
 | Mini program root | `mini-program` | `weixin-mini-program`, `alipay-mini-program`, `multi-mini-program` | `MP_WEIXIN`, `MP_ALIPAY`, `MP_DINGTALK`, `MP_LARK` |
@@ -227,6 +227,8 @@ Rules:
 - Native iOS apps should use `runtime.family = "mobile"` and `runtime.framework = "ios-native"`.
 - Native HarmonyOS apps should use `runtime.family = "mobile"` and `runtime.framework = "harmony-native"`.
 - Package ids and artifact names in the manifest follow `NAMING_SPEC.md`; source package names follow the matching architecture standard and are not copied into release package ids unless they are also the release artifact identity.
+- PC desktop hosts map `clientArchitecture` values to host packages: `tauri` -> `sdkwork-<application-code>-pc-desktop`, `electron` -> `sdkwork-<application-code>-pc-electron`. A desktop package entry `MUST` declare exactly one `clientArchitecture` value and `MUST` agree with the host package that produced the artifact.
+- When an application ships both desktop hosts, its manifest `clientArchitectures` `MUST` include both `tauri` and `electron`, and each `artifacts.installConfig.packages[]` entry `MUST` pin its own `clientArchitecture` so release lookup and artifact collection stay deterministic.
 - `publish.platforms` must list only actually supported platforms. Do not list `APP_IOS`, `APP_ANDROID`, `APP_HARMONY`, or `MP_*` values just because the source architecture could support them later.
 
 ## 7. Media Assets

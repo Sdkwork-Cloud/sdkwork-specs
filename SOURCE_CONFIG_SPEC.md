@@ -2,7 +2,7 @@
 
 - Version: 1.0
 - Scope: source-controlled `etc/`, deployable-root configuration ownership, application declarations, runtime materialization, and config migration
-- Related: `CONFIG_SPEC.md`, `APP_MANIFEST_SPEC.md`, `ENVIRONMENT_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `COMPONENT_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
+- Related: `CONFIG_SPEC.md`, `APP_MANIFEST_SPEC.md`, `ENVIRONMENT_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `APPLICATION_DEPLOY_LAYOUT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SDKWORK_WORKSPACE_SPEC.md`, `COMPONENT_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
 ## 1. Purpose
 

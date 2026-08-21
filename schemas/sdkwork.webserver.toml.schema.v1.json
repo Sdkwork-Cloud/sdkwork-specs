@@ -1,0 +1,920 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdkwork.com/schemas/deploy/sdkwork.webserver.toml.schema.v1.json",
+  "title": "SDKWork Web Server Deploy Configuration (server.toml)",
+  "description": "Validation schema for deployments/webserver/server.toml per SDKWORK_WEBSERVER_SPEC.md. The TOML document converts to JSON for validation; see section 3.2 of the spec for the allowed TOML subset.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specVersion",
+    "kind",
+    "id"
+  ],
+  "properties": {
+    "specVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "sdkwork.webserver.server"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "profile": {
+      "description": "Deployment profile of a layout v2 override file (server.standalone.toml / server.cloud.toml); MUST NOT appear in server.common.toml",
+      "type": "string",
+      "enum": [
+        "standalone",
+        "cloud"
+      ]
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "description": {
+      "type": "string"
+    },
+    "nginx": {
+      "$ref": "#/$defs/nginx"
+    },
+    "main": {
+      "$ref": "#/$defs/main"
+    },
+    "http": {
+      "$ref": "#/$defs/http"
+    },
+    "stream": {
+      "$ref": "#/$defs/stream"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "enabled": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "description"
+        ],
+        "properties": {
+          "http": {
+            "not": {
+              "required": [
+                "server"
+              ]
+            }
+          },
+          "stream": {
+            "not": {
+              "required": [
+                "server"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "enabled": {
+            "not": {
+              "const": false
+            }
+          }
+        }
+      },
+      "then": {
+        "anyOf": [
+          {
+            "properties": {
+              "http": {
+                "required": [
+                  "server"
+                ]
+              }
+            },
+            "required": [
+              "http"
+            ]
+          },
+          {
+            "properties": {
+              "stream": {
+                "required": [
+                  "server"
+                ]
+              }
+            },
+            "required": [
+              "stream"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "nginx": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "default": "http-core-v1",
+          "description": "Typed nginx compatibility directive profile (http-core-v1)."
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Master switch for nginx compatibility (sidecar W16, import activation). nginx.enabled."
+        },
+        "unknownDirectivePolicy": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warn",
+            "allow"
+          ],
+          "default": "error"
+        },
+        "exceptionRef": {
+          "type": "string"
+        },
+        "strict": {
+          "type": "boolean",
+          "default": true
+        },
+        "confFile": {
+          "type": "string",
+          "default": "nginx.conf"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "unknownDirectivePolicy": {
+                    "const": "allow"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "strict": {
+                    "const": false
+                  }
+                }
+              }
+            ]
+          },
+          "then": {
+            "required": [
+              "exceptionRef"
+            ]
+          }
+        }
+      ]
+    },
+    "main": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "user": {
+          "type": "string"
+        },
+        "workerProcesses": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "workerRlimitNofile": {
+          "type": "integer"
+        },
+        "pid": {
+          "type": "string"
+        },
+        "errorLog": {
+          "type": "string"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "raw": {
+          "$ref": "#/$defs/rawList"
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "workerConnections": {
+              "type": "integer"
+            },
+            "use": {
+              "type": "string"
+            },
+            "acceptMutex": {
+              "type": "boolean"
+            },
+            "multiAccept": {
+              "type": "boolean"
+            },
+            "raw": {
+              "$ref": "#/$defs/rawList"
+            }
+          }
+        }
+      }
+    },
+    "http": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sendfile": {
+          "type": "boolean"
+        },
+        "tcpNopush": {
+          "type": "boolean"
+        },
+        "tcpNodelay": {
+          "type": "boolean"
+        },
+        "keepaliveTimeout": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "keepaliveRequests": {
+          "type": "integer"
+        },
+        "clientMaxBodySize": {
+          "type": "string"
+        },
+        "clientBodyTimeout": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "clientHeaderTimeout": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "serverTokens": {
+          "type": "string"
+        },
+        "defaultType": {
+          "type": "string"
+        },
+        "logFormat": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "accessLog": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "gzip": {
+          "type": "boolean"
+        },
+        "gzipTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "gzipMinLength": {
+          "type": "integer"
+        },
+        "map": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "raw": {
+          "$ref": "#/$defs/rawList"
+        },
+        "certificates": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/certificate"
+          }
+        },
+        "upstream": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/upstream"
+          }
+        },
+        "server": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/server"
+          }
+        },
+        "clientBodyBufferSize": {
+          "type": "string"
+        },
+        "clientHeaderBufferSize": {
+          "type": "string"
+        },
+        "largeClientHeaderBuffers": {
+          "type": "string"
+        },
+        "resetTimedoutConnection": {
+          "type": "boolean"
+        },
+        "sendTimeout": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "serverNamesHashMaxSize": {
+          "type": "integer"
+        },
+        "limitReqZone": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "certificate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "certFile": {
+          "type": "string"
+        },
+        "certKeyFile": {
+          "type": "string"
+        },
+        "chainFile": {
+          "type": "string"
+        },
+        "ocspStapling": {
+          "type": "boolean"
+        },
+        "acme": {
+          "type": "string"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "certFile",
+            "certKeyFile"
+          ]
+        },
+        {
+          "required": [
+            "acme"
+          ]
+        }
+      ],
+      "not": {
+        "required": [
+          "certFile",
+          "acme"
+        ]
+      }
+    },
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "target"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$"
+        },
+        "loadBalancing": {
+          "type": "string",
+          "enum": [
+            "round-robin",
+            "least-connections",
+            "ip-hash",
+            "random"
+          ]
+        },
+        "keepalive": {
+          "type": "integer"
+        },
+        "keepaliveTimeout": {
+          "type": "string"
+        },
+        "raw": {
+          "$ref": "#/$defs/rawList"
+        },
+        "target": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/upstreamTarget"
+          }
+        },
+        "hashKey": {
+          "type": "string"
+        }
+      }
+    },
+    "upstreamTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "type": "string",
+          "minLength": 1
+        },
+        "weight": {
+          "type": "integer"
+        },
+        "maxFails": {
+          "type": "integer"
+        },
+        "failTimeout": {
+          "type": "string"
+        },
+        "backup": {
+          "type": "boolean"
+        },
+        "down": {
+          "type": "boolean"
+        },
+        "resolve": {
+          "type": "boolean"
+        },
+        "raw": {
+          "type": "string"
+        }
+      }
+    },
+    "server": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "listen",
+        "serverName"
+      ],
+      "properties": {
+        "listen": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "serverName": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "http2": {
+          "type": "boolean"
+        },
+        "root": {
+          "type": "string"
+        },
+        "index": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tryFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "charset": {
+          "type": "string"
+        },
+        "errorPage": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "returnStatus": {
+          "type": "integer"
+        },
+        "returnBody": {
+          "type": "string"
+        },
+        "gzip": {
+          "type": "boolean"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "raw": {
+          "$ref": "#/$defs/rawList"
+        },
+        "tls": {
+          "$ref": "#/$defs/tls"
+        },
+        "location": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/location"
+          }
+        }
+      }
+    },
+    "tls": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cert": {
+          "type": "string"
+        },
+        "certFile": {
+          "type": "string"
+        },
+        "certKeyFile": {
+          "type": "string"
+        },
+        "chainFile": {
+          "type": "string"
+        },
+        "protocols": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "TLSv1.2",
+              "TLSv1.3"
+            ]
+          }
+        },
+        "ciphers": {
+          "type": "string"
+        },
+        "preferServerCiphers": {
+          "type": "boolean"
+        },
+        "sessionCache": {
+          "type": "string"
+        },
+        "sessionTimeout": {
+          "type": "string"
+        },
+        "sessionTickets": {
+          "type": "boolean"
+        },
+        "stapling": {
+          "type": "boolean"
+        },
+        "staplingVerify": {
+          "type": "boolean"
+        },
+        "clientCertificate": {
+          "type": [
+            "string",
+            "boolean"
+          ]
+        },
+        "clientCertificateCA": {
+          "type": "string"
+        },
+        "verifyDepth": {
+          "type": "integer"
+        },
+        "dhparam": {
+          "type": "string"
+        },
+        "raw": {
+          "$ref": "#/$defs/rawList"
+        },
+        "ecdhCurve": {
+          "type": "string"
+        }
+      },
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "cert",
+              "certFile"
+            ]
+          },
+          {
+            "required": [
+              "cert",
+              "certKeyFile"
+            ]
+          }
+        ]
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "match"
+      ],
+      "properties": {
+        "match": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proxyPass": {
+          "type": "string"
+        },
+        "proxySetHeader": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "proxyHttpVersion": {
+          "type": "string"
+        },
+        "proxyBuffering": {
+          "type": "boolean"
+        },
+        "proxyBufferSize": {
+          "type": "string"
+        },
+        "proxyConnectTimeout": {
+          "type": "string"
+        },
+        "proxyReadTimeout": {
+          "type": "string"
+        },
+        "proxySendTimeout": {
+          "type": "string"
+        },
+        "proxyWebsocketUpgrade": {
+          "type": "boolean"
+        },
+        "proxyRedirect": {
+          "type": "string"
+        },
+        "proxyInterceptErrors": {
+          "type": "boolean"
+        },
+        "addHeader": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deny": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limitRate": {
+          "type": "string"
+        },
+        "rewrite": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "root": {
+          "type": "string"
+        },
+        "alias": {
+          "type": "string"
+        },
+        "index": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tryFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "autoindex": {
+          "type": "boolean"
+        },
+        "expires": {
+          "type": "string"
+        },
+        "returnStatus": {
+          "type": "integer"
+        },
+        "returnBody": {
+          "type": "string"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "raw": {
+          "$ref": "#/$defs/rawList"
+        },
+        "proxyNextUpstream": {
+          "type": "string"
+        },
+        "proxyHideHeader": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "proxyRequestBuffering": {
+          "type": "boolean"
+        },
+        "proxyMethod": {
+          "type": "string"
+        },
+        "authBasic": {
+          "type": "string"
+        },
+        "authBasicUserFile": {
+          "type": "string"
+        },
+        "limitReq": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "etag": {
+          "type": "boolean"
+        },
+        "disableSymlinks": {
+          "type": "string"
+        },
+        "logNotFound": {
+          "type": "boolean"
+        },
+        "sendfileMaxChunk": {
+          "type": "string"
+        }
+      },
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "proxyPass",
+              "root"
+            ]
+          },
+          {
+            "required": [
+              "proxyPass",
+              "alias"
+            ]
+          },
+          {
+            "required": [
+              "proxyPass",
+              "returnStatus"
+            ]
+          },
+          {
+            "required": [
+              "root",
+              "alias"
+            ]
+          },
+          {
+            "required": [
+              "root",
+              "returnStatus"
+            ]
+          },
+          {
+            "required": [
+              "alias",
+              "returnStatus"
+            ]
+          },
+          {
+            "required": [
+              "include",
+              "proxyPass"
+            ]
+          },
+          {
+            "required": [
+              "include",
+              "root"
+            ]
+          },
+          {
+            "required": [
+              "include",
+              "alias"
+            ]
+          },
+          {
+            "required": [
+              "include",
+              "returnStatus"
+            ]
+          }
+        ]
+      }
+    },
+    "stream": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "raw": {
+          "$ref": "#/$defs/rawList"
+        },
+        "server": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "listen",
+              "proxyPass"
+            ],
+            "properties": {
+              "listen": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "proxyPass": {
+                "type": "string"
+              },
+              "proxyTimeout": {
+                "type": "string"
+              },
+              "proxyProtocol": {
+                "type": "boolean"
+              },
+              "raw": {
+                "$ref": "#/$defs/rawList"
+              }
+            }
+          }
+        }
+      }
+    },
+    "rawList": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1372,6 +1372,15 @@ Rules:
   combination rules, profile/environment equality, atomic nginx replacement,
   and apply/rollback restoration on test or reload failure. Apply/rollback must
   never consume `defaultProfile`.
+- Web server config tests run
+  `node --test tools/check-webserver-toml-standard.test.mjs tools/retired-nginx.test.mjs` and prove the
+  `deployments/webserver/` TOML subset parser, the W1-W22 validation rules
+  (`SDKWORK_WEBSERVER_SPEC.md` section 14), the layout v2 inheritance merge
+  (`server.common.toml` baseline with `server.standalone.toml` /
+  `server.cloud.toml` overrides: scalar override, leaf-array replacement,
+  identity-key upsert, wholesale target replacement), canonical nginx conf
+  rendering, per-profile sidecar equivalence, profile-key rules, and
+  workspace compliance scanning.
 - App manifest tests run `node --test tools/check-app-manifest-standard.test.mjs`
   and `node --test tools/check-app-manifest-deployment-standard.test.mjs` and
   prove the v3 schema/validator, package/release references, secret rejection,

@@ -2,7 +2,7 @@
 
 - Version: 1.1
 - Scope: per-application deployment manifest, install layouts, adaptive Web, Nginx site generation, client package release orchestration
-- Related: `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `NGINX_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `RELEASE_SPEC.md`, `CONFIG_SPEC.md`, `API_SPEC.md`, `PNPM_SCRIPT_SPEC.md`
+- Related: `SDKWORK_WORKSPACE_SPEC.md`, `NAMING_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `APPLICATION_DEPLOY_LAYOUT_SPEC.md`, `APP_RUNTIME_TOPOLOGY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `NGINX_SPEC.md`, `SDKWORK_WEBSERVER_SPEC.md`, `APP_MANIFEST_SPEC.md`, `GITHUB_WORKFLOW_SPEC.md`, `RELEASE_SPEC.md`, `CONFIG_SPEC.md`, `API_SPEC.md`, `PNPM_SCRIPT_SPEC.md`
 
 This standard defines the single deployment contract for each SDKWork application repository. Deploy tools and SDKWork Deploy Server consume `deployments/deploy.yaml` together with existing app, topology, workflow, and API contracts.
 
@@ -33,7 +33,17 @@ Optional:
 ```text
 deployments/templates/
 deployments/nginx/
+deployments/webserver/       # layout v2 per SDKWORK_WEBSERVER_SPEC.md
 ```
+
+`deployments/webserver/` holds the module's declarative web server
+configuration (`SDKWORK_WEBSERVER_SPEC.md` layout v2:
+`server.common.toml` + `server.standalone.toml` + `server.cloud.toml`):
+it owns reverse proxy locations, virtual hosts, static resource mounting,
+and certificates. The retired single-file `server.toml` MUST NOT exist.
+`expose` domains in `deploy.yaml` `SHOULD` be covered by `[[http.server]]`
+`serverName` entries there; the check is enforced by
+`tools/check-webserver-toml-standard.mjs`.
 
 Workspace root `sdkwork-space/` MUST NOT define a workspace-wide deployment manifest.
 
@@ -67,7 +77,7 @@ Rules:
 
 Development always uses `{repoRoot}` with the same relative paths as the repository.
 
-Config, data, logs for both layouts:
+Config, data, logs for both layouts (`APPLICATION_DEPLOY_LAYOUT_SPEC.md` section 3):
 
 ```text
 /etc/sdkwork/{runtimeCode}/
@@ -269,7 +279,13 @@ Multi-domain binding modes:
 
 Constraints:
 
-- `mode: api` MUST NOT include `web`.
+- `mode: api` MUST NOT include `web`. Edge nginx for `mode: api` `MUST`
+  reverse-proxy public traffic to the owning process upstream and `MUST NOT`
+  emit Adaptive Web `@pc` / `@h5` file roots or ordinary module SPA static
+  roots for that domain. The `sdkwork-webserver` module's public-ingress
+  expose items `MUST` use `mode: api`: Adaptive Web selection, website
+  delivery, reverse proxy, and static file serving for that product are owned
+  by the `sdkwork-webserver` process (see §8 exception below).
 - `mode: web` MUST NOT expose API locations unless overridden in `overrides.nginx`.
 - production MUST NOT use `tls: off` unless `overrides.allowInsecureTls: true`.
 - `domain` MUST be an element of the host set registered for the profile
@@ -294,6 +310,25 @@ There is NO `routes` section.
 
 ## 8. Adaptive Web
 
+Modules with public `web` / `web+api` domains `MUST` ship PC+H5 roots and
+install them under `<share>/web/{pc,h5}/` with source builds in
+`dist/{dev,test,staging,prod}/` (`APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` §2.1,
+`RUNTIME_DIRECTORY_SPEC.md` §4.1.1).
+
+**Exception — `sdkwork-webserver`:** `expose.mode: api` → edge nginx proxy-only;
+process `[app_roots]` owns Adaptive Web (`SDKWORK_WEBSERVER_SPEC.md` §13.6).
+§8.1 nginx emission still applies to other modules with `web` / `web+api`.
+
+Normative request selection (same for production nginx and app-config data
+planes that serve module Adaptive Web):
+
+| Client class | Preferred surface | If preferred surface is not packaged / not ready |
+| --- | --- | --- |
+| Mobile (`Sec-CH-UA-Mobile: ?1` or mobile UA) | H5 | PC |
+| Desktop / other | PC | H5 |
+| Tablet | PC (or H5 when `overrides.web.tablet: h5`) | other available surface |
+| Neither PC nor H5 packaged | — | `static-fallback` (ordinary static root; see below) |
+
 `web: adaptive` or `web: [pc, h5]` selects PC/H5 by request headers on path `/`.
 
 The development-side mirror of this contract is `APP_RUNTIME_TOPOLOGY_SPEC.md`
@@ -306,8 +341,9 @@ Detection order:
 
 1. `overrides.web.rules`
 2. `Sec-CH-UA-Mobile: ?1`
-3. default mobile User-Agent regex
-4. default desktop → `pc`
+3. tablet User-Agent (`iPad`) → `overrides.web.tablet` (`pc` default, or `h5`)
+4. default mobile User-Agent regex
+5. default desktop → `pc`
 
 Default mobile User-Agent regex:
 
@@ -315,20 +351,73 @@ Default mobile User-Agent regex:
 (Mobile|Android|iPhone|iPod|webOS|BlackBerry|IEMobile|Opera Mini|MicroMessenger|HuaweiBrowser|HarmonyOS|UCBrowser|Quark)
 ```
 
-iPad defaults to `pc` unless `overrides.web.tablet: h5`.
+iPad defaults to `pc` unless `overrides.web.tablet: h5`. Stock nginx maps
+`MUST` match `iPad` **before** the mobile regex because many iPad User-Agents
+also contain `Mobile`.
 
-Plan folding:
+Preferred surface and cross-collapse:
 
-| Repository state | web mode |
-| --- | --- |
-| pc and h5 exist | `adaptive` |
-| pc only | `collapse-pc` |
-| h5 only | `collapse-h5` |
-| neither | validate FAIL |
+| Client class | Preferred surface | If preferred missing |
+| --- | --- | --- |
+| Mobile (`Sec-CH-UA-Mobile: ?1` or mobile UA) | `h5` | serve `pc` |
+| Desktop / other | `pc` | serve `h5` |
+| Tablet | `pc` (or `h5` when `overrides.web.tablet: h5`) | other available surface |
 
-Nginx adaptive rendering MUST use snippet `include` files. Variable `root` with SPA `try_files` in a single location is forbidden in v1.
+Plan folding (repository / install state at plan time):
 
-Surfaces referenced by `expose.web` are built and deployed automatically and MUST NOT appear in `packages`.
+| Repository / install state | web mode | Behavior |
+| --- | --- | --- |
+| pc and h5 exist | `adaptive` | UA / Client Hint selects preferred surface via named-location dispatch (§8.1) |
+| pc only | `collapse-pc` | all clients receive `pc` (warn: h5 missing) |
+| h5 only | `collapse-h5` | all clients receive `h5` (warn: pc missing) |
+| neither | `static-fallback` | serve the configured nginx / `server.toml` static resource root (`overrides.web.staticRoot`, or the module `[[http.server.location]]` `match = "/"` static `root` when rendering from `SDKWORK_WEBSERVER_SPEC.md`); SPA adaptive snippets `MUST NOT` be emitted |
+
+`static-fallback` `MUST` use ordinary static file serving from the module
+nginx / `server.toml` configuration (typically
+`deployments/webserver/snippets/web.static.conf` →
+`/usr/share/sdkwork/<runtimeCode>/web/static` with
+`try_files $uri $uri/ =404`, or `overrides.web.staticRoot` / the location
+`root` declared for `match = "/"`). It `MUST NOT` pretend a missing PC or H5
+SPA shell exists. When no static root is configured for the domain, plan
+validation `MUST` fail.
+
+Plan-time folding (`collapse-pc` / `collapse-h5` / `static-fallback`) applies
+when packaging or install inventory is incomplete. Request-time selection
+still prefers H5 on mobile and PC on desktop whenever both surfaces exist.
+
+### 8.1 Stock nginx adaptive emission (required)
+
+Adaptive Web on stock nginx `MUST` be emitted as:
+
+1. `http`-level `map` blocks that set `$sdkwork_<appId>_surface_final` to
+   `pc` or `h5` (Client-Hint / UA detection order above).
+2. A `location /` dispatch that jumps to a **named location** selected by that
+   map (for example
+   `try_files /__sdkwork_adaptive_dispatch__ @$sdkwork_<appId>_surface_final;`).
+3. Sibling named locations `@pc` and `@h5` (and optionally `@static`) that each
+   own a fixed `root` under `/usr/share/sdkwork/<runtimeCode>/web/{pc,h5,static}/`
+   plus SPA or static `try_files`.
+
+Forbidden on stock nginx:
+
+- Variable `include` paths such as
+  `include …/web.$sdkwork_<appId>_surface_final.conf;`
+  (nginx resolves `include` at configuration load time and does not expand
+  variables in include paths).
+- A single `location /` with variable `root` plus SPA `try_files` that invents
+  a missing PC/H5 shell.
+
+Plan folding still applies: `collapse-pc` / `collapse-h5` omit the unused named
+location and map all clients to the remaining surface; `static-fallback` omits
+adaptive maps and emits ordinary static `root` + `try_files … =404` (or the
+module `deployments/webserver/` static location) instead of `@pc` / `@h5`.
+
+Deployctl / `tools/deploy/nginx-render.mjs` and module
+`deployments/webserver/` renders `MUST` follow this emission contract so
+generated site files and `nginx.<profile>.conf` sidecars load on stock nginx.
+
+Surfaces referenced by `expose.web` are built and deployed automatically and
+`MUST NOT` appear in `packages`.
 
 ## 9. API and WebSocket Inference
 
@@ -420,6 +509,7 @@ overrides:
       platform: http://127.0.0.1:3900
   web:
     tablet: pc
+    staticRoot: /usr/share/sdkwork/webserver/web/static
     rules:
       - userAgentRegex: iPad
         surface: h5
@@ -534,7 +624,7 @@ plan → render → nginx -t → deploy → reload → health-check → rollback
 | V2 | `runtimeCode` equals valid `topology.applicationCode` |
 | V3 | `profiles` and root-level expose/packages are mutually exclusive |
 | V4 | `mode: api` forbids `web` |
-| V5 | adaptive requires pc or h5 surface root |
+| V5 | adaptive requires pc or h5 surface root, or a configured static-fallback root when neither exists |
 | V6 | `install.layout` is `source-tree` or `binary-package` |
 | V7 | binary-package web roots MUST NOT use `/usr/share/sdkwork-space/` |
 | V8 | source-tree web roots MUST NOT use `/usr/share/sdkwork/{runtimeCode}/web/` |
@@ -550,7 +640,7 @@ plan → render → nginx -t → deploy → reload → health-check → rollback
 | V18 | v2 profiles declare typed delivery, driver, management, tenancy, isolation, exposure, rollout, and availability dimensions |
 | V19 | production source-tree installation fails without an approved dated governance exception |
 | V20 | side-effecting operations require explicit profile/environment/artifact digest/evidence/rollback selection and never consume `defaultProfile` |
-| V21 | `expose.domain` is an element of the profile-environment host set from `cloudPublicHosts` (including `httpHosts` and `environments` overrides) per `APP_RUNTIME_TOPOLOGY_NAMING.md` section 9; `aliases` are bare hostnames from the same environment host set; prefix-style (`staging-im.*`) and production-suffixed (`*-prod.*`) hosts fail |
+| V22 | adaptive nginx emission MUST use named-location dispatch (§8.1); variable `include` paths and variable-root SPA fallback are forbidden |
 
 ## 14. Examples
 
@@ -562,7 +652,8 @@ See `examples/deploy/`.
 - [x] `deploy:validate` passes in `pnpm check`.
 - [x] `deployctl plan` prints appId, runtimeCode, layout, nginx site file, web roots, upstreams.
 - [x] generated nginx uses `/etc/nginx/sites-enabled/sdkwork/{domain}.conf`.
-- [x] adaptive web uses snippet includes, not variable root SPA fallback.
+- [x] adaptive web uses stock-nginx named-location dispatch (§8.1), not
+      variable `include` and not variable-root SPA fallback.
 - [x] source-tree and binary-package roots match this spec.
 - [x] multi-domain API filtering follows `cloudPublicHosts`.
 - [x] nginx validate/reload hooks are security-gated for production operations.

@@ -24,21 +24,29 @@ export function planDeploy(repoRoot, profileId, options = {}) {
 
   const binary = selectDeploymentBinary(context.topology, context.deployment);
 
-  const expose = context.expose.map((item) => ({
-    ...item,
-    stagingFile: nginxStagingFile(item.domain),
-    webRoots: (item.web?.surfaces ?? []).map((surface) => ({
-      surface,
-      path: webRoots({
-        appId: context.appId,
-        runtimeCode: context.runtimeCode,
-        layout: context.layout,
+  const expose = context.expose.map((item) => {
+    let roots = [];
+    if (item.web?.mode === 'static-fallback' && item.web.staticRoot) {
+      roots = [{ surface: 'static', path: item.web.staticRoot }];
+    } else {
+      roots = (item.web?.surfaces ?? []).map((surface) => ({
         surface,
-        repoRoot: context.repoRoot,
-        dev: options.dev,
-      }),
-    })),
-  }));
+        path: webRoots({
+          appId: context.appId,
+          runtimeCode: context.runtimeCode,
+          layout: context.layout,
+          surface,
+          repoRoot: context.repoRoot,
+          dev: options.dev,
+        }),
+      }));
+    }
+    return {
+      ...item,
+      stagingFile: nginxStagingFile(item.domain),
+      webRoots: roots,
+    };
+  });
 
   return {
     ok: context.errors.length === 0,

@@ -1,16 +1,16 @@
 # Desktop App Architecture Standard
 
 - Version: 1.0
-- Scope: PC desktop and large-screen tablet native applications, especially Tauri-hosted web apps, desktop shells, iPadOS/Android tablet targets, native host adapters, local runtime integration, packaging, and release boundaries
+- Scope: PC desktop and large-screen tablet native applications, especially Tauri- and Electron-hosted web apps, desktop shells, iPadOS/Android tablet targets, native host adapters, local runtime integration, packaging, and release boundaries
 - Related: `APPLICATION_SPEC.md`, `APP_SDK_INTEGRATION_SPEC.md`, `APP_PC_ARCHITECTURE_SPEC.md`, `UI_ARCHITECTURE_SPEC.md`, `APP_PC_REACT_UI_SPEC.md`, `FRONTEND_SPEC.md`, `SDK_SPEC.md`, `IAM_LOGIN_INTEGRATION_SPEC.md`, `CONFIG_SPEC.md`, `ENVIRONMENT_SPEC.md`, `RUNTIME_DIRECTORY_SPEC.md`, `DEPLOYMENT_SPEC.md`, `SECURITY_SPEC.md`, `TEST_SPEC.md`
 
-This standard defines the architecture boundary for SDKWork desktop and large-screen tablet native applications. It is intentionally product-neutral. It applies to Tauri, Electron-like shells, browser-installed desktop shells, tablet-native Tauri targets, and native wrappers that host a web UI, but the normative Tauri profile is defined here because Tauri is the preferred SDKWork native host.
+This standard defines the architecture boundary for SDKWork desktop and large-screen tablet native applications. It is intentionally product-neutral. It applies to Tauri and Electron native shells, browser-installed desktop shells, tablet-native targets, and native wrappers that host a web UI. Tauri is the default SDKWork native host profile (`clientArchitecture = "tauri"`); Electron is a supported alternative host profile (`clientArchitecture = "electron"`). Both hosts `MUST` consume the same host-agnostic renderer, the same host adapter contract (section 5.3), and the same bridge protocol (section 5.4) so feature code never branches on the host identity.
 
 Desktop apps are app composition layers. They should be thin, predictable, and reusable across products. Product-specific UI and business behavior belong in app PC UI packages and service packages. Native host code belongs behind explicit host adapters and commands.
 
 Desktop SDK composition, appbase IAM runtime wiring, dependency SDK usage, and global TokenManager behavior follow `APP_SDK_INTEGRATION_SPEC.md`.
 
-For SDKWork PC applications, `APP_PC_ARCHITECTURE_SPEC.md` is the parent application-root standard. This file is the desktop/tablet native host detail standard for the `sdkwork-<application-code>-pc-desktop` package and related Tauri packaging behavior, including Windows, macOS, Linux, iPadOS, and Android tablet targets.
+For SDKWork PC applications, `APP_PC_ARCHITECTURE_SPEC.md` is the parent application-root standard. This file is the desktop/tablet native host detail standard for the `sdkwork-<application-code>-pc-desktop` (Tauri host) and `sdkwork-<application-code>-pc-electron` (Electron host) packages and related native packaging behavior, including Windows, macOS, Linux, iPadOS, and Android tablet targets.
 
 ## 1. Reference Architecture
 
@@ -130,6 +130,24 @@ apps/sdkwork-<application-code>-pc/
         gen/
           apple/
           android/
+    sdkwork-<application-code>-pc-electron/
+      package.json
+      electron-builder.yml
+      src-electron/
+        main/
+          index.ts
+          window.ts
+          ipc.ts
+          secure-store.ts
+          updater.ts
+          deep-links.ts
+          tray.ts
+        preload/
+          index.ts
+        shared/
+          ipc-channels.ts
+      resources/
+        icons/
 ```
 
 Rules:
@@ -140,7 +158,10 @@ Rules:
 - Existing backend or application server development commands `MUST` remain available under explicit PostgreSQL names such as `pnpm dev:server` or `pnpm dev:postgres` when `pnpm dev` is assigned to the desktop renderer. `pnpm dev:sqlite` may name only a client-local desktop validation path, never a server database.
 - The desktop package owns Tauri CLI, Tauri config, Rust shell code, icons, permissions, and native bundle scripts.
 - The desktop package also owns iPadOS and Android tablet Tauri target metadata, generated native project directories, signing/runbook references, and target-specific capabilities.
+- The Electron host package (`sdkwork-<application-code>-pc-electron`) owns Electron main/preload/shared source, `electron-builder.yml` (or `electron-forge.config.mjs`), icons, entitlements, signing references, asar policy, and native bundle scripts. It `MUST` consume the same renderer build output as the Tauri host and `MUST NOT` fork renderer code.
+- Electron main and preload code `MUST` stay inside the Electron host package. Feature packages `MUST NOT` import `electron` or touch `window.electron`/`ipcRenderer` directly.
 - The root PC app `MUST NOT` own Tauri native dependencies unless the app is intentionally single-package and documents that exception.
+- The root PC app `MUST NOT` own Electron native dependencies unless the app is intentionally single-package and documents that exception.
 - Shared UI and services live in `packages/*` or approved appbase packages.
 - Generated SDK output lives in SDK workspaces and `MUST NOT` be edited by the desktop app.
 - Package names should express product, `pc` surface, and capability according to `APP_PC_ARCHITECTURE_SPEC.md`. Avoid catch-all names for business features.
@@ -168,8 +189,8 @@ Rules:
 - Window control, tray, updater, deep link, file dialog, filesystem, shell open, clipboard, notification, and process integration belong behind host adapters.
 - Tauri command handlers `MUST` validate inputs and return safe errors. They must not leak secrets, tokens, local file contents, or raw system errors.
 - Tauri permissions `MUST` be minimized. A feature requiring broader permission needs a documented reason and test coverage.
-- The renderer `SHOULD` call a typed host adapter rather than `window.__TAURI__` directly.
-- Web-only mode must degrade gracefully when Tauri APIs are unavailable.
+- The renderer `MUST` call the typed host adapter contract (section 5.3) and `MUST NOT` call `window.__TAURI__`, `window.electron`, or any host global directly.
+- Web-only mode `MUST` degrade gracefully through the browser fallback host (empty `capabilities`, `unsupported` outcomes).
 - Tablet mode must degrade gracefully when a desktop-only host capability is unavailable and must expose only target-supported capability adapters.
 
 ## 5.1 Tauri Tablet Target Profile
@@ -185,6 +206,74 @@ Rules:
 - iOS/iPadOS builds require macOS with Apple tooling. Android tablet builds require Android tooling. CI pipelines `MUST` record which runner image satisfies each target.
 - Tablet UI `MUST` handle safe areas, orientation, split view or multi-window where supported, pointer/keyboard input, touch/stylus input, virtual keyboard, and foreground/background lifecycle transitions.
 - Tablet targets `MUST NOT` introduce phone-first navigation, mobile-only SDK wrappers, copied auth stores, or divergent route ownership inside the PC root.
+
+## 5.2 Electron Host Profile
+
+Electron is a supported alternative desktop host profile (`clientArchitecture = "electron"`, `runtimeTarget = "desktop"`). It shares the same PC renderer, package taxonomy, generated SDK boundary, appbase IAM runtime, and global TokenManager as the Tauri host. The renderer `MUST` be host-agnostic: it reaches native capabilities only through the host adapter contract (section 5.3).
+
+Required Electron properties:
+
+| Area | Standard |
+| --- | --- |
+| Package boundary | Electron host code lives in `sdkwork-<application-code>-pc-electron`; feature UI stays in app/domain packages. |
+| Web build output | `electron-builder.yml` (or `electron-forge.config.mjs`) `files`/`extraResources` point at the root PC app build output; the renderer entry loads that output, not a second renderer tree. |
+| Window model | `BrowserWindow` options (width, min size, title, frame/decoration, backgroundColor) are explicit and match the Tauri window profile. |
+| IPC | All renderer-to-main calls go through the bridge protocol (section 5.4) via preload; no raw `ipcRenderer` calls in renderer feature code. |
+| Secure storage | Tokens and secrets use an approved OS-backed secure store exposed only through the host adapter contract. |
+| Updater | Update channel uses a signed updater (for example `electron-updater`) with the same release channel declaration as the Tauri updater. |
+| Bundle metadata | productName, appId, artifactName, version, icons, targets, and signing references are explicit and release-controlled. |
+
+Security baseline (mandatory):
+
+- `contextIsolation = true`, `nodeIntegration = false`, `sandbox = true`, `webSecurity = true`.
+- Preload is the single bridge: one preload script exposes a method allowlist (section 5.4) through `contextBridge.exposeInMainWorld`; it `MUST NOT` expose a generic pass-through of arbitrary channels or a raw `ipcRenderer`.
+- Production `MUST` load the packaged renderer (`loadFile`/approved local origin) and `MUST NOT` `loadURL` to unapproved remote sources.
+- Filesystem access `MUST` be restricted to the SDKWork user-private runtime namespace through the `filesystemSandbox` host adapter; arbitrary path traversal is forbidden.
+- Signing keys, entitlements references, and updater publish config follow the same secret-absence rules as Tauri config (section 7).
+
+## 5.3 Host Adapter Contract
+
+Every native host `MUST` expose typed host adapters defined by the shared contract package `@sdkwork/desktop-host-contract` (contract-only, zero host runtime dependency). Feature packages depend on the contract interfaces or injected host objects, never on host globals such as `window.__TAURI__` or `window.electron`.
+
+Standard capability identifiers (aligned with `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` section 9):
+
+```text
+window | tray | deepLinks | notifications | clipboard | filePicker
+filesystemSandbox | shellOpen | updater | secureStorage | networkStatus
+appLifecycle | deviceInfo | process | localRuntime | powerMonitor
+```
+
+Contract rules:
+
+- `DesktopHost` exposes `meta.id` (`"tauri" | "electron" | "browser" | "custom"`), `meta.capabilities`, typed capability groups (`window`, `tray`, `deepLinks`, `notifications`, `filePicker`, `filesystemSandbox`, `clipboard`, `secureStorage`, `updater`, `localRuntime`), `hasCapability(cap)`, and `dispose()`.
+- Tauri, Electron, and browser implementations `MUST` satisfy the same `DesktopHost` interface. TypeScript `satisfies DesktopHost` (or equivalent strict assignment) is the compile-time parity gate; a contract change requires all three implementations to update in the same change set.
+- Every adapter method returns a stable outcome: `{ ok: true, value }` or `{ ok: false, error: { code, message, detail? } }`. Error codes are limited to `unsupported`, `permission-denied`, `unavailable`, `cancelled`, `invalid-state`, and `internal`. Renderer code branches only on `code`, never on host-specific error text.
+- Host adapters `MUST` be local-only and `MUST NOT` own business authorization, token refresh, permission evaluation, or generated SDK transport.
+- Capability routing in renderer code uses the declared `capabilities` set or the `withCapability` helper; hand-written `if (window.__TAURI__)` branches are forbidden.
+- A browser-only runtime (`runtimeTarget = "browser"`) uses the browser fallback implementation whose `capabilities` set is empty and whose methods return `unsupported`.
+- The contract package and its three implementations follow `TYPESCRIPT_CODE_SPEC.md`; the contract `src/index.ts` is the stable public export boundary.
+
+## 5.4 Bridge Protocol
+
+All renderer-to-host native calls use one bridge protocol. Tauri (`invoke` + Rust commands) and Electron (`contextBridge` + `ipcRenderer.invoke`) are transport implementations of the same protocol.
+
+Method naming (three segments):
+
+```text
+sdkwork:<capability>:<action>
+sdkwork:window:minimize
+sdkwork:deepLinks:getInitialUrl
+sdkwork:secureStorage:get
+sdkwork:localRuntime:start
+sdkwork:updater:check
+```
+
+- `<capability>` `MUST` come from the section 5.3 capability list. Business semantics (`sdkwork:orders:create`) are forbidden.
+- Request/response shapes are `BridgeRequest { v, id, method, params?, meta? }` and `BridgeResponse { v, id, ok, result? } | { v, id, ok: false, error }`.
+- Host-initiated events use `BridgeEvent { v, event, payload? }` with `event = "sdkwork:<capability>:<event>"` (for example `sdkwork:deepLinks:open`).
+- Tauri host: Rust commands `MUST` be named by host capability (`sdkwork_<capability>_<action>`), validate inputs, return safe errors, and never leak secrets or raw system errors.
+- Electron host: `ipcMain.handle` channels equal the protocol method names; the preload exposes an allowlist whose entries are generated or validated against the contract method table. Unknown channels `MUST` be rejected, not forwarded.
+- Feature packages `MUST` consume the protocol through injected host adapters only; they `MUST NOT` import `@tauri-apps/api` or `electron` directly.
 
 ## 6. SDK, Session, And Auth
 
@@ -286,15 +375,30 @@ Recommended commands:
 pnpm dev:desktop
 pnpm dev:desktop:standalone
 pnpm dev:desktop:cloud
+pnpm dev:desktop:electron
 pnpm dev:server:standalone
 pnpm dev:desktop:sqlite
 pnpm test:desktop
+pnpm test:desktop:electron
 pnpm check:tauri-config
+pnpm check:electron-config
 pnpm build:desktop
+pnpm build:desktop:electron
 pnpm build:desktop:staging
 pnpm build:desktop:prod
+pnpm build:desktop:electron:prod
 pnpm build:tablet-ipados:prod
 pnpm build:tablet-android:prod
+
+pnpm desktop:dev                 # default host tauri, alias of pnpm dev:desktop
+pnpm desktop:dev:electron        # Electron host, alias of pnpm dev:desktop:electron
+pnpm desktop:dev:standalone
+pnpm desktop:dev:cloud
+pnpm desktop:build
+pnpm desktop:build:electron
+pnpm desktop:build:electron:prod
+pnpm desktop:check
+pnpm desktop:test
 ```
 
 Command rules:
@@ -317,8 +421,19 @@ Command rules:
 - `dev:desktop:sqlite` or an equivalent documented command is the explicit
   client-local SQLite regression profile. It must not select SQLite for an
   application gateway, backend service, worker, or server integration process.
+- `dev:desktop:electron` selects the Electron host (`clientArchitecture = "electron"`)
+  with the same standalone/development/PostgreSQL defaults. The default
+  `dev:desktop` remains the Tauri host for backward compatibility.
+- The `desktop:*` host-family commands (for example `desktop:dev`,
+  `desktop:dev:electron`, `desktop:build`, `desktop:check`) are equivalent
+  aliases of their `dev:desktop` / `build:desktop` counterparts per
+  `PNPM_SCRIPT_SPEC.md` section 4.1. They default to the Tauri host and select
+  the Electron host only with the explicit `electron` axis.
 - `check:tauri-config` validates platform config merge, profile normalization, desktop/server split, secret absence, local path resolution, and test isolation.
-- `build:desktop:prod`, `build:tablet-ipados:prod`, and `build:tablet-android:prod` must run release preflight before packaging.
+- `check:electron-config` validates the Electron host profile: security baseline
+  (`contextIsolation`/`nodeIntegration`/`sandbox`/`webSecurity`), preload allowlist,
+  secret absence, profile normalization, product metadata, and output directory.
+- `build:desktop:prod`, `build:desktop:electron:prod`, `build:tablet-ipados:prod`, and `build:tablet-android:prod` must run release preflight before packaging.
 
 ## 8. Native Capability Boundary
 
@@ -358,8 +473,8 @@ Forbidden native host concerns:
 
 Rules:
 
-- Host adapters `MUST` expose typed methods such as `windowControl(action)` or `openExternal(url)`, not raw command names throughout UI code.
-- Native host errors should map to user-safe messages and diagnostic codes.
+- Host adapters `MUST` expose typed methods from the section 5.3 contract (such as `window.minimize()`, `tray.setMenu(...)`, `deepLinks.getInitialUrl()`), not raw command names throughout UI code.
+- Native host errors `MUST` map to the section 5.3 stable error codes (`unsupported`, `permission-denied`, `unavailable`, `cancelled`, `invalid-state`, `internal`) and user-safe messages.
 - Native code should emit structured logs without secrets.
 
 ## 9. Packaging And Release
@@ -371,8 +486,9 @@ Rules:
 - Desktop package scripts `SHOULD` provide explicit local dev and local build commands.
 - The repository top-level `package.json` `MUST` provide launch aliases for the default desktop app so contributors can start it from the repository root without knowing the app subdirectory.
 - Tauri package metadata `MUST` include stable product name, identifier, version, icons, and bundle targets.
+- Electron package metadata `MUST` include stable productName, appId, artifactName, version, icons, and bundle targets, matching the Tauri host metadata from the same manifest authority.
 - Tablet package metadata `MUST` include stable bundle/package identifiers, version, icons, signing configuration references, and target outputs.
-- Release artifacts `MUST` be reproducible from source, lockfile, Tauri config, runtime config templates, and SDK versions.
+- Release artifacts `MUST` be reproducible from source, lockfile, native host config (Tauri config or Electron builder config), runtime config templates, and SDK versions.
 - Desktop installers, IPA artifacts, APK/AAB artifacts, and generated native projects must not include local secrets, developer caches, generated temporary files, or runtime state.
 - Public release behavior must be verified with production-like config, not only dev server config.
 
@@ -382,13 +498,15 @@ Required verification for desktop architecture changes:
 
 | Verification | Evidence |
 | --- | --- |
-| Package boundary | Static scan proves Tauri code lives in the desktop package and feature UI lives in app/domain packages. |
+| Package boundary | Static scan proves Tauri code lives in `-pc-desktop`, Electron code lives in `-pc-electron`, and feature UI lives in app/domain packages. |
 | SDK boundary | Static scan proves no raw HTTP, manual token headers, or generated SDK edits were introduced for business flows. |
-| Host boundary | Static scan proves feature packages use host adapters or shell-owned commands, not scattered raw Tauri globals. |
+| Host boundary | Static scan proves feature packages use the host adapter contract (section 5.3), not scattered raw host globals (`window.__TAURI__`, `window.electron`, `ipcRenderer`, `@tauri-apps/api`, `electron` imports). |
+| Host contract parity | TypeScript check proves the Tauri, Electron, and browser implementations satisfy the same `DesktopHost` interface and expose the same capability set. |
 | Session behavior | Logout, refresh failure, and account switch clear session and prevent stale route guards. |
-| Config behavior | Localhost defaults are dev/local only; dev/test/staging/prod profiles normalize correctly; browser public runtime, desktop user runtime, server runtime, container runtime, and Tauri platform config remain separate. |
+| Config behavior | Localhost defaults are dev/local only; dev/test/staging/prod profiles normalize correctly; browser public runtime, desktop user runtime, server runtime, container runtime, Tauri platform config, and Electron host config remain separate. |
 | Database boundary | Declared desktop client-local data resolves to SQLite; every desktop-started backend service resolves to PostgreSQL. |
 | Tauri config | `devUrl`, `frontendDist`, window config, permissions, capabilities, bundle metadata, and icons are present. |
+| Electron config | Security baseline (`contextIsolation`/`nodeIntegration`/`sandbox`/`webSecurity`), preload allowlist, product metadata, signing references, and output directory are present and validated. |
 | Tablet config | iPadOS/Android config, signing references, large-screen behavior, safe-area handling, permissions/capabilities, and output artifact commands are present when enabled. |
 | Type and build | Changed packages pass typecheck and relevant build or smoke commands. |
 
@@ -413,13 +531,16 @@ pnpm --filter @sdkwork/<application-code>-pc-desktop build:tablet-android
 
 - [ ] Desktop/tablet native architecture was considered separately from app PC UI architecture.
 - [ ] Repository top-level `pnpm dev` and `pnpm dev:desktop` can start the default PC renderer/default development workflow and desktop shell.
+- [ ] `pnpm dev:desktop:electron` starts the Electron host with the same renderer and profile defaults when Electron packaging is enabled.
 - [ ] App shell is thin and does not own reusable business workflows.
 - [ ] UI-service-SDK layering follows `FRONTEND_SPEC.md` and `APP_PC_REACT_UI_SPEC.md`.
 - [ ] Remote business calls use generated SDK clients or approved wrappers.
 - [ ] Native host commands are narrow, typed, least-privilege, and local-only.
+- [ ] Tauri and Electron hosts satisfy the same `DesktopHost` contract (section 5.3); feature code contains no host globals.
+- [ ] Electron host enforces the security baseline and preload allowlist (section 5.2).
 - [ ] Desktop-local user data uses SQLite, tablet-local user data uses SQLite or approved encrypted platform storage, while desktop/tablet-started backend services use the PostgreSQL dev profile by default.
-- [ ] Desktop user runtime config, desktop-started server config, browser public runtime config, and container runtime config use canonical `<deployment-profile>.<environment>` identities; Tauri platform config remains a separate host-packaging axis.
-- [ ] Tauri platform config contains only packaging metadata, permissions, capabilities, and signing references; secrets and business API contracts are excluded.
+- [ ] Desktop user runtime config, desktop-started server config, browser public runtime config, and container runtime config use canonical `<deployment-profile>.<environment>` identities; native host config (Tauri or Electron) remains a separate host-packaging axis.
+- [ ] Tauri and Electron host config contains only packaging metadata, permissions, capabilities, and signing references; secrets and business API contracts are excluded.
 - [ ] Tauri config, permissions, capabilities, icons, and bundle metadata are explicit.
 - [ ] iPadOS and Android tablet package metadata, signing references, safe-area/lifecycle behavior, and build commands are explicit when tablet targets are enabled.
 - [ ] Session/logout/token handling is centralized and tested.

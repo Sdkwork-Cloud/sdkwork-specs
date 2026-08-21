@@ -2,9 +2,16 @@
 
 - Version: 1.0
 - Scope: SDKWork public reverse proxy deployment, generated nginx site files, TLS certificate paths, and release host handoff
-- Related: `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`
+- Related: `SDKWORK_WEBSERVER_SPEC.md`, `SDKWORK_DEPLOY_SPEC.md`, `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`, `DEPLOYMENT_SPEC.md`, `ENVIRONMENT_SPEC.md`, `SECURITY_SPEC.md`, `OBSERVABILITY_SPEC.md`
 
 SDKWork nginx deployment must keep public-domain routing reproducible across Linux servers and local operator workstations. Generated files are deployable artifacts, not handwritten one-off snippets.
+
+The declarative source for the serving behavior behind these sites is the
+per-module `deployments/webserver/server.toml` defined by
+`SDKWORK_WEBSERVER_SPEC.md`: reverse proxy locations, virtual hosts, static
+resource mounting, and certificate references are typed there and rendered
+into the site files and upstreams below. Handwritten site files remain
+allowed only as a one-time migration path into that declarative standard.
 
 ## 1. Site File Path Contract
 
@@ -216,7 +223,94 @@ pnpm nginx:render -- --platform macos --domain api.sdkwork.com --output-root tar
 
 Windows or macOS hosts with a local nginx install must pass an explicit `--output-root` or `--output` matching their nginx config layout. The rendered nginx content still uses Linux-style certificate paths when that config will be copied to a Linux host.
 
-## 7. Acceptance Checklist
+## 7. Adaptive Web (PC / H5 Device Selection)
+
+Authority: `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md` §2.1,
+`SDKWORK_DEPLOY_SPEC.md` §8 / §8.1, `SDKWORK_WEBSERVER_SPEC.md` §11.3.
+
+Applies to module public origins with `expose.mode` `web` or `web+api` that
+serve browser SPA roots from stock nginx. It does **not** apply to
+`expose.mode: api` edges (including the `sdkwork-webserver` product public
+ingress): those origins reverse-proxy all traffic to the owning process and
+leave Adaptive Web / static delivery to that process.
+
+Every independent module that exposes browser UI on a public `web` or
+`web+api` origin `MUST` package both browser surfaces by default:
+
+| Surface | Application root | Installed root (`binary-package`) |
+| --- | --- | --- |
+| PC | `apps/sdkwork-<application-code>-pc/` | `/usr/share/sdkwork/<runtimeCode>/web/pc/` |
+| H5 | `apps/sdkwork-<application-code>-h5/` | `/usr/share/sdkwork/<runtimeCode>/web/h5/` |
+
+### 7.1 Request Selection
+
+Stock nginx site files and module `deployments/webserver/` renders `MUST`
+select the SPA surface with this contract:
+
+| Client class | Preferred surface | If preferred is not packaged |
+| --- | --- | --- |
+| Mobile (`Sec-CH-UA-Mobile: ?1` or mobile User-Agent) | H5 | serve PC (`collapse-pc`) |
+| Desktop / other | PC | serve H5 (`collapse-h5`) |
+| Tablet | PC (or H5 when `overrides.web.tablet: h5`) | other available surface |
+| Neither PC nor H5 packaged | — | `static-fallback` |
+
+Detection order (shared with the website data plane):
+
+1. Deploy / delivery device-override rules
+2. `Sec-CH-UA-Mobile: ?1`
+3. Tablet User-Agent (`iPad`) → PC (or H5 when `overrides.web.tablet: h5`)
+4. Default mobile User-Agent regex from `SDKWORK_DEPLOY_SPEC.md` §8
+5. Default desktop → PC
+
+`iPad` defaults to PC unless tablet override selects H5. Emit the `iPad` map
+entry **before** the mobile regex so UA strings that contain both `iPad` and
+`Mobile` stay on the tablet surface.
+
+### 7.2 Stock nginx Emission
+
+Adaptive Web on stock nginx `MUST` emit:
+
+1. `http`-level `map` blocks that set `$sdkwork_<appId>_surface_final` to
+   `pc` or `h5`.
+2. A `location /` dispatch that jumps to a named location selected by that
+   map (for example
+   `try_files /__sdkwork_adaptive_dispatch__ @$sdkwork_<appId>_surface_final;`).
+3. Sibling named locations `@pc` and `@h5` (and optionally `@static`) with
+   fixed `root` under `/usr/share/sdkwork/<runtimeCode>/web/{pc,h5,static}/`
+   plus SPA or ordinary static `try_files`.
+
+Forbidden:
+
+- Variable `include` paths such as
+  `include …/web.$sdkwork_<appId>_surface_final.conf;`
+- A single `location /` with variable `root` that invents a missing SPA shell
+
+Plan folding (`collapse-pc` / `collapse-h5` / `static-fallback`) is applied by
+`sdkwork-specs/tools/webserver/adaptive-web.mjs` and
+`sdkwork-specs/tools/deploy/nginx-render.mjs` before site files or
+`nginx.<profile>.conf` sidecars are written. Reference module wiring:
+`sdkwork-specs/examples/webserver/adaptive-snippets/` (for modules with
+`expose.mode` `web` / `web+api`). The `sdkwork-webserver` product edge is
+`expose.mode: api` and must not include those snippets (validator W23).
+
+### 7.3 Static Fallback
+
+When neither PC nor H5 is packaged, nginx `MUST` serve the configured static
+resource root (`overrides.web.staticRoot`,
+`sdkwork-specs/examples/webserver/adaptive-snippets/web.static.conf`, or the
+`[[http.server.location]]` `match = "/"` `root`) with ordinary file serving:
+
+```nginx
+root /usr/share/sdkwork/<runtimeCode>/web/static;
+index index.html;
+try_files $uri $uri/ =404;
+```
+
+Adaptive maps and `@pc` / `@h5` named locations `MUST NOT` be emitted in
+`static-fallback` mode. When no static root is configured for the public
+domain, plan validation `MUST` fail.
+
+## 8. Acceptance Checklist
 
 - [ ] The deployed file path is `/etc/nginx/sites-enabled/sdkwork/<domain>.conf`.
 - [ ] The file name is the complete public domain plus `.conf`.
@@ -225,3 +319,5 @@ Windows or macOS hosts with a local nginx install must pass an explicit `--outpu
 - [ ] Configs preserve forwarded headers and streaming behavior.
 - [ ] `nginx -t` passes before reload.
 - [ ] `/healthz` and `/readyz` pass through the public domain after reload.
+- [ ] Public Adaptive Web hosts use named-location PC/H5 dispatch (or plan-time
+      `collapse-*` / `static-fallback`) per §7; variable `include` paths are absent.

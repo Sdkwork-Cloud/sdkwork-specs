@@ -830,7 +830,7 @@ describe('check-pnpm-script-standard', () => {
     assert.match(result.stderr, /gateway:cloud:bundle: use gateway:<action>\[:deploymentProfile\]/);
   });
 
-  it('rejects platform-first root runtime command aliases', () => {
+  it('accepts desktop host family commands', () => {
     const root = makeRepo({
       name: 'sdkwork-demo',
       scripts: {
@@ -841,6 +841,29 @@ describe('check-pnpm-script-standard', () => {
         verify: 'node scripts/sdkwork-command.mjs verify',
         clean: 'node scripts/sdkwork-command.mjs clean',
         'desktop:dev': 'pnpm dev:desktop',
+        'desktop:build': 'pnpm build:desktop',
+        'desktop:dev:electron': 'pnpm dev:desktop:electron',
+        'desktop:check': 'pnpm check:tauri-config',
+      },
+    });
+
+    const result = runChecker(root);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('rejects nonstandard desktop host family actions and tool-first aliases', () => {
+    const root = makeRepo({
+      name: 'sdkwork-demo',
+      scripts: {
+        dev: 'node scripts/sdkwork-command.mjs dev',
+        build: 'node scripts/sdkwork-command.mjs build',
+        test: 'node scripts/sdkwork-command.mjs test',
+        check: 'node scripts/sdkwork-command.mjs check',
+        verify: 'node scripts/sdkwork-command.mjs verify',
+        clean: 'node scripts/sdkwork-command.mjs clean',
+        'desktop:foo': 'pnpm dev:desktop',
+        'desktop:dev:native-host': 'tauri dev',
         'tauri:dev': 'pnpm dev:desktop',
       },
     });
@@ -850,7 +873,11 @@ describe('check-pnpm-script-standard', () => {
     assert.notEqual(result.status, 0);
     assert.match(
       result.stderr,
-      /desktop:dev: use action-first runtime target script names such as dev:desktop/,
+      /desktop:foo: use action-first runtime target script names such as foo:desktop/,
+    );
+    assert.match(
+      result.stderr,
+      /desktop:dev:native-host: use action-first runtime target script names such as dev:desktop/,
     );
     assert.match(
       result.stderr,
@@ -1031,7 +1058,7 @@ describe('check-pnpm-script-standard', () => {
     );
   });
 
-  it('rejects package-local platform-first runtime command aliases', () => {
+  it('rejects package-local non-desktop platform-first runtime command aliases', () => {
     const root = makeRepo({
       name: 'sdkwork-demo',
       scripts: {
@@ -1047,7 +1074,7 @@ describe('check-pnpm-script-standard', () => {
     mkdirSync(appDir, { recursive: true });
     writeFileSync(
       path.join(appDir, 'package.json'),
-      `${JSON.stringify({ name: 'demo-pc', scripts: { 'browser:dev': 'vite', 'desktop:build': 'tauri build' } }, null, 2)}\n`,
+      `${JSON.stringify({ name: 'demo-pc', scripts: { 'browser:dev': 'vite', 'desktop:build': 'pnpm build:desktop' } }, null, 2)}\n`,
     );
 
     const result = runChecker(root);
@@ -1057,9 +1084,9 @@ describe('check-pnpm-script-standard', () => {
       result.stderr,
       /apps[/\\]demo-pc[/\\]package\.json#browser:dev: use action-first runtime target script names such as dev:browser/,
     );
-    assert.match(
+    assert.doesNotMatch(
       result.stderr,
-      /apps[/\\]demo-pc[/\\]package\.json#desktop:build: use action-first runtime target script names such as build:desktop/,
+      /apps[/\\]demo-pc[/\\]package\.json#desktop:build/,
     );
   });
 

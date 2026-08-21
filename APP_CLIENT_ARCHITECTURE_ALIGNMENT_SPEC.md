@@ -56,6 +56,43 @@ Rules:
 - Architecture standards may define language-specific package naming, such as lower snake case for Dart packages.
 - A product may support multiple client roots, but each client root must keep its own bootstrap, shell, package family, host adapters, config templates, and verification.
 
+### 2.1 Browser PC And H5 Pair (Adaptive Web)
+
+Public browser UI `MUST` ship both roots. Selection is same-origin by device
+class (`SDKWORK_DEPLOY_SPEC.md` §8, `APP_RUNTIME_TOPOLOGY_SPEC.md` §8.2).
+
+| Surface | Source root | Build outDir | Installed root |
+| --- | --- | --- | --- |
+| PC | `apps/sdkwork-<code>-pc` | `dist/<envAlias>/` | `<share>/web/pc/` |
+| H5 | `apps/sdkwork-<code>-h5` | `dist/<envAlias>/` | `<share>/web/h5/` |
+| Static fallback | `deployments/webserver/static/` (optional) | — | `<share>/web/static/` |
+
+`<envAlias>`: `development`→`dev`, `test`→`test`, `staging`→`staging`,
+`production`→`prod`. Bare `dist/` is forbidden. Packaging copies one
+`dist/<envAlias>/` into `<share>/web/{pc|h5}/` (no env segment left).
+`<share>` OS paths: `RUNTIME_DIRECTORY_SPEC.md` §4.1.1.
+Helper / check: `tools/browser-dist-layout.mjs`, `tools/check-browser-dist-layout.mjs`.
+
+| Client | Prefer | If missing |
+| --- | --- | --- |
+| Mobile | H5 | PC → static |
+| Desktop | PC | H5 → static |
+| Tablet | PC (or H5 when tablet override) | other → static |
+| Neither SPA | — | static only |
+
+Detection: overrides → `Sec-CH-UA-Mobile: ?1` → iPad/tablet (before mobile UA) → mobile UA → desktop.
+`expose.mode: api` (webserver product): nginx reverse-proxies only; process
+`[app_roots]` owns roots (`SDKWORK_WEBSERVER_SPEC.md` §13.6).
+`expose.mode: web` / `web+api`: stock nginx `@pc`/`@h5` (`NGINX_SPEC.md` §7).
+
+### 2.2 Same-Origin Terminal Binding
+
+1. One public origin; no separate PC/H5 browser ports.
+2. H5 requests use the H5 root; PC requests use the PC root (collapse only when the preferred SPA is absent).
+3. Active environment's runtime config points at that env's artifacts (`dist/<envAlias>/` in checkout; `<share>/web/{pc,h5}/` when installed).
+
+Native / mini-program roots are additive and do not replace the PC/H5 pair.
+
 ## 3. Standard Client Root Shape
 
 Every client root should align to this logical structure. Architecture standards may rename entry files to match the language, but responsibilities must remain equivalent.
@@ -274,7 +311,7 @@ Rules:
 
 ## 9. Host Adapter Boundary
 
-Host adapters are local or platform capability boundaries.
+Host adapters are local or platform capability boundaries. For PC desktop roots with multiple native hosts (Tauri and Electron), the adapter interfaces and bridge protocol are defined once by the shared contract package `@sdkwork/desktop-host-contract` and detailed in `DESKTOP_APP_ARCHITECTURE_SPEC.md` sections 5.3 and 5.4; every host implementation satisfies the same `DesktopHost` interface.
 
 Standard host adapter categories:
 
@@ -297,11 +334,17 @@ deviceInfo
 haptics
 ```
 
+Host capability declaration and degradation:
+
+- Every host exposes a `capabilities` set (for example `window`, `deepLinks`, `secureStorage`, `filePicker`, `filesystemSandbox`, `updater`, `localRuntime`). Renderer code routes through the declared set or a shared capability helper (`hasCapability`/`withCapability`); hand-written platform branches on host globals are forbidden.
+- Browser-only and platform-native modes must provide fallback adapters for unsupported capabilities. The browser fallback exposes an empty `capabilities` set and returns `unsupported` outcomes.
+- When the same workflow exists under Tauri and Electron, both implementations must expose the same capability set and method signatures so feature code compiles unchanged against either host.
+
 Rules:
 
 - Host adapters expose typed methods and stable errors such as `unsupported`, `permission-denied`, `unavailable`, `cancelled`, and `invalid-state`.
 - Feature packages depend on host adapter interfaces or injected services, not platform globals.
-- Browser-only and platform-native modes must provide fallback adapters for unsupported capabilities.
+- Feature packages `MUST NOT` reference `window.__TAURI__`, `window.electron`, `ipcRenderer`, or import `@tauri-apps/api` / `electron` directly; they consume host adapter contracts only.
 - Host adapters may obtain platform facts such as push tokens or selected files, but business registration, upload, and binding workflows must call generated SDKs through services.
 - Host adapters must not own login, token refresh, permission evaluation, business authorization, direct database access, or raw business API transport.
 

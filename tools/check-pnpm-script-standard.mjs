@@ -40,6 +40,7 @@ const ALLOWED_FIRST_SEGMENTS = new Set([
   'format',
   'release',
   'deploy',
+  'desktop',
   'db',
   'api',
   'sdk',
@@ -129,6 +130,7 @@ const ACTION_FIRST_RUNTIME_TARGET_ALIASES = new Map([
   ['browser', 'browser'],
   ['desktop', 'desktop'],
   ['tauri', 'desktop'],
+  ['electron', 'desktop'],
   ['docker', 'container'],
   ['android', 'android-native'],
   ['ios', 'ios-native'],
@@ -136,7 +138,41 @@ const ACTION_FIRST_RUNTIME_TARGET_ALIASES = new Map([
   ['flutter', 'flutter-android'],
   ['mini-program', 'mini-program'],
 ]);
-const RETIRED_RUNTIME_TARGET_ALIASES = new Map([['tauri', 'desktop']]);
+const RETIRED_RUNTIME_TARGET_ALIASES = new Map([
+  ['tauri', 'desktop'],
+  ['electron', 'desktop'],
+]);
+
+const DESKTOP_HOST_FAMILY_ACTIONS = new Set([
+  'dev',
+  'build',
+  'check',
+  'test',
+  'release',
+  'package',
+  'preview',
+  'smoke',
+]);
+const DESKTOP_HOST_FAMILY_AXES = new Set([
+  'electron',
+  'tauri',
+  'standalone',
+  'cloud',
+  'postgres',
+  'sqlite',
+  'development',
+  'staging',
+  'prod',
+  'production',
+  'local',
+]);
+
+function isDesktopHostFamilyCommand(scriptName) {
+  const parts = scriptName.split(':');
+  if (parts[0] !== 'desktop' || parts.length < 2) return false;
+  if (!DESKTOP_HOST_FAMILY_ACTIONS.has(parts[1])) return false;
+  return parts.slice(2).every((part) => DESKTOP_HOST_FAMILY_AXES.has(part));
+}
 const RETIRED_LOCAL_FIRST_SEGMENTS = new Set([
   'server',
   'service',
@@ -371,6 +407,7 @@ function pushLifecycleProfileOrderIssues(scriptName, issues, prefix = '') {
 }
 
 function pushActionFirstRuntimeTargetIssues(scriptName, issues, prefix = '') {
+  if (isDesktopHostFamilyCommand(scriptName)) return;
   const parts = scriptName.split(':');
   const runtimeTarget = ACTION_FIRST_RUNTIME_TARGET_ALIASES.get(parts[0]);
   if (!runtimeTarget || parts.length < 2) return;
@@ -381,10 +418,14 @@ function pushActionFirstRuntimeTargetIssues(scriptName, issues, prefix = '') {
 }
 
 function pushRuntimeTargetAliasIssues(scriptName, issues, prefix = '') {
+  if (isDesktopHostFamilyCommand(scriptName)) return;
   const parts = scriptName.split(':');
   for (const [index, part] of parts.entries()) {
     const runtimeTarget = RETIRED_RUNTIME_TARGET_ALIASES.get(part);
     if (!runtimeTarget) continue;
+    if (parts[0] === 'dev' && parts[1] === 'desktop' && (part === 'electron' || part === 'tauri')) {
+      continue;
+    }
     const action = index > 0 ? parts[0] : parts[1] || 'dev';
     issues.push(
       `${prefix}${scriptName}: use runtime target "${runtimeTarget}" instead of tool alias "${part}", for example ${action}:${runtimeTarget}`,
@@ -400,6 +441,9 @@ function pushDevAxisIssues(scriptName, issues, prefix = '') {
 
   for (const part of parts.slice(1)) {
     if (DEV_AXIS_VALUES.has(part)) {
+      continue;
+    }
+    if (parts[1] === 'desktop' && (part === 'electron' || part === 'tauri')) {
       continue;
     }
     if (RUNTIME_TARGETS.has(parts[1])) {

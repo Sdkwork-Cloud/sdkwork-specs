@@ -44,12 +44,13 @@ function adaptiveDelivery() {
         command: 'node',
         args: ['scripts/dev/run-vite.mjs', '--port', '{port}'],
         defaultPort: 4176,
-        portEnv: 'DEMO_PC_RENDERER_PORT',
+        portEnv: 'SDKWORK_DEMO_PC_INTERNAL_DEV_PORT',
       },
       h5: {
         applicationRoot: 'apps/sdkwork-demo-h5',
         script: '_sdkwork:dev-server',
         defaultPort: 4178,
+        portEnv: 'SDKWORK_DEMO_H5_INTERNAL_DEV_PORT',
       },
     },
   };
@@ -67,7 +68,7 @@ function adaptiveProfiles() {
         {
           id: 'im-browser',
           role: 'client',
-          bindEnv: 'DEMO_WEB_DEV_INGRESS_BIND',
+          bindEnv: 'SDKWORK_DEMO_WEB_DEV_INGRESS_BIND',
           runtimeTargets: ['browser'],
           clientArchitectures: ['pc-web', 'h5'],
         },
@@ -77,14 +78,26 @@ function adaptiveProfiles() {
   };
 }
 
-test('passes for repositories that do not declare both pc-web and h5', () => {
+test('passes for repositories that do not declare both pc-web and h5 and lack an H5 app root', () => {
   const root = fixtureRoot();
+  fs.rmSync(path.join(root, 'apps', 'sdkwork-demo-h5'), { recursive: true, force: true });
   writeTopology(root, {
     'standalone.development': {
       processes: [{ id: 'im-browser', role: 'client', clientArchitectures: ['pc-web'] }],
     },
   });
   assert.deepEqual(checkAdaptiveWebStandard(root), []);
+});
+
+test('fails when PC and H5 app roots exist without adaptive topology architectures', () => {
+  const root = fixtureRoot();
+  writeTopology(root, {
+    'standalone.development': {
+      processes: [{ id: 'im-browser', role: 'client', clientArchitectures: ['pc-web'] }],
+    },
+  });
+  const issues = checkAdaptiveWebStandard(root);
+  assert.ok(issues.some((issue) => /does not declare both pc-web and h5/u.test(issue)));
 });
 
 test('passes for a compliant adaptive browser delivery', () => {
@@ -115,6 +128,7 @@ test('fails when a renderer cannot resolve a TCP port', () => {
   const root = fixtureRoot();
   const profiles = adaptiveProfiles();
   delete profiles['standalone.development'].browserDeliveries[0].renderers.h5.defaultPort;
+  delete profiles['standalone.development'].browserDeliveries[0].renderers.h5.portEnv;
   writeTopology(root, profiles);
   const issues = checkAdaptiveWebStandard(root);
   assert.ok(issues.some((issue) => /renderer h5 must resolve a TCP port/u.test(issue)));
